@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FermeGest Pro">
+  <link rel="manifest" href="manifest.json">
+  <title>FermeGest Pro | Gestion d'Élevage, Finances & Incubateur</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & Cairo for Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css?v=3">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+      });
+    }
+  </script>
+</head>
+<body>
+  <!-- App Container -->
+  <div id="app" class="app-layout">
+    
+    <!-- Top Header (Mobile & Desktop) -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <img src="logo.png" alt="Logo FermeGest" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">FermeGest <span class="badge-pro">PRO</span></h1>
+          <p class="brand-subtitle" data-i18n="brand_subtitle">Élevage &bull; Finances &bull; Incubateur</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Language Selector -->
+        <div class="lang-selector">
+          <label for="langSelect" class="sr-only" data-i18n="lang_label">Langue</label>
+          <select id="langSelect" class="select-chip" title="Changer la langue / Change Language / تغيير اللغة">
+            <option value="fr" selected>🇫🇷 Français</option>
+            <option value="ar">🇹🇳 العربية</option>
+            <option value="en">🇬🇧 English</option>
+          </select>
+        </div>
+
+        <!-- Currency Selector -->
+        <div class="currency-selector">
+          <label for="currencySelect" class="sr-only" data-i18n="currency_label">Devise</label>
+          <select id="currencySelect" class="select-chip" title="Changer la devise">
+            <option value="TND" selected>TND (DT)</option>
+            <option value="DZD">DZD (DA)</option>
+            <option value="MAD">MAD (DH)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="USD">USD ($)</option>
+            <option value="FCFA">FCFA</option>
+          </select>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" class="icon-btn" title="Basculer Mode Clair / Sombre" aria-label="Basculer thème">
+          <svg id="themeIconSun" class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg id="themeIconMoon" class="theme-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <!-- Quick Data Modal Trigger -->
+        <button id="dataOptionsBtn" class="icon-btn" title="Options de données / Sauvegarde" aria-label="Paramètres données">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- App Body (Sidebar + Content) -->
+    <div class="app-body">
+      
+      <!-- Desktop Sidebar Navigation -->
+      <aside class="desktop-sidebar">
+        <nav class="nav-menu">
+          <button class="nav-item active" data-tab="dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span data-i18n="nav_dashboard">Tableau de Bord</span>
+          </button>
+
+          <button class="nav-item" data-tab="animals">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"></path>
+              <path d="M7 10h.01M17 10h.01M9 16c1.5 1 4.5 1 6 0"></path>
+            </svg>
+            <span data-i18n="nav_animals">Cheptel & Races</span>
+            <span class="badge-count" id="countAnimalsBadge">0</span>
+          </button>
+
+          <button class="nav-item" data-tab="expenses">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <span data-i18n="nav_expenses">Dépenses & Coûts</span>
+          </button>
+
+          <button class="nav-item" data-tab="sales">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+            <span data-i18n="nav_sales">Ventes & Produits</span>
+          </button>
+
+          <button class="nav-item" data-tab="smart-calc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            <span data-i18n="nav_smart_calc">Rentabilité Intelligente</span>
+          </button>
+
+          <button class="nav-item" data-tab="incubator">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="13" r="8"></circle>
+              <path d="M12 2v3M12 21v1M8.5 4l1.5 2.5M15.5 4L14 6.5"></path>
+            </svg>
+            <span data-i18n="nav_incubator">Incubateur & Éclosion</span>
+            <span class="badge-count badge-amber" id="countIncubatorBadge">0</span>
+          </button>
+
+          <button class="nav-item" data-tab="calendar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span data-i18n="nav_calendar">Calendrier Générations</span>
+          </button>
+        </nav>
+
+        <!-- Quick Summary Box in Sidebar -->
+        <div class="sidebar-summary-card">
+          <div class="summary-card-header">
+            <span class="summary-dot"></span>
+            <h4 data-i18n="sidebar_health_title">Santé de l'Exploitation</h4>
+          </div>
+          <div class="sidebar-mini-stat">
+            <span class="mini-label" data-i18n="sidebar_real_margin">Marge Réelle:</span>
+            <span class="mini-val text-emerald" id="sidebarMarginVal">+0%</span>
+          </div>
+          <div class="sidebar-mini-stat">
+            <span class="mini-label" data-i18n="sidebar_net_profit">Bénéfice Net:</span>
+            <span class="mini-val" id="sidebarProfitVal">0,000 DT</span>
+          </div>
+          <div class="sidebar-progress">
+            <div class="sidebar-progress-bar" id="sidebarProgressBar" style="width: 50%;"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+
+        <!-- ============================================== -->
+        <!-- TAB 1: DASHBOARD -->
+        <!-- ============================================== -->
+        <section id="tab-dashboard" class="content-tab active">
+          
+          <!-- Alert Banner (Upcoming Hatches / Critical Tasks) -->
+          <div id="dashboardAlerts" class="alerts-container">
+            <!-- Dynamic alerts rendered by JS -->
+          </div>
+
+          <!-- Top Metric Cards -->
+          <div class="metrics-grid">
+            
+            <div class="metric-card card-revenue">
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+              </div>
+              <div class="metric-data">
+                <span class="metric-title" data-i18n="kpi_revenue_title">Revenus Totaux</span>
+                <span class="metric-value text-emerald" id="kpiTotalRevenue">0,000 DT</span>
+                <span class="metric-sub" id="kpiRevenueCount">0 ventes enregistrées</span>
+              </div>
+            </div>
+
+            <div class="metric-card card-expenses">
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 18l-9.5-9.5-5 5L1 6"></path>
+                  <polyline points="17 18 23 18 23 12"></polyline>
+                </svg>
+              </div>
+              <div class="metric-data">
+                <span class="metric-title" data-i18n="kpi_expenses_title">Dépenses & Charges</span>
+                <span class="metric-value text-rose" id="kpiTotalExpenses">0,000 DT</span>
+                <span class="metric-sub" id="kpiFeedShare">Nourriture: 0% des coûts</span>
+              </div>
+            </div>
+
+            <div class="metric-card card-profit">
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              <div class="metric-data">
+                <span class="metric-title" data-i18n="kpi_profit_title">Bénéfice Net Réel</span>
+                <span class="metric-value" id="kpiNetProfit">0,000 DT</span>
+                <span class="metric-badge" id="kpiMarginBadge">+0% Marge</span>
+              </div>
+            </div>
+
+            <div class="metric-card card-livestock">
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <div class="metric-data">
+                <span class="metric-title" data-i18n="kpi_livestock_title">Cheptel & Volailles</span>
+                <span class="metric-value" id="kpiTotalAnimals">0</span>
+                <span class="metric-sub" id="kpiAnimalsBreakdown" data-i18n="kpi_animals_sub">Poulets, Pondeuses, Poussins (Aviculture)</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Incubation Highlight Bar -->
+          <div class="incubation-banner">
+            <div class="incubation-banner-content">
+              <div class="incubation-banner-icon">🥚</div>
+              <div class="incubation-banner-text">
+                <h3 id="incubationBannerTitle" data-i18n="incubation_banner_default_title">Couveuse & Éclosion</h3>
+                <p id="incubationBannerSub" data-i18n="incubation_banner_default_sub">Aucun lot en incubation actuellement</p>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="app.switchTab('incubator')" data-i18n="btn_open_incubator">
+              Ouvrir Couveuse &rarr;
+            </button>
+          </div>
+
+          <!-- Charts / Breakdown Section -->
+          <div class="dashboard-grid-dual">
+            
+            <!-- Category Revenue Breakdown -->
+            <div class="panel-card">
+              <div class="panel-header">
+                <h3 data-i18n="breakdown_revenue_title">Répartition des Revenus</h3>
+                <span class="panel-tag" data-i18n="breakdown_revenue_badge">Par Produit</span>
+              </div>
+              <div class="panel-body">
+                <div class="breakdown-list" id="revenueBreakdownList">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Cost Structure Breakdown -->
+            <div class="panel-card">
+              <div class="panel-header">
+                <h3 data-i18n="breakdown_expense_title">Structure des Dépenses</h3>
+                <span class="panel-tag" data-i18n="breakdown_expense_badge">Nourriture, Élec, Soins...</span>
+              </div>
+              <div class="panel-body">
+                <div class="breakdown-list" id="expenseBreakdownList">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Recent Operations & Quick Actions -->
+          <div class="panel-card mt-4">
+            <div class="panel-header">
+              <h3 data-i18n="recent_transactions_title">Dernières Transactions</h3>
+              <div class="panel-actions">
+                <button class="btn btn-sm btn-outline" onclick="app.switchTab('sales')" data-i18n="btn_view_sales">Voir Ventes</button>
+                <button class="btn btn-sm btn-outline" onclick="app.switchTab('expenses')" data-i18n="btn_view_expenses">Voir Dépenses</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="table_date">Date</th>
+                    <th data-i18n="table_type">Type</th>
+                    <th data-i18n="table_desc">Description</th>
+                    <th data-i18n="table_lot_species">Lot / Espèce</th>
+                    <th data-i18n="table_amount">Montant</th>
+                    <th data-i18n="table_margin_status">Marge / Statut</th>
+                  </tr>
+                </thead>
+                <tbody id="recentTransactionsTable">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 2: ANIMAUX & RACES (CHEPTEL) -->
+        <!-- ============================================== -->
+        <section id="tab-animals" class="content-tab">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title" data-i18n="section_animals_title">Gestion du Cheptel & des Bandes</h2>
+              <p class="section-desc" data-i18n="section_animals_desc">Suivez chaque génération, race, âge en jours/semaines, taux de survie et alimentation.</p>
+            </div>
+            <button class="btn btn-primary" onclick="app.openModal('modalAddAnimal')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="btn_new_lot">Nouveau Lot / Animal</span>
+            </button>
+          </div>
+
+          <!-- Filter Chips -->
+          <div class="filter-chips-row">
+            <button class="chip active" data-filter-animal="all"><span data-i18n="chip_all">Tous</span> (<span id="chipAllCount">0</span>)</button>
+            <button class="chip" data-filter-animal="poulet"><span data-i18n="chip_poulet">🍗 Poulets (1 à 6 mois)</span> (<span id="chipPouletCount">0</span>)</button>
+            <button class="chip" data-filter-animal="pondeuse"><span data-i18n="chip_pondeuse">🥚 Poules Pondeuses</span> (<span id="chipPondeuseCount">0</span>)</button>
+            <button class="chip" data-filter-animal="poussin"><span data-i18n="chip_poussin">🐣 Poussins (1j & démarrés)</span> (<span id="chipPoussinCount">0</span>)</button>
+            <button class="chip" data-filter-animal="adulte"><span data-i18n="chip_poulet_adulte">🐔 Poulets Adultes & Coqs</span> (<span id="chipAdulteCount">0</span>)</button>
+            <button class="chip" data-filter-animal="pintade"><span data-i18n="chip_pintade">🪶 Pintades</span> (<span id="chipPintadeCount">0</span>)</button>
+            <button class="chip" data-filter-animal="canard"><span data-i18n="chip_canard">🦆 Canards de Barbarie</span> (<span id="chipCanardCount">0</span>)</button>
+          </div>
+
+          <!-- Cards Grid for Animals -->
+          <div class="cards-grid" id="animalsGrid">
+            <!-- Rendered by JS -->
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: DÉPENSES & COÛTS -->
+        <!-- ============================================== -->
+        <section id="tab-expenses" class="content-tab">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title" data-i18n="section_expenses_title">Dépenses & Charges d'Exploitation</h2>
+              <p class="section-desc" data-i18n="section_expenses_desc">Nourriture, électricité, eau, médicaments vétérinaires et salaires du personnel.</p>
+            </div>
+            <button class="btn btn-danger" onclick="app.openModal('modalAddExpense')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="btn_new_expense">Enregistrer une Dépense</span>
+            </button>
+          </div>
+
+          <!-- Summary bar for expenses -->
+          <div class="expense-summary-bar">
+            <div class="expense-stat">
+              <span class="label" data-i18n="exp_feed_total">Total Nourriture / Aliments</span>
+              <span class="value text-warning" id="expenseFeedTotal">0,000 DT</span>
+            </div>
+            <div class="expense-stat">
+              <span class="label" data-i18n="exp_vet_total">Vétérinaire & Santé</span>
+              <span class="value text-violet" id="expenseVetTotal">0,000 DT</span>
+            </div>
+            <div class="expense-stat">
+              <span class="label" data-i18n="exp_util_total">Énergie & Eau</span>
+              <span class="value text-cyan" id="expenseUtilitiesTotal">0,000 DT</span>
+            </div>
+            <div class="expense-stat">
+              <span class="label" data-i18n="exp_sal_total">Salaires Employés</span>
+              <span class="value text-emerald" id="expenseSalariesTotal">0,000 DT</span>
+            </div>
+          </div>
+
+          <!-- Filter and search -->
+          <div class="search-filter-row">
+            <input type="text" id="expenseSearchInput" class="input-search" placeholder="Rechercher dépense (aliment, facture, docteur...)..." data-i18n-placeholder="exp_search_placeholder">
+            <select id="expenseCategoryFilter" class="select-filter">
+              <option value="all" data-i18n="exp_cat_all">Toutes les catégories</option>
+              <option value="nourriture" data-i18n="exp_cat_food">Nourriture & Aliments</option>
+              <option value="veterinaire" data-i18n="exp_cat_vet">Médicaments & Vétérinaire</option>
+              <option value="electricite" data-i18n="exp_cat_elec">Électricité</option>
+              <option value="eau" data-i18n="exp_cat_water">Eau</option>
+              <option value="salaire" data-i18n="exp_cat_sal">Salaires Employés</option>
+              <option value="autre" data-i18n="exp_cat_other">Autre / Équipement</option>
+            </select>
+          </div>
+
+          <!-- Expenses List -->
+          <div class="table-responsive panel-card mt-3">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="table_col_date">Date</th>
+                  <th data-i18n="table_col_cat">Catégorie</th>
+                  <th data-i18n="table_col_item">Intitulé / Article</th>
+                  <th data-i18n="table_col_lot">Affecté à</th>
+                  <th data-i18n="table_col_qty">Quantité</th>
+                  <th data-i18n="table_col_unit_price">Prix Unitaire</th>
+                  <th data-i18n="table_col_total">Total</th>
+                  <th data-i18n="table_col_action">Action</th>
+                </tr>
+              </thead>
+              <tbody id="expensesTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 4: VENTES & ARTICLES VENDUS -->
+        <!-- ============================================== -->
+        <section id="tab-sales" class="content-tab">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title" data-i18n="section_sales_title">Ventes & Produits Commercialisés</h2>
+              <p class="section-desc" data-i18n="section_sales_desc">Œufs (unités, HARA de 4, plateaux 30), volailles par âge (1j, >1j, 1-6 mois, adultes) vendues par poulet (pas au kilo) avec prix libre.</p>
+            </div>
+            <button class="btn btn-emerald" onclick="app.openModal('modalAddSale')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="btn_new_sale">Nouvelle Vente</span>
+            </button>
+          </div>
+
+          <!-- Quick presets banner (Minimisé : Œufs, Poussins, Poulets) -->
+          <div class="sales-presets-row">
+            <div class="preset-badge" onclick="app.prefillSale('oeufs')">
+              <span data-i18n="preset_eggs">🥚 Vente d'Œufs</span>
+              <small data-i18n="preset_eggs_sub">Unités, par HARA (4) ou plateau 30</small>
+            </div>
+            <div class="preset-badge" onclick="app.prefillSale('poussin')">
+              <span data-i18n="preset_chicks">🐣 Vente de Poussins</span>
+              <small data-i18n="preset_chicks_sub">Par jour ou semaine (calcul aliment)</small>
+            </div>
+            <div class="preset-badge" onclick="app.prefillSale('poulet')">
+              <span data-i18n="preset_chicken">🍗 Vente de Poulets</span>
+              <small data-i18n="preset_chicken_sub">Par mois ou adulte (calcul aliment)</small>
+            </div>
+          </div>
+
+          <!-- Sales Table -->
+          <div class="table-responsive panel-card mt-3">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="table_col_date">Date</th>
+                  <th data-i18n="table_col_prod_type">Type de Produit</th>
+                  <th data-i18n="table_col_client_desc">Client / Description</th>
+                  <th data-i18n="table_col_qty">Quantité</th>
+                  <th data-i18n="table_col_unit_price">Prix Unitaire</th>
+                  <th data-i18n="table_col_sold_total">Total Vendu</th>
+                  <th data-i18n="table_col_lot">Lot Lié</th>
+                  <th data-i18n="table_col_margin_est">Marge Estimée</th>
+                  <th data-i18n="table_col_action">Action</th>
+                </tr>
+              </thead>
+              <tbody id="salesTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 5: CALCULATEUR DE RENTABILITÉ INTELLIGENTE -->
+        <!-- ============================================== -->
+        <section id="tab-smart-calc" class="content-tab">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title" data-i18n="section_smart_title">Analyse Financière Intelligente & Marges</h2>
+              <p class="section-desc" data-i18n="section_smart_desc">Calcul du revenu net après déduction directe de la nourriture, des soins et des charges par lot.</p>
+            </div>
+            <button class="btn btn-outline" onclick="window.print()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              <span data-i18n="btn_print_report">Imprimer Bilan</span>
+            </button>
+          </div>
+
+          <!-- Profitability Matrix -->
+          <div class="profitability-dashboard">
+            
+            <div class="smart-card">
+              <div class="smart-card-header">
+                <h3 data-i18n="matrix_title">Bilan Réel par Catégorie de Production</h3>
+                <span class="pill-tag" data-i18n="matrix_pill">Revenu Net après Alimentation</span>
+              </div>
+              <div class="smart-card-body">
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th data-i18n="matrix_col_cat">Catégorie</th>
+                        <th data-i18n="matrix_col_gross">Revenu Brut</th>
+                        <th data-i18n="matrix_col_feed">Coût Nourriture</th>
+                        <th data-i18n="matrix_col_health">Soins & Autres</th>
+                        <th data-i18n="matrix_col_net">Marge Nette</th>
+                        <th data-i18n="matrix_col_pct">Rentabilité (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="smartProfitTableBody">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Unit Cost Metrics (Cost per egg, per chicken, per liter) -->
+            <div class="unit-costs-grid mt-4">
+              <div class="unit-cost-card">
+                <div class="unit-icon">🥚</div>
+                <div class="unit-details">
+                  <h4 data-i18n="unit_egg_title">Coût de revient par Œuf</h4>
+                  <p class="unit-price" id="costPerEgg">0,000 DT</p>
+                  <small id="marginPerEgg">Marge nette: +0%</small>
+                </div>
+              </div>
+
+              <div class="unit-cost-card">
+                <div class="unit-icon">🐔</div>
+                <div class="unit-details">
+                  <h4 data-i18n="unit_chicken_title">Coût de revient par Poulet</h4>
+                  <p class="unit-price" id="costPerChicken">0,000 DT</p>
+                  <small id="marginPerChicken">Marge nette: +0%</small>
+                </div>
+              </div>
+
+              <div class="unit-cost-card">
+                <div class="unit-icon">🐣</div>
+                <div class="unit-details">
+                  <h4 data-i18n="unit_chicks_title">Coût de revient par Poussin</h4>
+                  <p class="unit-price" id="costPerChicks">0,000 DT</p>
+                  <small id="marginPerChicks">Marge nette: +0%</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Profit Simulator -->
+            <div class="simulator-box mt-4">
+              <div class="simulator-header">
+                <div>
+                  <h3 data-i18n="simulator_title">Simulateur de Rentabilité Prévisionnelle</h3>
+                  <p data-i18n="simulator_desc">Estimez vos gains avant de lancer une vente ou un nouveau lot d'animaux.</p>
+                </div>
+                <span class="badge-pill" data-i18n="simulator_pill">Calculateur Temps Réel</span>
+              </div>
+
+              <div class="simulator-grid">
+                <div class="sim-group">
+                  <label for="simType" data-i18n="sim_lbl_type">Type de Vente</label>
+                  <select id="simType" class="input-field" onchange="app.handleSimTypeChange()">
+                    <option value="poulet-croissance" data-i18n="sim_opt_chicken">Poulet 1 à 6 mois (par poulet / sujet)</option>
+                    <option value="poulet-adulte" data-i18n="sim_opt_chicken_adult">Poulet Adulte / Pondeuse (par tête)</option>
+                    <option value="pintade" data-i18n="sim_opt_pintade">🪶 Pintade (par sujet / tête)</option>
+                    <option value="canard" data-i18n="sim_opt_canard">🦆 Canard de Barbarie (par sujet / tête)</option>
+                    <option value="poussin-1j" data-i18n="sim_opt_chicks_1d">Poussin 1 jour (par sujet)</option>
+                    <option value="poussin-demarre" data-i18n="sim_opt_chicks_started">Poussin > 1 jour (par sujet)</option>
+                    <option value="oeuf-plateau" data-i18n="sim_opt_egg">Œufs (Plateau de 30)</option>
+                    <option value="oeuf-hara" data-i18n="sim_opt_egg_hara">Œufs (Par HARA = 4 œufs)</option>
+                    <option value="oeuf-unite" data-i18n="sim_opt_egg_unit">Œufs (À l'unité - saisie libre)</option>
+                  </select>
+                </div>
+
+                <div class="sim-group">
+                  <label for="simQuantity" data-i18n="sim_lbl_qty">Quantité à Vendre</label>
+                  <input type="number" id="simQuantity" class="input-field" value="100" min="1" oninput="app.runSimulator()">
+                </div>
+
+                <div class="sim-group">
+                  <label for="simSalePrice"><span data-i18n="sim_lbl_price">Prix de Vente Unitaire</span> (<span class="currency-label">DT</span>)</label>
+                  <input type="number" id="simSalePrice" class="input-field" value="16.5" step="0.1" min="0" oninput="app.runSimulator()">
+                </div>
+
+                <div class="sim-group">
+                  <label for="simUnitCost"><span data-i18n="sim_lbl_cost">Coût de Nourriture + Soins par Unité</span> (<span class="currency-label">DT</span>)</label>
+                  <input type="number" id="simUnitCost" class="input-field" value="9.8" step="0.1" min="0" oninput="app.runSimulator()">
+                </div>
+              </div>
+
+              <div class="sim-results-bar">
+                <div class="sim-res-item">
+                  <span class="sim-res-lbl" data-i18n="sim_res_gross">Revenu Brut Estimé:</span>
+                  <span class="sim-res-val text-cyan" id="simTotalRev">0,000 DT</span>
+                </div>
+                <div class="sim-res-item">
+                  <span class="sim-res-lbl" data-i18n="sim_res_costs">Coûts Nourriture & Soins:</span>
+                  <span class="sim-res-val text-rose" id="simTotalCost">0,000 DT</span>
+                </div>
+                <div class="sim-res-item">
+                  <span class="sim-res-lbl" data-i18n="sim_res_net">Bénéfice Net Projeté:</span>
+                  <span class="sim-res-val text-emerald bold" id="simNetProfit">+0,000 DT</span>
+                </div>
+                <div class="sim-res-item">
+                  <span class="sim-res-lbl" data-i18n="sim_res_margin">Marge Bénéficiaire:</span>
+                  <span class="sim-res-val badge-tag text-emerald" id="simMarginPct">41.5%</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 6: INCUBATEUR & ÉCLOSION D'ŒUFS -->
+        <!-- ============================================== -->
+        <section id="tab-incubator" class="content-tab">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title" data-i18n="section_incubator_title">Incubateur & Gestion d'Éclosion</h2>
+              <p class="section-desc" data-i18n="section_incubator_desc">Date de mise en couveuse ("hachage"), étapes de mirage, transfert à l'éclosoir et compte à rebours de sortie de l'œuf.</p>
+            </div>
+            <button class="btn btn-amber" onclick="app.openModal('modalAddBatch')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span data-i18n="btn_put_in_incubator">Mettre un Lot en Couveuse</span>
+            </button>
+          </div>
+
+          <!-- Active Batches Container -->
+          <div class="incubator-batches-grid mt-4" id="incubatorBatchesGrid">
+            <!-- Rendered by JS -->
+          </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- TAB 7: CALENDRIER & SUIVI DES GÉNÉRATIONS -->
+        <!-- ============================================== -->
+        <section id="tab-calendar" class="content-tab">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title" data-i18n="section_calendar_title">Calendrier des Générations & Événements</h2>
+              <p class="section-desc" data-i18n="section_calendar_desc">Visualisez l'âge de chaque génération de poulets, dates d'éclosion, rappels de vaccination et dates de vente optimales.</p>
+            </div>
+            <div class="calendar-nav-buttons">
+              <button class="btn btn-sm btn-outline" id="calPrevMonthBtn">&larr; <span data-i18n="cal_prev_month">Mois Précédent</span></button>
+              <span class="calendar-current-month" id="calCurrentMonthLabel">Octobre 2026</span>
+              <button class="btn btn-sm btn-outline" id="calNextMonthBtn"><span data-i18n="cal_next_month">Mois Suivant</span> &rarr;</button>
+            </div>
+          </div>
+
+          <!-- Generations Age Tracker Table -->
+          <div class="panel-card mb-4">
+            <div class="panel-header">
+              <h3 data-i18n="cal_generations_tracker_title">Suivi Dynamique de l'Âge des Générations</h3>
+              <span class="badge-pill" data-i18n="cal_generations_tracker_pill">Calcul Automatique en Jours</span>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="table_col_gen">Génération / Bande</th>
+                    <th data-i18n="table_col_species">Espèce / Race</th>
+                    <th data-i18n="table_col_birth">Date d'Éclosion / Arrivée</th>
+                    <th data-i18n="table_col_age">Âge Actuel</th>
+                    <th data-i18n="table_col_stage">Stade de Développement</th>
+                    <th data-i18n="table_col_feed">Aliment Conseillé</th>
+                    <th data-i18n="table_col_event">Prochain Événement</th>
+                  </tr>
+                </thead>
+                <tbody id="generationsTableBody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Visual Calendar Grid -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3 data-i18n="cal_calendar_grid_title">Éphéméride & Événements Agricoles</h3>
+              <div class="calendar-legends">
+                <span class="legend-item"><span class="legend-color legend-hatch"></span> <span data-i18n="cal_legend_hatch">Éclosion</span></span>
+                <span class="legend-item"><span class="legend-color legend-mirage"></span> <span data-i18n="cal_legend_mirage">Mirage / Couveuse</span></span>
+                <span class="legend-item"><span class="legend-color legend-vaccine"></span> <span data-i18n="cal_legend_vaccine">Vaccin / Soin</span></span>
+                <span class="legend-item"><span class="legend-color legend-sale"></span> <span data-i18n="cal_legend_sale">Vente Prévue</span></span>
+              </div>
+            </div>
+            <div class="calendar-grid-wrapper">
+              <div class="calendar-weekdays" id="calendarWeekdaysHeader">
+                <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+              </div>
+              <div class="calendar-days-grid" id="calendarDaysGrid">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+      </main>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+      <button class="mobile-nav-btn active" data-tab="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span data-i18n="nav_dashboard">Bord</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="animals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"></path>
+          <path d="M7 10h.01M17 10h.01M9 16c1.5 1 4.5 1 6 0"></path>
+        </svg>
+        <span data-i18n="nav_animals">Animaux</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="expenses">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+        <span data-i18n="nav_expenses">Dépenses</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="sales">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+        </svg>
+        <span data-i18n="nav_sales">Ventes</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="smart-calc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+          <polyline points="17 6 23 6 23 12"></polyline>
+        </svg>
+        <span data-i18n="nav_smart_calc">Finances</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="incubator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="13" r="8"></circle>
+          <path d="M12 2v3M12 21v1"></path>
+        </svg>
+        <span data-i18n="nav_incubator">Couveuse</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="calendar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+        </svg>
+        <span data-i18n="nav_calendar">Calendrier</span>
+      </button>
+    </nav>
+
+    <!-- Floating Action Button (FAB) for Quick Entry -->
+    <div class="fab-container">
+      <button id="fabMainBtn" class="fab-button" title="Ajout Rapide" aria-label="Ajout Rapide">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <div id="fabMenu" class="fab-menu hidden">
+        <button class="fab-item fab-sale" onclick="app.openModal('modalAddSale'); app.toggleFabMenu();">
+          <span data-i18n="btn_new_sale">+ Nouvelle Vente</span>
+          <div class="fab-item-icon">💰</div>
+        </button>
+        <button class="fab-item fab-expense" onclick="app.openModal('modalAddExpense'); app.toggleFabMenu();">
+          <span data-i18n="btn_new_expense">+ Nouvelle Dépense</span>
+          <div class="fab-item-icon">📉</div>
+        </button>
+        <button class="fab-item fab-incubator" onclick="app.openModal('modalAddBatch'); app.toggleFabMenu();">
+          <span data-i18n="btn_put_in_incubator">+ Mise en Couveuse</span>
+          <div class="fab-item-icon">🥚</div>
+        </button>
+        <button class="fab-item fab-animal" onclick="app.openModal('modalAddAnimal'); app.toggleFabMenu();">
+          <span data-i18n="btn_new_lot">+ Nouveau Lot Animal</span>
+          <div class="fab-item-icon">🐔</div>
+        </button>
+      </div>
+    </div>
+
+  </div> <!-- End #app -->
+
+  <!-- ============================================== -->
+  <!-- MODALS -->
+  <!-- ============================================== -->
+
+  <!-- Modal: Ajouter un Lot / Animal -->
+  <div id="modalAddAnimal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="modal_add_animal_title">Nouveau Lot d'Animaux / Cheptel</h3>
+        <button class="modal-close" onclick="app.closeModal('modalAddAnimal')">&times;</button>
+      </div>
+      <form id="formAddAnimal" onsubmit="app.handleSaveAnimal(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="animalSpecies" data-i18n="lbl_species_type">Espèce / Type</label>
+              <select id="animalSpecies" class="input-field" required>
+                <option value="poulet" data-i18n="opt_species_poulet">Poulet (1 à 6 mois)</option>
+                <option value="pondeuse" data-i18n="opt_species_pondeuse">Poule Pondeuse</option>
+                <option value="poussin" data-i18n="opt_species_poussin">Poussins (1j / Démarrage)</option>
+                <option value="adulte" data-i18n="opt_species_poulet_adulte">Poulet Adulte / Coq (> 6 mois)</option>
+                <option value="pintade" data-i18n="opt_species_pintade">🪶 Pintade (Chair / Élevage)</option>
+                <option value="canard" data-i18n="opt_species_canard">🦆 Canard de Barbarie (Chair / Élevage)</option>
+                <option value="autre" data-i18n="opt_species_other">Autre volaille (Dinde, Caille...)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="animalBreed" data-i18n="lbl_breed">Race / Variété</label>
+              <input type="text" id="animalBreed" class="input-field" placeholder="Ex: Sasso, Lohmann Brown, Hubbard, Beldi" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="animalName" data-i18n="lbl_identifier">Identifiant / N° de Lot</label>
+              <input type="text" id="animalName" class="input-field" placeholder="Ex: Bande Poulets #01, Pondeuses Bâtiment A" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="animalQuantity" data-i18n="lbl_initial_qty">Nombre de Têtes (Effectif Initial)</label>
+              <input type="number" id="animalQuantity" class="input-field" min="1" value="50" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="animalBirthDate" data-i18n="lbl_arrival_date">Date d'Éclosion / Arrivée</label>
+              <input type="date" id="animalBirthDate" class="input-field" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="animalCostPerHead"><span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>)</label>
+              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0.80">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="animalStage" data-i18n="lbl_current_stage">Stade Actuel</label>
+            <select id="animalStage" class="input-field">
+              <option value="Démarrage" data-i18n="opt_stage_start">Démarrage (0-14 jours)</option>
+              <option value="Croissance" data-i18n="opt_stage_growth">Croissance (15-35 jours / 1-6 mois)</option>
+              <option value="Finition" data-i18n="opt_stage_finish">Finition / Engraissement</option>
+              <option value="Ponte" data-i18n="opt_stage_laying">En Ponte (Pondeuses)</option>
+              <option value="Reproduction" data-i18n="opt_stage_repro">Reproducteur / Adulte (> 6 mois)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="animalNotes" data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</label>
+            <textarea id="animalNotes" class="input-field" rows="2" placeholder="Ex: Bâtiment A, vaccination Marek faite..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalAddAnimal')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-primary" data-i18n="btn_save_lot">Enregistrer le Lot</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Ajouter une Dépense -->
+  <div id="modalAddExpense" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="modal_add_expense_title">Enregistrer une Dépense</h3>
+        <button class="modal-close" onclick="app.closeModal('modalAddExpense')">&times;</button>
+      </div>
+      <form id="formAddExpense" onsubmit="app.handleSaveExpense(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="expenseCategory" data-i18n="lbl_expense_cat">Catégorie de Dépense</label>
+              <select id="expenseCategory" class="input-field" required onchange="app.handleExpenseCatChange()">
+                <option value="nourriture" data-i18n="opt_exp_food">Nourriture & Aliments (Sacs/kg)</option>
+                <option value="veterinaire" data-i18n="opt_exp_vet">Santé, Vaccins & Vétérinaire</option>
+                <option value="electricite" data-i18n="opt_exp_elec">Facture Électricité</option>
+                <option value="eau" data-i18n="opt_exp_water">Consommation Eau</option>
+                <option value="salaire" data-i18n="opt_exp_sal">Salaire Ouvrier / Employé</option>
+                <option value="autre" data-i18n="opt_exp_other">Autre Charge / Entretien</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="expenseDate" data-i18n="table_col_date">Date</label>
+              <input type="date" id="expenseDate" class="input-field" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="expenseTitle" data-i18n="lbl_expense_title">Description / Intitulé de la Dépense</label>
+            <input type="text" id="expenseTitle" class="input-field" placeholder="Ex: 5 sacs d'aliment Démarrage, Vaccin Gumboro..." required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="expenseQuantity" data-i18n="lbl_qty">Quantité (kg, sacs, mois, etc.)</label>
+              <input type="number" id="expenseQuantity" class="input-field" step="0.1" value="1" min="0.1" required oninput="app.calcExpenseTotal()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="expenseUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
+              <input type="number" id="expenseUnitPrice" class="input-field" step="0.01" value="15" min="0" required oninput="app.calcExpenseTotal()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="expenseTotalCalculated"><span data-i18n="lbl_total_calculated">Total</span> (<span class="currency-label">DT</span>)</label>
+              <input type="number" id="expenseTotalCalculated" class="input-field bold" readonly value="15.00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="expenseAnimalLot" data-i18n="lbl_link_lot">Affecter à un lot spécifique (pour calcul marge précis)</label>
+            <select id="expenseAnimalLot" class="input-field">
+              <option value="general" data-i18n="opt_general_farm">Frais Généraux de l'Exploitation</option>
+              <!-- Populated by JS -->
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalAddExpense')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-danger" data-i18n="btn_validate_expense">Valider la Dépense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Ajouter une Vente -->
+  <div id="modalAddSale" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="modal_add_sale_title">Enregistrer une Vente & Revenu</h3>
+        <button class="modal-close" onclick="app.closeModal('modalAddSale')">&times;</button>
+      </div>
+      <form id="formAddSale" onsubmit="app.handleSaveSale(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="saleProductType" data-i18n="lbl_product_type">Type d'Article Vendu</label>
+              <select id="saleProductType" class="input-field" required onchange="app.handleSaleTypeChange()">
+                <option value="oeufs" data-i18n="opt_sale_eggs">🥚 Œufs (Haras, Plateaux, Unités)</option>
+                <option value="poussin" data-i18n="opt_sale_poussin">🐣 Poussins (Âge par jour ou semaine)</option>
+                <option value="poulet" data-i18n="opt_sale_poulet">🍗 Poulets (Âge en mois ou Adulte)</option>
+                <option value="pintade" data-i18n="opt_sale_pintade">🪶 Pintades (Chair / Élevage)</option>
+                <option value="canard" data-i18n="opt_sale_canard">🦆 Canards de Barbarie (Chair / Élevage)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="saleDate" data-i18n="table_col_date">Date de Vente</label>
+              <input type="date" id="saleDate" class="input-field" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="saleDescription" data-i18n="lbl_sale_client">Description / Client</label>
+              <input type="text" id="saleDescription" class="input-field" placeholder="Ex: Marché local, Voisin, Épicerie..." required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="saleUnitFormat" data-i18n="lbl_sale_format">Format de Vente</label>
+              <select id="saleUnitFormat" class="input-field" onchange="app.handleFormatChange()">
+                <option value="hara" data-i18n="opt_fmt_hara">Par HARA - حارة (4 œufs)</option>
+                <option value="plateau" data-i18n="opt_fmt_tray">Plateau de 30 œufs</option>
+                <option value="oeuf-unite" data-i18n="opt_fmt_egg_unit">À l'unité (saisie libre du nombre d'œufs)</option>
+                <option value="unite" data-i18n="opt_fmt_unit">Par Poulet / Sujet (pièce - pas au kilo)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic Age Selection Row (for Poussins & Poulets) -->
+          <div id="saleAgeRow" class="form-row hidden">
+            <div class="form-group flex-1">
+              <label for="saleAgeValue" data-i18n="lbl_sale_age">Âge des Volailles</label>
+              <input type="number" id="saleAgeValue" class="input-field" min="1" placeholder="Ex: 21 (ou laisser vide pour Adulte)" oninput="app.calcSaleTotal()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="saleAgeUnit" data-i18n="lbl_age_unit">Unité d'Âge</label>
+              <select id="saleAgeUnit" class="input-field" onchange="app.handleAgeUnitChange()">
+                <option value="jours" data-i18n="opt_age_days">Jours (ex: 1j, 21 jours)</option>
+                <option value="semaines" data-i18n="opt_age_weeks">Semaines (ex: 2 sem...)</option>
+                <option value="mois" data-i18n="opt_age_months">Mois (1 à 6 mois)</option>
+                <option value="adulte" data-i18n="opt_age_adult">Adulte (> 6 mois) [Par défaut si vide]</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Egg Helper Box (Hara / Unités / Plateaux) -->
+          <div id="eggHelperBox" class="egg-helper-box">
+            <div class="egg-helper-header">
+              <span class="egg-helper-title" data-i18n="egg_helper_title">🥚 Sélection Rapide & Calcul HARA (حارة = 4 œufs) :</span>
+              <span id="eggConversionSummary" class="egg-conversion-badge">0 œuf = 0 Hara = 0 Plateau</span>
+            </div>
+            <div class="egg-quick-buttons-row">
+              <button type="button" class="btn-quick-tag" onclick="app.quickAddEgg(1, 'oeuf')" data-i18n="btn_egg_one">+1 Œuf</button>
+              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(1, 'hara')" data-i18n="btn_egg_1hara">1 HARA (4)</button>
+              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(2, 'hara')" data-i18n="btn_egg_2hara">2 HARAS (8)</button>
+              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(3, 'hara')" data-i18n="btn_egg_3hara">3 HARAS (12)</button>
+              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(5, 'hara')" data-i18n="btn_egg_5hara">5 HARAS (20)</button>
+              <button type="button" class="btn-quick-tag" onclick="app.quickAddEgg(1, 'plateau')" data-i18n="btn_egg_tray">1 Plateau (30)</button>
+              <button type="button" class="btn-quick-tag danger" onclick="app.quickResetEgg()" data-i18n="btn_egg_reset">Effacer</button>
+            </div>
+            <p class="egg-helper-note" data-i18n="egg_helper_note">💡 En Tunisie : 1 HARA (حارة) = 4 œufs. Vous pouvez vendre moins d'un plateau ou n'importe quel nombre d'œufs selon la demande du client !</p>
+          </div>
+
+          <!-- Poultry & Chicks Intelligent Feed & Profit Box -->
+          <div id="saleSmartCalcBox" class="sale-smart-calc-box hidden">
+            <div class="smart-calc-header">
+              <span class="smart-calc-title" data-i18n="smart_calc_title">🤖 Calcul Intelligent : Aliment Mangé & Marge Réelle</span>
+              <span id="smartStageBadge" class="badge-pill">Âge: Adulte</span>
+            </div>
+            <div class="smart-calc-grid">
+              <div class="smart-stat-col">
+                <span class="stat-lbl" data-i18n="smart_calc_feed_total">Nourriture estimée mangée :</span>
+                <span class="stat-val text-amber" id="smartFeedKg">0.0 kg (~0.0 kg/sujet)</span>
+              </div>
+              <div class="smart-stat-col">
+                <span class="stat-lbl" data-i18n="smart_calc_feed_cost">Coût d'aliment estimé :</span>
+                <span class="stat-val text-rose" id="smartFeedCost">0.000 DT</span>
+              </div>
+              <div class="smart-stat-col">
+                <span class="stat-lbl" data-i18n="smart_calc_net">Bénéfice Net Projeté :</span>
+                <span class="stat-val text-emerald bold" id="smartNetProfit">+0.000 DT</span>
+              </div>
+              <div class="smart-stat-col">
+                <span class="stat-lbl" data-i18n="smart_calc_margin">Marge Nette :</span>
+                <span class="stat-val text-cyan" id="smartMarginPct">+0%</span>
+              </div>
+            </div>
+            <small class="smart-calc-note" id="smartCalcNote" data-i18n="smart_calc_adult_note">💡 Si aucun âge n'est renseigné pour le poulet, il est automatiquement calculé comme Adulte (> 6 mois).</small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="saleQuantity"><span data-i18n="table_col_qty">Quantité Vendue</span> <span id="saleQtyUnitLabel">(Haras / Plateaux)</span></label>
+              <input type="number" id="saleQuantity" class="input-field" step="1" value="5" min="1" required oninput="app.calcSaleTotal()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="saleUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
+              <input type="number" id="saleUnitPrice" class="input-field" step="0.01" value="1.80" min="0" required oninput="app.calcSaleTotal()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="saleTotalCalculated"><span data-i18n="lbl_total_calculated">Montant Total</span> (<span class="currency-label">DT</span>)</label>
+              <input type="number" id="saleTotalCalculated" class="input-field bold text-emerald" readonly value="9.00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="saleLotLinked" data-i18n="lbl_sale_deduct_flock">Déduire du Cheptel / Lot d'origine</label>
+            <select id="saleLotLinked" class="input-field">
+              <option value="none" data-i18n="opt_no_lot">Aucun lot spécifique (Production courante)</option>
+              <!-- Populated by JS -->
+            </select>
+            <small class="helper-text" data-i18n="sale_deduct_helper">Si vous choisissez un lot, l'effectif sera automatiquement déduit et la marge nette calculée précisément.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalAddSale')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-emerald" data-i18n="btn_save_sale">Enregistrer la Vente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Ajouter un Lot en Couveuse / Incubateur -->
+  <div id="modalAddBatch" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="modal_add_batch_title">Mise en Couveuse & Incubation d'Œufs ("Egg Hatch")</h3>
+        <button class="modal-close" onclick="app.closeModal('modalAddBatch')">&times;</button>
+      </div>
+      <form id="formAddBatch" onsubmit="app.handleSaveIncubationBatch(event)">
+        <div class="modal-body">
+          
+          <!-- Mode d'incubation : Poule ou Machine -->
+          <div class="form-group">
+            <label for="batchMethod" data-i18n="lbl_incubation_method">Méthode d'Incubation</label>
+            <select id="batchMethod" class="input-field" required onchange="app.handleIncubationMethodChange()">
+              <option value="machine" data-i18n="opt_method_machine">🤖 Machine d'Incubation (Couveuse Artificielle Électrique)</option>
+              <option value="poule" data-i18n="opt_method_hen">🐔 Poule qui Couve (Incubation Naturelle)</option>
+            </select>
+            <small class="helper-text" data-i18n="incubation_method_helper">Cycle standard pour poule : 21 jours (+/- 2 jours). Une alerte automatique vous demandera les poussins sortis entre J19 et J23.</small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="batchEggType" data-i18n="lbl_egg_species">Espèce des Œufs</label>
+              <select id="batchEggType" class="input-field" required onchange="app.handleEggSpeciesChange()">
+                <option value="poule" data-days="21" data-i18n="opt_egg_hen">Poule / Poulet (21 Jours +/- 2j)</option>
+                <option value="pintade" data-days="27" data-i18n="opt_egg_pintade">Pintade (27 Jours +/- 2j)</option>
+                <option value="canard_barbarie" data-days="35" data-i18n="opt_egg_canard_barbarie">Canard de Barbarie (35 Jours +/- 2j)</option>
+                <option value="caille" data-days="17" data-i18n="opt_egg_quail">Caille (17 Jours)</option>
+                <option value="canard" data-days="28" data-i18n="opt_egg_duck">Canard commun (28 Jours)</option>
+                <option value="dinde" data-days="28" data-i18n="opt_egg_turkey">Dinde (28 Jours)</option>
+                <option value="oie" data-days="30" data-i18n="opt_egg_goose">Oie (30 Jours)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="batchBreed" data-i18n="lbl_breed">Race des Sujets</label>
+              <input type="text" id="batchBreed" class="input-field" placeholder="Ex: Sasso XL, Cou Nu, Brahma, Fermière" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="batchName" data-i18n="lbl_clutch_name">Numéro / Nom de la Couvée</label>
+              <input type="text" id="batchName" class="input-field" placeholder="Ex: Couvée Poule Rousse #01" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="batchEggsCount" data-i18n="lbl_eggs_count">Nombre d'Œufs Mis à Couver</label>
+              <input type="number" id="batchEggsCount" class="input-field" min="1" value="12" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="batchStartDate" data-i18n="lbl_start_date">Date de Début d'Incubation</label>
+              <input type="date" id="batchStartDate" class="input-field" required onchange="app.calcHatchPreview()">
+            </div>
+            <div class="form-group flex-1">
+              <label data-i18n="lbl_hatch_preview">Fenêtre Prévue d'Éclosion</label>
+              <div id="batchHatchPreview" class="preview-date-box text-emerald bold">-- / -- / ---- (21j +/- 2j)</div>
+            </div>
+          </div>
+
+          <div id="machineParamsRow" class="form-row">
+            <div class="form-group flex-1">
+              <label for="batchTemp" data-i18n="lbl_target_temp">Température Cible (°C)</label>
+              <input type="number" id="batchTemp" class="input-field" step="0.1" value="37.7">
+            </div>
+            <div class="form-group flex-1">
+              <label for="batchHumidity" data-i18n="lbl_target_humidity">Humidité Cible (%)</label>
+              <input type="number" id="batchHumidity" class="input-field" value="48">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="batchNotes" data-i18n="lbl_batch_notes">Notes (ex: Poule qui couve dans le nid #2...)</label>
+            <textarea id="batchNotes" class="input-field" rows="2" placeholder="Notes sur la poule ou emplacement de la couveuse..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalAddBatch')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-amber" data-i18n="btn_launch_incubation">Lancer l'Incubation & Déclarer au Calendrier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Notification & Validation d'Éclosion Interactive (+ Poussins -> Cheptel) -->
+  <div id="modalHatchPrompt" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="text-amber" data-i18n="modal_hatch_title">🐣 Notification : C'est le moment de l'Éclosion !</h3>
+        <button class="modal-close" onclick="app.closeModal('modalHatchPrompt')">&times;</button>
+      </div>
+      <form id="formHatchPrompt" onsubmit="app.handleConfirmHatch(event)">
+        <input type="hidden" id="hatchPromptBatchId">
+        <div class="modal-body">
+          <div class="alert-card alert-warning">
+            <div>
+              <strong id="hatchPromptBatchTitle">Couvée arrivée à terme (21 jours +/- 2j)</strong>
+              <p id="hatchPromptBatchDesc" style="margin-top: 4px; font-size: 0.82rem; color: var(--text-secondary);"></p>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="hatchLiveCount" style="font-size: 0.95rem; font-weight: 700;" data-i18n="lbl_live_chicks_count">Combien de poussins sont sortis vivants de l'œuf ?</label>
+            <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" value="8" required>
+            <small class="helper-text" data-i18n="hatch_prompt_helper">👉 Ce nombre s'ajoutera <strong>automatiquement</strong> au nombre total d'animaux et à vos poulets !</small>
+          </div>
+
+          <div class="form-group">
+            <label for="hatchTargetFlock" data-i18n="lbl_where_to_add">Où ajouter ces nouveaux poussins ?</label>
+            <select id="hatchTargetFlock" class="input-field">
+              <option value="new" data-i18n="opt_create_new_lot">Créer un nouveau lot de poussins de cette génération</option>
+              <option value="first_chick" data-i18n="opt_add_existing">Ajouter à la bande de poussins existante</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalHatchPrompt')" data-i18n="btn_postpone">Reporter</button>
+          <button type="submit" class="btn btn-emerald" data-i18n="btn_confirm_hatch">✅ Valider & Ajouter Automatiquement au Cheptel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Sauvegarde & Données de Démonstration -->
+  <div id="modalDataOptions" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="modal_settings_title">Paramètres des Données & Démo</h3>
+        <button class="modal-close" onclick="app.closeModal('modalDataOptions')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc" data-i18n="modal_settings_desc">Gérez vos données locales ou chargez l'exemple complet pour explorer toutes les fonctionnalités d'élevage et de comptabilité.</p>
+        
+        <div class="data-options-buttons">
+          <button class="btn btn-secondary btn-full" onclick="app.loadSampleData()" data-i18n="btn_load_sample">
+            📦 Charger un Exemple de Démonstration (Démo)
+          </button>
+          <button class="btn btn-outline btn-full" onclick="app.exportDataJSON()" data-i18n="btn_export_json">
+            💾 Exporter la Sauvegarde (Fichier JSON)
+          </button>
+          <label class="btn btn-outline btn-full label-file-btn">
+            <span data-i18n="btn_import_json">📂 Importer une Sauvegarde JSON</span>
+            <input type="file" id="importJsonInput" accept=".json" style="display:none;" onchange="app.importDataJSON(event)">
+          </label>
+          <button class="btn btn-danger-outline btn-full" onclick="app.resetAllData()" data-i18n="btn_reset_all">
+            🗑️ Réinitialiser Toutes les Données à 0
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="mobile-bridge.js"></script>
+  <script src="translations.js?v=4"></script>
+  <script src="app.js?v=4"></script>
+</body>
+</html>

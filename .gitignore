@@ -1,0 +1,29 @@
+# Node & Dependencies
+node_modules/
+package-lock.json
+
+# Web build output
+www/
+
+# Android build outputs & local config
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+
+# iOS build outputs & CocoaPods
+ios/App/build/
+ios/App/Pods/
+ios/App/Podfile.lock
+ios/App/.symlinks/
+*.xcuserdatad
+*.xcscmblueprint
+.DS_Store
+
+# IDE & Editor
+.vscode/
+.idea/
+*.log

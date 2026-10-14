@@ -1,0 +1,38 @@
+{
+  "appId": "com.fermegest.pro",
+  "appName": "FermeGest Pro",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#0b1120",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "ios": {
+    "contentInset": "always",
+    "scrollEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#0b1120",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0b1120"
+    },
+    "LocalNotifications": {
+      "iconColor": "#10b981",
+      "sound": "beep.wav"
+    }
+  }
+}
