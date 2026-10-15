@@ -508,12 +508,9 @@ const app = {
       console.warn('LocalStorage save failed:', e);
     }
 
-    // Debounced automatic Cloud Sync push
-    if (this.cloudSync && this.cloudSync.config && this.cloudSync.config.enabled && this.cloudSync.config.autoSync) {
-      clearTimeout(this._cloudSyncTimer);
-      this._cloudSyncTimer = setTimeout(() => {
-        this.cloudSync.pushToCloud(false);
-      }, 1200);
+    // Debounced automatic Cloud Sync push for authenticated user
+    if (window.appAuth && typeof window.appAuth.schedulePush === 'function') {
+      window.appAuth.schedulePush();
     }
   },
 

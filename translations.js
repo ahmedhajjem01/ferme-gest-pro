@@ -424,7 +424,22 @@ const TRANSLATIONS = {
     toast_cloud_pushed: "Données envoyées au Cloud avec succès !",
     toast_cloud_pulled: "Dernières données du Cloud téléchargées !",
     toast_cloud_error: "Erreur de connexion au Cloud. Vérifiez l'URL et la clé.",
-    toast_cloud_disconnected: "Synchronisation Cloud déconnectée."
+    toast_cloud_disconnected: "Synchronisation Cloud déconnectée.",
+
+    // Authentication & Google Login Translations
+    auth_login_btn: "Se Connecter",
+    auth_modal_title: "FermeGest PRO - Connexion & Synchronisation",
+    auth_modal_sub: "Connectez-vous pour synchroniser vos animaux et votre comptabilité entre vos téléphones (iPhone/Android) et votre ordinateur.",
+    auth_continue_google: "Continuer avec Google / Gmail",
+    auth_or_email: "ou avec votre adresse E-mail",
+    auth_tab_login: "Connexion",
+    auth_tab_signup: "Créer un Compte",
+    auth_email_lbl: "Adresse E-mail",
+    auth_pass_lbl: "Mot de passe",
+    auth_guest_continue: "Continuer sans compte (Mode Local)",
+    profile_modal_title: "Mon Compte Fermier",
+    profile_sync_now: "🔄 Forcer la synchronisation maintenant",
+    profile_signout: "Se Déconnecter"
   },
 
   ar: {
@@ -847,7 +862,22 @@ const TRANSLATIONS = {
     toast_cloud_pushed: "تم إرسال البيانات إلى السحابة بنجاح!",
     toast_cloud_pulled: "تم استرجاع أحدث بيانات من السحابة!",
     toast_cloud_error: "خطأ في الاتصال بالسحابة. تحقق من الرابط والمفتاح.",
-    toast_cloud_disconnected: "تم قطع الاتصال بالسحابة."
+    toast_cloud_disconnected: "تم قطع الاتصال بالسحابة.",
+
+    // Authentication & Google Login Translations
+    auth_login_btn: "تسجيل الدخول",
+    auth_modal_title: "فيرم-جست برو - تسجيل الدخول والمزامنة الفورية",
+    auth_modal_sub: "سجّل دخولك لمزامنة قطيعك وحساباتك فورياً بين هواتفك (آيفون وأندرويد) وحاسوبك.",
+    auth_continue_google: "المتابعة عبر حساب Google / Gmail",
+    auth_or_email: "أو عبر البريد الإلكتروني",
+    auth_tab_login: "تسجيل الدخول",
+    auth_tab_signup: "إنشاء حساب جديد",
+    auth_email_lbl: "البريد الإلكتروني",
+    auth_pass_lbl: "كلمة المرور",
+    auth_guest_continue: "المتابعة بدون حساب (الوضع المحلي)",
+    profile_modal_title: "حساب المزرعة السحابي",
+    profile_sync_now: "🔄 مزامنة البيانات الآن",
+    profile_signout: "تسجيل الخروج"
   },
 
   en: {
@@ -1269,7 +1299,22 @@ const TRANSLATIONS = {
     toast_cloud_pushed: "Data pushed to Cloud successfully!",
     toast_cloud_pulled: "Latest Cloud data downloaded!",
     toast_cloud_error: "Cloud connection error. Check your URL and Key.",
-    toast_cloud_disconnected: "Cloud sync disconnected."
+    toast_cloud_disconnected: "Cloud sync disconnected.",
+
+    // Authentication & Google Login Translations
+    auth_login_btn: "Sign In",
+    auth_modal_title: "FermeGest PRO - Sign In & Cloud Sync",
+    auth_modal_sub: "Sign in to synchronize your poultry and finances in real-time across your phones (iOS/Android) and computers.",
+    auth_continue_google: "Continue with Google / Gmail",
+    auth_or_email: "or with your Email address",
+    auth_tab_login: "Sign In",
+    auth_tab_signup: "Create Account",
+    auth_email_lbl: "Email Address",
+    auth_pass_lbl: "Password",
+    auth_guest_continue: "Continue without account (Local Mode)",
+    profile_modal_title: "My Farm Account",
+    profile_sync_now: "🔄 Sync Now",
+    profile_signout: "Sign Out"
   }
 };
 

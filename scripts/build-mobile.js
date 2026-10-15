@@ -8,6 +8,7 @@ const WWW_DIR = path.resolve(ROOT_DIR, 'www');
 const ASSETS = [
   'index.html',
   'app.js',
+  'supabase-client.js',
   'mobile-bridge.js',
   'translations.js',
   'styles.css',
