@@ -1806,6 +1806,35 @@ const app = {
       `;
     });
 
+    // Calcul du stock d'aliment restant en réserve à partir des dépenses déclarées
+    const totalPurchasedFeedCost = (appState.expenses || [])
+      .filter(e => e.category === 'nourriture')
+      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+    const totalConsumedFeedCost = (appState.animals || []).reduce((sum, a) => {
+      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
+      const aStartAge = Number(a.arrivalAgeDays) || 0;
+      const cKg = this.calculateCumulativeFeedKg(a.species, aAge, a.stage, a.breed, aStartAge);
+      return sum + ((Number(a.currentQuantity) || 0) * cKg * feedPriceKg);
+    }, 0);
+
+    const feedStockRemaining = Math.max(0, totalPurchasedFeedCost - totalConsumedFeedCost);
+    const feedStockRemainingKg = feedPriceKg > 0 ? (feedStockRemaining / feedPriceKg) : 0;
+
+    if (totalPurchasedFeedCost > 0) {
+      const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ متبقية من أصل ${this.formatMoney(totalPurchasedFeedCost)} تم شراؤها)`;
+      const stockBadgeFr = `📦 Réserve d'aliment en stock magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg restants sur ${this.formatMoney(totalPurchasedFeedCost)} achetés)`;
+      const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg remaining out of ${this.formatMoney(totalPurchasedFeedCost)} purchased)`;
+      const stockLabel = appState.lang === 'ar' ? stockBadgeAr : (appState.lang === 'en' ? stockBadgeEn : stockBadgeFr);
+
+      lotsHtml += `
+        <div style="grid-column: 1 / -1; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; color: var(--accent-emerald); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem;">
+          <span>${stockLabel}</span>
+          <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">(Non imputé aux poussins tant que non consommé)</span>
+        </div>
+      `;
+    }
+
     const totalFarmDailyKg = totalFarmDailyGrams / 1000;
     const totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
 
@@ -1900,21 +1929,23 @@ const app = {
         .filter(e => e.linkedLotId === animal.id)
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-      // 2. Répartition biologique proportionnelle des dépenses d'aliments générales (selon les grammes mangés)
-      const lotDailyGrams = (Number(animal.currentQuantity) || 0) * feedData.avgGrams;
-      const feedWeightShare = totalFarmDailyGrams > 0 ? (lotDailyGrams / totalFarmDailyGrams) : (totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0);
-      const allocatedFeed = generalFeedExpenses * feedWeightShare;
+      // 2. Coût d'aliment réellement consommé à ce jour (selon la table zootechnique biologique)
+      // Note agronomique essentielle : Un poussin de 44j a mangé 1.62 kg (~2.40 DT).
+      // Les factures globales de sacs en avance (ex: 360 DT) constituent du stock d'inventaire en réserve
+      // et ne doivent JAMAIS être imputées immédiatement dans l'estomac d'un poussin qui ne peut physiquement pas les avoir avalés !
+      const lotBiologicalFeedCost = (Number(animal.currentQuantity) || 0) * cumulFeedCost;
 
-      // 3. Répartition des autres frais généraux (véto, matériel) par tête
+      // 3. Répartition des autres frais généraux réels (véto, santé, litière) par tête
       const headShare = totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0;
       const allocatedVet = generalVetExpenses * headShare;
 
-      const totalLotExpenses = directLotExpenses + allocatedFeed + allocatedVet;
+      // Total des dépenses engagées pour ce lot à ce jour
+      const totalLotExpenses = directLotExpenses + lotBiologicalFeedCost + allocatedVet;
       const totalAcquisition = animal.initialQuantity * (Number(animal.costPerHead) || 0);
       const totalInvested = totalAcquisition + totalLotExpenses;
       
       const costPerCurrentHead = animal.currentQuantity > 0 ? (totalInvested / animal.currentQuantity).toFixed(2) : '0';
-      const feedPerSubject = animal.currentQuantity > 0 ? ((allocatedFeed + directLotExpenses) / animal.currentQuantity).toFixed(2) : '0';
+      const feedPerSubject = cumulFeedCost.toFixed(2);
 
       // Calcul du Prix de Vente Conseillé avec +40% de Marge Nette Garantie
       const costHeadNum = parseFloat(costPerCurrentHead) || cumulFeedCost;
@@ -1975,9 +2006,9 @@ const app = {
                 ? `🏷️ Achat: ${this.formatMoney(animal.costPerHead)}` 
                 : (appState.lang === 'ar' ? '🎁 شراء: 0 د.ت (مجاني)' : '🎁 Achat: 0 DT (Gratuit)')}
             </div>
-            ${totalLotExpenses > 0 ? `
+            ${cumulFeedCost > 0 ? `
               <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:1px; font-weight:600;">
-                🌾 +${this.formatMoney(feedPerSubject)} aliment
+                🌾 +${this.formatMoney(feedPerSubject)} mangé (~${cumulFeedKg.toFixed(2)} kg)
               </div>
             ` : ''}
           </div>
