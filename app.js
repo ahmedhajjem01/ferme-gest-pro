@@ -19,6 +19,9 @@ const appState = {
   incubatorBatches: []
 };
 
+// Expose appState on global window for multi-device sync
+window.appState = appState;
+
 // Currency symbols and formats per language
 const CURRENCY_SYMBOLS = {
   fr: {
@@ -733,6 +736,14 @@ const app = {
       if (el && !el.value) el.value = todayStr;
     });
 
+    // Sale Flock / Lot Selection Link
+    const saleLotSelect = document.getElementById('saleLotLinked');
+    if (saleLotSelect) {
+      saleLotSelect.addEventListener('change', (e) => {
+        this.handleSaleLotSelection(e.target.value);
+      });
+    }
+
     this.calcHatchPreview();
   },
 
@@ -1190,6 +1201,7 @@ const app = {
   renderAll() {
     this.renderDashboard();
     this.renderEggStock();
+    this.renderFarmFeedSummary();
     this.renderAnimals();
     this.renderExpenses();
     this.renderSales();
@@ -1524,6 +1536,274 @@ const app = {
   },
 
   // ==========================================
+  // AGRONOMIC FEED ENGINE & BIOLOGICAL MATRIX
+  // (Base de données scientifique & table d'alimentation)
+  // ==========================================
+
+  getAgronomicFeedData(species = 'poulet', ageDays = 30, stage = '', breed = '') {
+    const sp = (species || '').toLowerCase();
+    const stg = (stage || '').toLowerCase();
+    const brd = (breed || '').toLowerCase();
+    const days = Math.max(1, Math.round(ageDays));
+
+    const isDuck = sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck');
+    const isPintade = sp === 'pintade' || sp.includes('guinea');
+
+    if (isDuck) {
+      // 1. كتاكيت بط مسكوفي: من 1 إلى 4 أسابيع -> 30 إلى 60 غرام
+      if (days <= 28) {
+        return {
+          minGrams: 30,
+          maxGrams: 60,
+          avgGrams: 45,
+          dailyGrams: 45,
+          stageKey: 'duck_chick',
+          labelAr: 'كتاكيت بط مسكوفي (1-4 أسابيع)',
+          labelFr: 'Canetons de Barbarie (1-4 sem.)',
+          labelEn: 'Muscovy Ducklings (1-4 wks)'
+        };
+      }
+      // 2. بط مسكوفي نامي: من 5 إلى 10 أسابيع -> 100 إلى 140 غرام
+      if (days <= 70) {
+        return {
+          minGrams: 100,
+          maxGrams: 140,
+          avgGrams: 120,
+          dailyGrams: 120,
+          stageKey: 'duck_grower',
+          labelAr: 'بط مسكوفي نامي (5-10 أسابيع)',
+          labelFr: 'Canards Barbarie Croissance (5-10 sem.)',
+          labelEn: 'Muscovy Grower Ducks (5-10 wks)'
+        };
+      }
+      // 3. بط مسكوفي بالغ (> 10 أسابيع / > 70 يوماً)
+      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكور') || stg.includes('تسمين') || stg.includes('engraiss') || brd.includes('mâle') || brd.includes('male') || brd.includes('ذكور');
+      if (isMale) {
+        // بط مسكوفي بالغ (ذكور): تسمين / ذكور مخصبة -> 180 إلى 220 غرام
+        return {
+          minGrams: 180,
+          maxGrams: 220,
+          avgGrams: 200,
+          dailyGrams: 200,
+          stageKey: 'duck_adult_male',
+          labelAr: 'بط مسكوفي بالغ (ذكور - تسمين / مخصبة)',
+          labelFr: 'Canard Barbarie Adulte Mâle (Finition / Reprod.)',
+          labelEn: 'Adult Muscovy Drake (Male / Fattening)'
+        };
+      } else {
+        // بط مسكوفي بالغ (إناث): بياض / أمهات -> 130 إلى 160 غرام
+        return {
+          minGrams: 130,
+          maxGrams: 160,
+          avgGrams: 145,
+          dailyGrams: 145,
+          stageKey: 'duck_adult_female',
+          labelAr: 'بط مسكوفي بالغ (إناث - بياض / أمهات)',
+          labelFr: 'Canard Barbarie Adulte Femelle (Ponte / Mères)',
+          labelEn: 'Adult Muscovy Duck (Female / Laying)'
+        };
+      }
+    }
+
+    if (isPintade) {
+      if (days <= 28) {
+        return {
+          minGrams: 18,
+          maxGrams: 35,
+          avgGrams: 26.5,
+          dailyGrams: 26.5,
+          stageKey: 'pintade_chick',
+          labelAr: 'كتاكيت دجاج الوادي (1-4 أسابيع)',
+          labelFr: 'Pintadeaux Démarrage (1-4 sem.)',
+          labelEn: 'Guinea Keets (1-4 wks)'
+        };
+      }
+      if (days <= 84) {
+        return {
+          minGrams: 50,
+          maxGrams: 75,
+          avgGrams: 62.5,
+          dailyGrams: 62.5,
+          stageKey: 'pintade_grower',
+          labelAr: 'دجاج الوادي نامي (5-12 أسبوعاً)',
+          labelFr: 'Pintades Croissance (5-12 sem.)',
+          labelEn: 'Growing Guinea Fowls (5-12 wks)'
+        };
+      }
+      return {
+        minGrams: 95,
+        maxGrams: 120,
+        avgGrams: 107.5,
+        dailyGrams: 107.5,
+        stageKey: 'pintade_adult',
+        labelAr: 'دجاج الوادي بالغ (> 12 أسبوعاً)',
+        labelFr: 'Pintades Adultes (> 12 sem.)',
+        labelEn: 'Adult Guinea Fowls (> 12 wks)'
+      };
+    }
+
+    // Default: Chickens (الدجاج بمراحله الأربعة)
+    // 1. كتاكيت دجاج (فلالس): من 1 إلى 4 أسابيع -> 15 إلى 35 غرام
+    if (days <= 28) {
+      return {
+        minGrams: 15,
+        maxGrams: 35,
+        avgGrams: 25,
+        dailyGrams: 25,
+        stageKey: 'chicken_chick',
+        labelAr: 'كتاكيت دجاج / فلالس (1-4 أسابيع)',
+        labelFr: 'Poussins Démarrage (1-4 sem.)',
+        labelEn: 'Chicks / Starter (1-4 wks)'
+      };
+    }
+    // 2. دجاج نامي (صغير/فرارج): من 5 إلى 12 أسبوعاً -> 45 إلى 70 غرام
+    if (days <= 84) {
+      return {
+        minGrams: 45,
+        maxGrams: 70,
+        avgGrams: 57.5,
+        dailyGrams: 57.5,
+        stageKey: 'chicken_grower',
+        labelAr: 'دجاج نامي - صغير/فرارج (5-12 أسبوعاً)',
+        labelFr: 'Poulets Nami / Croissance (5-12 sem.)',
+        labelEn: 'Growing Chickens (5-12 wks)'
+      };
+    }
+    // 3. دجاج مقبل على البيض (بشاير): من 13 إلى 18 أسبوعاً -> 75 إلى 90 غرام
+    if (days <= 126) {
+      return {
+        minGrams: 75,
+        maxGrams: 90,
+        avgGrams: 82.5,
+        dailyGrams: 82.5,
+        stageKey: 'chicken_prelay',
+        labelAr: 'دجاج مقبل على البيض - بشاير (13-18 أسبوعاً)',
+        labelFr: 'Poulettes Pré-Ponte / Bchayer (13-18 sem.)',
+        labelEn: 'Pre-Layer Pullets (13-18 wks)'
+      };
+    }
+    // 4. دجاج بياض بالغ (كبير): من عمر 19 أسبوعاً فما فوق -> 110 إلى 125 غرام
+    return {
+      minGrams: 110,
+      maxGrams: 125,
+      avgGrams: 117.5,
+      dailyGrams: 117.5,
+      stageKey: 'chicken_adult_layer',
+      labelAr: 'دجاج بياض بالغ - كبير (19 أسبوعاً فما فوق)',
+      labelFr: 'Poules Pondeuses / Adultes (> 19 sem.)',
+      labelEn: 'Adult Layers (> 19 wks)'
+    };
+  },
+
+  calculateCumulativeFeedKg(species = 'poulet', ageDays = 30, stage = '', breed = '') {
+    const days = Math.max(1, Math.round(ageDays));
+    const sp = (species || '').toLowerCase();
+    const isDuck = sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck');
+    const isPintade = sp === 'pintade' || sp.includes('guinea');
+
+    if (isDuck) {
+      if (days <= 28) {
+        return (days * 0.045);
+      }
+      if (days <= 70) {
+        return 1.260 + ((days - 28) * 0.120);
+      }
+      const stg = (stage || '').toLowerCase();
+      const brd = (breed || '').toLowerCase();
+      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكور') || stg.includes('تسمين') || brd.includes('mâle') || brd.includes('male');
+      const adultDailyKg = isMale ? 0.200 : 0.145;
+      return 6.300 + ((days - 70) * adultDailyKg);
+    }
+
+    if (isPintade) {
+      if (days <= 28) return (days * 0.0265);
+      if (days <= 84) return 0.742 + ((days - 28) * 0.0625);
+      return 4.242 + ((days - 84) * 0.1075);
+    }
+
+    // Chickens:
+    if (days <= 28) {
+      return (days * 0.025);
+    }
+    if (days <= 84) {
+      return 0.700 + ((days - 28) * 0.0575);
+    }
+    if (days <= 126) {
+      return 3.920 + ((days - 84) * 0.0825);
+    }
+    return 7.385 + ((days - 126) * 0.1175);
+  },
+
+  getAverageFeedPricePerKg() {
+    const cur = appState.currency || 'TND';
+    if (cur === 'EUR') return 0.50;
+    if (cur === 'USD') return 0.55;
+    if (cur === 'DZD') return 85.0;
+    if (cur === 'MAD') return 5.50;
+    if (cur === 'FCFA') return 350.0;
+    // Standard TND (Tunisia: sac 50kg = ~74 DT -> 1.480 DT/kg)
+    return 1.480;
+  },
+
+  renderFarmFeedSummary() {
+    const card = document.getElementById('farmFeedSummaryCard');
+    if (!card) return;
+
+    const breakdownEl = document.getElementById('farmFeedLotsBreakdown');
+    const todayKgEl = document.getElementById('farmFeedTodayKg');
+    const todayCostEl = document.getElementById('farmFeedTodayCost');
+
+    if (!appState.animals || appState.animals.length === 0) {
+      if (todayKgEl) todayKgEl.textContent = '0.00 kg / j';
+      if (todayCostEl) todayCostEl.textContent = this.formatMoney(0) + ' / j';
+      if (breakdownEl) breakdownEl.innerHTML = `<div class="text-muted" style="grid-column: 1/-1; text-align: center; padding: 0.5rem;">${appState.lang === 'ar' ? 'لا توجد دفعات طيور مسجلة حالياً.' : 'Aucun lot d\'animaux enregistré.'}</div>`;
+      return;
+    }
+
+    const feedPriceKg = this.getAverageFeedPricePerKg();
+    let totalFarmDailyGrams = 0;
+    let lotsHtml = '';
+
+    appState.animals.forEach(animal => {
+      const qty = Number(animal.currentQuantity) || 0;
+      if (qty <= 0) return;
+
+      const ageDays = this.calculateAgeInDays(animal.birthDate);
+      const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
+      const lotDailyGrams = qty * feedData.avgGrams;
+      totalFarmDailyGrams += lotDailyGrams;
+
+      const lotDailyKg = lotDailyGrams / 1000;
+      const lotDailyCost = lotDailyKg * feedPriceKg;
+      const stageName = appState.lang === 'ar' ? feedData.labelAr : (appState.lang === 'en' ? feedData.labelEn : feedData.labelFr);
+
+      lotsHtml += `
+        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.6rem 0.8rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+          <div style="min-width: 0;">
+            <div style="font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${this.getSpeciesIcon(animal.species)} ${animal.name} (${qty})
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary);">
+              ${stageName} &bull; <span class="text-amber">${feedData.avgGrams} g/j/tête</span>
+            </div>
+          </div>
+          <div style="text-align: right; flex-shrink: 0;">
+            <div style="font-weight: 800; color: var(--accent-amber);">${lotDailyKg.toFixed(2)} kg/j</div>
+            <div style="font-size: 0.72rem; color: var(--accent-rose); font-weight: 600;">${this.formatMoney(lotDailyCost)}/j</div>
+          </div>
+        </div>
+      `;
+    });
+
+    const totalFarmDailyKg = totalFarmDailyGrams / 1000;
+    const totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
+
+    if (todayKgEl) todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} kg / j`;
+    if (todayCostEl) todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)} / j`;
+    if (breakdownEl) breakdownEl.innerHTML = lotsHtml;
+  },
+
+  // ==========================================
   // ANIMALS (CHEPTEL & RACES) MODULE
   // ==========================================
   renderAnimals(filter = 'all') {
@@ -1572,6 +1852,24 @@ const app = {
       return;
     }
 
+    // Total farm daily feed consumption in grams for biological expense weighting
+    const totalFarmDailyGrams = (appState.animals || []).reduce((sum, a) => {
+      const aAge = this.calculateAgeInDays(a.birthDate);
+      const feedData = this.getAgronomicFeedData(a.species, aAge, a.stage, a.breed);
+      return sum + ((Number(a.currentQuantity) || 0) * feedData.avgGrams);
+    }, 0);
+    const totalLivingAnimals = (appState.animals || []).reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+
+    const generalFeedExpenses = appState.expenses
+      .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category === 'nourriture')
+      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+    const generalVetExpenses = appState.expenses
+      .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category !== 'nourriture')
+      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+    const feedPriceKg = this.getAverageFeedPricePerKg();
+
     filtered.forEach(animal => {
       const ageDays = this.calculateAgeInDays(animal.birthDate);
       const ageText = this.formatAgeText(ageDays);
@@ -1579,31 +1877,42 @@ const app = {
         ? ((animal.mortality / animal.initialQuantity) * 100).toFixed(1) 
         : 0;
 
+      // Agronomic table profile
+      const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
+      const cumulFeedKg = this.calculateCumulativeFeedKg(animal.species, ageDays, animal.stage, animal.breed);
+      const cumulFeedCost = cumulFeedKg * feedPriceKg;
+
       // 1. Dépenses directement affectées à ce lot
       const directLotExpenses = appState.expenses
         .filter(e => e.linkedLotId === animal.id)
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-      // 2. Dépenses de nourriture et santé générales (nourriture / véto sans lot ou "general")
-      const totalLivingAnimals = (appState.animals || []).reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
-      const animalShare = totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0;
-      
-      const generalFeedVetExpenses = appState.expenses
-        .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && (e.category === 'nourriture' || e.category === 'veterinaire'))
-        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+      // 2. Répartition biologique proportionnelle des dépenses d'aliments générales (selon les grammes mangés)
+      const lotDailyGrams = (Number(animal.currentQuantity) || 0) * feedData.avgGrams;
+      const feedWeightShare = totalFarmDailyGrams > 0 ? (lotDailyGrams / totalFarmDailyGrams) : (totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0);
+      const allocatedFeed = generalFeedExpenses * feedWeightShare;
 
-      const allocatedGeneral = generalFeedVetExpenses * animalShare;
-      const totalLotExpenses = directLotExpenses + allocatedGeneral;
-      
+      // 3. Répartition des autres frais généraux (véto, matériel) par tête
+      const headShare = totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0;
+      const allocatedVet = generalVetExpenses * headShare;
+
+      const totalLotExpenses = directLotExpenses + allocatedFeed + allocatedVet;
       const totalAcquisition = animal.initialQuantity * (Number(animal.costPerHead) || 0);
       const totalInvested = totalAcquisition + totalLotExpenses;
+      
       const costPerCurrentHead = animal.currentQuantity > 0 ? (totalInvested / animal.currentQuantity).toFixed(2) : '0';
-      const feedVetPerSubject = animal.currentQuantity > 0 ? (totalLotExpenses / animal.currentQuantity).toFixed(2) : '0';
+      const feedPerSubject = animal.currentQuantity > 0 ? ((allocatedFeed + directLotExpenses) / animal.currentQuantity).toFixed(2) : '0';
+
+      // Calcul du Prix de Vente Conseillé avec +40% de Marge Nette Garantie
+      const costHeadNum = parseFloat(costPerCurrentHead) || cumulFeedCost;
+      const minMarginFloor = (animal.species === 'poussin') ? 1.500 : ((animal.species === 'canard' || animal.species === 'canard_barbarie') ? 6.000 : 3.500);
+      const recommendedSellPrice = Math.max(costHeadNum > 0 ? (costHeadNum / 0.60) : (cumulFeedCost * 1.5 + minMarginFloor), costHeadNum + minMarginFloor);
 
       const avatarIcon = this.getSpeciesIcon(animal.species);
       const stageBadgeClass = this.getStageBadgeClass(animal.stage);
       const lossesWord = appState.lang === 'ar' ? 'خسائر' : (appState.lang === 'en' ? 'losses' : 'pertes');
       const defaultNotes = appState.lang === 'ar' ? 'لا توجد ملاحظات' : (appState.lang === 'en' ? 'No specific notes' : 'Aucune note particulière');
+      const agronomicStageLabel = appState.lang === 'ar' ? feedData.labelAr : (appState.lang === 'en' ? feedData.labelEn : feedData.labelFr);
 
       const card = document.createElement('div');
       card.className = 'animal-card';
@@ -1613,10 +1922,20 @@ const app = {
             <div class="animal-avatar">${avatarIcon}</div>
             <div>
               <h3 class="animal-name">${animal.name}</h3>
-              <p class="animal-breed">${animal.breed} &bull; <span class="text-muted">${this.translateStage(animal.stage)}</span></p>
+              <p class="animal-breed">${animal.breed} &bull; <span class="text-muted">${agronomicStageLabel}</span></p>
             </div>
           </div>
           <span class="stage-badge ${stageBadgeClass}">${this.translateStage(animal.stage)}</span>
+        </div>
+
+        <!-- Agronomic Feed & Consumption Header Bar -->
+        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.45rem 0.75rem; margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; font-size: 0.76rem;">
+          <span style="color: var(--accent-amber); font-weight: 700;">
+            🌾 ${feedData.avgGrams} g / j (${feedData.minGrams} - ${feedData.maxGrams} g)
+          </span>
+          <span style="color: var(--text-secondary);">
+            ${this.t('feed_cumul_label') || 'Cumul mangé'}: <strong class="text-amber">~${cumulFeedKg.toFixed(2)} kg</strong> (~${this.formatMoney(cumulFeedCost)})
+          </span>
         </div>
 
         <div class="animal-stats-grid">
@@ -1644,13 +1963,19 @@ const app = {
             `}
             ${totalLotExpenses > 0 ? `
               <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:2px; font-weight:600;">
-                🌾 +${this.formatMoney(feedVetPerSubject)} aliment
+                🌾 +${this.formatMoney(feedPerSubject)} aliment
               </div>
             ` : ''}
           </div>
         </div>
 
-        <div class="animal-notes-bar">
+        <!-- Recommended Selling Price with +40% Profit -->
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 0.45rem 0.75rem; margin-top: 0.45rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.76rem;">
+          <span style="color: var(--text-secondary); font-weight: 600;">🎯 Prix conseillé (+40% marge) :</span>
+          <strong style="color: var(--accent-emerald); font-size: 0.95rem;">${this.formatMoney(recommendedSellPrice)} / sujet</strong>
+        </div>
+
+        <div class="animal-notes-bar" style="margin-top: 0.5rem;">
           <small class="text-muted">${animal.notes || defaultNotes}</small>
         </div>
 
@@ -1974,21 +2299,14 @@ const app = {
     this.openModal('modalAddSale');
     const select = document.getElementById('saleLotLinked');
     if (select) select.value = lotId;
-    const lot = appState.animals.find(a => a.id === lotId);
-    if (lot) {
-      const typeSelect = document.getElementById('saleProductType');
-      if (lot.species === 'poulet' && typeSelect) typeSelect.value = 'poulet-croissance';
-      if (lot.species === 'pondeuse' && typeSelect) typeSelect.value = 'oeufs';
-      if (lot.species === 'poussin' && typeSelect) typeSelect.value = 'poussin-1j';
-      if (lot.species === 'adulte' && typeSelect) typeSelect.value = 'poulet-adulte';
-      if (lot.species === 'pintade' && typeSelect) typeSelect.value = 'pintade';
-      if ((lot.species === 'canard' || lot.species === 'canard_barbarie') && typeSelect) typeSelect.value = 'canard';
-      this.handleSaleTypeChange();
-    }
+    this.handleSaleLotSelection(lotId);
   },
 
   deleteAnimal(lotId) {
     if (confirm('Voulez-vous vraiment supprimer ce lot d\'animaux ?')) {
+      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+        appAuth.addDeletedId(lotId);
+      }
       appState.animals = appState.animals.filter(a => a.id !== lotId);
       this.saveState();
       this.renderAll();
@@ -2165,6 +2483,9 @@ const app = {
 
   deleteExpense(expId) {
     if (confirm('Confirmer la suppression de cette dépense ?')) {
+      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+        appAuth.addDeletedId(expId);
+      }
       appState.expenses = appState.expenses.filter(e => e.id !== expId);
       this.saveState();
       this.renderAll();
@@ -2260,6 +2581,7 @@ const app = {
 
     const prodType = document.getElementById('saleProductType')?.value;
     const format = document.getElementById('saleUnitFormat')?.value;
+    const lang = appState.lang || 'fr';
 
     // 1. Œufs : Calculateur Dynamique HARA (حارة = 4 œufs) & Plateaux (30)
     if (prodType === 'oeufs') {
@@ -2279,7 +2601,6 @@ const app = {
           haras = (eggs / 4).toFixed(2);
           plates = (eggs / 30).toFixed(2);
         }
-        const lang = appState.lang || 'fr';
         if (lang === 'ar') {
           badge.textContent = `🥚 ${eggs} بيضة = ${haras} حارة | ~${plates} طبق`;
         } else if (lang === 'en') {
@@ -2291,132 +2612,161 @@ const app = {
       return;
     }
 
-    // 2. Volailles (Poussins & Poulets) : Calcul Intelligent d'Alimentation & Marge Réelle
-    const rawAge = parseFloat(document.getElementById('saleAgeValue')?.value);
-    const ageUnit = document.getElementById('saleAgeUnit')?.value || 'jours';
-    const lang = appState.lang || 'fr';
-
+    // 2. Volailles (Table Agronomique Réelle & Calcul de Prix Optimisé)
     const stageBadge = document.getElementById('smartStageBadge');
     const feedKgEl = document.getElementById('smartFeedKg');
     const feedCostEl = document.getElementById('smartFeedCost');
     const netProfitEl = document.getElementById('smartNetProfit');
     const marginPctEl = document.getElementById('smartMarginPct');
     const calcNoteEl = document.getElementById('smartCalcNote');
+    const recPriceValEl = document.getElementById('smartRecPriceVal');
 
-    // Prix moyen de l'aliment en Tunisie (~1.500 DT/kg)
-    const feedPricePerKg = 1.500;
+    const rawAge = parseFloat(document.getElementById('saleAgeValue')?.value);
+    const ageUnit = document.getElementById('saleAgeUnit')?.value || 'jours';
+    const linkedLotId = document.getElementById('saleLotLinked')?.value;
+    const linkedLot = (linkedLotId && linkedLotId !== 'none') ? (appState.animals || []).find(a => a.id === linkedLotId) : null;
 
-    if (prodType === 'poussin') {
-      // Âge en jours
-      let days = 21;
-      if (!isNaN(rawAge) && rawAge > 0) {
-        days = ageUnit === 'semaines' ? Math.round(rawAge * 7) : Math.round(rawAge);
-      }
+    // Déterminer l'âge exact en jours
+    let days = 21;
+    if (linkedLot && linkedLot.birthDate) {
+      days = this.calculateAgeInDays(linkedLot.birthDate);
+    } else if (ageUnit === 'adulte') {
+      days = (prodType === 'canard') ? 140 : 180;
+    } else if (!isNaN(rawAge) && rawAge > 0) {
+      if (ageUnit === 'semaines') days = Math.round(rawAge * 7);
+      else if (ageUnit === 'mois') days = Math.round(rawAge * 30.5);
+      else days = Math.round(rawAge);
+    } else {
+      days = (prodType === 'poussin') ? 21 : ((prodType === 'canard') ? 140 : 180);
+    }
 
-      // Consommation cumulative standard d'aliment par poussin selon l'âge
-      let feedKgPerChick = 0;
-      if (days <= 1) {
-        feedKgPerChick = 0.00; // Sac vitellin
-      } else if (days <= 7) {
-        feedKgPerChick = days * 0.015;
-      } else if (days <= 14) {
-        feedKgPerChick = 0.105 + (days - 7) * 0.035;
-      } else if (days <= 21) {
-        // À 21 jours (~3 semaines) : environ 0.70 - 0.75 kg mangé par poussin
-        feedKgPerChick = 0.350 + (days - 14) * 0.055;
-      } else if (days <= 28) {
-        feedKgPerChick = 0.735 + (days - 21) * 0.075;
+    // Espèce et profil
+    const species = linkedLot ? linkedLot.species : prodType;
+    const stage = linkedLot ? linkedLot.stage : '';
+    const breed = linkedLot ? linkedLot.breed : '';
+
+    // Données de la table agronomique
+    const feedData = this.getAgronomicFeedData(species, days, stage, breed);
+    const cumulFeedKg = this.calculateCumulativeFeedKg(species, days, stage, breed);
+    const feedPriceKg = this.getAverageFeedPricePerKg();
+
+    const totalFeedKg = q * cumulFeedKg;
+    const totalFeedCost = totalFeedKg * feedPriceKg;
+    const feedCostPerHead = cumulFeedKg * feedPriceKg;
+
+    // Coût d'acquisition du sujet (0 DT si gratuit ou éclosion)
+    const acqCostPerHead = linkedLot ? (Number(linkedLot.costPerHead) || 0) : 0;
+    const totalAcqCost = q * acqCostPerHead;
+
+    // Frais généraux & soins par tête
+    const vetBufferPerHead = (prodType === 'poussin') ? 0.150 : 0.350;
+    const costPricePerHead = acqCostPerHead + feedCostPerHead + vetBufferPerHead;
+
+    // Bénéfice net projeté
+    const netProfit = total - (totalFeedCost + totalAcqCost);
+    const marginPct = total > 0 ? ((netProfit / total) * 100).toFixed(1) : 0;
+
+    // CALCUL DU PRIX DE VENTE CONSEILLÉ POUR GAGNER BEAUCOUP D'ARGENT (+40% marge nette garantie)
+    const minProfitMargin = (prodType === 'poussin') ? 1.500 : ((prodType === 'canard') ? 8.000 : 4.500);
+    const targetRecPrice = Math.max(costPricePerHead > 0 ? (costPricePerHead / 0.60) : (feedCostPerHead * 1.5 + minProfitMargin), costPricePerHead + minProfitMargin);
+    this._lastRecommendedPrice = targetRecPrice;
+
+    // Affichage dans le modal
+    if (recPriceValEl) {
+      recPriceValEl.textContent = `${this.formatMoney(targetRecPrice)} / sujet (+40% net)`;
+    }
+
+    if (stageBadge) {
+      const stageName = lang === 'ar' ? feedData.labelAr : (lang === 'en' ? feedData.labelEn : feedData.labelFr);
+      stageBadge.textContent = `${stageName} [${days} j]`;
+    }
+
+    if (feedKgEl) {
+      const perUnit = lang === 'ar' ? 'كغ/طائر' : (lang === 'en' ? 'kg/head' : 'kg/sujet');
+      feedKgEl.textContent = `${totalFeedKg.toFixed(1)} kg (~${cumulFeedKg.toFixed(2)} ${perUnit})`;
+    }
+
+    if (feedCostEl) {
+      feedCostEl.textContent = this.formatMoney(totalFeedCost);
+    }
+
+    if (netProfitEl) {
+      netProfitEl.textContent = (netProfit >= 0 ? '+' : '') + this.formatMoney(netProfit);
+      netProfitEl.className = `stat-val bold ${netProfit >= 0 ? 'text-emerald' : 'text-rose'}`;
+    }
+
+    if (marginPctEl) {
+      marginPctEl.textContent = `${marginPct}%`;
+    }
+
+    if (calcNoteEl) {
+      if (lang === 'ar') {
+        calcNoteEl.textContent = `💡 الجدول العلمي: معدل الاستهلاك اليومي ${feedData.avgGrams} غ/يوم (${feedData.minGrams}-${feedData.maxGrams}غ). التراكمي: ${cumulFeedKg.toFixed(2)} كغ/طائر (~${this.formatMoney(feedCostPerHead)} علف). السعر المقترح يضمن لك ربحاً صافياً ممتازاً.`;
+      } else if (lang === 'en') {
+        calcNoteEl.textContent = `💡 Scientific table: ${feedData.avgGrams} g/day (${feedData.minGrams}-${feedData.maxGrams}g). Cumulative: ${cumulFeedKg.toFixed(2)} kg/head (~${this.formatMoney(feedCostPerHead)} feed). Recommended price guarantees high profit.`;
       } else {
-        feedKgPerChick = 1.260 + (days - 28) * 0.090;
-      }
-
-      const totalFeedKg = q * feedKgPerChick;
-      const totalFeedCost = totalFeedKg * feedPricePerKg;
-      const netProfit = total - totalFeedCost;
-      const marginPct = total > 0 ? ((netProfit / total) * 100).toFixed(1) : 0;
-
-      if (stageBadge) {
-        if (lang === 'ar') stageBadge.textContent = `🐣 كتكوت: ${days} يوم [${Math.floor(days / 7)} أسابيع]`;
-        else if (lang === 'en') stageBadge.textContent = `🐣 Chick: ${days} day(s) [${Math.floor(days / 7)} wks]`;
-        else stageBadge.textContent = `🐣 Poussin : ${days} jour(s) [${Math.floor(days / 7)} sem.]`;
-      }
-      if (feedKgEl) {
-        const perUnit = lang === 'ar' ? 'كغ/كتكوت' : (lang === 'en' ? 'kg/chick' : 'kg/poussin');
-        feedKgEl.textContent = `${totalFeedKg.toFixed(1)} kg (~${feedKgPerChick.toFixed(2)} ${perUnit})`;
-      }
-      if (feedCostEl) feedCostEl.textContent = this.formatMoney(totalFeedCost);
-      if (netProfitEl) {
-        netProfitEl.textContent = (netProfit >= 0 ? '+' : '') + this.formatMoney(netProfit);
-        netProfitEl.className = `stat-val bold ${netProfit >= 0 ? 'text-emerald' : 'text-rose'}`;
-      }
-      if (marginPctEl) marginPctEl.textContent = `${marginPct}%`;
-      if (calcNoteEl) {
-        if (lang === 'ar') calcNoteEl.textContent = `💡 استهلك ${q} من الكتاكيت عمر ${days} يوم حوالي ~${totalFeedKg.toFixed(1)} كغ من العلف (~${this.formatMoney(totalFeedCost)}).`;
-        else if (lang === 'en') calcNoteEl.textContent = `💡 For ${q} chicks aged ${days} days, estimated feed consumed is ~${totalFeedKg.toFixed(1)} kg (~${this.formatMoney(totalFeedCost)}).`;
-        else calcNoteEl.textContent = `💡 Pour ${q} poussins âgés de ${days} jours, ils ont consommé ~${totalFeedKg.toFixed(1)} kg d'aliment (~${this.formatMoney(totalFeedCost)}).`;
-      }
-
-    } else if (prodType === 'poulet' || prodType === 'pintade' || prodType === 'canard') {
-      const isPintade = prodType === 'pintade';
-      const isCanard = prodType === 'canard';
-      // Si aucun âge n'est précisé, AUTOMATIQUEMENT considéré comme ADULTE (> 6 mois)
-      const isAdult = ageUnit === 'adulte' || isNaN(rawAge) || rawAge <= 0;
-      let months = isAdult ? 6 : Math.min(Math.max(rawAge, 1), 6);
-
-      let feedKgPerSubject = 0;
-      if (isAdult) {
-        feedKgPerSubject = isCanard ? 13.5 : (isPintade ? 10.0 : 11.5);
-      } else if (months <= 1) {
-        feedKgPerSubject = isCanard ? 1.80 : 1.30;
-      } else if (months <= 2) {
-        feedKgPerSubject = isCanard ? 4.80 : 3.60;
-      } else if (months <= 3) {
-        feedKgPerSubject = isCanard ? 8.20 : 6.20;
-      } else if (months <= 4) {
-        feedKgPerSubject = isCanard ? 10.80 : 8.50;
-      } else if (months <= 5) {
-        feedKgPerSubject = isCanard ? 12.20 : 9.50;
-      } else {
-        feedKgPerSubject = isCanard ? 13.50 : 10.00;
-      }
-
-      const totalFeedKg = q * feedKgPerSubject;
-      const totalFeedCost = totalFeedKg * 1.450;
-      const netProfit = total - totalFeedCost;
-      const marginPct = total > 0 ? ((netProfit / total) * 100).toFixed(1) : 0;
-
-      if (stageBadge) {
-        if (lang === 'ar') stageBadge.textContent = isCanard ? (isAdult ? '🦆 بط مسكوفي بالغ (> 6 أشهر)' : `🦆 بط مسكوفي: ${months} أشهر`) : (isPintade ? (isAdult ? '🪶 دجاج الوادي بالغ (> 6 أشهر)' : `🪶 دجاج الوادي: ${months} أشهر`) : (isAdult ? '🐔 دجاج بالغ / أمهات (> 6 أشهر)' : `🍗 دجاج: ${months} أشهر`));
-        else if (lang === 'en') stageBadge.textContent = isCanard ? (isAdult ? '🦆 Adult Muscovy Duck (> 6 mos)' : `🦆 Muscovy Duck: ${months} months`) : (isPintade ? (isAdult ? '🪶 Adult Guinea Fowl (> 6 mos)' : `🪶 Guinea Fowl: ${months} months`) : (isAdult ? '🐔 Adult Chicken (> 6 months)' : `🍗 Chicken: ${months} months`));
-        else stageBadge.textContent = isCanard ? (isAdult ? '🦆 Canard Barbarie Adulte (> 6 mois)' : `🦆 Canard Barbarie : ${months} mois`) : (isPintade ? (isAdult ? '🪶 Pintade Adulte (> 6 mois)' : `🪶 Pintade : ${months} mois`) : (isAdult ? '🐔 Poulet Adulte (> 6 mois)' : `🍗 Poulet : ${months} mois`));
-      }
-      if (feedKgEl) {
-        const perSubject = lang === 'ar' ? (isCanard ? 'كغ/بطة' : (isPintade ? 'كغ/طائر' : 'كغ/دجاجة')) : (lang === 'en' ? (isCanard ? 'kg/duck' : 'kg/bird') : (isCanard ? 'kg/canard' : (isPintade ? 'kg/pintade' : 'kg/poulet')));
-        feedKgEl.textContent = `${totalFeedKg.toFixed(1)} kg (~${feedKgPerSubject.toFixed(2)} ${perSubject})`;
-      }
-      if (feedCostEl) feedCostEl.textContent = this.formatMoney(totalFeedCost);
-      if (netProfitEl) {
-        netProfitEl.textContent = (netProfit >= 0 ? '+' : '') + this.formatMoney(netProfit);
-        netProfitEl.className = `stat-val bold ${netProfit >= 0 ? 'text-emerald' : 'text-rose'}`;
-      }
-      if (marginPctEl) marginPctEl.textContent = `${marginPct}%`;
-      if (calcNoteEl) {
-        const subjName = isCanard ? (lang === 'ar' ? 'بط مسكوفي' : (lang === 'en' ? 'Muscovy Duck' : 'Canard de Barbarie')) : (isPintade ? (lang === 'ar' ? 'دجاج الوادي' : (lang === 'en' ? 'Guinea Fowl' : 'Pintade')) : (lang === 'ar' ? 'دجاج' : (lang === 'en' ? 'Chicken' : 'Poulet')));
-        if (lang === 'ar') {
-          calcNoteEl.textContent = isAdult
-            ? `💡 لم يُحدد العمر: حساب آلي لـ ${subjName} بالغ (> 6 أشهر، ~${feedKgPerSubject} كغ علف/طائر).`
-            : `💡 حساب ذكي لـ ${subjName} عمر ${months} أشهر: استهلاك مقدر بـ ~${totalFeedKg.toFixed(1)} كغ من العلف.`;
-        } else if (lang === 'en') {
-          calcNoteEl.textContent = isAdult
-            ? `💡 No age specified: automatic calculation for Adult ${subjName} (> 6 months, ~${feedKgPerSubject} kg feed/bird).`
-            : `💡 Smart calculation for ${months} mo. ${subjName}: ~${totalFeedKg.toFixed(1)} kg feed consumed.`;
-        } else {
-          calcNoteEl.textContent = isAdult
-            ? `💡 Aucun âge précisé : calcul automatique pour ${subjName} Adulte (> 6 mois, ~${feedKgPerSubject} kg aliment/sujet).`
-            : `💡 Calcul intelligent pour ${subjName}s de ${months} mois : ~${totalFeedKg.toFixed(1)} kg d'aliments consommés.`;
-        }
+        calcNoteEl.textContent = `💡 Table agronomique : ${feedData.avgGrams} g/j (${feedData.minGrams}-${feedData.maxGrams}g). Cumul mangé : ${cumulFeedKg.toFixed(2)} kg/sujet (~${this.formatMoney(feedCostPerHead)} aliment). Le prix conseillé assure un gain garanti.`;
       }
     }
+  },
+
+  applySmartRecommendedPrice() {
+    if (!this._lastRecommendedPrice || this._lastRecommendedPrice <= 0) return;
+    const priceInput = document.getElementById('saleUnitPrice');
+    if (priceInput) {
+      const decimals = appState.currency === 'TND' ? 3 : 2;
+      priceInput.value = this._lastRecommendedPrice.toFixed(decimals);
+      this.calcSaleTotal();
+      const msg = appState.lang === 'ar'
+        ? `🎯 تم تطبيق السعر المقترح الممتاز: ${this.formatMoney(this._lastRecommendedPrice)} للرأس!`
+        : `🎯 Prix conseillé optimal appliqué : ${this.formatMoney(this._lastRecommendedPrice)} / sujet !`;
+      this.showToast(msg);
+    }
+  },
+
+  handleSaleLotSelection(lotId) {
+    if (!lotId || lotId === 'none') {
+      this.calcSaleTotal();
+      return;
+    }
+    const lot = (appState.animals || []).find(a => a.id === lotId);
+    if (!lot) return;
+
+    const typeSelect = document.getElementById('saleProductType');
+    const ageUnit = document.getElementById('saleAgeUnit');
+    const ageInput = document.getElementById('saleAgeValue');
+
+    if (lot.species === 'canard' || lot.species === 'canard_barbarie') {
+      if (typeSelect) typeSelect.value = 'canard';
+    } else if (lot.species === 'pintade') {
+      if (typeSelect) typeSelect.value = 'pintade';
+    } else if (lot.species === 'poussin') {
+      if (typeSelect) typeSelect.value = 'poussin';
+    } else if (lot.species === 'pondeuse') {
+      if (typeSelect && typeSelect.value !== 'oeufs') typeSelect.value = 'poulet';
+    } else {
+      if (typeSelect) typeSelect.value = 'poulet';
+    }
+    this.handleSaleTypeChange();
+
+    // Remplir l'âge d'après sa date de naissance réelle
+    const ageDays = this.calculateAgeInDays(lot.birthDate);
+    if (ageInput && ageUnit) {
+      if (ageDays <= 28) {
+        ageUnit.value = 'jours';
+        ageInput.value = ageDays;
+        ageInput.disabled = false;
+      } else if (ageDays <= 126) {
+        ageUnit.value = 'semaines';
+        ageInput.value = Math.round(ageDays / 7);
+        ageInput.disabled = false;
+      } else {
+        ageUnit.value = 'adulte';
+        ageInput.value = '';
+        ageInput.disabled = true;
+      }
+    }
+    this.calcSaleTotal();
   },
 
   handleAgeUnitChange() {
@@ -2724,6 +3074,9 @@ const app = {
 
   deleteSale(saleId) {
     if (confirm('Supprimer cette vente ?')) {
+      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+        appAuth.addDeletedId(saleId);
+      }
       appState.sales = appState.sales.filter(s => s.id !== saleId);
       this.saveState();
       this.renderAll();
@@ -3294,6 +3647,9 @@ const app = {
 
   deleteIncubatorBatch(batchId) {
     if (confirm('Voulez-vous supprimer ce lot d\'incubation ?')) {
+      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+        appAuth.addDeletedId(batchId);
+      }
       appState.incubatorBatches = appState.incubatorBatches.filter(b => b.id !== batchId);
       this.saveState();
       this.renderAll();
@@ -4563,6 +4919,7 @@ const app = {
 
 // Expose app on global window
 window.app = app;
+window.appState = appState;
 
 // Initialize Application on DOM Ready or immediately if DOM is already ready
 if (document.readyState === 'loading') {

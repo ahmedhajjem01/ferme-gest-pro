@@ -39,6 +39,15 @@ const TRANSLATIONS = {
     kpi_animals_unit: "{n} têtes",
     kpi_animals_sub: "Poulets, Pondeuses, Poussins (Aviculture)",
 
+    // Farm Daily Feed & Ration Card (Table Agronomique)
+    farm_feed_title: "Ration & Alimentation Quotidienne",
+    farm_feed_subtitle: "Calcul biologique exact selon l'âge réel de chaque bande",
+    farm_feed_daily_total: "Consommation journalière",
+    farm_feed_cost_total: "Coût aliment / jour",
+    recommended_sell_price_title: "🎯 Prix de vente conseillé (+40% bénéfice net) :",
+    btn_apply_rec_price: "🎯 Appliquer ce prix conseillé",
+    feed_cumul_label: "Cumul mangé",
+
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 Bienvenue ! Votre exploitation commence à zéro.",
     welcome_desc: "Déclarez vos premières volailles (poulets de chair, pondeuses, poussins), vos aliments ou lancez votre première couveuse.",
@@ -534,6 +543,15 @@ const TRANSLATIONS = {
     kpi_animals_unit: "{n} طائر",
     kpi_animals_sub: "دجاج، بياض، كتاكيت (تربية الدواجن)",
 
+    // Farm Daily Feed & Ration Card (Table Agronomique)
+    farm_feed_title: "العليقة واستهلاك العلف اليومي",
+    farm_feed_subtitle: "حساب بيولوجي دقيق حسب العمر الحقيقي لكل دفعة (الجدول العلمي)",
+    farm_feed_daily_total: "الاستهلاك اليومي الإجمالي",
+    farm_feed_cost_total: "تكلفة العلف / يوم",
+    recommended_sell_price_title: "🎯 سعر البيع المقترح (+40% ربح صافي):",
+    btn_apply_rec_price: "🎯 تطبيق السعر المقترح",
+    feed_cumul_label: "المستهلك التراكمي",
+
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 مرحباً بك! مشروعك يبدأ من الصفر.",
     welcome_desc: "قم بتسجيل أول دفعة من الدواجن (دجاج لحم، دجاج بياض، كتاكيت)، أو مصاريف العلف، أو ابدأ حاضنة البيض.",
@@ -1028,6 +1046,15 @@ const TRANSLATIONS = {
     kpi_livestock_title: "Flock & Poultry",
     kpi_animals_unit: "{n} birds",
     kpi_animals_sub: "Broilers, Layers, Chicks (Poultry)",
+
+    // Farm Daily Feed & Ration Card (Table Agronomique)
+    farm_feed_title: "Daily Feed & Ration Management",
+    farm_feed_subtitle: "Exact biological calculation based on real age per flock",
+    farm_feed_daily_total: "Daily farm consumption",
+    farm_feed_cost_total: "Daily feed cost",
+    recommended_sell_price_title: "🎯 Recommended Selling Price (+40% net profit):",
+    btn_apply_rec_price: "🎯 Apply Recommended Price",
+    feed_cumul_label: "Cumulative feed",
 
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 Welcome! Your farm project starts at zero.",

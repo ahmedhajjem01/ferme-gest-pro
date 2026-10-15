@@ -438,6 +438,35 @@
             </div>
           </div>
 
+          <!-- Farm Daily Feed & Ration Card (Table Agronomique Réelle) -->
+          <div id="farmFeedSummaryCard" class="farm-feed-summary-card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08)); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-lg); padding: 1.2rem 1.35rem; margin-bottom: 1.35rem; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="font-size: 2rem; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);">🌾</div>
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Ration & Alimentation Quotidienne</h3>
+                    <span class="badge-pill text-amber" style="font-size: 0.72rem;">Table Agronomique</span>
+                  </div>
+                  <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Calcul biologique exact selon l'âge réel de chaque bande</small>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right;">
+                  <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;" data-i18n="farm_feed_daily_total">Consommation journalière</span>
+                  <strong style="font-size: 1.15rem; color: var(--accent-amber);" id="farmFeedTodayKg">0.00 kg / j</strong>
+                </div>
+                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right;">
+                  <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;" data-i18n="farm_feed_cost_total">Coût aliment / jour</span>
+                  <strong style="font-size: 1.15rem; color: var(--accent-rose);" id="farmFeedTodayCost">0,000 DT / j</strong>
+                </div>
+              </div>
+            </div>
+            <div id="farmFeedLotsBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.6rem; font-size: 0.82rem;">
+              <!-- Populated dynamically by app.renderFarmFeedSummary() -->
+            </div>
+          </div>
+
           <!-- Incubation Highlight Bar -->
           <div class="incubation-banner">
             <div class="incubation-banner-content">
@@ -1303,6 +1332,17 @@
               </div>
             </div>
             <small class="smart-calc-note" id="smartCalcNote" data-i18n="smart_calc_adult_note">💡 Si aucun âge n'est renseigné pour le poulet, il est automatiquement calculé comme Adulte (> 6 mois).</small>
+
+            <!-- Recommended Selling Price for Maximum Profit -->
+            <div id="smartRecPriceContainer" class="smart-rec-price-row" style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-top: 0.65rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <span style="font-size: 0.76rem; color: var(--text-secondary); display: block;" data-i18n="recommended_sell_price_title">🎯 Prix de vente conseillé (+40% bénéfice net) :</span>
+                <strong style="font-size: 1.15rem; color: var(--accent-emerald);" id="smartRecPriceVal">0.000 DT / sujet</strong>
+              </div>
+              <button type="button" id="btnApplySmartRecPrice" class="btn btn-emerald btn-sm" onclick="app.applySmartRecommendedPrice()" style="font-weight: 700; padding: 0.45rem 0.8rem; font-size: 0.8rem; border-radius: var(--radius-pill);">
+                <span data-i18n="btn_apply_rec_price">🎯 Appliquer ce prix conseillé</span>
+              </button>
+            </div>
           </div>
 
           <div class="form-row">
@@ -1752,7 +1792,7 @@
 
         <!-- Action Buttons -->
         <div class="profile-action-btns">
-          <button type="button" class="btn btn-emerald btn-full profile-sync-btn" onclick="appAuth.pushData(true)" data-i18n="profile_sync_now">
+          <button type="button" class="btn btn-emerald btn-full profile-sync-btn" onclick="appAuth.syncNow(true)" data-i18n="profile_sync_now">
             🔄 Synchroniser maintenant
           </button>
           <button type="button" class="btn btn-danger-outline btn-full profile-logout-btn" onclick="appAuth.signOut()" data-i18n="profile_signout">
@@ -1770,8 +1810,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=7"></script>
-  <script src="translations.js?v=7"></script>
-  <script src="app.js?v=12"></script>
+  <script src="supabase-client.js?v=9"></script>
+  <script src="translations.js?v=8"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

@@ -14,11 +14,104 @@
   const appAuth = {
     client: null,
     currentUser: null,
+    sessionId: 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7),
     realtimeChannel: null,
+    userSyncChannel: null,
     collabChannel: null,
     isSyncing: false,
     lastSyncedAt: null,
     _pushTimer: null,
+
+    // Safe retrieval of current state
+    getAppState() {
+      if (window.appState) return window.appState;
+      try {
+        const raw = localStorage.getItem('fermegest_state');
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {
+        currency: 'TND',
+        lang: 'fr',
+        theme: 'dark',
+        eggStock: 0,
+        eggHarvests: [],
+        animals: [],
+        expenses: [],
+        sales: [],
+        incubatorBatches: []
+      };
+    },
+
+    // Tombstone deletion tracking to prevent ghost data resurrecting during cloud sync
+    getDeletedIds() {
+      try {
+        const raw = localStorage.getItem('fermegest_deleted_ids');
+        if (raw) return new Set(JSON.parse(raw));
+      } catch (e) {}
+      return new Set();
+    },
+
+    addDeletedId(id) {
+      if (!id) return;
+      try {
+        const set = this.getDeletedIds();
+        set.add(String(id));
+        let arr = Array.from(set);
+        if (arr.length > 500) arr = arr.slice(-300);
+        localStorage.setItem('fermegest_deleted_ids', JSON.stringify(arr));
+      } catch (e) {}
+    },
+
+    // Bidirectional smart merge: merges records by ID without losing locally created or cloud created items
+    mergeCollections(localList = [], cloudList = [], idKey = 'id') {
+      const merged = [];
+      const seenIds = new Set();
+      const deletedIds = this.getDeletedIds();
+
+      const getTs = (item) => {
+        return Number(item.updatedAt || item.timestamp || (item.date ? new Date(item.date).getTime() : 0)) || 0;
+      };
+
+      const localMap = new Map();
+      (localList || []).forEach(item => {
+        if (item && item[idKey]) {
+          const key = String(item[idKey]);
+          if (!deletedIds.has(key)) {
+            localMap.set(key, item);
+          }
+        }
+      });
+
+      (cloudList || []).forEach(cloudItem => {
+        if (!cloudItem || !cloudItem[idKey]) return;
+        const key = String(cloudItem[idKey]);
+        if (deletedIds.has(key)) return; // Do not revive deleted items
+
+        seenIds.add(key);
+        if (localMap.has(key)) {
+          const localItem = localMap.get(key);
+          const cloudTs = getTs(cloudItem);
+          const localTs = getTs(localItem);
+          if (cloudTs && localTs) {
+            merged.push(cloudTs >= localTs ? { ...localItem, ...cloudItem } : { ...cloudItem, ...localItem });
+          } else {
+            merged.push({ ...localItem, ...cloudItem });
+          }
+        } else {
+          // Exists on cloud, add to local
+          merged.push(cloudItem);
+        }
+      });
+
+      // Keep local items that are not yet on cloud
+      for (const [key, localItem] of localMap.entries()) {
+        if (!seenIds.has(key)) {
+          merged.push(localItem);
+        }
+      }
+
+      return merged;
+    },
 
     init() {
       if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
@@ -58,13 +151,13 @@
         // Auto-reconnect when device comes back online
         window.addEventListener('online', () => {
           if (this.currentUser) {
-            this.pullData(true);
+            this.syncNow(false);
           }
         });
 
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible' && this.currentUser) {
-            this.pullData(true);
+            this.syncNow(false);
           }
         });
 
@@ -77,18 +170,23 @@
       if (session && session.user) {
         this.currentUser = session.user;
         this.updateUI();
-        await this.pullData(false);
+        await this.syncNow(false);
         this.subscribeRealtime();
+        this.subscribeUserSync();
         this.subscribeCollaborativeRealtime();
       } else {
         this.currentUser = null;
         if (this.realtimeChannel && this.client) {
           try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
         }
+        if (this.userSyncChannel && this.client) {
+          try { this.client.removeChannel(this.userSyncChannel); } catch (e) {}
+        }
         if (this.collabChannel && this.client) {
           try { this.client.removeChannel(this.collabChannel); } catch (e) {}
         }
         this.realtimeChannel = null;
+        this.userSyncChannel = null;
         this.collabChannel = null;
         this.updateUI();
       }
@@ -254,7 +352,7 @@
       }
     },
 
-    // 5. Pull Cloud Data from 'user_farms'
+    // 5. Pull Cloud Data from 'user_farms' with Smart Merging
     async pullData(isSilent = false) {
       if (!this.client || !this.currentUser) return;
 
@@ -268,20 +366,111 @@
         if (error) throw error;
 
         if (data && data.data && Object.keys(data.data).length > 0) {
-          this.applyCloudData(data.data);
+          this.applyCloudData(data.data, true);
           this.lastSyncedAt = new Date();
           this.updateUI();
           if (!isSilent && window.app && app.showToast) {
             app.showToast('☁️ Données synchronisées avec votre compte !');
           }
         } else {
-          // New user farm: initialize the cloud row with current local data
+          // Initialize cloud row with current local data
           await this.pushData(false);
           this.lastSyncedAt = new Date();
           this.updateUI();
         }
       } catch (err) {
         console.warn('[SupabaseAuth] Pull error:', err);
+      }
+    },
+
+    // 5b. Smart Manual Sync: pull + merge + save + push + broadcast
+    async syncNow(showToast = true) {
+      if (!this.client || !this.currentUser) {
+        if (showToast && window.app && app.showToast) {
+          app.showToast('Veuillez vous connecter pour synchroniser vos appareils.');
+        }
+        return;
+      }
+
+      if (this.isSyncing) return;
+      this.isSyncing = true;
+      this.updateSyncBadge('syncing');
+
+      try {
+        // 1. Fetch latest data from user_farms
+        const { data, error } = await this.client
+          .from('user_farms')
+          .select('data, updated_at')
+          .eq('user_id', this.currentUser.id)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data && data.data && Object.keys(data.data).length > 0) {
+          // Smart merge cloud data with local data
+          this.applyCloudData(data.data, true);
+        }
+
+        // 2. Push unified merged data back to user_farms
+        const state = this.getAppState();
+        const farmCode = this.getFarmCode();
+        const farmRole = this.getFarmRole();
+        const ownerEmail = farmRole === 'owner'
+          ? (this.currentUser ? this.currentUser.email : '')
+          : this.getFarmOwnerEmail();
+
+        const payload = {
+          version: '2.5.0-pro',
+          farmCode: farmCode,
+          farmRole: farmRole,
+          ownerEmail: ownerEmail,
+          currency: state.currency || 'TND',
+          lang: state.lang || 'fr',
+          theme: state.theme || 'dark',
+          eggStock: Number(state.eggStock) || 0,
+          eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+          animals: Array.isArray(state.animals) ? state.animals : [],
+          expenses: Array.isArray(state.expenses) ? state.expenses : [],
+          sales: Array.isArray(state.sales) ? state.sales : [],
+          incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
+          deletedIds: Array.from(this.getDeletedIds()),
+          lastUpdated: Date.now()
+        };
+
+        const { error: upsertErr } = await this.client
+          .from('user_farms')
+          .upsert({
+            user_id: this.currentUser.id,
+            data: payload,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+
+        if (upsertErr) throw upsertErr;
+
+        this.lastSyncedAt = new Date();
+        this.updateSyncBadge('connected');
+        this.updateProfileModalUI();
+
+        // Broadcast to other sessions/devices
+        this.broadcastCurrentState();
+
+        if (showToast && window.app && app.showToast) {
+          const animalsCount = (state.animals || []).length;
+          const expensesCount = (state.expenses || []).length;
+          const lang = (window.appState && window.appState.lang) || 'fr';
+          const msg = lang === 'ar'
+            ? `✅ تمّت المزامنة بنجاح ! (${animalsCount} قطيع، ${expensesCount} مصاريف)`
+            : `✅ Synchronisation réussie ! (${animalsCount} lot(s), ${expensesCount} dépense(s))`;
+          app.showToast(msg);
+        }
+      } catch (err) {
+        console.error('[SupabaseAuth] Sync error:', err);
+        this.updateSyncBadge('error');
+        if (showToast && window.app && app.showToast) {
+          app.showToast('⚠️ Erreur de synchronisation Cloud. Vérifiez votre connexion.', 'danger');
+        }
+      } finally {
+        this.isSyncing = false;
       }
     },
 
@@ -297,18 +486,22 @@
         ? (this.currentUser ? this.currentUser.email : '')
         : this.getFarmOwnerEmail();
 
+      const state = this.getAppState();
       const payload = {
         version: '2.5.0-pro',
         farmCode: farmCode,
         farmRole: farmRole,
         ownerEmail: ownerEmail,
-        currency: window.appState ? window.appState.currency : 'TND',
-        lang: window.appState ? window.appState.lang : 'fr',
-        theme: window.appState ? window.appState.theme : 'dark',
-        animals: window.appState ? window.appState.animals : [],
-        expenses: window.appState ? window.appState.expenses : [],
-        sales: window.appState ? window.appState.sales : [],
-        incubatorBatches: window.appState ? window.appState.incubatorBatches : [],
+        currency: state.currency || 'TND',
+        lang: state.lang || 'fr',
+        theme: state.theme || 'dark',
+        eggStock: Number(state.eggStock) || 0,
+        eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+        animals: Array.isArray(state.animals) ? state.animals : [],
+        expenses: Array.isArray(state.expenses) ? state.expenses : [],
+        sales: Array.isArray(state.sales) ? state.sales : [],
+        incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
+        deletedIds: Array.from(this.getDeletedIds()),
         lastUpdated: Date.now()
       };
 
@@ -326,7 +519,7 @@
         this.lastSyncedAt = new Date();
         this.updateSyncBadge('connected');
 
-        // Real-time instant broadcast to partner device
+        // Real-time instant broadcast to all other open sessions/devices
         this.broadcastCurrentState();
 
         if (showToast && window.app && app.showToast) {
@@ -349,7 +542,7 @@
       }, 1000);
     },
 
-    // 7. Subscribe to Realtime changes across devices
+    // 7. Subscribe to Postgres Realtime changes across devices
     subscribeRealtime() {
       if (!this.client || !this.currentUser) return;
       if (this.realtimeChannel) {
@@ -369,7 +562,7 @@
             },
             (payload) => {
               if (payload.new && payload.new.data) {
-                this.applyCloudData(payload.new.data);
+                this.applyCloudData(payload.new.data, true);
                 this.lastSyncedAt = new Date();
                 this.updateUI();
                 if (window.app && app.showToast) {
@@ -384,40 +577,131 @@
       }
     },
 
+    // 7b. Dedicated Realtime Channel between devices of the SAME user account
+    subscribeUserSync() {
+      if (!this.client || !this.currentUser) return;
+      if (this.userSyncChannel) {
+        try { this.client.removeChannel(this.userSyncChannel); } catch (e) {}
+        this.userSyncChannel = null;
+      }
+
+      try {
+        const channelName = `user_device_sync_${this.currentUser.id}`;
+        this.userSyncChannel = this.client
+          .channel(channelName, {
+            config: { broadcast: { self: false } }
+          })
+          .on('broadcast', { event: 'device_state_update' }, (payload) => {
+            if (!payload || !payload.payload) return;
+            const data = payload.payload;
+            // Ignore echoes from this exact tab/session
+            if (data.senderSessionId === this.sessionId) return;
+
+            console.log('[UserSync] Realtime broadcast received from another device session:', data.senderSessionId);
+            if (data.farmData) {
+              this.applyCloudData(data.farmData, true);
+              this.lastSyncedAt = new Date();
+              this.updateUI();
+              if (window.app && app.showToast) {
+                app.showToast('⚡ Synchronisé en direct depuis votre autre appareil !');
+              }
+            }
+          })
+          .on('broadcast', { event: 'request_state' }, (payload) => {
+            if (!payload || !payload.payload) return;
+            if (payload.payload.senderSessionId === this.sessionId) return;
+            this.broadcastCurrentState();
+          })
+          .subscribe((status) => {
+            console.log(`[UserSync] Subscribed to ${channelName}:`, status);
+            if (status === 'SUBSCRIBED') {
+              try {
+                this.userSyncChannel.send({
+                  type: 'broadcast',
+                  event: 'request_state',
+                  payload: { senderSessionId: this.sessionId }
+                });
+              } catch (e) {}
+            }
+          });
+      } catch (e) {
+        console.warn('[UserSync] Subscribe error:', e);
+      }
+    },
+
     // 8. Apply incoming cloud data into local state & re-render
-    applyCloudData(cloudData) {
-      if (!cloudData || !window.appState) return;
+    applyCloudData(cloudData, doMerge = true) {
+      if (!cloudData) return;
+      const state = this.getAppState();
 
-      if (cloudData.currency) window.appState.currency = cloudData.currency;
-      if (Array.isArray(cloudData.animals)) {
-        window.appState.animals = cloudData.animals.filter(a => a.species !== 'bovin' && a.species !== 'ovin');
+      // Ingest deletedIds if provided by cloud
+      if (Array.isArray(cloudData.deletedIds)) {
+        cloudData.deletedIds.forEach(id => this.addDeletedId(id));
       }
-      if (Array.isArray(cloudData.expenses)) {
-        window.appState.expenses = cloudData.expenses;
-      }
-      if (Array.isArray(cloudData.sales)) {
-        window.appState.sales = cloudData.sales;
-      }
-      if (cloudData.incubatorBatches) window.appState.incubatorBatches = cloudData.incubatorBatches;
 
-      if (cloudData.farmCode && this.getFarmRole() === 'partner') {
+      if (cloudData.currency) state.currency = cloudData.currency;
+      if (cloudData.lang && !localStorage.getItem('fermegest_lang_manual')) {
+        state.lang = cloudData.lang;
+      }
+
+      // Egg stock handling
+      if (cloudData.eggStock !== undefined) {
+        const cloudEggs = Number(cloudData.eggStock) || 0;
+        const localEggs = Number(state.eggStock) || 0;
+        state.eggStock = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
+      }
+
+      if (doMerge) {
+        state.animals = this.mergeCollections(state.animals, cloudData.animals || []);
+        state.expenses = this.mergeCollections(state.expenses, cloudData.expenses || []);
+        state.sales = this.mergeCollections(state.sales, cloudData.sales || []);
+        state.incubatorBatches = this.mergeCollections(state.incubatorBatches, cloudData.incubatorBatches || []);
+        state.eggHarvests = this.mergeCollections(state.eggHarvests, cloudData.eggHarvests || []);
+      } else {
+        if (Array.isArray(cloudData.animals)) state.animals = cloudData.animals;
+        if (Array.isArray(cloudData.expenses)) state.expenses = cloudData.expenses;
+        if (Array.isArray(cloudData.sales)) state.sales = cloudData.sales;
+        if (Array.isArray(cloudData.incubatorBatches)) state.incubatorBatches = cloudData.incubatorBatches;
+        if (Array.isArray(cloudData.eggHarvests)) state.eggHarvests = cloudData.eggHarvests;
+      }
+
+      // Filter out any bovine or ovine residue
+      state.animals = (state.animals || []).filter(a => a.species !== 'bovin' && a.species !== 'ovin');
+
+      // Keep farm code in sync
+      if (cloudData.farmCode) {
         localStorage.setItem('fermegest_farm_code', cloudData.farmCode);
       }
       if (cloudData.ownerEmail) {
         localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
       }
 
+      // Sync window.appState
+      if (window.appState) {
+        window.appState.currency = state.currency;
+        window.appState.lang = state.lang;
+        window.appState.theme = state.theme;
+        window.appState.eggStock = state.eggStock;
+        window.appState.eggHarvests = state.eggHarvests;
+        window.appState.animals = state.animals;
+        window.appState.expenses = state.expenses;
+        window.appState.sales = state.sales;
+        window.appState.incubatorBatches = state.incubatorBatches;
+      }
+
       // Persist to local device storage as well (offline fallback)
       try {
         localStorage.setItem('fermegest_state', JSON.stringify({
           version: '2.5.0-pro',
-          currency: window.appState.currency,
-          lang: window.appState.lang,
-          theme: window.appState.theme,
-          animals: window.appState.animals,
-          expenses: window.appState.expenses,
-          sales: window.appState.sales,
-          incubatorBatches: window.appState.incubatorBatches
+          currency: state.currency,
+          lang: state.lang,
+          theme: state.theme,
+          eggStock: state.eggStock,
+          eggHarvests: state.eggHarvests,
+          animals: state.animals,
+          expenses: state.expenses,
+          sales: state.sales,
+          incubatorBatches: state.incubatorBatches
         }));
       } catch (e) {}
 
@@ -695,7 +979,7 @@
       }
     },
 
-    // Canal Realtime Collaboratif (Pièce partagée entre les deux comptes)
+    // Canal Realtime Collaboratif (Pièce partagée entre deux comptes associés)
     subscribeCollaborativeRealtime() {
       if (!this.client) return;
       const farmCode = this.getFarmCode();
@@ -714,11 +998,11 @@
             if (payload && payload.payload) {
               const data = payload.payload;
               const sender = data.senderEmail || 'Votre associé';
-              // Ignorer ses propres messages
-              if (this.currentUser && data.senderId === this.currentUser.id) return;
+              // Ignorer les messages provenant de cette exacte même session
+              if (data.senderSessionId && data.senderSessionId === this.sessionId) return;
 
               if (data.farmData) {
-                this.applyCloudData(data.farmData);
+                this.applyCloudData(data.farmData, true);
                 this.lastSyncedAt = new Date();
                 this.updateUI();
                 if (window.app && app.showToast) {
@@ -732,7 +1016,8 @@
             }
           })
           .on('broadcast', { event: 'request_state' }, (payload) => {
-            // L'associé vient de se connecter ou de rejoindre, on lui envoie les dernières données
+            if (payload && payload.payload && payload.payload.senderSessionId === this.sessionId) return;
+            // Un associé vient de se connecter, on lui envoie les dernières données
             this.broadcastCurrentState();
             if (payload && payload.payload && window.app && app.showToast) {
               const requester = payload.payload.requesterEmail || 'Un associé';
@@ -749,6 +1034,7 @@
                   type: 'broadcast',
                   event: 'request_state',
                   payload: {
+                    senderSessionId: this.sessionId,
                     requesterEmail: this.currentUser ? this.currentUser.email : 'Associé',
                     code: farmCode
                   }
@@ -762,33 +1048,54 @@
     },
 
     broadcastCurrentState() {
-      if (!this.collabChannel) return;
       const farmCode = this.getFarmCode();
+      const state = this.getAppState();
       const payload = {
         version: '2.5.0-pro',
         farmCode: farmCode,
         farmRole: this.getFarmRole(),
-        currency: window.appState ? window.appState.currency : 'TND',
-        lang: window.appState ? window.appState.lang : 'fr',
-        theme: window.appState ? window.appState.theme : 'dark',
-        animals: window.appState ? window.appState.animals : [],
-        expenses: window.appState ? window.appState.expenses : [],
-        sales: window.appState ? window.appState.sales : [],
-        incubatorBatches: window.appState ? window.appState.incubatorBatches : [],
+        ownerEmail: this.currentUser ? this.currentUser.email : '',
+        currency: state.currency || 'TND',
+        lang: state.lang || 'fr',
+        theme: state.theme || 'dark',
+        eggStock: Number(state.eggStock) || 0,
+        eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+        animals: Array.isArray(state.animals) ? state.animals : [],
+        expenses: Array.isArray(state.expenses) ? state.expenses : [],
+        sales: Array.isArray(state.sales) ? state.sales : [],
+        incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
+        deletedIds: Array.from(this.getDeletedIds()),
         lastUpdated: Date.now()
       };
 
-      try {
-        this.collabChannel.send({
-          type: 'broadcast',
-          event: 'farm_update',
-          payload: {
-            senderId: this.currentUser ? this.currentUser.id : null,
-            senderEmail: this.currentUser ? this.currentUser.email : 'Associé',
-            farmData: payload
-          }
-        });
-      } catch (e) {}
+      const broadcastMsg = {
+        senderSessionId: this.sessionId,
+        senderId: this.currentUser ? this.currentUser.id : null,
+        senderEmail: this.currentUser ? this.currentUser.email : 'Utilisateur',
+        farmData: payload
+      };
+
+      // 1. Broadcast sur le canal de compte utilisateur (synchronise instantanément iPhone et PC sur le même Gmail)
+      if (this.userSyncChannel) {
+        try {
+          this.userSyncChannel.send({
+            type: 'broadcast',
+            event: 'device_state_update',
+            payload: broadcastMsg
+          });
+        } catch (e) {}
+      }
+
+      // 2. Broadcast sur le canal collaboratif partagé (associés avec code ferme)
+      if (this.collabChannel) {
+        try {
+          this.collabChannel.send({
+            type: 'broadcast',
+            event: 'farm_update',
+            payload: broadcastMsg
+          });
+        } catch (e) {}
+      }
     },
 
     async pullSharedData(code) {
@@ -803,7 +1110,7 @@
 
         if (!error && data && data.length > 0 && data[0].data) {
           const cloudData = data[0].data;
-          this.applyCloudData(cloudData);
+          this.applyCloudData(cloudData, true);
           if (cloudData.ownerEmail) {
             localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
           }
