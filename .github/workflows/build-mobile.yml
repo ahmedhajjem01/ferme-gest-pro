@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-android:
     name: 🤖 Build Android APK
@@ -24,7 +27,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: 📦 Install dependencies
         run: npm install
@@ -40,12 +42,34 @@ jobs:
           cd android
           ./gradlew assembleDebug --stacktrace
 
+      - name: 📦 Prepare APK file
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk FermeGestPro.apk
+
       - name: 📤 Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FermeGestPro-Android-Debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+          name: FermeGestPro-Android-APK
+          path: FermeGestPro.apk
+          retention-days: 30
+
+      - name: 🏷️ Publish APK Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: android-app
+          name: FermeGest Pro Android APK (Latest)
+          body: |
+            ### 📱 FermeGest Pro - Application Mobile Android
+            
+            Téléchargez et installez l'application officielle sur votre smartphone Android :
+            
+            1. Cliquez sur **`FermeGestPro.apk`** ci-dessous pour lancer le téléchargement.
+            2. Ouvrez le fichier téléchargé sur votre téléphone.
+            3. Si Android vous demande d'autoriser l'installation depuis des sources inconnues, acceptez.
+            4. Profitez de FermeGest Pro avec toutes les fonctions natives (vibrations haptiques, alertes locales d'incubateur, stockage local & Cloud Supabase) !
+          files: |
+            FermeGestPro.apk
 
   build-ios:
     name: 🍎 Build iOS Project
@@ -59,7 +83,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: 📦 Install dependencies
         run: npm install
