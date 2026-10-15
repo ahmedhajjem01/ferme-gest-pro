@@ -1957,15 +1957,13 @@ const app = {
             <span style="font-size:0.67rem; color:var(--text-muted); display:block; margin-top:1px;">
               ${appState.lang === 'ar' ? `(إجمالي الدفعة: ${this.formatMoney(totalInvested)})` : (appState.lang === 'en' ? `(Total flock: ${this.formatMoney(totalInvested)})` : `(Total lot: ${this.formatMoney(totalInvested)})`)}
             </span>
-            ${Number(animal.costPerHead) > 0 ? `
-              <button type="button" class="btn-lot-free-pill" onclick="event.stopPropagation(); app.setLotFree('${animal.id}')" title="Rendre le prix d'achat gratuit (0 DT)">
-                🎁 Achat: 0 DT
-              </button>
-            ` : `
-              <span class="badge-free-lot">🎁 Achat: Gratuit</span>
-            `}
+            <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:2px;">
+              ${Number(animal.costPerHead) > 0 
+                ? `🏷️ Achat: ${this.formatMoney(animal.costPerHead)}` 
+                : (appState.lang === 'ar' ? '🎁 شراء: 0 د.ت (مجاني)' : '🎁 Achat: 0 DT (Gratuit)')}
+            </div>
             ${totalLotExpenses > 0 ? `
-              <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:2px; font-weight:600;">
+              <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:1px; font-weight:600;">
                 🌾 +${this.formatMoney(feedPerSubject)} aliment
               </div>
             ` : ''}
@@ -2046,6 +2044,8 @@ const app = {
     const nameInput = document.getElementById('editAnimalName');
     const breedInput = document.getElementById('editAnimalBreed');
     const qtyInput = document.getElementById('editAnimalQuantity');
+    const birthDateInput = document.getElementById('editAnimalBirthDate');
+    const stageInput = document.getElementById('editAnimalStage');
     const costInput = document.getElementById('editAnimalCostPerHead');
     const notesInput = document.getElementById('editAnimalNotes');
 
@@ -2053,6 +2053,8 @@ const app = {
     if (nameInput) nameInput.value = animal.name || '';
     if (breedInput) breedInput.value = animal.breed || '';
     if (qtyInput) qtyInput.value = animal.currentQuantity || animal.initialQuantity || 1;
+    if (birthDateInput) birthDateInput.value = animal.birthDate || this.getTodayStr();
+    if (stageInput) stageInput.value = animal.stage || 'Croissance';
     if (costInput) costInput.value = (Number(animal.costPerHead) || 0).toString();
     if (notesInput) notesInput.value = animal.notes || '';
 
@@ -2068,12 +2070,16 @@ const app = {
     const name = document.getElementById('editAnimalName').value.trim();
     const breed = document.getElementById('editAnimalBreed').value.trim() || '-';
     const quantity = parseInt(document.getElementById('editAnimalQuantity').value, 10);
+    const birthDate = document.getElementById('editAnimalBirthDate')?.value;
+    const stage = document.getElementById('editAnimalStage')?.value;
     const costVal = document.getElementById('editAnimalCostPerHead').value;
     const costPerHead = (costVal === '' || isNaN(parseFloat(costVal))) ? 0 : Math.max(0, parseFloat(costVal));
     const notes = document.getElementById('editAnimalNotes').value.trim();
 
     animal.name = name || animal.name;
     animal.breed = breed;
+    if (birthDate) animal.birthDate = birthDate;
+    if (stage) animal.stage = stage;
     if (!isNaN(quantity) && quantity > 0) {
       animal.currentQuantity = quantity;
     }

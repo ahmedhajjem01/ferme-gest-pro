@@ -1113,9 +1113,9 @@
 
   <!-- Modal: Modifier un Lot / Prix d'Achat unitaire -->
   <div id="modalEditAnimal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 440px;">
+    <div class="modal-card" style="max-width: 480px;">
       <div class="modal-header">
-        <h3 id="editAnimalModalTitle">✏️ Modifier le Lot d'Animaux</h3>
+        <h3 id="editAnimalModalTitle">✏️ <span data-i18n="modal_edit_lot_title">Modifier le Lot d'Animaux</span></h3>
         <button class="modal-close" onclick="app.closeModal('modalEditAnimal')">&times;</button>
       </div>
       <form id="formEditAnimal" onsubmit="app.handleSaveEditAnimal(event)">
@@ -1123,45 +1123,58 @@
           <input type="hidden" id="editAnimalId">
 
           <div class="form-group">
-            <label for="editAnimalName">Nom / N° du Lot</label>
+            <label for="editAnimalName"><span data-i18n="lbl_identifier">Nom / N° du Lot</span></label>
             <input type="text" id="editAnimalName" class="input-field" required>
           </div>
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="editAnimalBreed">Race / Variété</label>
+              <label for="editAnimalBreed"><span data-i18n="lbl_breed_variety">Race / Variété</span></label>
               <input type="text" id="editAnimalBreed" class="input-field">
             </div>
             <div class="form-group flex-1">
-              <label for="editAnimalQuantity">Effectif Actuel (Sujets vivants)</label>
+              <label for="editAnimalQuantity"><span data-i18n="card_current_count">Effectif Actuel (Vivants)</span></label>
               <input type="number" id="editAnimalQuantity" class="input-field" min="1" required>
+            </div>
+          </div>
+
+          <!-- Date d'Éclosion / Arrivée & Stade de Développement -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="editAnimalBirthDate"><span data-i18n="lbl_arrival_date">Date d'Éclosion / Arrivée</span></label>
+              <input type="date" id="editAnimalBirthDate" class="input-field" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="editAnimalStage"><span data-i18n="lbl_current_stage">Stade Actuel</span></label>
+              <select id="editAnimalStage" class="input-field">
+                <option value="Démarrage" data-i18n="opt_stage_start">Démarrage (0-14 jours)</option>
+                <option value="Croissance" data-i18n="opt_stage_growth">Croissance (15-35 jours / 1-6 mois)</option>
+                <option value="Ponte" data-i18n="opt_stage_ponte">Ponte</option>
+                <option value="Finition" data-i18n="opt_stage_finish">Finition / Engraissement</option>
+                <option value="Adulte" data-i18n="opt_stage_adulte">Adulte</option>
+              </select>
             </div>
           </div>
 
           <div class="form-group">
             <label for="editAnimalCostPerHead">
-              Prix d'Achat unitaire (<span class="currency-label">DT</span>)
+              <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small>
             </label>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-              <input type="number" id="editAnimalCostPerHead" class="input-field flex-1" step="0.05" min="0" value="0">
-              <button type="button" class="btn btn-emerald btn-sm" onclick="document.getElementById('editAnimalCostPerHead').value = '0'" style="white-space: nowrap; font-weight: 700; padding: 0.65rem 0.85rem;">
-                🎁 Gratuit (0 DT)
-              </button>
-            </div>
+            <input type="number" id="editAnimalCostPerHead" class="input-field" step="0.05" min="0" value="0" placeholder="0 si gratuit">
             <small class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-              Mettez 0 si les poulets sont gratuits, nés dans votre couveuse ou un don.
+              Indiquez 0 si les sujets sont nés à la ferme, issus de votre couveuse ou reçus gratuitement.
             </small>
           </div>
 
           <div class="form-group">
-            <label for="editAnimalNotes">Notes / Bâtiment d'élevage</label>
+            <label for="editAnimalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span></label>
             <textarea id="editAnimalNotes" class="input-field" rows="2"></textarea>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalEditAnimal')">Annuler</button>
-          <button type="submit" class="btn btn-primary" style="font-weight: 700;">Enregistrer les modifications</button>
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalEditAnimal')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-primary" style="font-weight: 700;" data-i18n="btn_save_edit">Enregistrer les modifications</button>
         </div>
       </form>
     </div>

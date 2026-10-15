@@ -262,6 +262,8 @@ const TRANSLATIONS = {
 
     // Modals
     modal_add_animal_title: "Nouveau Lot de Volailles / Cheptel",
+    modal_edit_lot_title: "Modifier le Lot d'Animaux",
+    btn_save_edit: "Enregistrer les modifications",
     lbl_species_type: "Espèce / Type de Volaille",
     opt_species_poulet: "Poulet de chair / Fermier (1 à 6 mois)",
     opt_species_pondeuse: "Poule Pondeuse (Ponte / Adulte)",
@@ -766,6 +768,8 @@ const TRANSLATIONS = {
 
     // Modals
     modal_add_animal_title: "دفعة دواجن جديدة / قطيع",
+    modal_edit_lot_title: "تعديل دفعة الطيور / القطيع",
+    btn_save_edit: "حفظ التعديلات",
     lbl_species_type: "الصنف / نوع الدواجن",
     opt_species_poulet: "دجاج لحم / بلدي (1 إلى 6 أشهر)",
     opt_species_pondeuse: "دجاج بياض (إنتاج / بالغ)",
@@ -1269,6 +1273,8 @@ const TRANSLATIONS = {
 
     // Modals
     modal_add_animal_title: "New Poultry Batch / Flock",
+    modal_edit_lot_title: "Edit Animal Batch / Flock",
+    btn_save_edit: "Save Changes",
     lbl_species_type: "Species / Poultry Type",
     opt_species_poulet: "Broiler / Farm Chicken (1 to 6 months)",
     opt_species_pondeuse: "Laying Hen (Laying / Adult)",
