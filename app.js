@@ -1954,6 +1954,9 @@ const app = {
           <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Cliquer pour modifier le lot ou le coût initial">
             <span class="lbl">${this.t('card_cost_head')} ✏️</span>
             <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
+            <span style="font-size:0.67rem; color:var(--text-muted); display:block; margin-top:1px;">
+              ${appState.lang === 'ar' ? `(إجمالي الدفعة: ${this.formatMoney(totalInvested)})` : (appState.lang === 'en' ? `(Total flock: ${this.formatMoney(totalInvested)})` : `(Total lot: ${this.formatMoney(totalInvested)})`)}
+            </span>
             ${Number(animal.costPerHead) > 0 ? `
               <button type="button" class="btn-lot-free-pill" onclick="event.stopPropagation(); app.setLotFree('${animal.id}')" title="Rendre le prix d'achat gratuit (0 DT)">
                 🎁 Achat: 0 DT
