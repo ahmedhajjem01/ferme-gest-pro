@@ -18,7 +18,7 @@
   
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="stylesheet" href="styles.css?v=3">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       window.addEventListener('load', function() {
@@ -87,11 +87,7 @@
           </svg>
         </button>
 
-        <!-- Cloud Sync Button -->
-        <button id="headerCloudSyncBtn" class="cloud-sync-btn" onclick="app.cloudSync.openModal()" title="Synchronisation Cloud Multi-Appareils">
-          <span class="cloud-dot offline" id="headerCloudDot"></span>
-          <span id="headerCloudText" data-i18n="nav_cloud_sync">☁️ Synchro Cloud</span>
-        </button>
+
 
         <!-- Quick Data Modal Trigger -->
         <button id="dataOptionsBtn" class="icon-btn" title="Options de données / Sauvegarde" aria-label="Paramètres données">
@@ -182,17 +178,7 @@
             </button>
           </div>
 
-          <!-- 5. Synchro Cloud Multi-Appareils -->
-          <div class="drawer-group">
-            <label class="drawer-label">
-              <span class="drawer-icon">☁️</span>
-              <span data-i18n="nav_cloud_sync">Synchro Cloud</span>
-            </label>
-            <button type="button" class="btn btn-outline btn-full drawer-btn" onclick="app.toggleMobileMenu(); app.cloudSync.openModal();">
-              <span class="cloud-dot offline" id="drawerCloudDot"></span>
-              <span id="drawerCloudText">Mode Local (Non connecté)</span>
-            </button>
-          </div>
+
 
           <!-- Footer info -->
           <div class="drawer-footer-info">
@@ -1363,104 +1349,7 @@
     </div>
   </div>
 
-  <!-- Modal: Synchronisation Cloud Multi-Appareils (Supabase) -->
-  <div id="modalCloudSync" class="modal-overlay hidden">
-    <div class="modal-card modal-card-lg">
-      <div class="modal-header">
-        <h3 data-i18n="cloud_sync_title">☁️ Synchronisation Cloud Multi-Appareils (Supabase)</h3>
-        <button class="modal-close" onclick="app.closeModal('modalCloudSync')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-desc" data-i18n="cloud_sync_desc">
-          Synchronisez votre élevage et vos finances en temps réel entre votre Téléphone (iPhone/Android) et votre Ordinateur !
-        </p>
 
-        <!-- Status Banner -->
-        <div id="cloudStatusBanner" class="cloud-status-banner is-offline">
-          <div class="cloud-banner-icon" id="cloudBannerIcon">🟠</div>
-          <div class="cloud-banner-info">
-            <div class="cloud-banner-title" id="cloudBannerTitle">Mode Local (Sauvegardé sur cet appareil)</div>
-            <div class="cloud-banner-sub" id="cloudBannerSub">Vos données sont stockées localement. Connectez Supabase pour synchroniser avec votre téléphone.</div>
-          </div>
-        </div>
-
-        <!-- Cloud Config Form -->
-        <form id="cloudSyncForm" onsubmit="event.preventDefault(); app.cloudSync.saveAndConnect();">
-          <div class="cloud-form-card">
-            <div class="form-group">
-              <label for="cloudSupabaseUrl" data-i18n="lbl_supabase_url">URL du Projet Supabase (Project URL)</label>
-              <input type="url" id="cloudSupabaseUrl" class="form-control" placeholder="https://xxxxxxxx.supabase.co" required>
-            </div>
-
-            <div class="form-group">
-              <label for="cloudSupabaseKey" data-i18n="lbl_supabase_key">Clé Publique Anon (Anon API Key)</label>
-              <input type="password" id="cloudSupabaseKey" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required>
-            </div>
-
-            <div class="form-group">
-              <label for="cloudFarmCode" data-i18n="lbl_farm_code">Code Secret de votre Ferme (Sync ID)</label>
-              <input type="text" id="cloudFarmCode" class="form-control" placeholder="ma-ferme-principale" value="ferme-principale" required>
-              <small class="form-helper" data-i18n="lbl_farm_code_helper">Entrez le même code sur votre téléphone et votre PC pour partager la même ferme !</small>
-            </div>
-
-            <label class="cloud-toggle-row">
-              <input type="checkbox" id="cloudAutoSync" checked>
-              <span data-i18n="lbl_auto_sync">Synchronisation automatique en temps réel à chaque modification</span>
-            </label>
-
-            <button type="submit" class="btn btn-primary btn-full" id="btnConnectCloud" data-i18n="btn_test_and_save_cloud">
-              🔗 Tester & Activer la Synchronisation
-            </button>
-          </div>
-        </form>
-
-        <!-- Actions Manual Push / Pull -->
-        <div class="cloud-actions-grid" id="cloudActionsRow">
-          <button type="button" class="btn btn-outline" onclick="app.cloudSync.pushToCloud(true)" data-i18n="btn_push_to_cloud">
-            ⬆️ Envoyer vers le Cloud
-          </button>
-          <button type="button" class="btn btn-outline" onclick="app.cloudSync.pullFromCloud(false)" data-i18n="btn_pull_from_cloud">
-            ⬇️ Récupérer du Cloud
-          </button>
-        </div>
-
-        <div style="text-align: center; margin-bottom: 1rem;">
-          <button type="button" class="btn btn-danger-outline btn-sm" onclick="app.cloudSync.disconnectCloud()" data-i18n="btn_disconnect_cloud">
-            Déconnecter du Cloud
-          </button>
-        </div>
-
-        <!-- 1-Minute Supabase SQL Guide Card -->
-        <div class="cloud-guide-card">
-          <div class="cloud-guide-header">
-            <div class="cloud-guide-title" data-i18n="cloud_sql_guide_title">⚡ Configuration Gratuite en 1 Minute (Supabase) :</div>
-          </div>
-          <ol class="cloud-guide-steps">
-            <li>Créez un compte gratuit sur <strong>supabase.com</strong> et créez un projet (nommez-le comme vous voulez).</li>
-            <li>Dans le menu de gauche, allez dans <strong>SQL Editor</strong>, collez le script ci-dessous et cliquez sur <strong>Run</strong>.</li>
-            <li>Allez dans <strong>Project Settings &gt; API</strong> et copiez votre <strong>Project URL</strong> et <strong>anon public key</strong> ci-dessus !</li>
-          </ol>
-          <pre class="cloud-sql-block" id="cloudSqlCode">create table if not exists farm_sync (
-  farm_id text primary key,
-  data jsonb not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-alter table farm_sync enable row level security;
-
-create policy "Public Farm Access"
-  on farm_sync
-  for all
-  using (true)
-  with check (true);</pre>
-          <button type="button" class="btn btn-secondary btn-full cloud-copy-sql-btn" onclick="app.cloudSync.copySqlScript()" data-i18n="cloud_sql_copy_btn">
-            📋 Copier le Script SQL de Création de Table
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </div>
 
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
