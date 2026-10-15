@@ -7,12 +7,14 @@
     "build": "node scripts/build-mobile.js",
     "serve": "node server.js",
     "sync": "npm run build && npx cap sync",
+    "sync:android": "npm run build && npx cap sync android",
+    "sync:ios": "npm run build && npx cap sync ios",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",
     "open:android": "npx cap open android",
     "open:ios": "npx cap open ios",
     "run:android": "npx cap run android",
-    "build:apk": "npm run sync && cd android && gradlew.bat assembleDebug && cd .."
+    "build:apk": "npm run sync:android && cd android && gradlew.bat assembleDebug && cd .."
   },
   "keywords": [
     "ferme",
