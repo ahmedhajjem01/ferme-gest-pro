@@ -855,8 +855,8 @@ const app = {
           animalNameInput.placeholder = `Par défaut : ${nextId}`;
         }
         const costInput = document.getElementById('animalCostPerHead');
-        if (costInput && (!costInput.value || costInput.value === '0.8' || costInput.value === '0.80')) {
-          costInput.value = '20';
+        if (costInput && (!costInput.value || costInput.value === '20')) {
+          costInput.value = '0';
         }
         const stageSelect = document.getElementById('animalStage');
         if (stageSelect && !stageSelect.value) {
@@ -1618,8 +1618,8 @@ const app = {
             <span class="lbl">${this.t('card_survival_rate')}</span>
             <span class="val text-cyan">${(100 - mortalityRate).toFixed(1)}% (${animal.mortality} ${lossesWord})</span>
           </div>
-          <div class="animal-stat-col">
-            <span class="lbl">${this.t('card_cost_head')}</span>
+          <div class="animal-stat-col" style="cursor: pointer;" onclick="app.editAnimalCost('${animal.id}')" title="Cliquer pour modifier le prix d'achat initial (ex: 0 si gratuit)">
+            <span class="lbl">${this.t('card_cost_head')} ✏️</span>
             <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
           </div>
         </div>
@@ -1651,6 +1651,9 @@ const app = {
           <button class="btn btn-sm btn-emerald flex-1" onclick="app.quickSellFromLot('${animal.id}')">
             ${this.t('btn_sell_lot')}
           </button>
+          <button class="btn btn-sm btn-outline" title="Modifier le coût ou informations du lot" onclick="app.editAnimalCost('${animal.id}')">
+            ✏️
+          </button>
           <button class="btn btn-sm btn-danger-outline" title="Supprimer le lot" onclick="app.deleteAnimal('${animal.id}')">
             🗑️
           </button>
@@ -1658,6 +1661,40 @@ const app = {
       `;
       grid.appendChild(card);
     });
+  },
+
+  // Modifier le coût unitaire initial d'un lot (permet de mettre 0 si gratuit)
+  editAnimalCost(animalId) {
+    const animal = (appState.animals || []).find(a => a.id === animalId);
+    if (!animal) return;
+
+    const currentCost = Number(animal.costPerHead) || 0;
+    const isAr = appState.lang === 'ar';
+    const msg = isAr
+      ? `تعديل سعر شراء الطائر الواحد لـ "${animal.name}" (${animal.breed}) :\n(أدخل 0 إذا كانت الطيور مجانية أو من الفقاسة أو هدية)`
+      : `Modifier le coût d'achat unitaire pour "${animal.name}" (${animal.breed}) :\n(Mettez 0 si les animaux sont gratuits, nés de votre couveuse ou un don)`;
+
+    const input = prompt(msg, currentCost.toString());
+    if (input === null) return;
+
+    const newCost = parseFloat(input.trim());
+    if (isNaN(newCost) || newCost < 0) {
+      alert(isAr ? 'يرجى إدخال مبلغ صحيح (0 للمجاني).' : 'Veuillez entrer un montant valide (0 pour gratuit).');
+      return;
+    }
+
+    animal.costPerHead = newCost;
+    this.saveState();
+    this.renderAll();
+
+    const toastMsg = newCost === 0
+      ? (isAr ? `تم تحديد "${animal.name}" كمجاني (0 د.ت)` : `Lot "${animal.name}" défini comme gratuit (0 DT)`)
+      : (isAr ? `تم تحديث سعر الشراء: ${this.formatMoney(newCost)}/رأس` : `Prix d'achat mis à jour : ${this.formatMoney(newCost)}/sujet`);
+    this.showToast(toastMsg);
+
+    if (window.appAuth && appAuth.pushData) {
+      appAuth.pushData();
+    }
   },
 
   // Calcule automatiquement le prochain identifiant (ex: 1, 2, 3...)
@@ -1685,7 +1722,12 @@ const app = {
     const nameInput = document.getElementById('animalName').value.trim();
     const quantity = parseInt(document.getElementById('animalQuantity').value, 10);
     const birthDate = document.getElementById('animalBirthDate').value;
-    const costPerHead = parseFloat(document.getElementById('animalCostPerHead').value) || 20;
+    
+    // Accepte explicitement 0 pour les animaux gratuits / éclos
+    const rawCost = document.getElementById('animalCostPerHead').value;
+    const parsedCost = parseFloat(rawCost);
+    const costPerHead = (rawCost === '' || isNaN(parsedCost)) ? 0 : Math.max(0, parsedCost);
+
     const stage = document.getElementById('animalStage').value || 'Adulte';
     const notes = document.getElementById('animalNotes').value.trim();
 
@@ -1721,7 +1763,7 @@ const app = {
     this.renderAll();
     this.showToast(this.t('toast_lot_saved', { name }));
     document.getElementById('formAddAnimal').reset();
-    document.getElementById('animalCostPerHead').value = '20';
+    document.getElementById('animalCostPerHead').value = '0';
   },
 
   // Toggle & gestion du menu mobile (3 lignes dans la barre haute)

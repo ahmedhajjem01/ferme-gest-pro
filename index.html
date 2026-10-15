@@ -1052,8 +1052,8 @@
               <input type="date" id="animalBirthDate" class="input-field" required>
             </div>
             <div class="form-group flex-1">
-              <label for="animalCostPerHead"><span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="20">
+              <label for="animalCostPerHead"><span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small></label>
+              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0" min="0" placeholder="0 (si gratuit / éclosion)">
             </div>
           </div>
 
