@@ -9,7 +9,7 @@ const appState = {
   lang: 'fr',
   theme: 'dark',
   currentTab: 'dashboard',
-  calendarDate: new Date(2026, 9, 1), // Octobre 2026
+  calendarDate: new Date(),
   
   animals: [],
   expenses: [],
@@ -386,6 +386,18 @@ const SAMPLE_DATA = {
 // Application Controller Object
 const app = {
   
+  getTodayDate() {
+    return new Date();
+  },
+
+  getTodayStr() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  },
+
   // Translation engine helper
   t(key, params = {}) {
     const lang = appState.lang || 'fr';
@@ -678,8 +690,8 @@ const app = {
       });
     }
 
-    // Default dates for modals to today (2026-10-12)
-    const todayStr = '2026-10-12';
+    // Default dates for modals to today
+    const todayStr = this.getTodayStr();
     ['animalBirthDate', 'expenseDate', 'saleDate', 'batchStartDate'].forEach(id => {
       const el = document.getElementById(id);
       if (el && !el.value) el.value = todayStr;
@@ -990,7 +1002,7 @@ const app = {
     }
 
     // Find closest batch to hatch
-    const now = new Date('2026-10-12');
+    const now = this.getTodayDate();
     let closest = activeBatches[0];
     let minDays = 999;
 
@@ -1017,7 +1029,7 @@ const app = {
     if (!container) return;
     container.innerHTML = '';
 
-    const now = new Date('2026-10-12');
+    const now = this.getTodayDate();
 
     // Vérifier les couvées arrivées à l'éclosion (21 jours +/- 2 jours)
     appState.incubatorBatches.forEach(b => {
@@ -2526,7 +2538,7 @@ const app = {
       return;
     }
 
-    const now = new Date('2026-10-12');
+    const now = this.getTodayDate();
 
     appState.incubatorBatches.forEach(batch => {
       const start = new Date(batch.startDate);
@@ -2923,8 +2935,8 @@ const app = {
       grid.appendChild(cell);
     }
 
-    // Today is 2026-10-12
-    const todayStr = '2026-10-12';
+    // Today's real dynamic date
+    const todayStr = this.getTodayStr();
 
     // Fill days of current month
     for (let day = 1; day <= totalDays; day++) {
@@ -3547,7 +3559,7 @@ const app = {
   // ==========================================
   calculateAgeInDays(birthDateStr) {
     if (!birthDateStr) return 0;
-    const now = new Date('2026-10-12');
+    const now = this.getTodayDate();
     const birth = new Date(birthDateStr);
     const diffTime = Math.max(0, now - birth);
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
