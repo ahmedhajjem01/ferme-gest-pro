@@ -1618,9 +1618,16 @@ const app = {
             <span class="lbl">${this.t('card_survival_rate')}</span>
             <span class="val text-cyan">${(100 - mortalityRate).toFixed(1)}% (${animal.mortality} ${lossesWord})</span>
           </div>
-          <div class="animal-stat-col" style="cursor: pointer;" onclick="app.editAnimalCost('${animal.id}')" title="Cliquer pour modifier le prix d'achat initial (ex: 0 si gratuit)">
+          <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Cliquer pour modifier le lot ou le coût initial">
             <span class="lbl">${this.t('card_cost_head')} ✏️</span>
             <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
+            ${Number(animal.costPerHead) > 0 ? `
+              <button type="button" class="btn-lot-free-pill" onclick="event.stopPropagation(); app.setLotFree('${animal.id}')" title="Rendre gratuit (0 DT)">
+                🎁 Mettre à 0 DT
+              </button>
+            ` : `
+              <span class="badge-free-lot">🎁 Gratuit (0 DT)</span>
+            `}
           </div>
         </div>
 
@@ -1651,7 +1658,7 @@ const app = {
           <button class="btn btn-sm btn-emerald flex-1" onclick="app.quickSellFromLot('${animal.id}')">
             ${this.t('btn_sell_lot')}
           </button>
-          <button class="btn btn-sm btn-outline" title="Modifier le coût ou informations du lot" onclick="app.editAnimalCost('${animal.id}')">
+          <button class="btn btn-sm btn-secondary" title="Modifier le lot ou le coût" onclick="app.openEditAnimalModal('${animal.id}')" style="display:inline-flex; align-items:center; gap:0.25rem;">
             ✏️
           </button>
           <button class="btn btn-sm btn-danger-outline" title="Supprimer le lot" onclick="app.deleteAnimal('${animal.id}')">
@@ -1663,34 +1670,75 @@ const app = {
     });
   },
 
-  // Modifier le coût unitaire initial d'un lot (permet de mettre 0 si gratuit)
-  editAnimalCost(animalId) {
+  // Rendre un lot immédiatement gratuit (0 DT) en 1 clic
+  setLotFree(animalId) {
     const animal = (appState.animals || []).find(a => a.id === animalId);
     if (!animal) return;
 
-    const currentCost = Number(animal.costPerHead) || 0;
-    const isAr = appState.lang === 'ar';
-    const msg = isAr
-      ? `تعديل سعر شراء الطائر الواحد لـ "${animal.name}" (${animal.breed}) :\n(أدخل 0 إذا كانت الطيور مجانية أو من الفقاسة أو هدية)`
-      : `Modifier le coût d'achat unitaire pour "${animal.name}" (${animal.breed}) :\n(Mettez 0 si les animaux sont gratuits, nés de votre couveuse ou un don)`;
-
-    const input = prompt(msg, currentCost.toString());
-    if (input === null) return;
-
-    const newCost = parseFloat(input.trim());
-    if (isNaN(newCost) || newCost < 0) {
-      alert(isAr ? 'يرجى إدخال مبلغ صحيح (0 للمجاني).' : 'Veuillez entrer un montant valide (0 pour gratuit).');
-      return;
-    }
-
-    animal.costPerHead = newCost;
+    animal.costPerHead = 0;
     this.saveState();
     this.renderAll();
 
-    const toastMsg = newCost === 0
-      ? (isAr ? `تم تحديد "${animal.name}" كمجاني (0 د.ت)` : `Lot "${animal.name}" défini comme gratuit (0 DT)`)
-      : (isAr ? `تم تحديث سعر الشراء: ${this.formatMoney(newCost)}/رأس` : `Prix d'achat mis à jour : ${this.formatMoney(newCost)}/sujet`);
-    this.showToast(toastMsg);
+    const isAr = appState.lang === 'ar';
+    const msg = isAr 
+      ? `تم تحديد "${animal.name}" كمجاني (0 د.ت)`
+      : `Lot "${animal.name}" défini comme gratuit (0 DT) !`;
+    this.showToast(msg);
+
+    if (window.appAuth && appAuth.pushData) {
+      appAuth.pushData();
+    }
+  },
+
+  // Ouvre le modal HTML d'édition du lot (100% compatible iPhone PWA sans window.prompt)
+  openEditAnimalModal(animalId) {
+    const animal = (appState.animals || []).find(a => a.id === animalId);
+    if (!animal) return;
+
+    const idInput = document.getElementById('editAnimalId');
+    const nameInput = document.getElementById('editAnimalName');
+    const breedInput = document.getElementById('editAnimalBreed');
+    const qtyInput = document.getElementById('editAnimalQuantity');
+    const costInput = document.getElementById('editAnimalCostPerHead');
+    const notesInput = document.getElementById('editAnimalNotes');
+
+    if (idInput) idInput.value = animal.id;
+    if (nameInput) nameInput.value = animal.name || '';
+    if (breedInput) breedInput.value = animal.breed || '';
+    if (qtyInput) qtyInput.value = animal.currentQuantity || animal.initialQuantity || 1;
+    if (costInput) costInput.value = (Number(animal.costPerHead) || 0).toString();
+    if (notesInput) notesInput.value = animal.notes || '';
+
+    this.openModal('modalEditAnimal');
+  },
+
+  handleSaveEditAnimal(e) {
+    e.preventDefault();
+    const id = document.getElementById('editAnimalId').value;
+    const animal = (appState.animals || []).find(a => a.id === id);
+    if (!animal) return;
+
+    const name = document.getElementById('editAnimalName').value.trim();
+    const breed = document.getElementById('editAnimalBreed').value.trim() || '-';
+    const quantity = parseInt(document.getElementById('editAnimalQuantity').value, 10);
+    const costVal = document.getElementById('editAnimalCostPerHead').value;
+    const costPerHead = (costVal === '' || isNaN(parseFloat(costVal))) ? 0 : Math.max(0, parseFloat(costVal));
+    const notes = document.getElementById('editAnimalNotes').value.trim();
+
+    animal.name = name || animal.name;
+    animal.breed = breed;
+    if (!isNaN(quantity) && quantity > 0) {
+      animal.currentQuantity = quantity;
+    }
+    animal.costPerHead = costPerHead;
+    animal.notes = notes;
+
+    this.saveState();
+    this.closeModal('modalEditAnimal');
+    this.renderAll();
+
+    const isAr = appState.lang === 'ar';
+    this.showToast(isAr ? `تم تحديث "${animal.name}" بنجاح` : `Lot "${animal.name}" mis à jour avec succès !`);
 
     if (window.appAuth && appAuth.pushData) {
       appAuth.pushData();
