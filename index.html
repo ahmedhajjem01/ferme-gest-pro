@@ -460,8 +460,11 @@
                   <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;" data-i18n="farm_feed_cost_total">Coût aliment / jour</span>
                   <strong style="font-size: 1.15rem; color: var(--accent-rose);" id="farmFeedTodayCost">0,000 DT / j</strong>
                 </div>
-                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right;">
-                  <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;" data-i18n="farm_feed_stock_reserve">Stock sacs en réserve</span>
+                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right; cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalAdjustFeedStock')" title="Cliquer pour déclarer ou ajuster le stock réel">
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem;">
+                    <span style="font-size: 0.7rem; color: var(--text-secondary);" data-i18n="farm_feed_stock_reserve">Stock sacs en réserve</span>
+                    <span style="font-size: 0.72rem; color: var(--accent-amber);">✏️</span>
+                  </div>
                   <strong style="font-size: 1.15rem; color: var(--accent-emerald);" id="farmFeedStockKg">0.0 kg en stock</strong>
                 </div>
               </div>
@@ -1646,6 +1649,68 @@
           </div>
           <button type="submit" class="btn btn-primary btn-full" style="font-weight: 700; padding: 0.75rem;">
             <span data-i18n="consume_eggs_btn_submit">Déduire du Stock</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Déclarer / Ajuster le Stock d'Aliment (Réserve) -->
+  <div id="modalAdjustFeedStock" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 id="adjustFeedStockModalTitle">📦 Déclarer le Stock d'Aliment en Réserve</h3>
+        <button class="modal-close" onclick="app.closeModal('modalAdjustFeedStock')">&times;</button>
+      </div>
+      <form id="formAdjustFeedStock" onsubmit="app.handleSaveFeedStockAdjustment(event)">
+        <div class="modal-body">
+          <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem;">
+            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;">
+              🌾 <strong>Inventaire réel :</strong> Indiquez le total de sacs fermés + kilos entamés actuellement présents dans votre magasin. Vos poulets déduiront automatiquement leurs rations journalières de ce stock.
+            </p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="feedStockCurrentKg" class="form-label" style="font-weight: 700;">
+              Stock total présent dans votre dépôt (kg)
+            </label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="number" id="feedStockCurrentKg" class="input-field" step="0.5" min="0" placeholder="Ex: 65 (1 sac 45kg + 20kg)" required style="font-size: 1.25rem; font-weight: 800; color: var(--accent-amber);" oninput="app.calcFeedStockValuation()">
+              <span style="font-weight: 800; font-size: 1.1rem; color: var(--text-secondary);">kg</span>
+            </div>
+            <small class="text-muted" style="display: block; margin-top: 0.3rem; font-size: 0.76rem;">
+              Exemple dans votre cas : 1 sac de 45 kg + 20 kg restants = <strong>65 kg</strong>
+            </small>
+          </div>
+
+          <div class="form-row" style="margin-bottom: 1rem;">
+            <div class="form-group flex-1">
+              <label for="feedStockUnitPriceKg" class="form-label">
+                Prix au kg (<span class="currency-label">DT</span>/kg)
+              </label>
+              <input type="number" id="feedStockUnitPriceKg" class="input-field" step="0.01" min="0" value="1.00" oninput="app.calcFeedStockValuation()">
+              <small class="text-muted" style="font-size: 0.72rem;">(ex: 45 DT / 45 kg = 1.00 DT/kg)</small>
+            </div>
+            <div class="form-group flex-1">
+              <label for="feedStockTotalValue" class="form-label">
+                Valeur estimée (<span class="currency-label">DT</span>)
+              </label>
+              <input type="number" id="feedStockTotalValue" class="input-field bold" readonly value="65.00">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.25rem; background: var(--bg-card); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.85rem; font-weight: 600;">
+              <input type="checkbox" id="feedStockRecordExpense" style="width: 18px; height: 18px;">
+              <span>Enregistrer également comme nouvelle dépense d'achat</span>
+            </label>
+            <small class="text-muted" style="display: block; margin-top: 0.3rem; font-size: 0.74rem;">
+              (Cochez cette case si vous venez d'acheter ce sac et ne l'avez pas encore saisi dans la liste des dépenses)
+            </small>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;">
+            Valider le Stock en Réserve
           </button>
         </div>
       </form>

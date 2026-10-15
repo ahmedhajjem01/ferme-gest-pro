@@ -429,6 +429,9 @@
           theme: state.theme || 'dark',
           eggStock: Number(state.eggStock) || 0,
           eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+          feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
+          feedStockDate: state.feedStockDate || null,
+          feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
           animals: Array.isArray(state.animals) ? state.animals : [],
           expenses: Array.isArray(state.expenses) ? state.expenses : [],
           sales: Array.isArray(state.sales) ? state.sales : [],
@@ -644,11 +647,16 @@
         state.lang = cloudData.lang;
       }
 
-      // Egg stock handling
+      // Egg & feed stock handling
       if (cloudData.eggStock !== undefined) {
         const cloudEggs = Number(cloudData.eggStock) || 0;
         const localEggs = Number(state.eggStock) || 0;
         state.eggStock = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
+      }
+      if (cloudData.feedStockKg !== undefined) {
+        state.feedStockKg = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
+        state.feedStockDate = cloudData.feedStockDate || null;
+        state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
       }
 
       if (doMerge) {
@@ -683,6 +691,9 @@
         window.appState.theme = state.theme;
         window.appState.eggStock = state.eggStock;
         window.appState.eggHarvests = state.eggHarvests;
+        window.appState.feedStockKg = state.feedStockKg;
+        window.appState.feedStockDate = state.feedStockDate;
+        window.appState.feedStockCostPerKg = state.feedStockCostPerKg;
         window.appState.animals = state.animals;
         window.appState.expenses = state.expenses;
         window.appState.sales = state.sales;
@@ -698,6 +709,9 @@
           theme: state.theme,
           eggStock: state.eggStock,
           eggHarvests: state.eggHarvests,
+          feedStockKg: state.feedStockKg,
+          feedStockDate: state.feedStockDate,
+          feedStockCostPerKg: state.feedStockCostPerKg,
           animals: state.animals,
           expenses: state.expenses,
           sales: state.sales,

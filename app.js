@@ -12,6 +12,9 @@ const appState = {
   calendarDate: new Date(),
   eggStock: 0,
   eggHarvests: [],
+  feedStockKg: null,
+  feedStockDate: null,
+  feedStockCostPerKg: 1.0,
   
   animals: [],
   expenses: [],
@@ -546,6 +549,9 @@ const app = {
         theme: appState.theme,
         eggStock: Number(appState.eggStock) || 0,
         eggHarvests: appState.eggHarvests || [],
+        feedStockKg: appState.feedStockKg !== undefined ? appState.feedStockKg : null,
+        feedStockDate: appState.feedStockDate || null,
+        feedStockCostPerKg: appState.feedStockCostPerKg || 1.0,
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
@@ -571,6 +577,9 @@ const app = {
         appState.theme = parsed.theme || 'dark';
         appState.eggStock = Number(parsed.eggStock) || 0;
         appState.eggHarvests = Array.isArray(parsed.eggHarvests) ? parsed.eggHarvests : [];
+        appState.feedStockKg = parsed.feedStockKg !== undefined ? parsed.feedStockKg : null;
+        appState.feedStockDate = parsed.feedStockDate || null;
+        appState.feedStockCostPerKg = parsed.feedStockCostPerKg ? Number(parsed.feedStockCostPerKg) : 1.0;
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
@@ -873,6 +882,17 @@ const app = {
         if (stageSelect && !stageSelect.value) {
           stageSelect.value = 'Adulte';
         }
+      }
+
+      if (modalId === 'modalAdjustFeedStock') {
+        const kgInput = document.getElementById('feedStockCurrentKg');
+        const priceInput = document.getElementById('feedStockUnitPriceKg');
+        const currentKg = this.getAvailableFeedStockKg();
+        if (kgInput) kgInput.value = currentKg > 0 ? currentKg.toFixed(1) : '65';
+        if (priceInput) priceInput.value = (appState.feedStockCostPerKg || 1.00).toFixed(2);
+        this.calcFeedStockValuation();
+        const expCheck = document.getElementById('feedStockRecordExpense');
+        if (expCheck) expCheck.checked = false;
       }
     }
   },
@@ -1756,6 +1776,83 @@ const app = {
     return 1.480;
   },
 
+  getAvailableFeedStockKg() {
+    const feedPriceKg = this.getAverageFeedPricePerKg();
+
+    // 1. Si l'éleveur a déclaré manuellement son inventaire physique (ex: 65 kg)
+    if (appState.feedStockKg !== null && appState.feedStockKg !== undefined) {
+      const baseStock = Number(appState.feedStockKg) || 0;
+      if (!appState.feedStockDate) return baseStock;
+      
+      const daysSince = Math.max(0, this.calculateAgeInDays(appState.feedStockDate));
+      if (daysSince === 0) return baseStock;
+
+      let dailyGrams = 0;
+      (appState.animals || []).forEach(a => {
+        const qty = Number(a.currentQuantity) || 0;
+        if (qty <= 0) return;
+        const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
+        const feedData = this.getAgronomicFeedData(a.species, aAge, a.stage, a.breed);
+        dailyGrams += qty * feedData.avgGrams;
+      });
+      const dailyKg = dailyGrams / 1000;
+      return Math.max(0, baseStock - (daysSince * dailyKg));
+    }
+
+    // 2. Sinon, calcul automatique (Total acheté - Total mangé)
+    const totalPurchasedFeedCost = (appState.expenses || [])
+      .filter(e => e.category === 'nourriture')
+      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+    const totalConsumedFeedCost = (appState.animals || []).reduce((sum, a) => {
+      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
+      const aStartAge = Number(a.arrivalAgeDays) || 0;
+      const cKg = this.calculateCumulativeFeedKg(a.species, aAge, a.stage, a.breed, aStartAge);
+      return sum + ((Number(a.currentQuantity) || 0) * cKg * feedPriceKg);
+    }, 0);
+
+    const feedStockRemaining = Math.max(0, totalPurchasedFeedCost - totalConsumedFeedCost);
+    return feedPriceKg > 0 ? (feedStockRemaining / feedPriceKg) : 0;
+  },
+
+  calcFeedStockValuation() {
+    const kg = parseFloat(document.getElementById('feedStockCurrentKg')?.value) || 0;
+    const priceKg = parseFloat(document.getElementById('feedStockUnitPriceKg')?.value) || 0;
+    const valEl = document.getElementById('feedStockTotalValue');
+    if (valEl) valEl.value = (kg * priceKg).toFixed(2);
+  },
+
+  handleSaveFeedStockAdjustment(e) {
+    e.preventDefault();
+    const kg = parseFloat(document.getElementById('feedStockCurrentKg').value) || 0;
+    const priceKg = parseFloat(document.getElementById('feedStockUnitPriceKg').value) || 1.0;
+    const recordExpense = document.getElementById('feedStockRecordExpense')?.checked;
+
+    appState.feedStockKg = Math.max(0, kg);
+    appState.feedStockDate = this.getTodayStr();
+    appState.feedStockCostPerKg = priceKg;
+
+    if (recordExpense && kg > 0 && priceKg > 0) {
+      const totalCost = kg * priceKg;
+      const newExp = {
+        id: 'exp-' + Date.now().toString(36),
+        date: this.getTodayStr(),
+        category: 'nourriture',
+        title: `Achat aliment / Stock réserve (${kg} kg)`,
+        quantity: kg,
+        unitPrice: priceKg,
+        total: totalCost,
+        linkedLotId: 'general'
+      };
+      appState.expenses.unshift(newExp);
+    }
+
+    this.saveState();
+    this.closeModal('modalAdjustFeedStock');
+    this.renderAll();
+    this.showToast(`✅ Stock d'aliment mis à jour : ${kg.toFixed(1)} kg en réserve (~${this.formatMoney(kg * priceKg)})`);
+  },
+
   renderFarmFeedSummary() {
     const card = document.getElementById('farmFeedSummaryCard');
     if (!card) return;
@@ -1808,31 +1905,39 @@ const app = {
       `;
     });
 
-    // Calcul du stock d'aliment restant en réserve à partir des dépenses déclarées
+    // Calcul du stock d'aliment restant en réserve
     const totalPurchasedFeedCost = (appState.expenses || [])
       .filter(e => e.category === 'nourriture')
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-    const totalConsumedFeedCost = (appState.animals || []).reduce((sum, a) => {
-      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
-      const aStartAge = Number(a.arrivalAgeDays) || 0;
-      const cKg = this.calculateCumulativeFeedKg(a.species, aAge, a.stage, a.breed, aStartAge);
-      return sum + ((Number(a.currentQuantity) || 0) * cKg * feedPriceKg);
-    }, 0);
+    const feedStockRemainingKg = this.getAvailableFeedStockKg();
+    const unitFeedVal = appState.feedStockCostPerKg || feedPriceKg;
+    const feedStockRemaining = feedStockRemainingKg * unitFeedVal;
 
-    const feedStockRemaining = Math.max(0, totalPurchasedFeedCost - totalConsumedFeedCost);
-    const feedStockRemainingKg = feedPriceKg > 0 ? (feedStockRemaining / feedPriceKg) : 0;
-
-    if (totalPurchasedFeedCost > 0) {
-      const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ متبقية من أصل ${this.formatMoney(totalPurchasedFeedCost)} تم شراؤها)`;
-      const stockBadgeFr = `📦 Réserve d'aliment en stock magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg restants sur ${this.formatMoney(totalPurchasedFeedCost)} achetés)`;
-      const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg remaining out of ${this.formatMoney(totalPurchasedFeedCost)} purchased)`;
+    if (feedStockRemainingKg > 0 || totalPurchasedFeedCost > 0) {
+      const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ في المستودع)`;
+      const stockBadgeFr = `📦 Réserve d'aliment en stock magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg disponibles en réserve)`;
+      const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg available in reserve)`;
       const stockLabel = appState.lang === 'ar' ? stockBadgeAr : (appState.lang === 'en' ? stockBadgeEn : stockBadgeFr);
 
       lotsHtml += `
-        <div style="grid-column: 1 / -1; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; color: var(--accent-emerald); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem;">
-          <span>${stockLabel}</span>
-          <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">(Non imputé aux poussins tant que non consommé)</span>
+        <div style="grid-column: 1 / -1; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; color: var(--accent-emerald); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+            <span>${stockLabel}</span>
+            <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">(Non imputé aux poussins tant que non consommé)</span>
+          </div>
+          <button class="btn btn-sm btn-emerald" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
+            ✏️ Déclarer / Ajuster Stock
+          </button>
+        </div>
+      `;
+    } else {
+      lotsHtml += `
+        <div style="grid-column: 1 / -1; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <span>📦 <strong>Stock d'aliment :</strong> Aucun sac déclaré en réserve.</span>
+          <button class="btn btn-sm btn-primary" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
+            ➕ Déclarer Stock de Réserve (ex: 65 kg)
+          </button>
         </div>
       `;
     }
@@ -1843,7 +1948,7 @@ const app = {
     if (todayKgEl) todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} kg / j`;
     if (todayCostEl) todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)} / j`;
     if (stockKgEl) {
-      stockKgEl.textContent = totalPurchasedFeedCost > 0
+      stockKgEl.textContent = feedStockRemainingKg > 0
         ? `${feedStockRemainingKg.toFixed(1)} kg (${this.formatMoney(feedStockRemaining)})`
         : '0.0 kg en stock';
     }
