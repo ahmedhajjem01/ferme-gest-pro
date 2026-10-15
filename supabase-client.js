@@ -456,7 +456,7 @@
           const role = this.getFarmRole();
           const roleText = role === 'partner' ? '🤝 Associé' : '👑 Propriétaire';
           drawerAuthSection.innerHTML = `
-            <div class="drawer-user-card" onclick="if(window.app && app.toggleMobileMenu) app.toggleMobileMenu(); appAuth.openProfileModal();">
+            <div class="drawer-user-card" onclick="if(window.app && app.closeMobileMenu) app.closeMobileMenu(); appAuth.openProfileModal();">
               <div class="user-avatar">${initial}</div>
               <div class="user-details">
                 <span class="user-email-text">${email}</span>
@@ -466,7 +466,7 @@
           `;
         } else {
           drawerAuthSection.innerHTML = `
-            <button type="button" class="btn btn-primary btn-full drawer-btn" onclick="app.toggleMobileMenu(); appAuth.openModal();">
+            <button type="button" class="btn btn-primary btn-full drawer-btn" onclick="if(window.app && app.closeMobileMenu) app.closeMobileMenu(); appAuth.openModal();">
               <span>👤</span>
               <span>Se Connecter / Synchroniser</span>
             </button>

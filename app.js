@@ -672,7 +672,7 @@ const app = {
     // Mobile Hamburger Menu Button
     const mobileMenuBtn = document.getElementById('mobileHeaderMenuBtn');
     if (mobileMenuBtn) {
-      mobileMenuBtn.addEventListener('click', () => this.toggleMobileMenu());
+      mobileMenuBtn.onclick = (e) => this.toggleMobileMenu(e);
     }
 
     // Data options modal
@@ -1547,16 +1547,39 @@ const app = {
   },
 
   // Toggle & gestion du menu mobile (3 lignes dans la barre haute)
-  toggleMobileMenu() {
+  toggleMobileMenu(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
     const drawer = document.getElementById('mobileMenuDrawer');
     if (!drawer) return;
-    const isHidden = drawer.classList.contains('hidden');
-    if (isHidden) {
-      drawer.classList.remove('hidden');
-      this.updateMobileMenuControls();
-    } else {
-      drawer.classList.add('hidden');
+
+    // Protection anti-rebond (anti-bounce debounce 250ms)
+    const now = Date.now();
+    if (this._lastMenuToggle && now - this._lastMenuToggle < 250) {
+      return;
     }
+    this._lastMenuToggle = now;
+
+    const isHidden = drawer.classList.contains('hidden') || drawer.style.display === 'none';
+    if (isHidden) {
+      this.openMobileMenu();
+    } else {
+      this.closeMobileMenu();
+    }
+  },
+
+  openMobileMenu() {
+    const drawer = document.getElementById('mobileMenuDrawer');
+    if (!drawer) return;
+    drawer.classList.remove('hidden');
+    drawer.style.display = 'flex';
+    this.updateMobileMenuControls();
+  },
+
+  closeMobileMenu() {
+    const drawer = document.getElementById('mobileMenuDrawer');
+    if (!drawer) return;
+    drawer.classList.add('hidden');
+    drawer.style.display = 'none';
   },
 
   updateMobileMenuControls() {

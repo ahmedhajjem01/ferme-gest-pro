@@ -229,14 +229,19 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: var(--transition);
   padding: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  z-index: 60;
+  flex-shrink: 0;
 }
 .mobile-hamburger-btn:hover,
 .mobile-hamburger-btn:active {
@@ -245,8 +250,9 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   color: var(--primary);
 }
 .mobile-hamburger-btn svg {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
 }
 
 @media (max-width: 991px) {
@@ -254,7 +260,7 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
     display: none !important;
   }
   .mobile-hamburger-btn {
-    display: flex;
+    display: inline-flex !important;
   }
 }
 
@@ -265,15 +271,22 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 999;
+  z-index: 10000;
   display: flex;
   justify-content: flex-end;
   transition: opacity 0.25s ease, visibility 0.25s ease;
 }
+.mobile-drawer-overlay:not(.hidden) {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
 .mobile-drawer-overlay.hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  display: none !important;
 }
 .mobile-drawer-backdrop {
   position: absolute;
