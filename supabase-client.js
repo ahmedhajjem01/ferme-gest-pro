@@ -39,7 +39,8 @@
         expenses: [],
         sales: [],
         incubatorBatches: [],
-        feedDistributions: []
+        feedDistributions: [],
+        feedTypes: []
       };
     },
 
@@ -437,6 +438,7 @@
           customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
           sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
           feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
+          feedTypes: Array.isArray(state.feedTypes) ? state.feedTypes : [],
           animals: Array.isArray(state.animals) ? state.animals : [],
           expenses: Array.isArray(state.expenses) ? state.expenses : [],
           sales: Array.isArray(state.sales) ? state.sales : [],
@@ -512,6 +514,7 @@
         customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
         sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
         feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
+        feedTypes: Array.isArray(state.feedTypes) ? state.feedTypes : [],
         animals: Array.isArray(state.animals) ? state.animals : [],
         expenses: Array.isArray(state.expenses) ? state.expenses : [],
         sales: Array.isArray(state.sales) ? state.sales : [],
@@ -678,6 +681,9 @@
       if (cloudData.feedDistributions !== undefined) {
         state.feedDistributions = Array.isArray(cloudData.feedDistributions) ? cloudData.feedDistributions : [];
       }
+      if (cloudData.feedTypes !== undefined) {
+        state.feedTypes = Array.isArray(cloudData.feedTypes) ? cloudData.feedTypes : [];
+      }
 
       if (doMerge) {
         state.animals = this.mergeCollections(state.animals, cloudData.animals || []);
@@ -686,6 +692,7 @@
         state.incubatorBatches = this.mergeCollections(state.incubatorBatches, cloudData.incubatorBatches || []);
         state.eggHarvests = this.mergeCollections(state.eggHarvests, cloudData.eggHarvests || []);
         state.feedDistributions = this.mergeCollections(state.feedDistributions, cloudData.feedDistributions || []);
+        state.feedTypes = this.mergeCollections(state.feedTypes, cloudData.feedTypes || []);
       } else {
         if (Array.isArray(cloudData.animals)) state.animals = cloudData.animals;
         if (Array.isArray(cloudData.expenses)) state.expenses = cloudData.expenses;
@@ -693,6 +700,7 @@
         if (Array.isArray(cloudData.incubatorBatches)) state.incubatorBatches = cloudData.incubatorBatches;
         if (Array.isArray(cloudData.eggHarvests)) state.eggHarvests = cloudData.eggHarvests;
         if (Array.isArray(cloudData.feedDistributions)) state.feedDistributions = cloudData.feedDistributions;
+        if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
       }
 
       // Filter out any bovine or ovine residue
@@ -720,6 +728,7 @@
         window.appState.customDailyFeedKg = state.customDailyFeedKg;
         window.appState.sicamCansCount = state.sicamCansCount;
         window.appState.feedDistributions = state.feedDistributions;
+        window.appState.feedTypes = state.feedTypes;
         window.appState.animals = state.animals;
         window.appState.expenses = state.expenses;
         window.appState.sales = state.sales;
@@ -742,6 +751,7 @@
           customDailyFeedKg: state.customDailyFeedKg,
           sicamCansCount: state.sicamCansCount,
           feedDistributions: state.feedDistributions,
+          feedTypes: state.feedTypes,
           animals: state.animals,
           expenses: state.expenses,
           sales: state.sales,
@@ -1111,6 +1121,7 @@
         customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
         sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
         feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
+        feedTypes: Array.isArray(state.feedTypes) ? state.feedTypes : [],
         animals: Array.isArray(state.animals) ? state.animals : [],
         expenses: Array.isArray(state.expenses) ? state.expenses : [],
         sales: Array.isArray(state.sales) ? state.sales : [],

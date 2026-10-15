@@ -19,6 +19,10 @@ const appState = {
   customDailyFeedKg: 2.0,
   sicamCansCount: 3,
   feedDistributions: [],
+  feedTypes: [
+    { id: 'feed-bouchon', name: 'بوشون (Bouchon / Granulés)', stockKg: 40.0, pricePerKg: 1.50 },
+    { id: 'feed-orge', name: 'شعير (Orge / Blé)', stockKg: 25.0, pricePerKg: 1.10 }
+  ],
   
   animals: [],
   expenses: [],
@@ -560,6 +564,7 @@ const app = {
         customDailyFeedKg: appState.customDailyFeedKg !== undefined ? appState.customDailyFeedKg : 2.0,
         sicamCansCount: appState.sicamCansCount !== undefined ? appState.sicamCansCount : 3,
         feedDistributions: Array.isArray(appState.feedDistributions) ? appState.feedDistributions : [],
+        feedTypes: Array.isArray(appState.feedTypes) ? appState.feedTypes : [],
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
@@ -592,6 +597,15 @@ const app = {
         appState.customDailyFeedKg = parsed.customDailyFeedKg !== undefined ? Number(parsed.customDailyFeedKg) : 2.0;
         appState.sicamCansCount = parsed.sicamCansCount !== undefined ? Number(parsed.sicamCansCount) : 3;
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
+        if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
+          const legacyStock = (parsed.feedStockKg !== null && parsed.feedStockKg !== undefined) ? Number(parsed.feedStockKg) : 65.0;
+          appState.feedTypes = [
+            { id: 'feed-bouchon', name: 'بوشون (Bouchon / Granulés)', stockKg: legacyStock > 0 ? parseFloat((legacyStock * 0.6).toFixed(1)) : 40.0, pricePerKg: 1.50 },
+            { id: 'feed-orge', name: 'شعير (Orge / Blé)', stockKg: legacyStock > 0 ? parseFloat((legacyStock * 0.4).toFixed(1)) : 25.0, pricePerKg: 1.10 }
+          ];
+        } else {
+          appState.feedTypes = parsed.feedTypes;
+        }
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
@@ -897,14 +911,7 @@ const app = {
       }
 
       if (modalId === 'modalAdjustFeedStock') {
-        const kgInput = document.getElementById('feedStockCurrentKg');
-        const priceInput = document.getElementById('feedStockUnitPriceKg');
-        const currentKg = this.getAvailableFeedStockKg();
-        if (kgInput) kgInput.value = currentKg > 0 ? currentKg.toFixed(1) : '65';
-        if (priceInput) priceInput.value = (appState.feedStockCostPerKg || 1.00).toFixed(2);
-        this.calcFeedStockValuation();
-        const expCheck = document.getElementById('feedStockRecordExpense');
-        if (expCheck) expCheck.checked = false;
+        this.renderFeedStockAdjustModal();
       }
 
       if (modalId === 'modalDailyFeedRation') {
@@ -922,10 +929,8 @@ const app = {
 
       if (modalId === 'modalFeedDistribution') {
         const dateInput = document.getElementById('distribDate');
-        const kgInput = document.getElementById('distribKgInput');
         if (dateInput) dateInput.value = this.getTodayStr();
-        if (kgInput) kgInput.value = (appState.customDailyFeedKg || 2.0).toFixed(1);
-        this.calcDistribSicamHint();
+        this.renderFeedDistributionModal();
       }
     }
   },
@@ -1825,6 +1830,20 @@ const app = {
       return totalCost / totalKg;
     }
 
+    if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
+      let totalKg = 0;
+      let totalVal = 0;
+      appState.feedTypes.forEach(ft => {
+        const k = Number(ft.stockKg) || 0;
+        const p = Number(ft.pricePerKg) || 1.0;
+        totalKg += k;
+        totalVal += k * p;
+      });
+      if (totalKg > 0) return totalVal / totalKg;
+      const sumPrices = appState.feedTypes.reduce((s, ft) => s + (Number(ft.pricePerKg) || 1.0), 0);
+      return sumPrices / appState.feedTypes.length;
+    }
+
     const cur = appState.currency || 'TND';
     if (cur === 'EUR') return 0.50;
     if (cur === 'USD') return 0.55;
@@ -1836,6 +1855,10 @@ const app = {
   },
 
   getAvailableFeedStockKg() {
+    if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
+      return appState.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+    }
+
     const feedPriceKg = this.getAverageFeedPricePerKg();
 
     // 1. Si l'éleveur a déclaré manuellement son inventaire physique (ex: 65 kg)
@@ -1881,24 +1904,323 @@ const app = {
     if (valEl) valEl.value = (kg * priceKg).toFixed(2);
   },
 
+  renderFeedDistributionModal() {
+    const container = document.getElementById('feedDistribItemsContainer');
+    if (!container) return;
+
+    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+      appState.feedTypes = [
+        { id: 'feed-bouchon', name: 'بوشون (Bouchon / Granulés)', stockKg: 40.0, pricePerKg: 1.50 },
+        { id: 'feed-orge', name: 'شعير (Orge / Blé)', stockKg: 25.0, pricePerKg: 1.10 }
+      ];
+    }
+
+    let html = '';
+    appState.feedTypes.forEach((ft, idx) => {
+      // Default to 1.0 kg for first 2 types (bouchon and orge)
+      const defaultKg = (idx === 0 || idx === 1) ? '1.0' : '0.0';
+      const defaultCans = (idx === 0 || idx === 1) ? '1.5' : '0';
+      const stockKg = Number(ft.stockKg) || 0;
+
+      html += `
+        <div class="feed-distrib-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+            <div style="font-weight: 800; font-size: 0.95rem; color: var(--text-main);">
+              🌾 ${ft.name}
+            </div>
+            <span class="badge-pill" style="font-size: 0.72rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
+              En stock : <strong>${stockKg.toFixed(1)} kg</strong>
+            </span>
+          </div>
+
+          <!-- Raccourcis Boîtes Sicam rapides pour cet aliment -->
+          <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.3rem; margin-bottom: 0.45rem;">
+            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 0)">
+              0
+            </button>
+            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 0.5)">
+              🥫 0.5 bte<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.3kg</span>
+            </button>
+            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.0)">
+              🥫 1 bte<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.7kg</span>
+            </button>
+            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.5)">
+              🥫 1.5 bte<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.0kg</span>
+            </button>
+            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 2.0)">
+              🥫 2 btes<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.3kg</span>
+            </button>
+          </div>
+
+          <!-- Saisie en kg et affichage équivalent Sicam -->
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="0.05" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${ft.pricePerKg || 1}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-amber); max-width: 120px;" oninput="app.recalcDistribTotal()">
+            <span style="font-weight: 700; color: var(--text-secondary); font-size: 0.95rem;">kg</span>
+            <span id="distribHint_${ft.id}" style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto;">
+              ~${defaultCans} boîte(s) Sicam
+            </span>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    this.recalcDistribTotal();
+  },
+
+  setFeedTypeDistribSicam(feedId, cans) {
+    const cansNum = Number(cans) || 0;
+    const kg = (cansNum * 0.667).toFixed(2);
+    const input = document.getElementById(`distribKg_${feedId}`);
+    if (input) {
+      input.value = kg;
+    }
+    const hint = document.getElementById(`distribHint_${feedId}`);
+    if (hint) {
+      hint.textContent = cansNum > 0 ? `~${cansNum} boîte(s) Sicam` : '0 boîte';
+    }
+    this.recalcDistribTotal();
+  },
+
+  applyDistribPreset(presetName) {
+    (appState.feedTypes || []).forEach((ft, idx) => {
+      const isBouchon = ft.id.includes('bouchon') || ft.name.includes('بوشون') || idx === 0;
+      const isOrge = ft.id.includes('orge') || ft.name.includes('شعير') || idx === 1;
+
+      if (presetName === 'morning') {
+        if (isBouchon) this.setFeedTypeDistribSicam(ft.id, 1.0);
+        else if (isOrge) this.setFeedTypeDistribSicam(ft.id, 0.5);
+        else this.setFeedTypeDistribSicam(ft.id, 0);
+      } else if (presetName === 'afternoon') {
+        if (isBouchon) this.setFeedTypeDistribSicam(ft.id, 0.5);
+        else if (isOrge) this.setFeedTypeDistribSicam(ft.id, 1.0);
+        else this.setFeedTypeDistribSicam(ft.id, 0);
+      } else if (presetName === 'all_day') {
+        if (isBouchon) this.setFeedTypeDistribSicam(ft.id, 1.5);
+        else if (isOrge) this.setFeedTypeDistribSicam(ft.id, 1.5);
+        else this.setFeedTypeDistribSicam(ft.id, 0);
+      }
+    });
+    this.recalcDistribTotal();
+  },
+
+  recalcDistribTotal() {
+    let totalKg = 0;
+    let totalCost = 0;
+
+    (appState.feedTypes || []).forEach(ft => {
+      const input = document.getElementById(`distribKg_${ft.id}`);
+      const kg = parseFloat(input?.value) || 0;
+      const cans = (kg / 0.667).toFixed(1);
+      const hint = document.getElementById(`distribHint_${ft.id}`);
+      if (hint) {
+        hint.textContent = kg > 0 ? `~${cans} boîte(s) Sicam` : '0 boîte';
+      }
+      totalKg += kg;
+      totalCost += kg * (Number(ft.pricePerKg) || 1.0);
+    });
+
+    const totalCans = (totalKg / 0.667).toFixed(1);
+    const totalKgEl = document.getElementById('distribTotalKg');
+    const totalCansEl = document.getElementById('distribTotalCans');
+    const totalCostEl = document.getElementById('distribTotalCost');
+
+    if (totalKgEl) totalKgEl.textContent = `${totalKg.toFixed(2)} kg`;
+    if (totalCansEl) totalCansEl.textContent = `${totalCans} boîte(s)`;
+    if (totalCostEl) totalCostEl.textContent = this.formatMoney(totalCost);
+  },
+
+  handleSaveFeedDistribution(e) {
+    e.preventDefault();
+    const date = document.getElementById('distribDate')?.value || this.getTodayStr();
+
+    let totalKg = 0;
+    let totalCost = 0;
+    const items = [];
+
+    (appState.feedTypes || []).forEach(ft => {
+      const input = document.getElementById(`distribKg_${ft.id}`);
+      const kg = parseFloat(input?.value) || 0;
+      if (kg > 0) {
+        const cans = parseFloat((kg / 0.667).toFixed(1));
+        const cost = kg * (Number(ft.pricePerKg) || 1.0);
+        totalKg += kg;
+        totalCost += cost;
+
+        items.push({
+          feedTypeId: ft.id,
+          name: ft.name,
+          kg: parseFloat(kg.toFixed(2)),
+          cans: cans,
+          cost: parseFloat(cost.toFixed(3))
+        });
+
+        // Déduire du stock de cet aliment spécifique
+        ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) - kg);
+      }
+    });
+
+    if (totalKg <= 0) {
+      this.showToast('Veuillez indiquer au moins une quantité distribuée.', 'warning');
+      return;
+    }
+
+    const distrib = {
+      id: 'distrib-' + Date.now().toString(36),
+      date,
+      totalKg: parseFloat(totalKg.toFixed(2)),
+      totalCost: parseFloat(totalCost.toFixed(3)),
+      cans: parseFloat((totalKg / 0.667).toFixed(1)),
+      items
+    };
+
+    if (!Array.isArray(appState.feedDistributions)) {
+      appState.feedDistributions = [];
+    }
+    appState.feedDistributions.unshift(distrib);
+
+    // Mettre à jour le stock global en kg
+    appState.feedStockKg = (appState.feedTypes || []).reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+    appState.feedStockDate = date;
+
+    // Mettre à jour la moyenne mobile de consommation journalière
+    const recent = appState.feedDistributions.slice(0, 14);
+    if (recent.length > 0) {
+      const avgKg = recent.reduce((sum, d) => sum + (Number(d.totalKg || d.kg) || 0), 0) / recent.length;
+      appState.customDailyFeedKg = parseFloat(avgKg.toFixed(2));
+      appState.sicamCansCount = parseFloat((avgKg / 0.667).toFixed(1));
+    }
+
+    this.saveState();
+    this.closeModal('modalFeedDistribution');
+    this.renderAll();
+
+    const details = items.map(it => `${it.kg}kg ${it.name.split(' ')[0]}`).join(' + ');
+    this.showToast(`🌾 Distribution enregistrée : ${details} (Total ${totalKg.toFixed(1)} kg) !`);
+  },
+
+  renderFeedStockAdjustModal() {
+    const container = document.getElementById('feedStockTypesContainer');
+    if (!container) return;
+
+    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+      appState.feedTypes = [
+        { id: 'feed-bouchon', name: 'بوشون (Bouchon / Granulés)', stockKg: 40.0, pricePerKg: 1.50 },
+        { id: 'feed-orge', name: 'شعير (Orge / Blé)', stockKg: 25.0, pricePerKg: 1.10 }
+      ];
+    }
+
+    let html = '';
+    appState.feedTypes.forEach(ft => {
+      const stockKg = Number(ft.stockKg) || 0;
+      const priceKg = Number(ft.pricePerKg) || 1.0;
+      const subtotal = stockKg * priceKg;
+
+      html += `
+        <div class="feed-stock-row" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+            <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${ft.name}</strong>
+            ${appState.feedTypes.length > 1 ? `
+              <button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-rose); padding: 0.15rem 0.45rem; font-size: 0.7rem;" onclick="app.deleteFeedType('${ft.id}')">
+                🗑️ Supprimer
+              </button>
+            ` : ''}
+          </div>
+          <div class="form-row" style="margin-bottom: 0; gap: 0.5rem;">
+            <div class="form-group flex-1" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.72rem; font-weight: 700;">Stock en réserve (kg)</label>
+              <input type="number" id="stockKg_${ft.id}" class="input-field" step="0.5" min="0" value="${stockKg.toFixed(1)}" style="font-weight: 800; font-size: 1.1rem; color: var(--accent-amber);" oninput="app.recalcStockAdjustValuation()">
+            </div>
+            <div class="form-group flex-1" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.72rem; font-weight: 700;">Prix au kg (DT/kg)</label>
+              <input type="number" id="priceKg_${ft.id}" class="input-field" step="0.01" min="0" value="${priceKg.toFixed(2)}" style="font-weight: 700; font-size: 1.05rem;" oninput="app.recalcStockAdjustValuation()">
+            </div>
+          </div>
+          <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.35rem; text-align: right;">
+            Valeur du stock : <strong style="color: var(--accent-emerald);" id="subtotalVal_${ft.id}">${this.formatMoney(subtotal)}</strong>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    this.recalcStockAdjustValuation();
+  },
+
+  recalcStockAdjustValuation() {
+    let totalKg = 0;
+    let totalVal = 0;
+
+    (appState.feedTypes || []).forEach(ft => {
+      const kg = parseFloat(document.getElementById(`stockKg_${ft.id}`)?.value) || 0;
+      const price = parseFloat(document.getElementById(`priceKg_${ft.id}`)?.value) || 0;
+      const subtotal = kg * price;
+      totalKg += kg;
+      totalVal += subtotal;
+
+      const subEl = document.getElementById(`subtotalVal_${ft.id}`);
+      if (subEl) subEl.textContent = this.formatMoney(subtotal);
+    });
+
+    const totalKgEl = document.getElementById('stockAdjustTotalKgDisplay');
+    const totalValEl = document.getElementById('stockAdjustTotalValDisplay');
+    if (totalKgEl) totalKgEl.textContent = `${totalKg.toFixed(1)} kg`;
+    if (totalValEl) totalValEl.textContent = this.formatMoney(totalVal);
+  },
+
   handleSaveFeedStockAdjustment(e) {
     e.preventDefault();
-    const kg = parseFloat(document.getElementById('feedStockCurrentKg').value) || 0;
-    const priceKg = parseFloat(document.getElementById('feedStockUnitPriceKg').value) || 1.0;
-    const recordExpense = document.getElementById('feedStockRecordExpense')?.checked;
 
-    appState.feedStockKg = Math.max(0, kg);
+    let totalKg = 0;
+    let totalVal = 0;
+
+    (appState.feedTypes || []).forEach(ft => {
+      const kg = parseFloat(document.getElementById(`stockKg_${ft.id}`)?.value) || 0;
+      const price = parseFloat(document.getElementById(`priceKg_${ft.id}`)?.value) || 1.0;
+      ft.stockKg = Math.max(0, kg);
+      ft.pricePerKg = Math.max(0, price);
+      totalKg += ft.stockKg;
+      totalVal += ft.stockKg * ft.pricePerKg;
+    });
+
+    appState.feedStockKg = totalKg;
     appState.feedStockDate = this.getTodayStr();
-    appState.feedStockCostPerKg = priceKg;
+    appState.feedStockCostPerKg = totalKg > 0 ? (totalVal / totalKg) : 1.48;
 
-    if (recordExpense && kg > 0 && priceKg > 0) {
-      const totalCost = kg * priceKg;
+    this.saveState();
+    this.closeModal('modalAdjustFeedStock');
+    this.renderAll();
+    this.showToast(`✅ Stocks magasins mis à jour : ${totalKg.toFixed(1)} kg au total (~${this.formatMoney(totalVal)})`);
+  },
+
+  handleSaveNewFeedType(e) {
+    e.preventDefault();
+    const name = document.getElementById('newFeedTypeName')?.value.trim();
+    if (!name) return;
+    const stockKg = parseFloat(document.getElementById('newFeedTypeStockKg')?.value) || 0;
+    const priceKg = parseFloat(document.getElementById('newFeedTypePriceKg')?.value) || 1.0;
+    const recordExpense = document.getElementById('newFeedTypeRecordExpense')?.checked;
+
+    const newType = {
+      id: 'feed-' + Date.now().toString(36),
+      name: name,
+      stockKg: Math.max(0, stockKg),
+      pricePerKg: Math.max(0, priceKg)
+    };
+
+    if (!Array.isArray(appState.feedTypes)) {
+      appState.feedTypes = [];
+    }
+    appState.feedTypes.push(newType);
+
+    if (recordExpense && stockKg > 0 && priceKg > 0) {
+      const totalCost = stockKg * priceKg;
       const newExp = {
         id: 'exp-' + Date.now().toString(36),
         date: this.getTodayStr(),
         category: 'nourriture',
-        title: `Achat aliment / Stock réserve (${kg} kg)`,
-        quantity: kg,
+        title: `Achat aliment : ${name} (${stockKg} kg)`,
+        quantity: stockKg,
         unitPrice: priceKg,
         total: totalCost,
         linkedLotId: 'general'
@@ -1906,10 +2228,33 @@ const app = {
       appState.expenses.unshift(newExp);
     }
 
+    appState.feedStockKg = appState.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+    appState.feedStockDate = this.getTodayStr();
+
     this.saveState();
-    this.closeModal('modalAdjustFeedStock');
+    this.closeModal('modalAddFeedType');
+
+    // Rafraîchir les modals et l'interface
+    this.renderFeedDistributionModal();
+    this.renderFeedStockAdjustModal();
     this.renderAll();
-    this.showToast(`✅ Stock d'aliment mis à jour : ${kg.toFixed(1)} kg en réserve (~${this.formatMoney(kg * priceKg)})`);
+
+    this.showToast(`✅ Nouvel aliment "${name}" ajouté avec succès (${stockKg} kg en stock) !`);
+  },
+
+  deleteFeedType(id) {
+    const ft = (appState.feedTypes || []).find(f => f.id === id);
+    if (!ft) return;
+    if (!confirm(`Voulez-vous vraiment supprimer l'aliment "${ft.name}" ?`)) return;
+
+    appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id);
+    appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+
+    this.saveState();
+    this.renderFeedStockAdjustModal();
+    this.renderFeedDistributionModal();
+    this.renderAll();
+    this.showToast(`Aliment "${ft.name}" supprimé.`);
   },
 
   calcSicamToKg() {
@@ -1922,61 +2267,6 @@ const app = {
     const kg = parseFloat(document.getElementById('feedCustomKgInput')?.value) || 0;
     const cansEl = document.getElementById('feedSicamCansInput');
     if (cansEl) cansEl.value = (kg / 0.667).toFixed(1);
-  },
-
-  setQuickDistribSicam(cans) {
-    const cansNum = Number(cans) || 1;
-    const kg = (cansNum * 0.667).toFixed(1);
-    const kgInput = document.getElementById('distribKgInput');
-    if (kgInput) kgInput.value = kg;
-    this.calcDistribSicamHint();
-  },
-
-  calcDistribSicamHint() {
-    const kg = parseFloat(document.getElementById('distribKgInput')?.value) || 0;
-    const hint = document.getElementById('distribSicamEquivHint');
-    if (hint) {
-      const cans = (kg / 0.667).toFixed(1);
-      hint.textContent = `Équivalent à ~${cans} boîte(s) Sicam (800g)`;
-    }
-  },
-
-  handleSaveFeedDistribution(e) {
-    e.preventDefault();
-    const date = document.getElementById('distribDate')?.value || this.getTodayStr();
-    const kg = parseFloat(document.getElementById('distribKgInput')?.value) || 2.0;
-    const cans = (kg / 0.667).toFixed(1);
-
-    const distrib = {
-      id: 'distrib-' + Date.now().toString(36),
-      date,
-      kg,
-      cans
-    };
-
-    if (!Array.isArray(appState.feedDistributions)) {
-      appState.feedDistributions = [];
-    }
-    appState.feedDistributions.unshift(distrib);
-
-    // Déduire du stock physique disponible si défini
-    if (appState.feedStockKg !== null && appState.feedStockKg !== undefined) {
-      appState.feedStockKg = Math.max(0, appState.feedStockKg - kg);
-      appState.feedStockDate = date;
-    }
-
-    // Mettre à jour la moyenne mobile de consommation journalière
-    const recent = appState.feedDistributions.slice(0, 14);
-    if (recent.length > 0) {
-      const avgKg = recent.reduce((sum, d) => sum + (Number(d.kg) || 0), 0) / recent.length;
-      appState.customDailyFeedKg = parseFloat(avgKg.toFixed(2));
-      appState.sicamCansCount = parseFloat((avgKg / 0.667).toFixed(1));
-    }
-
-    this.saveState();
-    this.closeModal('modalFeedDistribution');
-    this.renderAll();
-    this.showToast(`🌾 Distribution enregistrée : ${kg.toFixed(1)} kg (~${cans} boîtes Sicam). Stock restant : ${(this.getAvailableFeedStockKg()).toFixed(1)} kg`);
   },
 
   toggleFeedRationModeUI() {
@@ -2096,9 +2386,12 @@ const app = {
     const feedStockRemaining = feedStockRemainingKg * unitFeedVal;
 
     if (feedStockRemainingKg > 0 || totalPurchasedFeedCost > 0) {
-      const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ في المستودع)`;
-      const stockBadgeFr = `📦 Réserve d'aliment en stock magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg disponibles en réserve)`;
-      const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg available in reserve)`;
+      const typesBreakdown = (appState.feedTypes || [])
+        .map(ft => `${ft.name.split(' ')[0]}: ${(ft.stockKg || 0).toFixed(1)}kg`)
+        .join(' &bull; ');
+      const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;
+      const stockBadgeFr = `📦 Réserve d'aliment en magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;
+      const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;
       const stockLabel = appState.lang === 'ar' ? stockBadgeAr : (appState.lang === 'en' ? stockBadgeEn : stockBadgeFr);
 
       lotsHtml += `
