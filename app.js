@@ -1763,10 +1763,12 @@ const app = {
     const breakdownEl = document.getElementById('farmFeedLotsBreakdown');
     const todayKgEl = document.getElementById('farmFeedTodayKg');
     const todayCostEl = document.getElementById('farmFeedTodayCost');
+    const stockKgEl = document.getElementById('farmFeedStockKg');
 
     if (!appState.animals || appState.animals.length === 0) {
       if (todayKgEl) todayKgEl.textContent = '0.00 kg / j';
       if (todayCostEl) todayCostEl.textContent = this.formatMoney(0) + ' / j';
+      if (stockKgEl) stockKgEl.textContent = '0.0 kg';
       if (breakdownEl) breakdownEl.innerHTML = `<div class="text-muted" style="grid-column: 1/-1; text-align: center; padding: 0.5rem;">${appState.lang === 'ar' ? 'لا توجد دفعات طيور مسجلة حالياً.' : 'Aucun lot d\'animaux enregistré.'}</div>`;
       return;
     }
@@ -1840,6 +1842,11 @@ const app = {
 
     if (todayKgEl) todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} kg / j`;
     if (todayCostEl) todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)} / j`;
+    if (stockKgEl) {
+      stockKgEl.textContent = totalPurchasedFeedCost > 0
+        ? `${feedStockRemainingKg.toFixed(1)} kg (${this.formatMoney(feedStockRemaining)})`
+        : '0.0 kg en stock';
+    }
     if (breakdownEl) breakdownEl.innerHTML = lotsHtml;
   },
 
@@ -2498,6 +2505,9 @@ const app = {
   handleExpenseCatChange() {
     const cat = document.getElementById('expenseCategory').value;
     const title = document.getElementById('expenseTitle');
+    const feedNotice = document.getElementById('expenseFeedNotice');
+    if (feedNotice) feedNotice.style.display = (cat === 'nourriture') ? 'block' : 'none';
+
     if (cat === 'electricite' && title) title.placeholder = this.t('opt_exp_elec');
     else if (cat === 'eau' && title) title.placeholder = this.t('opt_exp_water');
     else if (cat === 'salaire' && title) title.placeholder = this.t('opt_exp_sal');

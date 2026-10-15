@@ -460,6 +460,10 @@
                   <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;" data-i18n="farm_feed_cost_total">Coût aliment / jour</span>
                   <strong style="font-size: 1.15rem; color: var(--accent-rose);" id="farmFeedTodayCost">0,000 DT / j</strong>
                 </div>
+                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right;">
+                  <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;" data-i18n="farm_feed_stock_reserve">Stock sacs en réserve</span>
+                  <strong style="font-size: 1.15rem; color: var(--accent-emerald);" id="farmFeedStockKg">0.0 kg en stock</strong>
+                </div>
               </div>
             </div>
             <div id="farmFeedLotsBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.6rem; font-size: 0.82rem;">
@@ -1222,6 +1226,11 @@
           <div class="form-group">
             <label for="expenseTitle" data-i18n="lbl_expense_title">Description / Intitulé de la Dépense</label>
             <input type="text" id="expenseTitle" class="input-field" placeholder="Ex: 5 sacs d'aliment Démarrage, Vaccin Gumboro..." required>
+          </div>
+
+          <!-- Feed Warehouse Stock Notice Banner -->
+          <div id="expenseFeedNotice" style="display: block; background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 0.6rem 0.8rem; margin-bottom: 0.9rem; font-size: 0.78rem; color: var(--text-main);">
+            📦 <strong>Règle du Stock & Aliments :</strong> Tout achat d'aliment ou de sacs est enregistré en <strong>réserve de stock</strong>. Le prix d'un sac fermé ne sera <strong>JAMAIS</strong> imputé d'un coup sur vos poussins : leur coût de revient n'augmente que jour après jour à mesure qu'ils grandissent et consomment réellement leurs rations !
           </div>
 
           <div class="form-row">
