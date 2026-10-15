@@ -1,8 +1,6 @@
 {
   "outputDirectory": ".",
   "buildCommand": null,
-  "cleanUrls": true,
-  "trailingSlash": false,
   "headers": [
     {
       "source": "/sw.js",
@@ -10,13 +8,6 @@
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
         { "key": "Content-Type", "value": "application/javascript" },
         { "key": "Service-Worker-Allowed", "value": "/" }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
       ]
     }
   ]
