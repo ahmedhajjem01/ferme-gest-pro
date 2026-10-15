@@ -10,6 +10,8 @@ const appState = {
   theme: 'dark',
   currentTab: 'dashboard',
   calendarDate: new Date(),
+  eggStock: 0,
+  eggHarvests: [],
   
   animals: [],
   expenses: [],
@@ -539,6 +541,8 @@ const app = {
         currency: appState.currency,
         lang: appState.lang || 'fr',
         theme: appState.theme,
+        eggStock: Number(appState.eggStock) || 0,
+        eggHarvests: appState.eggHarvests || [],
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
@@ -562,6 +566,8 @@ const app = {
         appState.currency = parsed.currency || 'TND';
         appState.lang = parsed.lang || 'fr';
         appState.theme = parsed.theme || 'dark';
+        appState.eggStock = Number(parsed.eggStock) || 0;
+        appState.eggHarvests = Array.isArray(parsed.eggHarvests) ? parsed.eggHarvests : [];
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
@@ -579,6 +585,8 @@ const app = {
         // Nouveau projet vierge pour le nouvel utilisateur (tout commence à zéro)
         appState.currency = 'TND';
         appState.lang = 'fr';
+        appState.eggStock = 0;
+        appState.eggHarvests = [];
         appState.animals = [];
         appState.expenses = [];
         appState.sales = [];
@@ -863,7 +871,34 @@ const app = {
     if (modal) modal.classList.add('hidden');
   },
 
-  // Daily 17h Egg Collection Modal & Actions
+  // ==========================================
+  // EGG STOCK & HARVEST ACCUMULATION MODULE
+  // ==========================================
+  renderEggStock() {
+    const stock = Number(appState.eggStock) || 0;
+    const mainCountEl = document.getElementById('eggStockMainCount');
+    if (mainCountEl) mainCountEl.textContent = stock;
+
+    const equivEl = document.getElementById('eggStockEquiv');
+    if (equivEl) {
+      const haras = (stock / 4).toFixed(1);
+      const plates = (stock / 30).toFixed(1);
+      const lang = appState.lang || 'fr';
+      if (lang === 'ar') {
+        equivEl.textContent = `~${haras} حارة • ~${plates} طبق (30 بيضة)`;
+      } else if (lang === 'en') {
+        equivEl.textContent = `~${haras} Haras • ~${plates} Trays (30 eggs)`;
+      } else {
+        equivEl.textContent = `~${haras} Haras • ~${plates} Plateaux (30 œufs)`;
+      }
+    }
+
+    const curStockVal = document.getElementById('dailyEggCurrentStockVal');
+    if (curStockVal) {
+      curStockVal.textContent = stock + ' ' + this.t('unit_eggs');
+    }
+  },
+
   openDailyEggModal() {
     this.openModal('modalDailyEggs');
     const input = document.getElementById('dailyEggCount');
@@ -871,16 +906,30 @@ const app = {
       input.value = '';
       setTimeout(() => input.focus(), 150);
     }
-    const dest = document.getElementById('dailyEggDestination');
-    if (dest) dest.value = 'vente';
-    this.handleDailyEggDestChange();
+    this.updateDailyEggPreview();
   },
 
-  handleDailyEggDestChange() {
-    const dest = document.getElementById('dailyEggDestination')?.value;
-    const priceRow = document.getElementById('dailyEggPriceRow');
-    if (priceRow) {
-      priceRow.style.display = dest === 'vente' ? 'block' : 'none';
+  updateDailyEggPreview() {
+    const current = Number(appState.eggStock) || 0;
+    const input = document.getElementById('dailyEggCount');
+    const count = parseInt(input?.value, 10) || 0;
+
+    const curStockVal = document.getElementById('dailyEggCurrentStockVal');
+    if (curStockVal) curStockVal.textContent = current + ' ' + this.t('unit_eggs');
+
+    const newStockVal = document.getElementById('dailyEggNewStockVal');
+    if (newStockVal) newStockVal.textContent = (current + count) + ' ' + this.t('unit_eggs');
+
+    const btnText = document.getElementById('dailyEggBtnText');
+    if (btnText) {
+      const lang = appState.lang || 'fr';
+      if (count > 0) {
+        if (lang === 'ar') btnText.textContent = `إضافة +${count} بيضة إلى الرصيد`;
+        else if (lang === 'en') btnText.textContent = `Add +${count} Eggs to Farm Stock`;
+        else btnText.textContent = `Ajouter +${count} œufs au Stock`;
+      } else {
+        btnText.textContent = this.t('daily_eggs_btn_save') || 'Ajouter au Stock de la Ferme';
+      }
     }
   },
 
@@ -893,57 +942,185 @@ const app = {
       return;
     }
 
-    const dest = document.getElementById('dailyEggDestination')?.value || 'vente';
     const todayStr = this.getTodayStr();
-    const lang = appState.lang || 'fr';
+    appState.eggStock = (Number(appState.eggStock) || 0) + count;
+    appState.eggHarvests = appState.eggHarvests || [];
+    appState.eggHarvests.unshift({
+      id: 'harvest-' + Date.now().toString(36),
+      date: todayStr,
+      count: count
+    });
 
-    if (dest === 'vente') {
-      const unitPrice = parseFloat(document.getElementById('dailyEggPricePerUnit')?.value) || 0.40;
-      const total = count * unitPrice;
-      let desc = `Récolte quotidienne d'œufs (${count} œufs)`;
-      if (lang === 'ar') desc = `جمع بيض يومي (${count} بيضة)`;
-      else if (lang === 'en') desc = `Daily egg harvest (${count} eggs)`;
-
-      const newSale = {
-        id: 'sale-' + Date.now().toString(36),
-        date: todayStr,
-        productType: 'oeufs',
-        description: desc,
-        format: 'oeuf-unite',
-        quantity: count,
-        unitPrice: unitPrice,
-        total: total,
-        linkedLotId: 'none',
-        ageText: ''
-      };
-      appState.sales.unshift(newSale);
-    }
-
-    // Save date in localStorage to avoid duplicate prompt today
     localStorage.setItem('fermegest_last_egg_notif_date', todayStr);
 
     this.saveState();
     this.closeModal('modalDailyEggs');
-    this.renderAll();
-    this.showToast(this.t('daily_eggs_toast_success', { count: count }));
+    this.renderEggStock();
+    this.showToast(this.t('daily_eggs_toast_success', { count: count, total: appState.eggStock }));
 
     if (countInput) countInput.value = '';
+  },
 
-    if (dest === 'couveuse') {
-      setTimeout(() => {
-        const confirmMsg = lang === 'ar'
-          ? 'هل تريد الانتقال إلى شاشة الحاضنة الآن لتسجيل دفعة تفقيس جديدة بهذا البيض؟'
-          : (lang === 'en'
-            ? 'Would you like to open the Incubator tab now to start a new batch with these eggs?'
-            : 'Voulez-vous ouvrir l\'onglet Couveuse maintenant pour démarrer un nouveau lot avec ces œufs ?');
-        if (confirm(confirmMsg)) {
-          this.switchTab('incubator');
-          this.openModal('modalAddIncubator');
-          const batchEggs = document.getElementById('batchEggsCount');
-          if (batchEggs) batchEggs.value = count;
-        }
-      }, 400);
+  openSellEggsModal() {
+    const stock = Number(appState.eggStock) || 0;
+    if (stock <= 0) {
+      this.showToast(appState.lang === 'ar' ? '⚠️ رصيد البيض فارغ حالياً. سجل جمعاً جديداً أولاً.' : (appState.lang === 'en' ? '⚠️ Egg stock is empty. Record a harvest first.' : '⚠️ Votre stock d\'œufs est vide. Enregistrez une récolte d\'abord.'));
+      return;
     }
+    this.openModal('modalSellEggStock');
+    const availEl = document.getElementById('sellEggStockAvailable');
+    if (availEl) availEl.textContent = `${stock} ${this.t('unit_eggs')}`;
+
+    const qtyInput = document.getElementById('sellEggQty');
+    if (qtyInput) {
+      qtyInput.value = Math.min(stock, 30);
+      qtyInput.max = stock;
+    }
+    const formatSel = document.getElementById('sellEggFormat');
+    if (formatSel) formatSel.value = 'oeuf-unite';
+
+    const priceInput = document.getElementById('sellEggUnitPrice');
+    if (priceInput) priceInput.value = appState.currency === 'TND' ? '0.450' : '0.25';
+
+    this.calcSellEggTotal();
+  },
+
+  handleSellEggFormatChange() {
+    const format = document.getElementById('sellEggFormat')?.value;
+    const priceInput = document.getElementById('sellEggUnitPrice');
+    const isTND = appState.currency === 'TND';
+    if (priceInput) {
+      if (format === 'hara') {
+        priceInput.value = isTND ? '1.800' : '0.90';
+      } else if (format === 'plateau') {
+        priceInput.value = isTND ? '13.500' : '6.50';
+      } else {
+        priceInput.value = isTND ? '0.450' : '0.25';
+      }
+    }
+    this.calcSellEggTotal();
+  },
+
+  calcSellEggTotal() {
+    const format = document.getElementById('sellEggFormat')?.value || 'oeuf-unite';
+    const q = parseFloat(document.getElementById('sellEggQty')?.value) || 0;
+    const p = parseFloat(document.getElementById('sellEggUnitPrice')?.value) || 0;
+    const stock = Number(appState.eggStock) || 0;
+
+    let totalEggs = q;
+    if (format === 'hara') totalEggs = q * 4;
+    else if (format === 'plateau') totalEggs = q * 30;
+
+    const hintEl = document.getElementById('sellEggEquivHint');
+    if (hintEl) {
+      const lang = appState.lang || 'fr';
+      if (totalEggs > stock) {
+        hintEl.innerHTML = `<span class="text-rose bold">⚠️ ${totalEggs} ${this.t('unit_eggs')} (${lang === 'ar' ? 'يتجاوز الرصيد المتوفر' : 'dépasse le stock disponible'}) !</span>`;
+      } else {
+        hintEl.textContent = `🥚 ${totalEggs} ${this.t('unit_eggs')} (${stock - totalEggs} ${lang === 'ar' ? 'سيبقى بالرصيد' : 'restants après vente'})`;
+      }
+    }
+
+    const totalRevenue = q * p;
+    const revEl = document.getElementById('sellEggTotalRevenue');
+    if (revEl) revEl.textContent = this.formatMoney(totalRevenue);
+  },
+
+  handleSaveSellEggStock(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const format = document.getElementById('sellEggFormat')?.value || 'oeuf-unite';
+    const q = parseFloat(document.getElementById('sellEggQty')?.value) || 0;
+    const unitPrice = parseFloat(document.getElementById('sellEggUnitPrice')?.value) || 0;
+    const total = q * unitPrice;
+    const stock = Number(appState.eggStock) || 0;
+
+    let totalEggs = q;
+    if (format === 'hara') totalEggs = q * 4;
+    else if (format === 'plateau') totalEggs = q * 30;
+
+    if (totalEggs <= 0) {
+      this.showToast('Veuillez saisir une quantité valide.');
+      return;
+    }
+    if (totalEggs > stock) {
+      alert(`La quantité à vendre (${totalEggs} œufs) dépasse votre stock disponible (${stock} œufs).`);
+      return;
+    }
+
+    const todayStr = this.getTodayStr();
+    const lang = appState.lang || 'fr';
+    let desc = `Vente d'œufs frais depuis stock (${totalEggs} œufs)`;
+    if (lang === 'ar') desc = `بيع بيض طازج من الرصيد (${totalEggs} بيضة)`;
+    else if (lang === 'en') desc = `Farm egg sale from stock (${totalEggs} eggs)`;
+
+    const newSale = {
+      id: 'sale-' + Date.now().toString(36),
+      date: todayStr,
+      productType: 'oeufs',
+      description: desc,
+      format: format,
+      quantity: q,
+      unitPrice: unitPrice,
+      total: total,
+      linkedLotId: 'none',
+      ageText: ''
+    };
+
+    appState.sales.unshift(newSale);
+    appState.eggStock = Math.max(0, stock - totalEggs);
+
+    this.saveState();
+    this.closeModal('modalSellEggStock');
+    this.renderAll();
+    this.showToast(this.t('sell_eggs_toast_success', {
+      count: totalEggs,
+      amount: this.formatMoney(total),
+      remaining: appState.eggStock
+    }));
+  },
+
+  openIncubateEggsModal() {
+    const stock = Number(appState.eggStock) || 0;
+    this.switchTab('incubator');
+    this.openModal('modalAddIncubator');
+    const batchEggsInput = document.getElementById('batchEggsCount');
+    if (batchEggsInput && stock > 0) {
+      batchEggsInput.value = Math.min(stock, 60);
+    }
+    const notesInput = document.getElementById('batchNotes');
+    if (notesInput && !notesInput.value && stock > 0) {
+      notesInput.value = `Prélevé du stock d'œufs de la ferme (Stock initial: ${stock})`;
+    }
+  },
+
+  openConsumeEggsModal() {
+    const stock = Number(appState.eggStock) || 0;
+    if (stock <= 0) {
+      this.showToast('⚠️ Aucun œuf en stock.');
+      return;
+    }
+    this.openModal('modalConsumeEggStock');
+    const input = document.getElementById('consumeEggQty');
+    if (input) {
+      input.value = Math.min(stock, 5);
+      input.max = stock;
+    }
+  },
+
+  handleSaveConsumeEggStock(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const qty = parseInt(document.getElementById('consumeEggQty')?.value, 10) || 0;
+    const stock = Number(appState.eggStock) || 0;
+    if (qty <= 0) return;
+    if (qty > stock) {
+      alert(`La quantité dépasse le stock actuel (${stock}).`);
+      return;
+    }
+    appState.eggStock = Math.max(0, stock - qty);
+    this.saveState();
+    this.closeModal('modalConsumeEggStock');
+    this.renderEggStock();
+    this.showToast(this.t('consume_eggs_toast_success', { count: qty, remaining: appState.eggStock }));
   },
 
   // Populate dynamic select options in modals
@@ -1010,6 +1187,7 @@ const app = {
   // ==========================================
   renderAll() {
     this.renderDashboard();
+    this.renderEggStock();
     this.renderAnimals();
     this.renderExpenses();
     this.renderSales();
@@ -2385,6 +2563,15 @@ const app = {
     };
 
     appState.sales.unshift(newSale);
+
+    // Déduction automatique du stock d'œufs si c'est une vente d'œufs
+    if (productType === 'oeufs' && appState.eggStock > 0) {
+      let soldEggs = quantity;
+      if (format === 'hara') soldEggs = quantity * 4;
+      else if (format === 'plateau') soldEggs = quantity * 30;
+      appState.eggStock = Math.max(0, appState.eggStock - soldEggs);
+    }
+
     this.saveState();
     this.closeModal('modalAddSale');
     this.renderAll();
@@ -2859,6 +3046,13 @@ const app = {
     };
 
     appState.incubatorBatches.unshift(newBatch);
+
+    // Déduction automatique du stock d'œufs de la ferme si disponible
+    if (appState.eggStock && appState.eggStock > 0) {
+      const deducted = Math.min(appState.eggStock, eggsCount);
+      appState.eggStock = Math.max(0, appState.eggStock - deducted);
+    }
+
     this.saveState();
 
     // Planifier la notification mobile native pour l'éclosion

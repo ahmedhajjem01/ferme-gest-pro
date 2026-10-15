@@ -390,6 +390,45 @@
 
           </div>
 
+          <!-- Stock d'Œufs & Récolte Card -->
+          <div class="egg-stock-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08)); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-lg); padding: 1.2rem 1.35rem; margin-bottom: 1.35rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.15rem; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div style="font-size: 2.2rem; width: 54px; height: 54px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px var(--primary-glow); flex-shrink: 0;">🥚</div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0;" data-i18n="egg_stock_title">Stock d'Œufs & Réserve</h3>
+                  <span class="badge-pill text-emerald" data-i18n="egg_stock_badge" style="font-size: 0.72rem;">Disponible</span>
+                </div>
+                <div style="font-size: 1.7rem; font-weight: 900; color: var(--text-main); line-height: 1.15;">
+                  <span id="eggStockMainCount">0</span> <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);" data-i18n="unit_eggs">œufs</span>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;" id="eggStockEquiv">
+                  ~0 Haras &bull; ~0 Plateaux
+                </div>
+              </div>
+            </div>
+
+            <!-- Action buttons: choose what to do with the eggs -->
+            <div style="display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-emerald btn-sm bold" onclick="app.openDailyEggModal()" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 0.9rem;">
+                <span>➕</span>
+                <span data-i18n="btn_record_harvest">Récolter</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm bold" onclick="app.openSellEggsModal()" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 0.9rem;">
+                <span>💰</span>
+                <span data-i18n="btn_sell_from_stock">Vendre Stock</span>
+              </button>
+              <button type="button" class="btn btn-amber btn-sm bold" onclick="app.openIncubateEggsModal()" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 0.9rem;">
+                <span>🤖</span>
+                <span data-i18n="btn_incubate_from_stock">Couveuse</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="app.openConsumeEggsModal()" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 0.8rem;" title="Déduire consommation ou pertes">
+                <span>🍽️</span>
+                <span data-i18n="btn_consume_stock">Consommation</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Incubation Highlight Bar -->
           <div class="incubation-banner">
             <div class="incubation-banner-content">
@@ -1357,11 +1396,11 @@
     </div>
   </div>
 
-  <!-- Modal: Collecte Quotidienne des Œufs (Notification 17h) -->
+  <!-- Modal: Collecte Quotidienne des Œufs (Notification 17h / Récolte) -->
   <div id="modalDailyEggs" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 440px;">
       <div class="modal-header">
-        <h3 data-i18n="daily_eggs_modal_title">🥚 Collecte des Œufs du Jour</h3>
+        <h3 data-i18n="daily_eggs_modal_title">🥚 Récolte Quotidienne des Œufs</h3>
         <button class="modal-close" onclick="app.closeModal('modalDailyEggs')">&times;</button>
       </div>
       <form id="formDailyEggs" onsubmit="app.handleSaveDailyEggs(event)">
@@ -1373,36 +1412,101 @@
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 1.1rem;">
+          <div class="form-group" style="margin-bottom: 1.15rem;">
             <label for="dailyEggCount" class="form-label" data-i18n="daily_eggs_input_lbl" style="font-weight: 700;">
-              Nombre total d'œufs récoltés aujourd'hui
+              Nombre d'œufs récoltés aujourd'hui
             </label>
             <div style="position: relative;">
-              <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" placeholder="Ex: 150" required style="font-size: 1.35rem; font-weight: 800; padding: 0.75rem 1rem; color: var(--primary); letter-spacing: 0.05em;">
-              <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);">🥚 Œufs</span>
+              <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" placeholder="Ex: 80" required oninput="app.updateDailyEggPreview()" style="font-size: 1.45rem; font-weight: 800; padding: 0.75rem 1rem; color: var(--primary); letter-spacing: 0.05em;">
+              <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);" data-i18n="unit_eggs">🥚 Œufs</span>
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 1.15rem;">
-            <label for="dailyEggDestination" class="form-label" data-i18n="daily_eggs_dest_lbl">
-              Destination principale des œufs
-            </label>
-            <select id="dailyEggDestination" class="input-field" onchange="app.handleDailyEggDestChange()">
-              <option value="vente" selected data-i18n="daily_eggs_opt_sale">💰 Vente directe (Revenu commercial)</option>
-              <option value="couveuse" data-i18n="daily_eggs_opt_incubator">🤖 Mettre en Couveuse / Incubation</option>
-              <option value="stock" data-i18n="daily_eggs_opt_stock">🏠 Consommation / Réserve de la ferme</option>
-            </select>
+          <!-- Live Stock Accumulation Preview -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.35rem;">
+              <span data-i18n="daily_eggs_stock_current_lbl">Stock actuel en réserve :</span>
+              <strong id="dailyEggCurrentStockVal">0 œufs</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 800; color: var(--primary);">
+              <span data-i18n="daily_eggs_stock_after_lbl">Nouveau stock après ajout :</span>
+              <span id="dailyEggNewStockVal">0 œufs</span>
+            </div>
           </div>
 
-          <div id="dailyEggPriceRow" class="form-group" style="margin-bottom: 1.25rem;">
-            <label for="dailyEggPricePerUnit" class="form-label">
-              <span data-i18n="daily_eggs_price_lbl">Prix unitaire estimé</span> (<span class="currency-label">DT</span>/œuf)
-            </label>
-            <input type="number" id="dailyEggPricePerUnit" class="input-field" step="0.01" min="0" placeholder="Ex: 0.40" value="0.40">
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem; box-shadow: 0 4px 14px var(--primary-glow);">
+            <span id="dailyEggBtnText" data-i18n="daily_eggs_btn_save">Ajouter au Stock de la Ferme</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Vente d'Œufs depuis le Stock -->
+  <div id="modalSellEggStock" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 data-i18n="sell_eggs_modal_title">💰 Vente d'Œufs depuis le Stock</h3>
+        <button class="modal-close" onclick="app.closeModal('modalSellEggStock')">&times;</button>
+      </div>
+      <form id="formSellEggStock" onsubmit="app.handleSaveSellEggStock(event)">
+        <div class="modal-body">
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" data-i18n="sell_eggs_available">Stock disponible :</span>
+            <strong id="sellEggStockAvailable" style="color: var(--primary); font-size: 1.05rem;">0 œufs</strong>
           </div>
 
-          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.75rem; font-size: 1rem; box-shadow: 0 4px 14px var(--primary-glow);">
-            <span data-i18n="daily_eggs_btn_save">Valider ma Récolte</span>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="sellEggQty" class="form-label" data-i18n="sell_eggs_qty_lbl" style="font-weight: 700;">Quantité à vendre</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="number" id="sellEggQty" class="input-field" min="1" placeholder="Ex: 60" required oninput="app.calcSellEggTotal()" style="font-size: 1.25rem; font-weight: 800; color: var(--primary);">
+              <select id="sellEggFormat" class="input-field" style="width: 145px;" onchange="app.handleSellEggFormatChange()">
+                <option value="oeuf-unite" selected>À l'unité</option>
+                <option value="hara">Par HARA (4)</option>
+                <option value="plateau">Par Plateau (30)</option>
+              </select>
+            </div>
+            <small id="sellEggEquivHint" class="text-muted" style="display:block; margin-top:0.25rem; font-size: 0.78rem;">0 œufs au total</small>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="sellEggUnitPrice" class="form-label">
+              <span data-i18n="sell_eggs_price_lbl">Prix unitaire</span> (<span class="currency-label">DT</span>)
+            </label>
+            <input type="number" id="sellEggUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.45" value="0.45" oninput="app.calcSellEggTotal()">
+          </div>
+
+          <div style="background: var(--bg-surface); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.88rem; font-weight: 700;" data-i18n="sell_eggs_total_lbl">Revenu total à encaisser :</span>
+            <strong id="sellEggTotalRevenue" style="font-size: 1.3rem; color: var(--primary);">0,000 DT</strong>
+          </div>
+
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem; box-shadow: 0 4px 14px var(--primary-glow);">
+            <span data-i18n="sell_eggs_btn_submit">Encaisser la Vente & Déduire du Stock</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Consommation ou Perte d'Œufs du Stock -->
+  <div id="modalConsumeEggStock" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 data-i18n="consume_eggs_modal_title">🍽️ Consommation ou Perte d'Œufs</h3>
+        <button class="modal-close" onclick="app.closeModal('modalConsumeEggStock')">&times;</button>
+      </div>
+      <form id="formConsumeEggStock" onsubmit="app.handleSaveConsumeEggStock(event)">
+        <div class="modal-body">
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="consume_eggs_modal_sub">
+            Déduire des œufs du stock pour la consommation de la ferme ou des œufs cassés.
+          </p>
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="consumeEggQty" class="form-label" data-i18n="consume_eggs_qty_lbl">Nombre d'œufs à déduire</label>
+            <input type="number" id="consumeEggQty" class="input-field" min="1" placeholder="Ex: 10" required style="font-size: 1.25rem; font-weight: 800;">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" style="font-weight: 700; padding: 0.75rem;">
+            <span data-i18n="consume_eggs_btn_submit">Déduire du Stock</span>
           </button>
         </div>
       </form>
