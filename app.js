@@ -1766,6 +1766,27 @@ const app = {
   },
 
   getAverageFeedPricePerKg() {
+    // 1. Si l'éleveur a déclaré son prix d'aliment en stock de réserve (ex: 1.00 DT/kg pour 45 DT / 45 kg)
+    if (appState.feedStockCostPerKg && Number(appState.feedStockCostPerKg) > 0) {
+      return Number(appState.feedStockCostPerKg);
+    }
+
+    // 2. Si des dépenses d'aliments avec quantités réelles en kg existent
+    const feedExpenses = (appState.expenses || []).filter(e => e.category === 'nourriture' && Number(e.total) > 0);
+    let totalKg = 0;
+    let totalCost = 0;
+    feedExpenses.forEach(e => {
+      const q = Number(e.quantity) || 0;
+      const t = Number(e.total) || 0;
+      if (q >= 5) {
+        totalKg += q;
+        totalCost += t;
+      }
+    });
+    if (totalKg > 0 && totalCost > 0) {
+      return totalCost / totalKg;
+    }
+
     const cur = appState.currency || 'TND';
     if (cur === 'EUR') return 0.50;
     if (cur === 'USD') return 0.55;
