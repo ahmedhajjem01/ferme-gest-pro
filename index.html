@@ -1083,6 +1083,12 @@
               <input type="date" id="animalBirthDate" class="input-field" required>
             </div>
             <div class="form-group flex-1">
+              <label for="animalArrivalAgeDays">
+                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.78rem;">(ex: 30 si 1 mois)</small>
+              </label>
+              <input type="number" id="animalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 (si poussin 1j) ou 30 (si 1 mois)">
+            </div>
+            <div class="form-group flex-1">
               <label for="animalCostPerHead"><span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small></label>
               <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0" min="0" placeholder="0 (si gratuit / éclosion)">
             </div>
@@ -1138,11 +1144,17 @@
             </div>
           </div>
 
-          <!-- Date d'Éclosion / Arrivée & Stade de Développement -->
+          <!-- Date d'Éclosion / Arrivée, Âge à l'achat & Stade de Développement -->
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="editAnimalBirthDate"><span data-i18n="lbl_arrival_date">Date d'Éclosion / Arrivée</span></label>
               <input type="date" id="editAnimalBirthDate" class="input-field" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="editAnimalArrivalAgeDays">
+                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.76rem;">(ex: 30 si 1 mois)</small>
+              </label>
+              <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 si poussin / 30 si 1 mois">
             </div>
             <div class="form-group flex-1">
               <label for="editAnimalStage"><span data-i18n="lbl_current_stage">Stade Actuel</span></label>

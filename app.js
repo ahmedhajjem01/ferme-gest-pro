@@ -1695,43 +1695,54 @@ const app = {
     };
   },
 
-  calculateCumulativeFeedKg(species = 'poulet', ageDays = 30, stage = '', breed = '') {
-    const days = Math.max(1, Math.round(ageDays));
-    const sp = (species || '').toLowerCase();
-    const isDuck = sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck');
-    const isPintade = sp === 'pintade' || sp.includes('guinea');
+  calculateCumulativeFeedKg(species = 'poulet', ageDays = 30, stage = '', breed = '', startAgeDays = 0) {
+    const calcFromZero = (d) => {
+      const days = Math.max(0, Math.round(d));
+      if (days === 0) return 0;
+      const sp = (species || '').toLowerCase();
+      const isDuck = sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck');
+      const isPintade = sp === 'pintade' || sp.includes('guinea');
 
-    if (isDuck) {
+      if (isDuck) {
+        if (days <= 28) return (days * 0.045);
+        if (days <= 70) return 1.260 + ((days - 28) * 0.120);
+        const stg = (stage || '').toLowerCase();
+        const brd = (breed || '').toLowerCase();
+        const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكور') || stg.includes('تسمين') || brd.includes('mâle') || brd.includes('male');
+        const adultDailyKg = isMale ? 0.200 : 0.145;
+        return 6.300 + ((days - 70) * adultDailyKg);
+      }
+
+      if (isPintade) {
+        if (days <= 28) return (days * 0.0265);
+        if (days <= 84) return 0.742 + ((days - 28) * 0.0625);
+        return 4.242 + ((days - 84) * 0.1075);
+      }
+
+      // Chickens (Table agronomique par palier d'âge):
+      // Palier 1: 1 à 4 semaines (28 jours) @ 25g/j (15-35g) = 0.700 kg
       if (days <= 28) {
-        return (days * 0.045);
+        return (days * 0.025);
       }
-      if (days <= 70) {
-        return 1.260 + ((days - 28) * 0.120);
+      // Palier 2: 5 à 12 semaines (56 jours) @ 57.5g/j (45-70g) = 3.220 kg (cumul à 84j = 3.920 kg)
+      if (days <= 84) {
+        return 0.700 + ((days - 28) * 0.0575);
       }
-      const stg = (stage || '').toLowerCase();
-      const brd = (breed || '').toLowerCase();
-      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكور') || stg.includes('تسمين') || brd.includes('mâle') || brd.includes('male');
-      const adultDailyKg = isMale ? 0.200 : 0.145;
-      return 6.300 + ((days - 70) * adultDailyKg);
-    }
+      // Palier 3: 13 à 18 semaines (42 jours) @ 82.5g/j (75-90g) = 3.465 kg (cumul à 126j = 7.385 kg)
+      if (days <= 126) {
+        return 3.920 + ((days - 84) * 0.0825);
+      }
+      // Palier 4: 19+ semaines (adulte / pondeuse) @ 117.5g/j (110-125g) = 0.1175 kg/j
+      return 7.385 + ((days - 126) * 0.1175);
+    };
 
-    if (isPintade) {
-      if (days <= 28) return (days * 0.0265);
-      if (days <= 84) return 0.742 + ((days - 28) * 0.0625);
-      return 4.242 + ((days - 84) * 0.1075);
-    }
+    const totalDays = Math.max(1, Math.round(ageDays));
+    const startDays = Math.max(0, Math.round(startAgeDays || 0));
 
-    // Chickens:
-    if (days <= 28) {
-      return (days * 0.025);
+    if (startDays > 0 && totalDays > startDays) {
+      return Math.max(0, calcFromZero(totalDays) - calcFromZero(startDays));
     }
-    if (days <= 84) {
-      return 0.700 + ((days - 28) * 0.0575);
-    }
-    if (days <= 126) {
-      return 3.920 + ((days - 84) * 0.0825);
-    }
-    return 7.385 + ((days - 126) * 0.1175);
+    return calcFromZero(totalDays);
   },
 
   getAverageFeedPricePerKg() {
@@ -1768,7 +1779,7 @@ const app = {
       const qty = Number(animal.currentQuantity) || 0;
       if (qty <= 0) return;
 
-      const ageDays = this.calculateAgeInDays(animal.birthDate);
+      const ageDays = this.calculateAgeInDays(animal.birthDate) + (Number(animal.arrivalAgeDays) || 0);
       const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
       const lotDailyGrams = qty * feedData.avgGrams;
       totalFarmDailyGrams += lotDailyGrams;
@@ -1854,7 +1865,7 @@ const app = {
 
     // Total farm daily feed consumption in grams for biological expense weighting
     const totalFarmDailyGrams = (appState.animals || []).reduce((sum, a) => {
-      const aAge = this.calculateAgeInDays(a.birthDate);
+      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
       const feedData = this.getAgronomicFeedData(a.species, aAge, a.stage, a.breed);
       return sum + ((Number(a.currentQuantity) || 0) * feedData.avgGrams);
     }, 0);
@@ -1871,15 +1882,17 @@ const app = {
     const feedPriceKg = this.getAverageFeedPricePerKg();
 
     filtered.forEach(animal => {
-      const ageDays = this.calculateAgeInDays(animal.birthDate);
+      const daysSinceArrival = this.calculateAgeInDays(animal.birthDate);
+      const arrivalAgeDays = Number(animal.arrivalAgeDays) || 0;
+      const ageDays = daysSinceArrival + arrivalAgeDays;
       const ageText = this.formatAgeText(ageDays);
       const mortalityRate = animal.initialQuantity > 0 
         ? ((animal.mortality / animal.initialQuantity) * 100).toFixed(1) 
         : 0;
 
-      // Agronomic table profile
+      // Agronomic table profile (progressive feeding & deduction of pre-acquisition feed)
       const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
-      const cumulFeedKg = this.calculateCumulativeFeedKg(animal.species, ageDays, animal.stage, animal.breed);
+      const cumulFeedKg = this.calculateCumulativeFeedKg(animal.species, ageDays, animal.stage, animal.breed, arrivalAgeDays);
       const cumulFeedCost = cumulFeedKg * feedPriceKg;
 
       // 1. Dépenses directement affectées à ce lot
@@ -2045,6 +2058,7 @@ const app = {
     const breedInput = document.getElementById('editAnimalBreed');
     const qtyInput = document.getElementById('editAnimalQuantity');
     const birthDateInput = document.getElementById('editAnimalBirthDate');
+    const arrivalAgeInput = document.getElementById('editAnimalArrivalAgeDays');
     const stageInput = document.getElementById('editAnimalStage');
     const costInput = document.getElementById('editAnimalCostPerHead');
     const notesInput = document.getElementById('editAnimalNotes');
@@ -2054,6 +2068,7 @@ const app = {
     if (breedInput) breedInput.value = animal.breed || '';
     if (qtyInput) qtyInput.value = animal.currentQuantity || animal.initialQuantity || 1;
     if (birthDateInput) birthDateInput.value = animal.birthDate || this.getTodayStr();
+    if (arrivalAgeInput) arrivalAgeInput.value = (animal.arrivalAgeDays !== undefined) ? animal.arrivalAgeDays : 0;
     if (stageInput) stageInput.value = animal.stage || 'Croissance';
     if (costInput) costInput.value = (Number(animal.costPerHead) || 0).toString();
     if (notesInput) notesInput.value = animal.notes || '';
@@ -2071,6 +2086,8 @@ const app = {
     const breed = document.getElementById('editAnimalBreed').value.trim() || '-';
     const quantity = parseInt(document.getElementById('editAnimalQuantity').value, 10);
     const birthDate = document.getElementById('editAnimalBirthDate')?.value;
+    const arrivalAgeVal = document.getElementById('editAnimalArrivalAgeDays')?.value;
+    const arrivalAgeDays = (arrivalAgeVal === '' || isNaN(parseInt(arrivalAgeVal, 10))) ? 0 : Math.max(0, parseInt(arrivalAgeVal, 10));
     const stage = document.getElementById('editAnimalStage')?.value;
     const costVal = document.getElementById('editAnimalCostPerHead').value;
     const costPerHead = (costVal === '' || isNaN(parseFloat(costVal))) ? 0 : Math.max(0, parseFloat(costVal));
@@ -2079,6 +2096,7 @@ const app = {
     animal.name = name || animal.name;
     animal.breed = breed;
     if (birthDate) animal.birthDate = birthDate;
+    animal.arrivalAgeDays = arrivalAgeDays;
     if (stage) animal.stage = stage;
     if (!isNaN(quantity) && quantity > 0) {
       animal.currentQuantity = quantity;
@@ -2123,6 +2141,8 @@ const app = {
     const nameInput = document.getElementById('animalName').value.trim();
     const quantity = parseInt(document.getElementById('animalQuantity').value, 10);
     const birthDate = document.getElementById('animalBirthDate').value;
+    const arrivalAgeVal = document.getElementById('animalArrivalAgeDays')?.value;
+    const arrivalAgeDays = (arrivalAgeVal === '' || isNaN(parseInt(arrivalAgeVal, 10))) ? 0 : Math.max(0, parseInt(arrivalAgeVal, 10));
     
     // Accepte explicitement 0 pour les animaux gratuits / éclos
     const rawCost = document.getElementById('animalCostPerHead').value;
@@ -2153,6 +2173,7 @@ const app = {
       currentQuantity: quantity,
       mortality: 0,
       birthDate,
+      arrivalAgeDays,
       costPerHead,
       stage,
       notes
@@ -2635,10 +2656,12 @@ const app = {
     const linkedLotId = document.getElementById('saleLotLinked')?.value;
     const linkedLot = (linkedLotId && linkedLotId !== 'none') ? (appState.animals || []).find(a => a.id === linkedLotId) : null;
 
-    // Déterminer l'âge exact en jours
+    const arrivalAgeDays = linkedLot ? (Number(linkedLot.arrivalAgeDays) || 0) : 0;
+
+    // Déterminer l'âge exact en jours (depuis éclosion)
     let days = 21;
     if (linkedLot && linkedLot.birthDate) {
-      days = this.calculateAgeInDays(linkedLot.birthDate);
+      days = this.calculateAgeInDays(linkedLot.birthDate) + arrivalAgeDays;
     } else if (ageUnit === 'adulte') {
       days = (prodType === 'canard') ? 140 : 180;
     } else if (!isNaN(rawAge) && rawAge > 0) {
@@ -2656,7 +2679,7 @@ const app = {
 
     // Données de la table agronomique
     const feedData = this.getAgronomicFeedData(species, days, stage, breed);
-    const cumulFeedKg = this.calculateCumulativeFeedKg(species, days, stage, breed);
+    const cumulFeedKg = this.calculateCumulativeFeedKg(species, days, stage, breed, arrivalAgeDays);
     const feedPriceKg = this.getAverageFeedPricePerKg();
 
     const totalFeedKg = q * cumulFeedKg;
@@ -2758,8 +2781,9 @@ const app = {
     }
     this.handleSaleTypeChange();
 
-    // Remplir l'âge d'après sa date de naissance réelle
-    const ageDays = this.calculateAgeInDays(lot.birthDate);
+    // Remplir l'âge d'après sa date de naissance réelle + âge d'achat
+    const arrivalAgeDays = Number(lot.arrivalAgeDays) || 0;
+    const ageDays = this.calculateAgeInDays(lot.birthDate) + arrivalAgeDays;
     if (ageInput && ageUnit) {
       if (ageDays <= 28) {
         ageUnit.value = 'jours';
