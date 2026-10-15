@@ -18,10 +18,13 @@
   
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="stylesheet" href="styles.css?v=3">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js').catch(function(err) {
+          console.log('SW registration error:', err);
+        });
       });
     }
   </script>
@@ -84,6 +87,12 @@
           </svg>
         </button>
 
+        <!-- Cloud Sync Button -->
+        <button id="headerCloudSyncBtn" class="cloud-sync-btn" onclick="app.cloudSync.openModal()" title="Synchronisation Cloud Multi-Appareils">
+          <span class="cloud-dot offline" id="headerCloudDot"></span>
+          <span id="headerCloudText" data-i18n="nav_cloud_sync">☁️ Synchro Cloud</span>
+        </button>
+
         <!-- Quick Data Modal Trigger -->
         <button id="dataOptionsBtn" class="icon-btn" title="Options de données / Sauvegarde" aria-label="Paramètres données">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -92,7 +101,107 @@
           </svg>
         </button>
       </div>
+
+      <!-- Hamburger Menu Button (3 lines) for Mobile -->
+      <button id="mobileHeaderMenuBtn" class="mobile-hamburger-btn" aria-label="Menu principal" title="Paramètres & Menu" onclick="app.toggleMobileMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
     </header>
+
+    <!-- Mobile Navigation & Settings Drawer -->
+    <div id="mobileMenuDrawer" class="mobile-drawer-overlay hidden">
+      <div class="mobile-drawer-backdrop" onclick="app.toggleMobileMenu()"></div>
+      <div class="mobile-drawer-card">
+        <div class="mobile-drawer-header">
+          <div class="header-brand">
+            <div class="brand-icon" style="width: 32px; height: 32px;">
+              <img src="logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+            </div>
+            <div class="brand-text">
+              <span style="font-weight: 800; font-size: 1.05rem;">FermeGest <span class="badge-pro">PRO</span></span>
+            </div>
+          </div>
+          <button class="drawer-close-btn" onclick="app.toggleMobileMenu()" aria-label="Fermer le menu">&times;</button>
+        </div>
+
+        <div class="mobile-drawer-body">
+          <!-- 1. Langue -->
+          <div class="drawer-group">
+            <label class="drawer-label" for="mobileLangSelect">
+              <span class="drawer-icon">🌐</span>
+              <span data-i18n="lang_label">Langue</span>
+            </label>
+            <select id="mobileLangSelect" class="drawer-select">
+              <option value="fr" selected>🇫🇷 Français</option>
+              <option value="ar">🇹🇳 العربية</option>
+              <option value="en">🇬🇧 English</option>
+            </select>
+          </div>
+
+          <!-- 2. Devise -->
+          <div class="drawer-group">
+            <label class="drawer-label" for="mobileCurrencySelect">
+              <span class="drawer-icon">💵</span>
+              <span data-i18n="currency_label">Devise</span>
+            </label>
+            <select id="mobileCurrencySelect" class="drawer-select">
+              <option value="TND" selected>TND (DT - Dinar Tunisien)</option>
+              <option value="DZD">DZD (DA - Dinar Algérien)</option>
+              <option value="MAD">MAD (DH - Dirham Marocain)</option>
+              <option value="EUR">EUR (€ - Euro)</option>
+              <option value="USD">USD ($ - Dollar US)</option>
+              <option value="FCFA">FCFA (Franc CFA)</option>
+            </select>
+          </div>
+
+          <!-- 3. Mode d'Écran (Clair / Sombre) -->
+          <div class="drawer-group">
+            <label class="drawer-label">
+              <span class="drawer-icon">🌓</span>
+              <span data-i18n="lbl_screen_mode">Mode d'Écran</span>
+            </label>
+            <button id="mobileThemeToggleBtn" type="button" class="btn btn-outline btn-full drawer-btn" onclick="app.toggleTheme()">
+              <span id="mobileThemeIcon">☀️</span>
+              <span id="mobileThemeText">Mode Sombre Activé</span>
+            </button>
+          </div>
+
+          <!-- 4. Données & Sauvegarde -->
+          <div class="drawer-group">
+            <label class="drawer-label">
+              <span class="drawer-icon">💾</span>
+              <span data-i18n="modal_settings_title">Données & Sauvegarde</span>
+            </label>
+            <button type="button" class="btn btn-secondary btn-full drawer-btn" onclick="app.toggleMobileMenu(); app.openModal('modalDataOptions');">
+              <span>📦</span>
+              <span data-i18n="btn_manage_data">Gérer Sauvegarde & Démo</span>
+            </button>
+          </div>
+
+          <!-- 5. Synchro Cloud Multi-Appareils -->
+          <div class="drawer-group">
+            <label class="drawer-label">
+              <span class="drawer-icon">☁️</span>
+              <span data-i18n="nav_cloud_sync">Synchro Cloud</span>
+            </label>
+            <button type="button" class="btn btn-outline btn-full drawer-btn" onclick="app.toggleMobileMenu(); app.cloudSync.openModal();">
+              <span class="cloud-dot offline" id="drawerCloudDot"></span>
+              <span id="drawerCloudText">Mode Local (Non connecté)</span>
+            </button>
+          </div>
+
+          <!-- Footer info -->
+          <div class="drawer-footer-info">
+            <p style="font-weight: 700; color: var(--text-main); margin-bottom: 2px;">FermeGest PRO &bull; Mobile</p>
+            <small class="text-muted">iOS &bull; Android &bull; 100% Hors-ligne</small>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- App Body (Sidebar + Content) -->
     <div class="app-body">
@@ -852,15 +961,15 @@
               </select>
             </div>
             <div class="form-group flex-1">
-              <label for="animalBreed" data-i18n="lbl_breed">Race / Variété</label>
-              <input type="text" id="animalBreed" class="input-field" placeholder="Ex: Sasso, Lohmann Brown, Hubbard, Beldi" required>
+              <label for="animalBreed"><span data-i18n="lbl_breed">Race / Variété</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+              <input type="text" id="animalBreed" class="input-field" placeholder="Ex: Sasso, Beldi... (Optionnel)">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="animalName" data-i18n="lbl_identifier">Identifiant / N° de Lot</label>
-              <input type="text" id="animalName" class="input-field" placeholder="Ex: Bande Poulets #01, Pondeuses Bâtiment A" required>
+              <label for="animalName"><span data-i18n="lbl_identifier">Identifiant / N° de Lot</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+              <input type="text" id="animalName" class="input-field" placeholder="Laisser vide pour ID auto (ex: 1, 2, 3...)">
             </div>
             <div class="form-group flex-1">
               <label for="animalQuantity" data-i18n="lbl_initial_qty">Nombre de Têtes (Effectif Initial)</label>
@@ -875,7 +984,7 @@
             </div>
             <div class="form-group flex-1">
               <label for="animalCostPerHead"><span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0.80">
+              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="20">
             </div>
           </div>
 
@@ -885,8 +994,7 @@
               <option value="Démarrage" data-i18n="opt_stage_start">Démarrage (0-14 jours)</option>
               <option value="Croissance" data-i18n="opt_stage_growth">Croissance (15-35 jours / 1-6 mois)</option>
               <option value="Finition" data-i18n="opt_stage_finish">Finition / Engraissement</option>
-              <option value="Ponte" data-i18n="opt_stage_laying">En Ponte (Pondeuses)</option>
-              <option value="Reproduction" data-i18n="opt_stage_repro">Reproducteur / Adulte (> 6 mois)</option>
+              <option value="Adulte" data-i18n="opt_stage_adulte" selected>Adulte</option>
             </select>
           </div>
 
@@ -1251,6 +1359,105 @@
             🗑️ Réinitialiser Toutes les Données à 0
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Synchronisation Cloud Multi-Appareils (Supabase) -->
+  <div id="modalCloudSync" class="modal-overlay hidden">
+    <div class="modal-card modal-card-lg">
+      <div class="modal-header">
+        <h3 data-i18n="cloud_sync_title">☁️ Synchronisation Cloud Multi-Appareils (Supabase)</h3>
+        <button class="modal-close" onclick="app.closeModal('modalCloudSync')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc" data-i18n="cloud_sync_desc">
+          Synchronisez votre élevage et vos finances en temps réel entre votre Téléphone (iPhone/Android) et votre Ordinateur !
+        </p>
+
+        <!-- Status Banner -->
+        <div id="cloudStatusBanner" class="cloud-status-banner is-offline">
+          <div class="cloud-banner-icon" id="cloudBannerIcon">🟠</div>
+          <div class="cloud-banner-info">
+            <div class="cloud-banner-title" id="cloudBannerTitle">Mode Local (Sauvegardé sur cet appareil)</div>
+            <div class="cloud-banner-sub" id="cloudBannerSub">Vos données sont stockées localement. Connectez Supabase pour synchroniser avec votre téléphone.</div>
+          </div>
+        </div>
+
+        <!-- Cloud Config Form -->
+        <form id="cloudSyncForm" onsubmit="event.preventDefault(); app.cloudSync.saveAndConnect();">
+          <div class="cloud-form-card">
+            <div class="form-group">
+              <label for="cloudSupabaseUrl" data-i18n="lbl_supabase_url">URL du Projet Supabase (Project URL)</label>
+              <input type="url" id="cloudSupabaseUrl" class="form-control" placeholder="https://xxxxxxxx.supabase.co" required>
+            </div>
+
+            <div class="form-group">
+              <label for="cloudSupabaseKey" data-i18n="lbl_supabase_key">Clé Publique Anon (Anon API Key)</label>
+              <input type="password" id="cloudSupabaseKey" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required>
+            </div>
+
+            <div class="form-group">
+              <label for="cloudFarmCode" data-i18n="lbl_farm_code">Code Secret de votre Ferme (Sync ID)</label>
+              <input type="text" id="cloudFarmCode" class="form-control" placeholder="ma-ferme-principale" value="ferme-principale" required>
+              <small class="form-helper" data-i18n="lbl_farm_code_helper">Entrez le même code sur votre téléphone et votre PC pour partager la même ferme !</small>
+            </div>
+
+            <label class="cloud-toggle-row">
+              <input type="checkbox" id="cloudAutoSync" checked>
+              <span data-i18n="lbl_auto_sync">Synchronisation automatique en temps réel à chaque modification</span>
+            </label>
+
+            <button type="submit" class="btn btn-primary btn-full" id="btnConnectCloud" data-i18n="btn_test_and_save_cloud">
+              🔗 Tester & Activer la Synchronisation
+            </button>
+          </div>
+        </form>
+
+        <!-- Actions Manual Push / Pull -->
+        <div class="cloud-actions-grid" id="cloudActionsRow">
+          <button type="button" class="btn btn-outline" onclick="app.cloudSync.pushToCloud(true)" data-i18n="btn_push_to_cloud">
+            ⬆️ Envoyer vers le Cloud
+          </button>
+          <button type="button" class="btn btn-outline" onclick="app.cloudSync.pullFromCloud(false)" data-i18n="btn_pull_from_cloud">
+            ⬇️ Récupérer du Cloud
+          </button>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 1rem;">
+          <button type="button" class="btn btn-danger-outline btn-sm" onclick="app.cloudSync.disconnectCloud()" data-i18n="btn_disconnect_cloud">
+            Déconnecter du Cloud
+          </button>
+        </div>
+
+        <!-- 1-Minute Supabase SQL Guide Card -->
+        <div class="cloud-guide-card">
+          <div class="cloud-guide-header">
+            <div class="cloud-guide-title" data-i18n="cloud_sql_guide_title">⚡ Configuration Gratuite en 1 Minute (Supabase) :</div>
+          </div>
+          <ol class="cloud-guide-steps">
+            <li>Créez un compte gratuit sur <strong>supabase.com</strong> et créez un projet (nommez-le comme vous voulez).</li>
+            <li>Dans le menu de gauche, allez dans <strong>SQL Editor</strong>, collez le script ci-dessous et cliquez sur <strong>Run</strong>.</li>
+            <li>Allez dans <strong>Project Settings &gt; API</strong> et copiez votre <strong>Project URL</strong> et <strong>anon public key</strong> ci-dessus !</li>
+          </ol>
+          <pre class="cloud-sql-block" id="cloudSqlCode">create table if not exists farm_sync (
+  farm_id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table farm_sync enable row level security;
+
+create policy "Public Farm Access"
+  on farm_sync
+  for all
+  using (true)
+  with check (true);</pre>
+          <button type="button" class="btn btn-secondary btn-full cloud-copy-sql-btn" onclick="app.cloudSync.copySqlScript()" data-i18n="cloud_sql_copy_btn">
+            📋 Copier le Script SQL de Création de Table
+          </button>
+        </div>
+
       </div>
     </div>
   </div>

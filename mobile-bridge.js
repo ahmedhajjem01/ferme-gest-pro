@@ -137,10 +137,17 @@ const MobileBridge = {
   async initBackButton() {
     try {
       const App = this.plugins.App;
-      if (!App) return;
+      if (!App || !App.addListener) return;
 
-      App.addListener('backButton', ({ canGoBack }) => {
-        // A) If a modal is currently open, close the modal first
+      App.addListener('backButton', () => {
+        // A) If mobile settings drawer is open, close it
+        const mobileDrawer = document.getElementById('mobileMenuDrawer');
+        if (mobileDrawer && !mobileDrawer.classList.contains('hidden')) {
+          mobileDrawer.classList.add('hidden');
+          return;
+        }
+
+        // B) If a modal is currently open, close the modal first
         const openModal = document.querySelector('.modal-overlay:not(.hidden)');
         if (openModal) {
           openModal.classList.add('hidden');

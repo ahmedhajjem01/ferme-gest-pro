@@ -5,6 +5,7 @@
   "main": "app.js",
   "scripts": {
     "build": "node scripts/build-mobile.js",
+    "serve": "node server.js",
     "sync": "npm run build && npx cap sync",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",

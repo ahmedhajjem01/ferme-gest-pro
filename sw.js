@@ -1,5 +1,5 @@
 // Service Worker for FermeGest PRO (100% Offline-First Agrarian Management)
-const CACHE_NAME = 'fermegest-v2';
+const CACHE_NAME = 'fermegest-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -34,11 +34,23 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+
+  // Let external CDN and Supabase API calls go straight to network
+  if (!e.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
   e.respondWith(
-    caches.match(e.request).then((res) => {
-      return res || fetch(e.request);
-    }).catch(() => {
-      return caches.match('./index.html');
+    caches.match(e.request, { ignoreSearch: true }).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(e.request).catch(() => {
+        if (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html')) {
+          return caches.match('./index.html');
+        }
+      });
     })
   );
 });

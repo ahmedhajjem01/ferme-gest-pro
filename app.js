@@ -409,10 +409,13 @@ const app = {
     
     const langSelect = document.getElementById('langSelect');
     if (langSelect) langSelect.value = newLang;
+    const mobileLang = document.getElementById('mobileLangSelect');
+    if (mobileLang) mobileLang.value = newLang;
 
     this.saveState();
     this.updateCurrencySymbols();
     this.updateCurrencyDropdownOptions();
+    this.updateMobileMenuControls();
     this.applyTranslations();
     this.renderAll();
     this.runSimulator();
@@ -483,6 +486,9 @@ const app = {
     this.applyTranslations();
     this.renderAll();
     this.runSimulator();
+    if (this.cloudSync) {
+      this.cloudSync.init();
+    }
   },
 
   // State Persistence
@@ -500,6 +506,14 @@ const app = {
       }));
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
+    }
+
+    // Debounced automatic Cloud Sync push
+    if (this.cloudSync && this.cloudSync.config && this.cloudSync.config.enabled && this.cloudSync.config.autoSync) {
+      clearTimeout(this._cloudSyncTimer);
+      this._cloudSyncTimer = setTimeout(() => {
+        this.cloudSync.pushToCloud(false);
+      }, 1200);
     }
   },
 
@@ -570,10 +584,16 @@ const app = {
       });
     });
 
-    // Language Selector
+    // Language Selector (Desktop & Mobile)
     const langSelect = document.getElementById('langSelect');
     if (langSelect) {
       langSelect.addEventListener('change', (e) => {
+        this.setLanguage(e.target.value);
+      });
+    }
+    const mobileLang = document.getElementById('mobileLangSelect');
+    if (mobileLang) {
+      mobileLang.addEventListener('change', (e) => {
         this.setLanguage(e.target.value);
       });
     }
@@ -584,17 +604,38 @@ const app = {
       themeBtn.addEventListener('click', () => this.toggleTheme());
     }
 
-    // Currency selector
+    // Currency selector (Desktop & Mobile)
     const currencySelect = document.getElementById('currencySelect');
     if (currencySelect) {
       currencySelect.addEventListener('change', (e) => {
         appState.currency = e.target.value;
+        const mobCur = document.getElementById('mobileCurrencySelect');
+        if (mobCur) mobCur.value = e.target.value;
         this.updateCurrencySymbols();
         this.saveState();
         this.renderAll();
         this.runSimulator();
         this.showToast(this.t('toast_currency_changed', { c: appState.currency }));
       });
+    }
+    const mobileCurrency = document.getElementById('mobileCurrencySelect');
+    if (mobileCurrency) {
+      mobileCurrency.addEventListener('change', (e) => {
+        appState.currency = e.target.value;
+        const cur = document.getElementById('currencySelect');
+        if (cur) cur.value = e.target.value;
+        this.updateCurrencySymbols();
+        this.saveState();
+        this.renderAll();
+        this.runSimulator();
+        this.showToast(this.t('toast_currency_changed', { c: appState.currency }));
+      });
+    }
+
+    // Mobile Hamburger Menu Button
+    const mobileMenuBtn = document.getElementById('mobileHeaderMenuBtn');
+    if (mobileMenuBtn) {
+      mobileMenuBtn.addEventListener('click', () => this.toggleMobileMenu());
     }
 
     // Data options modal
@@ -700,6 +741,7 @@ const app = {
       if (sun) sun.classList.add('hidden');
       if (moon) moon.classList.remove('hidden');
     }
+    this.updateMobileMenuControls();
   },
 
   getCurrencySymbol() {
@@ -760,6 +802,22 @@ const app = {
     if (modal) {
       modal.classList.remove('hidden');
       this.populateLotDropdowns();
+
+      if (modalId === 'modalAddAnimal') {
+        const nextId = this.getNextAnimalId();
+        const animalNameInput = document.getElementById('animalName');
+        if (animalNameInput) {
+          animalNameInput.placeholder = `Par défaut : ${nextId}`;
+        }
+        const costInput = document.getElementById('animalCostPerHead');
+        if (costInput && (!costInput.value || costInput.value === '0.8' || costInput.value === '0.80')) {
+          costInput.value = '20';
+        }
+        const stageSelect = document.getElementById('animalStage');
+        if (stageSelect && !stageSelect.value) {
+          stageSelect.value = 'Adulte';
+        }
+      }
     }
   },
 
@@ -1304,21 +1362,46 @@ const app = {
     });
   },
 
+  // Calcule automatiquement le prochain identifiant (ex: 1, 2, 3...)
+  getNextAnimalId() {
+    let maxId = 0;
+    (appState.animals || []).forEach(a => {
+      const fullText = `${a.name || ''} ${a.id || ''}`;
+      const matches = fullText.match(/\d+/g);
+      if (matches) {
+        matches.forEach(m => {
+          const val = parseInt(m, 10);
+          if (!isNaN(val) && val > maxId && val < 100000) {
+            maxId = val;
+          }
+        });
+      }
+    });
+    return maxId + 1;
+  },
+
   handleSaveAnimal(e) {
     e.preventDefault();
     const species = document.getElementById('animalSpecies').value;
-    const breed = document.getElementById('animalBreed').value.trim();
-    const name = document.getElementById('animalName').value.trim();
+    const breedInput = document.getElementById('animalBreed').value.trim();
+    const nameInput = document.getElementById('animalName').value.trim();
     const quantity = parseInt(document.getElementById('animalQuantity').value, 10);
     const birthDate = document.getElementById('animalBirthDate').value;
-    const costPerHead = parseFloat(document.getElementById('animalCostPerHead').value) || 0;
-    const stage = document.getElementById('animalStage').value;
+    const costPerHead = parseFloat(document.getElementById('animalCostPerHead').value) || 20;
+    const stage = document.getElementById('animalStage').value || 'Adulte';
     const notes = document.getElementById('animalNotes').value.trim();
 
-    if (!breed || !name || !quantity || !birthDate) {
-      alert('Veuillez remplir tous les champs obligatoires.');
+    if (!quantity || !birthDate) {
+      alert('Veuillez renseigner le nombre de têtes et la date.');
       return;
     }
+
+    // Race optionnelle: '-' par défaut si vide
+    const breed = breedInput || '-';
+
+    // Identifiant optionnel: auto-incrémentation (ex: 1, 2, 3...)
+    const autoId = this.getNextAnimalId();
+    const name = nameInput || `${autoId}`;
 
     const newAnimal = {
       id: 'lot-' + Date.now().toString(36),
@@ -1340,6 +1423,38 @@ const app = {
     this.renderAll();
     this.showToast(this.t('toast_lot_saved', { name }));
     document.getElementById('formAddAnimal').reset();
+    document.getElementById('animalCostPerHead').value = '20';
+  },
+
+  // Toggle & gestion du menu mobile (3 lignes dans la barre haute)
+  toggleMobileMenu() {
+    const drawer = document.getElementById('mobileMenuDrawer');
+    if (!drawer) return;
+    const isHidden = drawer.classList.contains('hidden');
+    if (isHidden) {
+      drawer.classList.remove('hidden');
+      this.updateMobileMenuControls();
+    } else {
+      drawer.classList.add('hidden');
+    }
+  },
+
+  updateMobileMenuControls() {
+    const mobileLang = document.getElementById('mobileLangSelect');
+    if (mobileLang) mobileLang.value = appState.lang || 'fr';
+
+    const mobileCurrency = document.getElementById('mobileCurrencySelect');
+    if (mobileCurrency) mobileCurrency.value = appState.currency || 'TND';
+
+    const isDark = appState.theme !== 'light';
+    const mobileThemeIcon = document.getElementById('mobileThemeIcon');
+    const mobileThemeText = document.getElementById('mobileThemeText');
+    if (mobileThemeIcon) mobileThemeIcon.textContent = isDark ? '☀️' : '🌙';
+    if (mobileThemeText) {
+      mobileThemeText.textContent = isDark
+        ? (this.t('mode_dark_active') || 'Mode Sombre Activé')
+        : (this.t('mode_light_active') || 'Mode Clair Activé');
+    }
   },
 
   recordMortalityPrompt(lotId) {
@@ -3029,8 +3144,9 @@ const app = {
       case 'Démarrage': return (this.t('opt_stage_start') || 'Démarrage').split(' (')[0];
       case 'Croissance': return (this.t('opt_stage_growth') || 'Croissance').split(' (')[0];
       case 'Finition': return (this.t('opt_stage_finish') || 'Finition').split(' /')[0];
-      case 'Ponte': return (this.t('opt_stage_laying') || 'Ponte').split(' (')[0];
-      case 'Reproduction': return (this.t('opt_stage_repro') || 'Reproduction').split(' (')[0];
+      case 'Adulte':
+      case 'Ponte':
+      case 'Reproduction': return (this.t('opt_stage_adulte') || 'Adulte');
       default: return stage;
     }
   },
@@ -3040,7 +3156,8 @@ const app = {
       case 'Démarrage': return 'badge-stage-start';
       case 'Croissance': return 'badge-stage-growth';
       case 'Finition': return 'badge-stage-finish';
-      case 'Ponte': return 'badge-stage-laying';
+      case 'Adulte':
+      case 'Ponte':
       case 'Reproduction': return 'badge-stage-repro';
       default: return 'badge-stage-growth';
     }
@@ -3078,8 +3195,418 @@ const app = {
     }
     const lot = appState.animals.find(a => a.id === lotId);
     return lot ? lot.name : (this.t('opt_general_farm') || 'Exploitation Générale');
-  }
+  },
 
+  // =========================================================================
+  // Cloud Sync Controller (Supabase Multi-Device Realtime Engine)
+  // =========================================================================
+  cloudSync: {
+    client: null,
+    realtimeChannel: null,
+    config: {
+      enabled: false,
+      url: '',
+      key: '',
+      farmCode: 'ferme-principale',
+      autoSync: true
+    },
+    lastSyncedAt: null,
+    isSyncing: false,
+
+    init() {
+      this.loadConfig();
+      this.populateForm();
+      this.updateStatusUI();
+
+      if (this.config.enabled && this.config.url && this.config.key) {
+        this.initClient();
+      }
+
+      // Re-sync on network reconnect or when switching back to tab
+      window.addEventListener('online', () => {
+        if (this.config.enabled) {
+          this.pullFromCloud(true);
+        }
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this.config.enabled) {
+          this.pullFromCloud(true);
+        }
+      });
+    },
+
+    loadConfig() {
+      try {
+        const saved = localStorage.getItem('fermegest_cloud_config');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          this.config = Object.assign({}, this.config, parsed);
+        }
+      } catch (e) {
+        console.warn('Could not read cloud config:', e);
+      }
+    },
+
+    saveConfig() {
+      try {
+        localStorage.setItem('fermegest_cloud_config', JSON.stringify(this.config));
+      } catch (e) {
+        console.warn('Could not save cloud config:', e);
+      }
+    },
+
+    populateForm() {
+      const urlInput = document.getElementById('cloudSupabaseUrl');
+      const keyInput = document.getElementById('cloudSupabaseKey');
+      const codeInput = document.getElementById('cloudFarmCode');
+      const autoSyncCheck = document.getElementById('cloudAutoSync');
+
+      if (urlInput) urlInput.value = this.config.url || '';
+      if (keyInput) keyInput.value = this.config.key || '';
+      if (codeInput) codeInput.value = this.config.farmCode || 'ferme-principale';
+      if (autoSyncCheck) autoSyncCheck.checked = this.config.autoSync !== false;
+    },
+
+    openModal() {
+      this.populateForm();
+      this.updateStatusUI();
+      app.openModal('modalCloudSync');
+    },
+
+    initClient() {
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        console.warn('Supabase JS SDK not loaded yet');
+        return;
+      }
+      try {
+        this.client = window.supabase.createClient(this.config.url, this.config.key, {
+          auth: { persistSession: false }
+        });
+        this.subscribeRealtime();
+        this.pullFromCloud(true);
+      } catch (e) {
+        console.error('Failed to create Supabase client:', e);
+        this.updateStatusUI('error');
+      }
+    },
+
+    subscribeRealtime() {
+      if (!this.client || !this.config.farmCode) return;
+      if (this.realtimeChannel) {
+        try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
+      }
+
+      try {
+        this.realtimeChannel = this.client
+          .channel(`farm_sync_${this.config.farmCode}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'farm_sync',
+              filter: `farm_id=eq.${this.config.farmCode}`
+            },
+            (payload) => {
+              if (payload.new && payload.new.data) {
+                this.applyCloudData(payload.new.data, payload.new.updated_at);
+                this.lastSyncedAt = new Date();
+                this.updateStatusUI('connected');
+              }
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        console.warn('Realtime subscription error:', e);
+      }
+    },
+
+    async saveAndConnect() {
+      const urlInput = document.getElementById('cloudSupabaseUrl');
+      const keyInput = document.getElementById('cloudSupabaseKey');
+      const codeInput = document.getElementById('cloudFarmCode');
+      const autoSyncCheck = document.getElementById('cloudAutoSync');
+
+      const url = urlInput ? urlInput.value.trim().replace(/\/+$/, '') : '';
+      const key = keyInput ? keyInput.value.trim() : '';
+      const farmCode = codeInput ? codeInput.value.trim() : 'ferme-principale';
+      const autoSync = autoSyncCheck ? autoSyncCheck.checked : true;
+
+      if (!url || !key || !farmCode) {
+        app.showToast('Veuillez remplir l\'URL, la Clé et le Code Ferme.', 'danger');
+        return;
+      }
+
+      this.config.url = url;
+      this.config.key = key;
+      this.config.farmCode = farmCode;
+      this.config.autoSync = autoSync;
+      this.config.enabled = true;
+      this.saveConfig();
+
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        app.showToast('Le SDK Supabase n\'a pas pu être chargé. Vérifiez votre connexion Internet.', 'danger');
+        return;
+      }
+
+      this.updateStatusUI('syncing');
+
+      try {
+        this.client = window.supabase.createClient(url, key, {
+          auth: { persistSession: false }
+        });
+
+        // Test connection by attempting to read table
+        const { data, error } = await this.client
+          .from('farm_sync')
+          .select('farm_id, data, updated_at')
+          .eq('farm_id', farmCode)
+          .maybeSingle();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.data) {
+          this.applyCloudData(data.data, data.updated_at);
+          app.showToast(app.t('toast_cloud_connected') || 'Connecté avec succès au Cloud !');
+        } else {
+          // Push current state to initialize cloud record
+          await this.pushToCloud(false);
+          app.showToast(app.t('toast_cloud_connected') || 'Connecté ! Données initialisées sur le Cloud.');
+        }
+
+        this.lastSyncedAt = new Date();
+        this.updateStatusUI('connected');
+        this.subscribeRealtime();
+      } catch (err) {
+        console.error('Supabase connection test failed:', err);
+        this.updateStatusUI('error');
+        const msg = err.message ? `Erreur Supabase: ${err.message}` : (app.t('toast_cloud_error') || 'Erreur de connexion');
+        app.showToast(msg, 'danger');
+      }
+    },
+
+    async pushToCloud(showToast = false) {
+      if (!this.client || !this.config.enabled || !this.config.farmCode) return;
+      if (this.isSyncing) return;
+      this.isSyncing = true;
+      this.updateStatusUI('syncing');
+
+      const payload = {
+        version: '2.2.0-poultry',
+        currency: appState.currency,
+        lang: appState.lang || 'fr',
+        theme: appState.theme,
+        animals: appState.animals,
+        expenses: appState.expenses,
+        sales: appState.sales,
+        incubatorBatches: appState.incubatorBatches,
+        timestamp: Date.now()
+      };
+
+      try {
+        const { error } = await this.client
+          .from('farm_sync')
+          .upsert({
+            farm_id: this.config.farmCode,
+            data: payload,
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) throw error;
+
+        this.lastSyncedAt = new Date();
+        this.updateStatusUI('connected');
+        if (showToast) {
+          app.showToast(app.t('toast_cloud_pushed') || 'Données envoyées au Cloud avec succès !');
+        }
+      } catch (err) {
+        console.error('Push to cloud error:', err);
+        this.updateStatusUI('error');
+        if (showToast) {
+          app.showToast(app.t('toast_cloud_error') || 'Erreur d\'envoi vers le Cloud', 'danger');
+        }
+      } finally {
+        this.isSyncing = false;
+      }
+    },
+
+    async pullFromCloud(isSilent = false) {
+      if (!this.client || !this.config.enabled || !this.config.farmCode) return;
+      this.updateStatusUI('syncing');
+
+      try {
+        const { data, error } = await this.client
+          .from('farm_sync')
+          .select('*')
+          .eq('farm_id', this.config.farmCode)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data && data.data) {
+          this.applyCloudData(data.data, data.updated_at);
+          this.lastSyncedAt = new Date();
+          this.updateStatusUI('connected');
+          if (!isSilent) {
+            app.showToast(app.t('toast_cloud_pulled') || 'Dernières données du Cloud téléchargées !');
+          }
+        } else {
+          this.updateStatusUI('connected');
+          if (!isSilent) {
+            app.showToast('Aucune donnée trouvée sur le Cloud pour ce Code Ferme.');
+          }
+        }
+      } catch (err) {
+        console.error('Pull from cloud error:', err);
+        this.updateStatusUI('error');
+        if (!isSilent) {
+          app.showToast(app.t('toast_cloud_error') || 'Erreur de téléchargement', 'danger');
+        }
+      }
+    },
+
+    applyCloudData(cloudData, updatedAt) {
+      if (!cloudData) return;
+
+      if (cloudData.currency) appState.currency = cloudData.currency;
+      if (Array.isArray(cloudData.animals)) {
+        appState.animals = cloudData.animals.filter(a => a.species !== 'bovin' && a.species !== 'ovin');
+      }
+      if (Array.isArray(cloudData.expenses)) {
+        appState.expenses = cloudData.expenses;
+      }
+      if (Array.isArray(cloudData.sales)) {
+        appState.sales = cloudData.sales;
+      }
+      if (Array.isArray(cloudData.incubatorBatches)) {
+        appState.incubatorBatches = cloudData.incubatorBatches;
+      }
+
+      try {
+        localStorage.setItem('fermegest_state', JSON.stringify({
+          version: '2.2.0-poultry',
+          currency: appState.currency,
+          lang: appState.lang || 'fr',
+          theme: appState.theme,
+          animals: appState.animals,
+          expenses: appState.expenses,
+          sales: appState.sales,
+          incubatorBatches: appState.incubatorBatches
+        }));
+      } catch (e) {}
+
+      app.updateCurrencySymbols();
+      app.renderAll();
+      app.runSimulator();
+    },
+
+    disconnectCloud() {
+      if (confirm('Voulez-vous désactiver la synchronisation Cloud ? Vos données actuelles resteront enregistrées sur cet appareil.')) {
+        this.config.enabled = false;
+        this.saveConfig();
+        if (this.realtimeChannel && this.client) {
+          try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
+        }
+        this.client = null;
+        this.updateStatusUI('offline');
+        app.showToast(app.t('toast_cloud_disconnected') || 'Synchronisation Cloud désactivée.');
+        app.closeModal('modalCloudSync');
+      }
+    },
+
+    copySqlScript() {
+      const codeEl = document.getElementById('cloudSqlCode');
+      const text = codeEl ? codeEl.innerText : '';
+      if (navigator.clipboard && text) {
+        navigator.clipboard.writeText(text).then(() => {
+          app.showToast('✅ Script SQL copié dans le presse-papier !');
+        }).catch(() => {
+          this.fallbackCopy(text);
+        });
+      } else {
+        this.fallbackCopy(text);
+      }
+    },
+
+    fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        app.showToast('✅ Script SQL copié !');
+      } catch (e) {
+        alert('Veuillez copier le script manuellement depuis l\'encadré.');
+      }
+      document.body.removeChild(ta);
+    },
+
+    updateStatusUI(forcedState) {
+      const state = forcedState || (this.config.enabled && this.client ? 'connected' : 'offline');
+
+      const headerDot = document.getElementById('headerCloudDot');
+      const headerText = document.getElementById('headerCloudText');
+      const drawerDot = document.getElementById('drawerCloudDot');
+      const drawerText = document.getElementById('drawerCloudText');
+
+      const banner = document.getElementById('cloudStatusBanner');
+      const bannerIcon = document.getElementById('cloudBannerIcon');
+      const bannerTitle = document.getElementById('cloudBannerTitle');
+      const bannerSub = document.getElementById('cloudBannerSub');
+
+      const timeStr = this.lastSyncedAt
+        ? `${String(this.lastSyncedAt.getHours()).padStart(2, '0')}:${String(this.lastSyncedAt.getMinutes()).padStart(2, '0')}`
+        : '';
+
+      if (state === 'connected') {
+        if (headerDot) headerDot.className = 'cloud-dot connected';
+        if (headerText) headerText.textContent = timeStr ? `☁️ Cloud (${timeStr})` : '☁️ Cloud Actif';
+        if (drawerDot) drawerDot.className = 'cloud-dot connected';
+        if (drawerText) drawerText.textContent = timeStr ? `Connecté (${timeStr})` : 'Connecté au Cloud';
+
+        if (banner) banner.className = 'cloud-status-banner is-connected';
+        if (bannerIcon) bannerIcon.textContent = '🟢';
+        if (bannerTitle) bannerTitle.textContent = app.t('cloud_status_connected') || '🟢 Connecté au Cloud (Synchronisé)';
+        if (bannerSub) bannerSub.textContent = `Ferme ID: "${this.config.farmCode}" • Dernière synchronisation: ${timeStr || 'À l\'instant'}`;
+      } else if (state === 'syncing') {
+        if (headerDot) headerDot.className = 'cloud-dot syncing';
+        if (headerText) headerText.textContent = '🔄 Synchro...';
+        if (drawerDot) drawerDot.className = 'cloud-dot syncing';
+        if (drawerText) drawerText.textContent = 'Synchronisation...';
+
+        if (banner) banner.className = 'cloud-status-banner is-syncing';
+        if (bannerIcon) bannerIcon.textContent = '🔄';
+        if (bannerTitle) bannerTitle.textContent = app.t('cloud_status_syncing') || '🔄 Synchronisation en cours...';
+        if (bannerSub) bannerSub.textContent = 'Transfert des données vers/depuis Supabase...';
+      } else if (state === 'error') {
+        if (headerDot) headerDot.className = 'cloud-dot offline';
+        if (headerText) headerText.textContent = '⚠️ Erreur Cloud';
+        if (drawerDot) drawerDot.className = 'cloud-dot offline';
+        if (drawerText) drawerText.textContent = 'Erreur de connexion';
+
+        if (banner) banner.className = 'cloud-status-banner is-offline';
+        if (bannerIcon) bannerIcon.textContent = '⚠️';
+        if (bannerTitle) bannerTitle.textContent = 'Erreur de connexion Cloud';
+        if (bannerSub) bannerSub.textContent = 'Vérifiez l\'URL, la clé Anon et l\'existence de la table farm_sync.';
+      } else {
+        if (headerDot) headerDot.className = 'cloud-dot offline';
+        if (headerText) headerText.textContent = app.t('nav_cloud_sync') || '☁️ Synchro Cloud';
+        if (drawerDot) drawerDot.className = 'cloud-dot offline';
+        if (drawerText) drawerText.textContent = 'Mode Local (Non connecté)';
+
+        if (banner) banner.className = 'cloud-status-banner is-offline';
+        if (bannerIcon) bannerIcon.textContent = '🟠';
+        if (bannerTitle) bannerTitle.textContent = app.t('cloud_status_offline') || '🟠 Mode Local (Sauvegardé sur cet appareil)';
+        if (bannerSub) bannerSub.textContent = 'Vos données sont stockées en local sur cet appareil. Activez Supabase pour synchroniser.';
+      }
+    }
+  }
 };
 
 // Expose app on global window
