@@ -122,6 +122,43 @@
       }
     },
 
+    // 1b. Facebook 1-Click Sign-In
+    async signInWithFacebook() {
+      if (!this.client) return;
+      try {
+        const redirectUrl = window.location.origin + window.location.pathname;
+        const { error } = await this.client.auth.signInWithOAuth({
+          provider: 'facebook',
+          options: {
+            redirectTo: redirectUrl
+          }
+        });
+        if (error) throw error;
+      } catch (err) {
+        console.error('Facebook sign-in error:', err);
+        const errEl = document.getElementById('authErrorMessage');
+        if (errEl) {
+          const msg = ((err.message || '') + ' ' + (err.msg || '')).toLowerCase();
+          if (msg.includes('provider is not enabled') || msg.includes('unsupported provider')) {
+            errEl.innerHTML = `
+              <strong>⚠️ Facebook n'est pas encore activé dans votre Supabase :</strong><br>
+              1. Allez sur <strong>Supabase &gt; Authentication &gt; Providers</strong>.<br>
+              2. Activez le bouton <strong>Facebook</strong>.<br>
+              <em>👉 Astuce : Vous pouvez créer un compte immédiatement avec l'onglet "Créer un Compte" ci-dessous !</em>
+            `;
+          } else {
+            errEl.textContent = err.message || err.msg || 'Erreur lors de la connexion Facebook.';
+          }
+          errEl.style.color = '#ef4444';
+          errEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          errEl.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+          errEl.classList.remove('hidden');
+        } else {
+          alert('Erreur Facebook: ' + (err.message || err));
+        }
+      }
+    },
+
     // 2. Email & Password Sign-In
     async signInWithEmail(email, password) {
       if (!this.client) return;

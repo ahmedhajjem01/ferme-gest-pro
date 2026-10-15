@@ -2481,6 +2481,38 @@ label {
   flex-shrink: 0;
 }
 
+.facebook-auth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #1877f2;
+  color: #ffffff;
+  border: 1px solid #166fe5;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(24, 119, 242, 0.25);
+  margin-top: 0.5rem;
+}
+
+.facebook-auth-btn:hover {
+  background-color: #166fe5;
+  box-shadow: 0 4px 8px rgba(24, 119, 242, 0.35);
+  transform: translateY(-1px);
+}
+
+.facebook-auth-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: #ffffff;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
