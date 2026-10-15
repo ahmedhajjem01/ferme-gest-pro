@@ -1,5 +1,6 @@
 {
-  "version": 2,
+  "outputDirectory": ".",
+  "buildCommand": null,
   "cleanUrls": true,
   "trailingSlash": false,
   "headers": [
