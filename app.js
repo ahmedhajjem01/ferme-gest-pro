@@ -1140,9 +1140,11 @@ const app = {
     };
 
     if (expenseLotSelect) {
-      let html = `<option value="general">${this.t('opt_general_farm')}</option>`;
-      appState.animals.forEach(a => {
-        html += `<option value="${a.id}">[${getSpeciesLabel(a.species)}] ${a.name} (${a.breed})</option>`;
+      const defaultGeneralSelected = (appState.animals.length === 1) ? '' : 'selected';
+      let html = `<option value="general" ${defaultGeneralSelected}>${this.t('opt_general_farm')}</option>`;
+      appState.animals.forEach((a, idx) => {
+        const isSelected = (appState.animals.length === 1) ? 'selected' : '';
+        html += `<option value="${a.id}" ${isSelected}>[${getSpeciesLabel(a.species)}] ${a.name} (${a.breed})</option>`;
       });
       expenseLotSelect.innerHTML = html;
     }
@@ -1577,14 +1579,26 @@ const app = {
         ? ((animal.mortality / animal.initialQuantity) * 100).toFixed(1) 
         : 0;
 
-      // Calculate total feed & expense dedicated to this specific animal lot
-      const lotExpenses = appState.expenses
+      // 1. Dépenses directement affectées à ce lot
+      const directLotExpenses = appState.expenses
         .filter(e => e.linkedLotId === animal.id)
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+      // 2. Dépenses de nourriture et santé générales (nourriture / véto sans lot ou "general")
+      const totalLivingAnimals = (appState.animals || []).reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+      const animalShare = totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0;
+      
+      const generalFeedVetExpenses = appState.expenses
+        .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && (e.category === 'nourriture' || e.category === 'veterinaire'))
+        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+      const allocatedGeneral = generalFeedVetExpenses * animalShare;
+      const totalLotExpenses = directLotExpenses + allocatedGeneral;
       
       const totalAcquisition = animal.initialQuantity * (Number(animal.costPerHead) || 0);
-      const totalInvested = totalAcquisition + lotExpenses;
+      const totalInvested = totalAcquisition + totalLotExpenses;
       const costPerCurrentHead = animal.currentQuantity > 0 ? (totalInvested / animal.currentQuantity).toFixed(2) : '0';
+      const feedVetPerSubject = animal.currentQuantity > 0 ? (totalLotExpenses / animal.currentQuantity).toFixed(2) : '0';
 
       const avatarIcon = this.getSpeciesIcon(animal.species);
       const stageBadgeClass = this.getStageBadgeClass(animal.stage);
@@ -1622,12 +1636,17 @@ const app = {
             <span class="lbl">${this.t('card_cost_head')} ✏️</span>
             <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
             ${Number(animal.costPerHead) > 0 ? `
-              <button type="button" class="btn-lot-free-pill" onclick="event.stopPropagation(); app.setLotFree('${animal.id}')" title="Rendre gratuit (0 DT)">
-                🎁 Mettre à 0 DT
+              <button type="button" class="btn-lot-free-pill" onclick="event.stopPropagation(); app.setLotFree('${animal.id}')" title="Rendre le prix d'achat gratuit (0 DT)">
+                🎁 Achat: 0 DT
               </button>
             ` : `
-              <span class="badge-free-lot">🎁 Gratuit (0 DT)</span>
+              <span class="badge-free-lot">🎁 Achat: Gratuit</span>
             `}
+            ${totalLotExpenses > 0 ? `
+              <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:2px; font-weight:600;">
+                🌾 +${this.formatMoney(feedVetPerSubject)} aliment
+              </div>
+            ` : ''}
           </div>
         </div>
 
@@ -2041,7 +2060,11 @@ const app = {
         <td>${this.formatDateFR(exp.date)}</td>
         <td>${catBadge}</td>
         <td><strong>${exp.title}</strong></td>
-        <td><small class="badge-pill">${lotName}</small></td>
+        <td>
+          <button type="button" class="badge-pill btn-subtle" onclick="app.reassignExpenseLot('${exp.id}')" title="Cliquer pour changer le lot affecté" style="cursor:pointer; border:1px solid var(--border-color); background:var(--bg-card); padding:3px 8px; font-size:0.75rem;">
+            ${lotName} ✏️
+          </button>
+        </td>
         <td>${exp.quantity}</td>
         <td>${this.formatMoney(exp.unitPrice)}</td>
         <td class="text-rose bold">${this.formatMoney(exp.total)}</td>
@@ -2053,6 +2076,36 @@ const app = {
       `;
       tbody.appendChild(tr);
     });
+  },
+
+  reassignExpenseLot(expId) {
+    const exp = (appState.expenses || []).find(e => e.id === expId);
+    if (!exp) return;
+
+    const options = [{ id: 'general', name: this.t('opt_general_farm') || 'Frais Généraux (Réparti sur tous les animaux)' }];
+    (appState.animals || []).forEach(a => {
+      options.push({ id: a.id, name: `[${a.species}] ${a.name} (${a.breed})` });
+    });
+
+    const isAr = appState.lang === 'ar';
+    const choiceStr = options.map((o, idx) => `${idx + 1}. ${o.name}`).join('\n');
+    const msg = isAr 
+      ? `اختر الدفعة التي تريد ربط هذه المصاريف بها "${exp.title}" (${this.formatMoney(exp.total)}) :\n\n${choiceStr}\n\nأدخل رقم الخيار :`
+      : `Affecter la dépense "${exp.title}" (${this.formatMoney(exp.total)}) à quel lot d'animaux ?\n\n${choiceStr}\n\nEntrez le numéro du lot :`;
+    
+    const ans = prompt(msg, "1");
+    if (!ans) return;
+
+    const idx = parseInt(ans.trim(), 10) - 1;
+    if (options[idx]) {
+      exp.linkedLotId = options[idx].id;
+      this.saveState();
+      this.renderAll();
+      this.showToast(isAr ? `تم ربط المصاريف بـ : ${options[idx].name}` : `Dépense affectée à : ${options[idx].name}`);
+      if (window.appAuth && appAuth.pushData) {
+        appAuth.pushData();
+      }
+    }
   },
 
   calcExpenseTotal() {
