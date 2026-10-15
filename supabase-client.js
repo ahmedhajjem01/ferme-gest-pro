@@ -99,7 +99,26 @@
         if (error) throw error;
       } catch (err) {
         console.error('Google sign-in error:', err);
-        alert('Erreur lors de la connexion Google : ' + (err.message || err));
+        const errEl = document.getElementById('authErrorMessage');
+        if (errEl) {
+          const msg = ((err.message || '') + ' ' + (err.msg || '')).toLowerCase();
+          if (msg.includes('provider is not enabled') || msg.includes('unsupported provider')) {
+            errEl.innerHTML = `
+              <strong>⚠️ Google n'est pas encore activé dans votre Supabase :</strong><br>
+              1. Allez sur <strong>Supabase &gt; Authentication &gt; Providers</strong>.<br>
+              2. Activez le bouton <strong>Google</strong>.<br>
+              <em>👉 Astuce : Vous pouvez créer un compte immédiatement avec l'onglet "Créer un Compte" ci-dessous !</em>
+            `;
+          } else {
+            errEl.textContent = err.message || err.msg || 'Erreur lors de la connexion Google.';
+          }
+          errEl.style.color = '#ef4444';
+          errEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          errEl.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+          errEl.classList.remove('hidden');
+        } else {
+          alert('Erreur Google: ' + (err.message || err));
+        }
       }
     },
 
@@ -120,6 +139,9 @@
         console.error('Email sign-in error:', err);
         const errEl = document.getElementById('authErrorMessage');
         if (errEl) {
+          errEl.style.color = '#ef4444';
+          errEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          errEl.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
           errEl.textContent = err.message || 'Identifiants incorrects.';
           errEl.classList.remove('hidden');
         }
@@ -135,14 +157,33 @@
           password: password
         });
         if (error) throw error;
-        this.closeModal();
-        if (window.app && app.showToast) {
-          app.showToast('✅ Compte créé avec succès !');
+
+        if (data && data.user && (!data.session)) {
+          // Email confirmation is active in Supabase project settings
+          const errEl = document.getElementById('authErrorMessage');
+          if (errEl) {
+            errEl.style.color = '#10b981';
+            errEl.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+            errEl.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+            errEl.innerHTML = '✉️ <strong>Compte créé !</strong> Vérifiez votre boîte mail pour confirmer votre compte, ou connectez-vous.';
+            errEl.classList.remove('hidden');
+          }
+          if (window.app && app.showToast) {
+            app.showToast('✉️ Vérifiez vos emails pour valider le compte.');
+          }
+        } else {
+          this.closeModal();
+          if (window.app && app.showToast) {
+            app.showToast('✅ Compte créé avec succès !');
+          }
         }
       } catch (err) {
         console.error('Email sign-up error:', err);
         const errEl = document.getElementById('authErrorMessage');
         if (errEl) {
+          errEl.style.color = '#ef4444';
+          errEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          errEl.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
           errEl.textContent = err.message || 'Erreur lors de la création du compte.';
           errEl.classList.remove('hidden');
         }
