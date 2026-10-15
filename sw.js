@@ -1,5 +1,5 @@
 // Service Worker for FermeGest PRO (100% Offline-First Agrarian Management)
-const CACHE_NAME = 'fermegest-v5';
+const CACHE_NAME = 'fermegest-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -42,15 +42,31 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // Network-first for HTML pages so changes are instantaneous when online
+  if (e.request.mode === 'navigate' || (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html'))) {
+    e.respondWith(
+      fetch(e.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // For other static assets: cache-first with network fallback
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(e.request).catch(() => {
-        if (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html')) {
-          return caches.match('./index.html');
+      return cachedResponse || fetch(e.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, responseClone));
         }
+        return networkResponse;
       });
     })
   );

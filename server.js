@@ -43,10 +43,12 @@ const server = http.createServer((req, res) => {
 
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+  const isNoCache = ext === '.html' || filePath.endsWith('sw.js');
 
   res.writeHead(200, {
     'Content-Type': contentType,
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': isNoCache ? 'no-cache, no-store, must-revalidate' : 'public, max-age=3600'
   });
 
   fs.createReadStream(filePath).pipe(res);
