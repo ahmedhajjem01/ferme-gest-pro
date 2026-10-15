@@ -1465,6 +1465,59 @@
               Dernière synchro : <span id="profileModalLastSync">À l'instant</span>
             </div>
           </div>
+        <!-- Team & Shared Farm Section (2-Account Collaboration) -->
+        <div class="team-sharing-card">
+          <div class="team-sharing-header">
+            <div class="team-sharing-title">
+              <span>👥</span>
+              <span data-i18n="team_section_title">Ferme Partagée & Équipe</span>
+            </div>
+            <span id="teamRoleBadge" class="team-badge team-badge-owner">Propriétaire</span>
+          </div>
+
+          <!-- Section A: Quand l'utilisateur est Propriétaire -->
+          <div id="teamOwnerSection">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.65rem; line-height: 1.4;" data-i18n="team_owner_desc">
+              Partagez ce code avec votre frère ou associé pour travailler ensemble en synchronisation directe :
+            </p>
+            <div class="team-code-box">
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;" data-i18n="team_share_code_lbl">CODE DE PARTAGE</span>
+              <span id="teamShareCodeDisplay" class="team-code-text">FERME-XXXX</span>
+              <button type="button" class="btn btn-sm btn-subtle" onclick="appAuth.copyFarmCode()" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 700;">
+                📋 <span data-i18n="team_btn_copy">Copier</span>
+              </button>
+            </div>
+            <button type="button" class="btn-whatsapp-share" onclick="appAuth.shareFarmInvite()">
+              <span>📲</span>
+              <span data-i18n="team_share_whatsapp">Inviter mon Associé (WhatsApp / Partage)</span>
+            </button>
+          </div>
+
+          <!-- Section B: Quand l'utilisateur a rejoint la ferme d'un associé -->
+          <div id="teamPartnerSection" class="hidden">
+            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">
+              <span data-i18n="team_connected_to">Connecté à la ferme :</span> <strong id="teamJoinedCodeDisplay" style="color: var(--primary); font-family: monospace;">FERME-XXXX</strong>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+              <span data-i18n="team_owner_is">Créateur :</span> <strong id="teamOwnerEmailDisplay" style="color: var(--text-main);">associé@gmail.com</strong>
+            </div>
+            <button type="button" class="btn btn-sm btn-full" onclick="appAuth.leaveSharedFarm()" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 700; padding: 0.45rem;">
+              ❌ <span data-i18n="team_leave_btn">Quitter cette ferme partagée</span>
+            </button>
+          </div>
+
+          <!-- Section C: Rejoindre une ferme avec un code -->
+          <div id="teamJoinContainer" class="team-join-container">
+            <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);" data-i18n="team_join_title">
+              🤝 Rejoindre la ferme d'un associé :
+            </div>
+            <div class="team-join-row">
+              <input type="text" id="teamJoinCodeInput" class="form-control form-control-sm team-join-input" placeholder="ex: FERME-7842" maxlength="12">
+              <button type="button" class="btn btn-primary btn-sm" onclick="appAuth.joinFarmWithCode()" style="font-weight: 700; white-space: nowrap; padding: 0 0.85rem;">
+                <span data-i18n="team_btn_join">Rejoindre</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.65rem;">

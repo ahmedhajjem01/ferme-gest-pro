@@ -440,7 +440,27 @@ const TRANSLATIONS = {
     auth_guest_continue: "Continuer sans compte (Mode Local)",
     profile_modal_title: "Mon Compte Fermier",
     profile_sync_now: "🔄 Forcer la synchronisation maintenant",
-    profile_signout: "Se Déconnecter"
+    profile_signout: "Se Déconnecter",
+
+    // Team & Shared Farm Invitation
+    team_section_title: "Ferme Partagée & Équipe (2 Comptes)",
+    team_role_owner: "Propriétaire",
+    team_role_partner: "Associé",
+    team_owner_desc: "Partagez ce code avec votre frère ou associé pour travailler ensemble en synchronisation directe :",
+    team_share_code_lbl: "CODE DE PARTAGE",
+    team_btn_copy: "Copier le Code",
+    team_share_whatsapp: "📲 Inviter mon Associé (WhatsApp / Partage)",
+    team_connected_to: "Connecté à la ferme partagée :",
+    team_owner_is: "Créateur :",
+    team_leave_btn: "Quitter cette ferme partagée",
+    team_join_title: "🤝 Rejoindre la ferme d'un associé :",
+    team_join_placeholder: "Entrez le code (ex: FERME-8421)",
+    team_btn_join: "Rejoindre",
+    team_toast_code_copied: "Code de la ferme copié dans le presse-papier !",
+    team_toast_joined_success: "Félicitations ! Vous avez rejoint la ferme partagée.",
+    team_toast_left_farm: "Vous avez quitté la ferme partagée.",
+    team_toast_partner_update: "🔄 Mis à jour en direct par votre associé ({name}) !",
+    team_toast_partner_joined: "🤝 Votre associé vient de se connecter à votre ferme !"
   },
 
   ar: {
@@ -879,7 +899,27 @@ const TRANSLATIONS = {
     auth_guest_continue: "المتابعة بدون حساب (الوضع المحلي)",
     profile_modal_title: "حساب المزرعة السحابي",
     profile_sync_now: "🔄 مزامنة البيانات الآن",
-    profile_signout: "تسجيل الخروج"
+    profile_signout: "تسجيل الخروج",
+
+    // Team & Shared Farm Invitation
+    team_section_title: "المزرعة المشتركة والفريق (حسابان)",
+    team_role_owner: "المالك",
+    team_role_partner: "شريك",
+    team_owner_desc: "شارك هذا الرمز مع شريكك أو أخيك للعمل معاً ومزامنة بيانات المزرعة فورياً:",
+    team_share_code_lbl: "رمز المشاركة",
+    team_btn_copy: "نسخ الرمز",
+    team_share_whatsapp: "📲 دعوة الشريك (واتساب / رسالة)",
+    team_connected_to: "متصل بالمزرعة المشتركة:",
+    team_owner_is: "المنشئ:",
+    team_leave_btn: "مغادرة هذه المزرعة المشتركة",
+    team_join_title: "🤝 الانضمام إلى مزرعة شريك برمز:",
+    team_join_placeholder: "أدخل الرمز (مثال: FERME-8421)",
+    team_btn_join: "انضمام",
+    team_toast_code_copied: "تم نسخ رمز المزرعة إلى الحافظة!",
+    team_toast_joined_success: "تهانينا! لقد انضممت إلى المزرعة المشتركة بنجاح.",
+    team_toast_left_farm: "لقد غادرت المزرعة المشتركة.",
+    team_toast_partner_update: "🔄 تحديث مباشر من شريكك ({name})!",
+    team_toast_partner_joined: "🤝 انضم شريكك للتو إلى مزرعتك!"
   },
 
   en: {
@@ -1317,7 +1357,27 @@ const TRANSLATIONS = {
     auth_guest_continue: "Continue without account (Local Mode)",
     profile_modal_title: "My Farm Account",
     profile_sync_now: "🔄 Sync Now",
-    profile_signout: "Sign Out"
+    profile_signout: "Sign Out",
+
+    // Team & Shared Farm Invitation
+    team_section_title: "Shared Farm & Team (2 Accounts)",
+    team_role_owner: "Owner",
+    team_role_partner: "Partner",
+    team_owner_desc: "Share this code with your partner or brother to sync your farm in real-time across both phones:",
+    team_share_code_lbl: "SHARE CODE",
+    team_btn_copy: "Copy Code",
+    team_share_whatsapp: "📲 Invite Partner (WhatsApp / Share)",
+    team_connected_to: "Connected to shared farm:",
+    team_owner_is: "Creator:",
+    team_leave_btn: "Leave this shared farm",
+    team_join_title: "🤝 Join a partner's farm with code:",
+    team_join_placeholder: "Enter code (e.g. FERME-8421)",
+    team_btn_join: "Join Farm",
+    team_toast_code_copied: "Farm code copied to clipboard!",
+    team_toast_joined_success: "Congratulations! You joined the shared farm successfully.",
+    team_toast_left_farm: "You left the shared farm.",
+    team_toast_partner_update: "🔄 Live update from your partner ({name})!",
+    team_toast_partner_joined: "🤝 Your partner just joined your farm!"
   }
 };
 

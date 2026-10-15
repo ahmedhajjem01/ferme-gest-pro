@@ -15,6 +15,7 @@
     client: null,
     currentUser: null,
     realtimeChannel: null,
+    collabChannel: null,
     isSyncing: false,
     lastSyncedAt: null,
     _pushTimer: null,
@@ -38,6 +39,9 @@
         this.client.auth.onAuthStateChange((event, session) => {
           this.handleAuthStateChange(event, session);
         });
+
+        // Initialize collaborative room for shared farm
+        this.subscribeCollaborativeRealtime();
 
         // Check active session on startup
         this.client.auth.getSession().then(({ data }) => {
@@ -75,12 +79,17 @@
         this.updateUI();
         await this.pullData(false);
         this.subscribeRealtime();
+        this.subscribeCollaborativeRealtime();
       } else {
         this.currentUser = null;
         if (this.realtimeChannel && this.client) {
           try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
         }
+        if (this.collabChannel && this.client) {
+          try { this.client.removeChannel(this.collabChannel); } catch (e) {}
+        }
         this.realtimeChannel = null;
+        this.collabChannel = null;
         this.updateUI();
       }
     },
@@ -282,8 +291,17 @@
       this.isSyncing = true;
       this.updateSyncBadge('syncing');
 
+      const farmCode = this.getFarmCode();
+      const farmRole = this.getFarmRole();
+      const ownerEmail = farmRole === 'owner'
+        ? (this.currentUser ? this.currentUser.email : '')
+        : this.getFarmOwnerEmail();
+
       const payload = {
         version: '2.5.0-pro',
+        farmCode: farmCode,
+        farmRole: farmRole,
+        ownerEmail: ownerEmail,
         currency: window.appState ? window.appState.currency : 'TND',
         lang: window.appState ? window.appState.lang : 'fr',
         theme: window.appState ? window.appState.theme : 'dark',
@@ -307,8 +325,12 @@
 
         this.lastSyncedAt = new Date();
         this.updateSyncBadge('connected');
+
+        // Real-time instant broadcast to partner device
+        this.broadcastCurrentState();
+
         if (showToast && window.app && app.showToast) {
-          app.showToast('☁️ Sauvegardé sur votre compte Google !');
+          app.showToast('☁️ Données sauvegardées sur le Cloud !');
         }
       } catch (err) {
         console.error('[SupabaseAuth] Push error:', err);
@@ -376,8 +398,13 @@
       if (Array.isArray(cloudData.sales)) {
         window.appState.sales = cloudData.sales;
       }
-      if (Array.isArray(cloudData.incubatorBatches)) {
-        window.appState.incubatorBatches = cloudData.incubatorBatches;
+      if (cloudData.incubatorBatches) window.appState.incubatorBatches = cloudData.incubatorBatches;
+
+      if (cloudData.farmCode && this.getFarmRole() === 'partner') {
+        localStorage.setItem('fermegest_farm_code', cloudData.farmCode);
+      }
+      if (cloudData.ownerEmail) {
+        localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
       }
 
       // Persist to local device storage as well (offline fallback)
@@ -426,12 +453,14 @@
 
       if (drawerAuthSection) {
         if (isAuth) {
+          const role = this.getFarmRole();
+          const roleText = role === 'partner' ? '🤝 Associé' : '👑 Propriétaire';
           drawerAuthSection.innerHTML = `
-            <div class="drawer-user-card" onclick="appAuth.openProfileModal()">
+            <div class="drawer-user-card" onclick="if(window.app && app.toggleMobileMenu) app.toggleMobileMenu(); appAuth.openProfileModal();">
               <div class="user-avatar">${initial}</div>
               <div class="user-details">
                 <span class="user-email-text">${email}</span>
-                <span class="user-sync-status">🟢 Synchronisé en direct</span>
+                <span class="user-sync-status">🟢 En ligne &bull; ${roleText}</span>
               </div>
             </div>
           `;
@@ -491,6 +520,311 @@
       }
     },
 
+    // Team & Shared Farm methods (2 Accounts Collaboration)
+    getFarmCode() {
+      let code = localStorage.getItem('fermegest_farm_code');
+      if (!code) {
+        code = this.generateFarmCode();
+        localStorage.setItem('fermegest_farm_code', code);
+      }
+      return code;
+    },
+
+    generateFarmCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let rand = '';
+      for (let i = 0; i < 4; i++) {
+        rand += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return 'FERME-' + rand;
+    },
+
+    getFarmRole() {
+      return localStorage.getItem('fermegest_farm_role') || 'owner';
+    },
+
+    getFarmOwnerEmail() {
+      return localStorage.getItem('fermegest_farm_owner_email') || (this.currentUser ? this.currentUser.email : '');
+    },
+
+    copyFarmCode() {
+      const code = this.getFarmCode();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          if (window.app && app.showToast) {
+            app.showToast((window.app && app.t) ? app.t('team_toast_code_copied') : 'Code copié dans le presse-papier !');
+          }
+        }).catch(() => this.fallbackCopy(code));
+      } else {
+        this.fallbackCopy(code);
+      }
+    },
+
+    fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        if (window.app && app.showToast) {
+          app.showToast((window.app && app.t) ? app.t('team_toast_code_copied') : 'Code copié dans le presse-papier !');
+        }
+      } catch (e) {}
+      document.body.removeChild(ta);
+    },
+
+    shareFarmInvite() {
+      const code = this.getFarmCode();
+      const inviteMsg = `🌾 Salut ! Rejoins la gestion de notre élevage sur FermeGest Pro avec le code : ${code}\n\n📲 Ouvre l'application directement ici : https://fermegestpro.vercel.app`;
+
+      if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Share')) {
+        try {
+          window.Capacitor.Plugins.Share.share({
+            title: 'Invitation FermeGest Pro',
+            text: inviteMsg,
+            url: 'https://fermegestpro.vercel.app',
+            dialogTitle: 'Partager le code de la ferme'
+          });
+          return;
+        } catch (e) {}
+      }
+
+      if (navigator.share) {
+        navigator.share({
+          title: 'Invitation FermeGest Pro',
+          text: inviteMsg,
+          url: 'https://fermegestpro.vercel.app'
+        }).catch(() => {
+          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(inviteMsg)}`, '_blank');
+        });
+      } else {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(inviteMsg)}`, '_blank');
+      }
+    },
+
+    async joinFarmWithCode() {
+      const input = document.getElementById('teamJoinCodeInput');
+      if (!input) return;
+      let code = input.value.trim().toUpperCase().replace(/\s+/g, '');
+      if (!code) {
+        if (window.app && app.showToast) app.showToast('Veuillez entrer un code valide.');
+        return;
+      }
+      if (!code.startsWith('FERME-')) {
+        code = 'FERME-' + code;
+      }
+
+      // Enregistrer le rôle d'associé et le code
+      localStorage.setItem('fermegest_farm_code', code);
+      localStorage.setItem('fermegest_farm_role', 'partner');
+
+      // Se brancher sur le canal Realtime de cette ferme partagée
+      this.subscribeCollaborativeRealtime();
+
+      // Demander l'état actuel de la ferme dans la pièce
+      if (this.collabChannel) {
+        try {
+          this.collabChannel.send({
+            type: 'broadcast',
+            event: 'request_state',
+            payload: {
+              requesterEmail: this.currentUser ? this.currentUser.email : 'Associé',
+              code: code
+            }
+          });
+        } catch (e) {}
+      }
+
+      // Tenter de charger les données cloud si présentes
+      await this.pullSharedData(code);
+
+      // Sauvegarder sur son propre compte cloud
+      await this.pushData(false);
+
+      this.updateProfileModalUI();
+      input.value = '';
+
+      if (window.app && app.showToast) {
+        app.showToast((window.app && app.t) ? app.t('team_toast_joined_success') : '🎉 Connecté à la ferme partagée !');
+      }
+    },
+
+    async leaveSharedFarm() {
+      if (!confirm('Voulez-vous vraiment quitter cette ferme partagée ? Vous repasserez en mode ferme individuelle.')) {
+        return;
+      }
+
+      // Repasser en propriétaire avec un nouveau code indépendant
+      localStorage.setItem('fermegest_farm_role', 'owner');
+      const newCode = this.generateFarmCode();
+      localStorage.setItem('fermegest_farm_code', newCode);
+      localStorage.removeItem('fermegest_farm_owner_email');
+
+      this.subscribeCollaborativeRealtime();
+      await this.pushData(false);
+      this.updateProfileModalUI();
+
+      if (window.app && app.showToast) {
+        app.showToast((window.app && app.t) ? app.t('team_toast_left_farm') : 'Vous avez quitté la ferme partagée.');
+      }
+    },
+
+    // Canal Realtime Collaboratif (Pièce partagée entre les deux comptes)
+    subscribeCollaborativeRealtime() {
+      if (!this.client) return;
+      const farmCode = this.getFarmCode();
+
+      if (this.collabChannel) {
+        try { this.client.removeChannel(this.collabChannel); } catch (e) {}
+        this.collabChannel = null;
+      }
+
+      try {
+        this.collabChannel = this.client
+          .channel(`farm_collab_room_${farmCode}`, {
+            config: { broadcast: { self: false } }
+          })
+          .on('broadcast', { event: 'farm_update' }, (payload) => {
+            if (payload && payload.payload) {
+              const data = payload.payload;
+              const sender = data.senderEmail || 'Votre associé';
+              // Ignorer ses propres messages
+              if (this.currentUser && data.senderId === this.currentUser.id) return;
+
+              if (data.farmData) {
+                this.applyCloudData(data.farmData);
+                this.lastSyncedAt = new Date();
+                this.updateUI();
+                if (window.app && app.showToast) {
+                  const name = sender.split('@')[0];
+                  const msg = (window.app && app.t)
+                    ? app.t('team_toast_partner_update', { name: name })
+                    : `🔄 Mis à jour en direct par votre associé (${name}) !`;
+                  app.showToast(msg);
+                }
+              }
+            }
+          })
+          .on('broadcast', { event: 'request_state' }, (payload) => {
+            // L'associé vient de se connecter ou de rejoindre, on lui envoie les dernières données
+            this.broadcastCurrentState();
+            if (payload && payload.payload && window.app && app.showToast) {
+              const requester = payload.payload.requesterEmail || 'Un associé';
+              if (!this.currentUser || payload.payload.requesterEmail !== this.currentUser.email) {
+                app.showToast((window.app && app.t) ? app.t('team_toast_partner_joined') : `🤝 Associé connecté (${requester.split('@')[0]}) !`);
+              }
+            }
+          })
+          .subscribe((status) => {
+            console.log(`[CollabRoom] Subscribed to ${farmCode}:`, status);
+            if (status === 'SUBSCRIBED' && this.getFarmRole() === 'partner') {
+              try {
+                this.collabChannel.send({
+                  type: 'broadcast',
+                  event: 'request_state',
+                  payload: {
+                    requesterEmail: this.currentUser ? this.currentUser.email : 'Associé',
+                    code: farmCode
+                  }
+                });
+              } catch (e) {}
+            }
+          });
+      } catch (e) {
+        console.warn('[CollabRoom] Subscribe error:', e);
+      }
+    },
+
+    broadcastCurrentState() {
+      if (!this.collabChannel) return;
+      const farmCode = this.getFarmCode();
+      const payload = {
+        version: '2.5.0-pro',
+        farmCode: farmCode,
+        farmRole: this.getFarmRole(),
+        currency: window.appState ? window.appState.currency : 'TND',
+        lang: window.appState ? window.appState.lang : 'fr',
+        theme: window.appState ? window.appState.theme : 'dark',
+        animals: window.appState ? window.appState.animals : [],
+        expenses: window.appState ? window.appState.expenses : [],
+        sales: window.appState ? window.appState.sales : [],
+        incubatorBatches: window.appState ? window.appState.incubatorBatches : [],
+        lastUpdated: Date.now()
+      };
+
+      try {
+        this.collabChannel.send({
+          type: 'broadcast',
+          event: 'farm_update',
+          payload: {
+            senderId: this.currentUser ? this.currentUser.id : null,
+            senderEmail: this.currentUser ? this.currentUser.email : 'Associé',
+            farmData: payload
+          }
+        });
+      } catch (e) {}
+    },
+
+    async pullSharedData(code) {
+      if (!this.client) return;
+      try {
+        const { data, error } = await this.client
+          .from('user_farms')
+          .select('data, updated_at, user_id')
+          .contains('data', { farmCode: code })
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
+        if (!error && data && data.length > 0 && data[0].data) {
+          const cloudData = data[0].data;
+          this.applyCloudData(cloudData);
+          if (cloudData.ownerEmail) {
+            localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
+          }
+          this.lastSyncedAt = new Date();
+          this.updateUI();
+        }
+      } catch (e) {
+        console.warn('[SharedPull] error:', e);
+      }
+    },
+
+    updateProfileModalUI() {
+      const roleBadge = document.getElementById('teamRoleBadge');
+      const shareCodeDisplay = document.getElementById('teamShareCodeDisplay');
+      const joinedCodeDisplay = document.getElementById('teamJoinedCodeDisplay');
+      const ownerEmailDisplay = document.getElementById('teamOwnerEmailDisplay');
+      const ownerSection = document.getElementById('teamOwnerSection');
+      const partnerSection = document.getElementById('teamPartnerSection');
+
+      const code = this.getFarmCode();
+      const role = this.getFarmRole();
+      const ownerEmail = this.getFarmOwnerEmail();
+
+      if (shareCodeDisplay) shareCodeDisplay.textContent = code;
+      if (joinedCodeDisplay) joinedCodeDisplay.textContent = code;
+      if (ownerEmailDisplay) ownerEmailDisplay.textContent = ownerEmail || 'Propriétaire';
+
+      if (role === 'partner') {
+        if (roleBadge) {
+          roleBadge.textContent = (window.app && app.t) ? app.t('team_role_partner') : 'Associé';
+          roleBadge.className = 'team-badge team-badge-partner';
+        }
+        if (ownerSection) ownerSection.classList.add('hidden');
+        if (partnerSection) partnerSection.classList.remove('hidden');
+      } else {
+        if (roleBadge) {
+          roleBadge.textContent = (window.app && app.t) ? app.t('team_role_owner') : 'Propriétaire';
+          roleBadge.className = 'team-badge team-badge-owner';
+        }
+        if (ownerSection) ownerSection.classList.remove('hidden');
+        if (partnerSection) partnerSection.classList.add('hidden');
+      }
+    },
+
     openModal() {
       const modal = document.getElementById('modalAuth');
       if (modal) modal.classList.remove('hidden');
@@ -509,14 +843,15 @@
       const emailEl = document.getElementById('profileModalEmail');
       const timeEl = document.getElementById('profileModalLastSync');
 
-      if (emailEl && this.currentUser) {
-        emailEl.textContent = this.currentUser.email;
+      if (emailEl) {
+        emailEl.textContent = this.currentUser ? this.currentUser.email : 'Mode Local (Invité)';
       }
       if (timeEl) {
         timeEl.textContent = this.lastSyncedAt
           ? this.lastSyncedAt.toLocaleTimeString('fr-FR')
           : 'À l\'instant';
       }
+      this.updateProfileModalUI();
       modal.classList.remove('hidden');
     },
 
