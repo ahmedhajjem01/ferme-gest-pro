@@ -255,9 +255,63 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   pointer-events: none;
 }
 
+.mobile-header-controls {
+  display: none;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.mobile-header-user-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0;
+  transition: var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-header-user-btn:hover,
+.mobile-header-user-btn:active {
+  background-color: var(--bg-card-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.mobile-sync-dot {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-header, #0f172a);
+  background: #10b981;
+}
+.mobile-sync-dot.syncing {
+  background: #f59e0b;
+  animation: pulse 1.2s infinite;
+}
+.mobile-sync-dot.offline {
+  background: #94a3b8;
+}
+
 @media (max-width: 991px) {
   .header-actions {
     display: none !important;
+  }
+  .mobile-header-controls {
+    display: flex !important;
   }
   .mobile-hamburger-btn {
     display: inline-flex !important;
@@ -2804,6 +2858,232 @@ label {
   font-weight: 700;
   font-family: monospace;
 }
+
+/* ==========================================================================
+   User Profile Modal & Mobile Layout
+   ========================================================================== */
+.profile-modal-card {
+  max-width: 440px;
+  width: 100%;
+}
+
+.profile-user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+}
+
+.profile-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-email-text {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.profile-sync-badge {
+  font-size: 0.78rem;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.sync-dot-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  flex-shrink: 0;
+}
+
+.profile-sync-time {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.profile-action-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.profile-sync-btn {
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.profile-logout-btn {
+  font-weight: 600;
+  padding: 0.65rem 1rem;
+}
+
+.team-copy-btn {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.team-leave-btn {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-weight: 700;
+  padding: 0.55rem;
+}
+
+.team-join-submit-btn {
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 0 0.85rem;
+}
+
+/* ==========================================================================
+   Mobile-Specific Adaptations for Profile & Auth Modals
+   ========================================================================== */
+@media (max-width: 640px) {
+  #modalUserProfile,
+  #modalAuth {
+    padding: 0.5rem;
+    align-items: flex-end; /* Mobile Bottom Sheet / Card */
+  }
+
+  .profile-modal-card,
+  #modalAuth .modal-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 90vh !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    margin: 0 !important;
+  }
+
+  #modalUserProfile .modal-header,
+  #modalAuth .modal-header {
+    padding: 0.85rem 1rem;
+  }
+
+  #modalUserProfile .modal-header h3,
+  #modalAuth .modal-header h3 {
+    font-size: 1.05rem;
+  }
+
+  #modalUserProfile .modal-body,
+  #modalAuth .modal-body {
+    padding: 0.85rem 0.95rem 1.25rem 0.95rem !important;
+    gap: 0.85rem !important;
+  }
+
+  .profile-user-card {
+    padding: 0.75rem 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .profile-user-card .user-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+  }
+
+  .profile-email-text {
+    font-size: 0.88rem;
+  }
+
+  .team-sharing-card {
+    padding: 0.85rem 0.8rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .team-code-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.45rem;
+    padding: 0.75rem 0.6rem;
+  }
+
+  .team-code-text {
+    font-size: 1.35rem;
+    letter-spacing: 0.15em;
+    font-weight: 900;
+  }
+
+  .team-copy-btn {
+    width: 100%;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.82rem !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-whatsapp-share {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.88rem !important;
+    min-height: 44px;
+  }
+
+  .team-join-row {
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .team-join-input {
+    height: 42px;
+    font-size: 0.92rem;
+    text-align: center;
+  }
+
+  .team-join-submit-btn {
+    width: 100%;
+    height: 42px;
+    padding: 0.5rem !important;
+    font-size: 0.88rem;
+  }
+
+  .profile-action-btns {
+    gap: 0.55rem;
+  }
+
+  .profile-sync-btn,
+  .profile-logout-btn {
+    min-height: 44px;
+    font-size: 0.88rem;
+  }
+
+  .google-auth-btn,
+  .facebook-auth-btn {
+    min-height: 44px;
+    font-size: 0.88rem;
+  }
+
+  .auth-tab-btn {
+    padding: 0.55rem;
+    font-size: 0.85rem;
+  }
+}
+
 
 
 

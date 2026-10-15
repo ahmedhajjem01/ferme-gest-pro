@@ -441,6 +441,8 @@ const TRANSLATIONS = {
     profile_modal_title: "Mon Compte Fermier",
     profile_sync_now: "🔄 Forcer la synchronisation maintenant",
     profile_signout: "Se Déconnecter",
+    profile_sync_live: "Synchronisé en direct",
+    profile_last_sync_lbl: "Dernière synchro :",
 
     // Team & Shared Farm Invitation
     team_section_title: "Ferme Partagée & Équipe (2 Comptes)",
@@ -934,6 +936,8 @@ const TRANSLATIONS = {
     profile_modal_title: "حساب المزرعة السحابي",
     profile_sync_now: "🔄 مزامنة البيانات الآن",
     profile_signout: "تسجيل الخروج",
+    profile_sync_live: "متصل ومتزامن مباشرة",
+    profile_last_sync_lbl: "آخر مزامنة:",
 
     // Team & Shared Farm Invitation
     team_section_title: "المزرعة المشتركة والفريق (حسابان)",
@@ -1426,6 +1430,8 @@ const TRANSLATIONS = {
     profile_modal_title: "My Farm Account",
     profile_sync_now: "🔄 Sync Now",
     profile_signout: "Sign Out",
+    profile_sync_live: "Live Synchronized",
+    profile_last_sync_lbl: "Last sync:",
 
     // Team & Shared Farm Invitation
     team_section_title: "Shared Farm & Team (2 Accounts)",

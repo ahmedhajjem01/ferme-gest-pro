@@ -451,6 +451,28 @@
         if (initialEl) initialEl.textContent = initial;
       }
 
+      // Mobile header profile button update
+      const mobileUserInitial = document.getElementById('mobileUserInitial');
+      const mobileUserSyncDot = document.getElementById('mobileUserSyncDot');
+      const mobileHeaderUserBtn = document.getElementById('mobileHeaderUserBtn');
+
+      if (mobileUserInitial) {
+        mobileUserInitial.textContent = isAuth ? initial : '👤';
+      }
+      if (mobileUserSyncDot) {
+        mobileUserSyncDot.style.display = isAuth ? 'block' : 'none';
+      }
+      if (mobileHeaderUserBtn) {
+        mobileHeaderUserBtn.title = isAuth ? `Mon Compte (${email})` : 'Connexion';
+        if (isAuth) {
+          mobileHeaderUserBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1))';
+          mobileHeaderUserBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        } else {
+          mobileHeaderUserBtn.style.background = 'var(--bg-surface)';
+          mobileHeaderUserBtn.style.borderColor = 'var(--border-color)';
+        }
+      }
+
       if (drawerAuthSection) {
         if (isAuth) {
           const role = this.getFarmRole();
@@ -477,8 +499,9 @@
 
     updateSyncBadge(status) {
       const dot = document.getElementById('userSyncDot');
-      if (!dot) return;
-      dot.className = 'user-status-dot ' + (status || 'online');
+      if (dot) dot.className = 'user-status-dot ' + (status || 'online');
+      const mobileDot = document.getElementById('mobileUserSyncDot');
+      if (mobileDot) mobileDot.className = 'mobile-sync-dot ' + (status || 'online');
     },
 
     authMode: 'login',
@@ -840,12 +863,16 @@
     openProfileModal() {
       const modal = document.getElementById('modalUserProfile');
       if (!modal) return;
+      const avatarEl = document.getElementById('profileModalAvatar');
       const emailEl = document.getElementById('profileModalEmail');
       const timeEl = document.getElementById('profileModalLastSync');
 
-      if (emailEl) {
-        emailEl.textContent = this.currentUser ? this.currentUser.email : 'Mode Local (Invité)';
-      }
+      const isAuth = !!this.currentUser;
+      const email = isAuth ? (this.currentUser.email || 'Utilisateur') : 'Mode Local (Invité)';
+      const initial = isAuth && this.currentUser.email ? this.currentUser.email[0].toUpperCase() : '👤';
+
+      if (avatarEl) avatarEl.textContent = initial;
+      if (emailEl) emailEl.textContent = email;
       if (timeEl) {
         timeEl.textContent = this.lastSyncedAt
           ? this.lastSyncedAt.toLocaleTimeString('fr-FR')

@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -119,14 +119,21 @@
         </button>
       </div>
 
-      <!-- Hamburger Menu Button (3 lines) for Mobile -->
-      <button id="mobileHeaderMenuBtn" class="mobile-hamburger-btn" aria-label="Menu principal" title="Paramètres & Menu" onclick="app.toggleMobileMenu(event)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-      </button>
+      <!-- Mobile Right Controls (Profile Button + 3-Line Menu) -->
+      <div class="mobile-header-controls">
+        <button id="mobileHeaderUserBtn" class="mobile-header-user-btn" aria-label="Mon Profil" title="Mon Compte Fermier" onclick="if(window.appAuth) { appAuth.currentUser ? appAuth.openProfileModal() : appAuth.openModal(); }">
+          <span id="mobileUserInitial">👤</span>
+          <span id="mobileUserSyncDot" class="mobile-sync-dot online" style="display: none;"></span>
+        </button>
+
+        <button id="mobileHeaderMenuBtn" class="mobile-hamburger-btn" aria-label="Menu principal" title="Paramètres & Menu" onclick="app.toggleMobileMenu(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <!-- Mobile Navigation & Settings Drawer -->
@@ -1608,23 +1615,28 @@
 
   <!-- Modal: Profil Utilisateur & État Synchronisation -->
   <div id="modalUserProfile" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 400px;">
+    <div class="modal-card profile-modal-card">
       <div class="modal-header">
         <h3 data-i18n="profile_modal_title">Mon Compte Fermier</h3>
         <button class="modal-close" onclick="appAuth.closeProfileModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div style="display: flex; align-items: center; gap: 0.85rem; padding: 1rem; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
-          <div class="user-avatar" style="width: 44px; height: 44px; font-size: 1.2rem;">👤</div>
-          <div style="overflow: hidden;">
-            <div id="profileModalEmail" style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); word-break: break-all;">email@domaine.com</div>
-            <div style="font-size: 0.78rem; color: #10b981; margin-top: 0.2rem; display: flex; align-items: center; gap: 0.35rem;">
-              <span>🟢</span> <span>Synchronisé en direct</span>
+        
+        <!-- User Info Card -->
+        <div class="profile-user-card">
+          <div class="user-avatar" id="profileModalAvatar">👤</div>
+          <div class="profile-user-details">
+            <div id="profileModalEmail" class="profile-email-text">email@domaine.com</div>
+            <div class="profile-sync-badge">
+              <span class="sync-dot-live"></span>
+              <span data-i18n="profile_sync_live">Synchronisé en direct</span>
             </div>
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
-              Dernière synchro : <span id="profileModalLastSync">À l'instant</span>
+            <div class="profile-sync-time">
+              <span data-i18n="profile_last_sync_lbl">Dernière synchro :</span> <span id="profileModalLastSync">À l'instant</span>
             </div>
           </div>
+        </div>
+
         <!-- Team & Shared Farm Section (2-Account Collaboration) -->
         <div class="team-sharing-card">
           <div class="team-sharing-header">
@@ -1637,13 +1649,13 @@
 
           <!-- Section A: Quand l'utilisateur est Propriétaire -->
           <div id="teamOwnerSection">
-            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.65rem; line-height: 1.4;" data-i18n="team_owner_desc">
+            <p class="team-owner-desc" data-i18n="team_owner_desc">
               Partagez ce code avec votre frère ou associé pour travailler ensemble en synchronisation directe :
             </p>
             <div class="team-code-box">
-              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;" data-i18n="team_share_code_lbl">CODE DE PARTAGE</span>
+              <span class="team-code-lbl" data-i18n="team_share_code_lbl">CODE DE PARTAGE</span>
               <span id="teamShareCodeDisplay" class="team-code-text">FERME-XXXX</span>
-              <button type="button" class="btn btn-sm btn-subtle" onclick="appAuth.copyFarmCode()" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 700;">
+              <button type="button" class="btn btn-sm btn-subtle team-copy-btn" onclick="appAuth.copyFarmCode()">
                 📋 <span data-i18n="team_btn_copy">Copier</span>
               </button>
             </div>
@@ -1655,39 +1667,41 @@
 
           <!-- Section B: Quand l'utilisateur a rejoint la ferme d'un associé -->
           <div id="teamPartnerSection" class="hidden">
-            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">
-              <span data-i18n="team_connected_to">Connecté à la ferme :</span> <strong id="teamJoinedCodeDisplay" style="color: var(--primary); font-family: monospace;">FERME-XXXX</strong>
+            <div class="team-partner-info">
+              <span data-i18n="team_connected_to">Connecté à la ferme :</span> <strong id="teamJoinedCodeDisplay" class="team-joined-code">FERME-XXXX</strong>
             </div>
-            <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">
-              <span data-i18n="team_owner_is">Créateur :</span> <strong id="teamOwnerEmailDisplay" style="color: var(--text-main);">associé@gmail.com</strong>
+            <div class="team-creator-info">
+              <span data-i18n="team_owner_is">Créateur :</span> <strong id="teamOwnerEmailDisplay">associé@gmail.com</strong>
             </div>
-            <button type="button" class="btn btn-sm btn-full" onclick="appAuth.leaveSharedFarm()" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 700; padding: 0.45rem;">
+            <button type="button" class="btn btn-sm btn-full team-leave-btn" onclick="appAuth.leaveSharedFarm()">
               ❌ <span data-i18n="team_leave_btn">Quitter cette ferme partagée</span>
             </button>
           </div>
 
           <!-- Section C: Rejoindre une ferme avec un code -->
           <div id="teamJoinContainer" class="team-join-container">
-            <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);" data-i18n="team_join_title">
+            <div class="team-join-title" data-i18n="team_join_title">
               🤝 Rejoindre la ferme d'un associé :
             </div>
             <div class="team-join-row">
               <input type="text" id="teamJoinCodeInput" class="form-control form-control-sm team-join-input" placeholder="ex: FERME-7842" maxlength="12">
-              <button type="button" class="btn btn-primary btn-sm" onclick="appAuth.joinFarmWithCode()" style="font-weight: 700; white-space: nowrap; padding: 0 0.85rem;">
+              <button type="button" class="btn btn-primary btn-sm team-join-submit-btn" onclick="appAuth.joinFarmWithCode()">
                 <span data-i18n="team_btn_join">Rejoindre</span>
               </button>
             </div>
           </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-          <button type="button" class="btn btn-emerald btn-full" onclick="appAuth.pushData(true)" data-i18n="profile_sync_now" style="font-weight: 700;">
+        <!-- Action Buttons -->
+        <div class="profile-action-btns">
+          <button type="button" class="btn btn-emerald btn-full profile-sync-btn" onclick="appAuth.pushData(true)" data-i18n="profile_sync_now">
             🔄 Synchroniser maintenant
           </button>
-          <button type="button" class="btn btn-danger-outline btn-full" onclick="appAuth.signOut()" data-i18n="profile_signout">
+          <button type="button" class="btn btn-danger-outline btn-full profile-logout-btn" onclick="appAuth.signOut()" data-i18n="profile_signout">
             🚪 Se Déconnecter
           </button>
         </div>
+
       </div>
     </div>
   </div>
@@ -1698,8 +1712,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=6"></script>
-  <script src="translations.js?v=6"></script>
-  <script src="app.js?v=9"></script>
+  <script src="supabase-client.js?v=7"></script>
+  <script src="translations.js?v=7"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
