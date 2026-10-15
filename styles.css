@@ -2544,6 +2544,16 @@ label {
   margin-bottom: 1rem;
 }
 
+#modalAuth .modal-card {
+  max-height: 94vh;
+}
+
+#modalAuth form {
+  overflow: visible;
+  flex: none;
+}
+
+
 /* Header User Chip & Status Dot */
 .header-user-chip {
   display: inline-flex;
