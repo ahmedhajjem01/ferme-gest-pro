@@ -460,7 +460,23 @@ const TRANSLATIONS = {
     team_toast_joined_success: "Félicitations ! Vous avez rejoint la ferme partagée.",
     team_toast_left_farm: "Vous avez quitté la ferme partagée.",
     team_toast_partner_update: "🔄 Mis à jour en direct par votre associé ({name}) !",
-    team_toast_partner_joined: "🤝 Votre associé vient de se connecter à votre ferme !"
+    team_toast_partner_joined: "🤝 Votre associé vient de se connecter à votre ferme !",
+
+    // Daily 17h Egg Collection Notification
+    notif_daily_eggs_title: "🥚 FermeGest Pro - Récolte du Jour",
+    notif_daily_eggs_body: "Combien d'œufs avez-vous collecté aujourd'hui ?",
+    notif_daily_eggs_sub: "N'oubliez pas d'enregistrer votre ponte du jour pour suivre votre rentabilité.",
+    daily_eggs_modal_title: "🥚 Collecte des Œufs du Jour",
+    daily_eggs_modal_sub: "Combien d'œufs avez-vous collecté aujourd'hui ?",
+    daily_eggs_input_lbl: "Nombre total d'œufs récoltés aujourd'hui",
+    daily_eggs_dest_lbl: "Destination principale des œufs",
+    daily_eggs_opt_sale: "Vente directe (Revenu commercial)",
+    daily_eggs_opt_incubator: "Mettre en Couveuse / Incubation",
+    daily_eggs_opt_stock: "Consommation / Réserve de la ferme",
+    daily_eggs_price_lbl: "Prix unitaire estimé",
+    daily_eggs_menu_btn: "🥚 Récolte Quotidienne des Œufs",
+    daily_eggs_btn_save: "Valider ma Récolte",
+    daily_eggs_toast_success: "🎉 Récolte de {count} œufs enregistrée avec succès !"
   },
 
   ar: {
@@ -919,7 +935,23 @@ const TRANSLATIONS = {
     team_toast_joined_success: "تهانينا! لقد انضممت إلى المزرعة المشتركة بنجاح.",
     team_toast_left_farm: "لقد غادرت المزرعة المشتركة.",
     team_toast_partner_update: "🔄 تحديث مباشر من شريكك ({name})!",
-    team_toast_partner_joined: "🤝 انضم شريكك للتو إلى مزرعتك!"
+    team_toast_partner_joined: "🤝 انضم شريكك للتو إلى مزرعتك!",
+
+    // Daily 17h Egg Collection Notification
+    notif_daily_eggs_title: "🥚 فيرم-جست برو - جمع البيض اليومي",
+    notif_daily_eggs_body: "كم بيضة قمت بجمعها اليوم؟",
+    notif_daily_eggs_sub: "لا تنسَ تسجيل إنتاج بيض اليوم لمتابعة أرباح مزرعتك بدقة.",
+    daily_eggs_modal_title: "🥚 جمع البيض اليومي",
+    daily_eggs_modal_sub: "كم بيضة قمت بجمعها اليوم؟",
+    daily_eggs_input_lbl: "العدد الإجمالي للبيض المجموع اليوم",
+    daily_eggs_dest_lbl: "الاستخدام الرئيسي للبيض",
+    daily_eggs_opt_sale: "بيع مباشر (مداخيل تجارية)",
+    daily_eggs_opt_incubator: "وضع في الحاضنة / التفريخ",
+    daily_eggs_opt_stock: "استهلاك / احتياطي المزرعة",
+    daily_eggs_price_lbl: "سعر الوحدة التقديري",
+    daily_eggs_menu_btn: "🥚 جمع البيض اليومي (17:00)",
+    daily_eggs_btn_save: "تأكيد وتسجيل الإنتاج",
+    daily_eggs_toast_success: "🎉 تم تسجيل جمع {count} بيضة بنجاح!"
   },
 
   en: {
@@ -1377,7 +1409,23 @@ const TRANSLATIONS = {
     team_toast_joined_success: "Congratulations! You joined the shared farm successfully.",
     team_toast_left_farm: "You left the shared farm.",
     team_toast_partner_update: "🔄 Live update from your partner ({name})!",
-    team_toast_partner_joined: "🤝 Your partner just joined your farm!"
+    team_toast_partner_joined: "🤝 Your partner just joined your farm!",
+
+    // Daily 17h Egg Collection Notification
+    notif_daily_eggs_title: "🥚 FermeGest Pro - Daily Egg Collection",
+    notif_daily_eggs_body: "How many eggs did you collect today?",
+    notif_daily_eggs_sub: "Don't forget to record today's egg production to track your farm profit.",
+    daily_eggs_modal_title: "🥚 Daily Egg Collection",
+    daily_eggs_modal_sub: "How many eggs did you collect today?",
+    daily_eggs_input_lbl: "Total eggs collected today",
+    daily_eggs_dest_lbl: "Primary egg destination",
+    daily_eggs_opt_sale: "Direct Sale (Commercial Revenue)",
+    daily_eggs_opt_incubator: "Incubator / Future Hatch",
+    daily_eggs_opt_stock: "Farm Consumption / Reserve",
+    daily_eggs_price_lbl: "Estimated unit price",
+    daily_eggs_menu_btn: "🥚 Daily Egg Collection (5 PM)",
+    daily_eggs_btn_save: "Confirm & Record Collection",
+    daily_eggs_toast_success: "🎉 Successfully recorded collection of {count} eggs!"
   }
 };
 

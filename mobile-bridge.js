@@ -27,6 +27,10 @@ const MobileBridge = {
 
     this.attachHapticsToUI();
     this.observeThemeChanges();
+
+    // Schedule daily 17h egg collection notification in active language
+    const currentLang = (typeof appState !== 'undefined' && appState.lang) || localStorage.getItem('fermegest_lang') || 'fr';
+    await this.scheduleDailyEggNotification(currentLang);
   },
 
   // 1. Status Bar Sync
@@ -179,18 +183,160 @@ const MobileBridge = {
     }
   },
 
-  // 5. Local Notifications for Incubator Milestones
+  // 5. Local Notifications & Daily 17h Egg Collection Alert
   async requestNotificationPermissions() {
     try {
-      const LocalNotifications = this.plugins.LocalNotifications;
-      if (!LocalNotifications) return;
-
-      const perm = await LocalNotifications.checkPermissions();
-      if (perm.display !== 'granted') {
-        await LocalNotifications.requestPermissions();
+      if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
+        const perm = await this.plugins.LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          await this.plugins.LocalNotifications.requestPermissions();
+        }
+      } else if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (Notification.permission === 'default') {
+          try { await Notification.requestPermission(); } catch (e) {}
+        }
       }
     } catch (e) {
       console.warn('[MobileBridge] Notification permission request error:', e);
+    }
+  },
+
+  getDailyEggStrings(lang) {
+    const l = ['fr', 'ar', 'en'].includes(lang) ? lang : 'fr';
+    if (typeof TRANSLATIONS !== 'undefined' && TRANSLATIONS[l]) {
+      return {
+        title: TRANSLATIONS[l].notif_daily_eggs_title || "🥚 FermeGest Pro - Récolte du Jour",
+        body: TRANSLATIONS[l].notif_daily_eggs_body || "Combien d'œufs avez-vous collecté aujourd'hui ?"
+      };
+    }
+    const fallback = {
+      fr: { title: "🥚 FermeGest Pro - Récolte du Jour", body: "Combien d'œufs avez-vous collecté aujourd'hui ?" },
+      ar: { title: "🥚 فيرم-جست برو - جمع البيض اليومي", body: "كم بيضة قمت بجمعها اليوم؟" },
+      en: { title: "🥚 FermeGest Pro - Daily Egg Collection", body: "How many eggs did you collect today?" }
+    };
+    return fallback[l] || fallback.fr;
+  },
+
+  async scheduleDailyEggNotification(lang) {
+    const currentLang = lang || (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
+    const { title, body } = this.getDailyEggStrings(currentLang);
+
+    // A) Native Capacitor Local Notifications (Android APK & iOS)
+    if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
+      try {
+        const LocalNotifications = this.plugins.LocalNotifications;
+        await this.requestNotificationPermissions();
+
+        // Cancel previous ID 1700 to update language
+        try {
+          await LocalNotifications.cancel({ notifications: [{ id: 1700 }] });
+        } catch (e) {}
+
+        // Schedule daily recurring at 17:00 (5:00 PM)
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: 1700,
+              title: title,
+              body: body,
+              schedule: {
+                on: {
+                  hour: 17,
+                  minute: 0
+                },
+                allowWhileIdle: true
+              },
+              sound: 'beep.wav',
+              smallIcon: 'ic_stat_icon_config_sample',
+              extra: { type: 'daily_egg_collection' }
+            }
+          ]
+        });
+
+        // Add action listener when tapped
+        if (!this._notifListenerAttached && LocalNotifications.addListener) {
+          this._notifListenerAttached = true;
+          LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+            if (action && action.notification && action.notification.extra && action.notification.extra.type === 'daily_egg_collection') {
+              if (window.app && app.openDailyEggModal) {
+                app.openDailyEggModal();
+              }
+            }
+          });
+        }
+        console.log(`[MobileBridge] Native 17h egg notification active in (${currentLang})`);
+      } catch (err) {
+        console.warn('[MobileBridge] scheduleDailyEggNotification native error:', err);
+      }
+    }
+
+    // B) Web & PWA Browser Notification Scheduling
+    this.scheduleWebDailyEggNotification(currentLang, title, body);
+  },
+
+  scheduleWebDailyEggNotification(lang, title, body) {
+    if (typeof window === 'undefined') return;
+
+    // Check immediately if we need to trigger for today (if current hour >= 17)
+    this.checkAndTriggerDailyEggNotification(title, body);
+
+    // Setup periodic 60-second check
+    if (this._dailyEggInterval) clearInterval(this._dailyEggInterval);
+    this._dailyEggInterval = setInterval(() => {
+      const strings = this.getDailyEggStrings(typeof appState !== 'undefined' ? appState.lang : lang);
+      this.checkAndTriggerDailyEggNotification(strings.title, strings.body);
+    }, 60000);
+  },
+
+  checkAndTriggerDailyEggNotification(title, body) {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const lastNotifiedDate = localStorage.getItem('fermegest_last_egg_notif_date');
+
+    // Trigger at 17:00 or if opened after 17:00 and not yet notified today
+    if (now.getHours() >= 17 && lastNotifiedDate !== todayStr) {
+      localStorage.setItem('fermegest_last_egg_notif_date', todayStr);
+      this.showBrowserNotification(title, body);
+    }
+  },
+
+  showBrowserNotification(title, body) {
+    // 1. Service Worker Notification (works in background & mobile Chrome)
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification(title, {
+          body: body,
+          icon: './icon-192.png',
+          badge: './icon-192.png',
+          vibrate: [200, 100, 200],
+          tag: 'daily-egg-collection',
+          data: { type: 'daily_egg_collection' }
+        });
+      }).catch(() => this.fallbackWebNotification(title, body));
+    } else {
+      this.fallbackWebNotification(title, body);
+    }
+
+    // 2. In-App Toast & Interactive Banner
+    if (window.app && app.showToast) {
+      app.showToast(`🥚 ${body}`, 9000);
+    }
+  },
+
+  fallbackWebNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        const notif = new Notification(title, {
+          body: body,
+          icon: './icon-192.png'
+        });
+        notif.onclick = () => {
+          window.focus();
+          if (window.app && app.openDailyEggModal) {
+            app.openDailyEggModal();
+          }
+        };
+      } catch (e) {}
     }
   },
 

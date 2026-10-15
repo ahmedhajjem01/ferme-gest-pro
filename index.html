@@ -209,6 +209,10 @@
               <span>⚙️</span>
               <span data-i18n="btn_manage_data">Options & Sauvegarde</span>
             </button>
+            <button type="button" class="btn btn-primary btn-full drawer-btn" style="margin-top: 0.45rem; background: linear-gradient(135deg, #10b981, #059669); border:none;" onclick="app.toggleMobileMenu(); app.openDailyEggModal();">
+              <span>🥚</span>
+              <span data-i18n="daily_eggs_menu_btn">🥚 Récolte Quotidienne des Œufs</span>
+            </button>
           </div>
 
 
@@ -1348,6 +1352,58 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="app.closeModal('modalHatchPrompt')" data-i18n="btn_postpone">Reporter</button>
           <button type="submit" class="btn btn-emerald" data-i18n="btn_confirm_hatch">✅ Valider & Ajouter Automatiquement au Cheptel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Collecte Quotidienne des Œufs (Notification 17h) -->
+  <div id="modalDailyEggs" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 data-i18n="daily_eggs_modal_title">🥚 Collecte des Œufs du Jour</h3>
+        <button class="modal-close" onclick="app.closeModal('modalDailyEggs')">&times;</button>
+      </div>
+      <form id="formDailyEggs" onsubmit="app.handleSaveDailyEggs(event)">
+        <div class="modal-body">
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.9rem; margin-bottom: 1.15rem; display: flex; align-items: center; gap: 0.75rem;">
+            <div style="font-size: 1.8rem;">🥚</div>
+            <div style="font-size: 0.88rem; color: var(--text-main); font-weight: 600; line-height: 1.4;" data-i18n="daily_eggs_modal_sub">
+              Combien d'œufs avez-vous collecté aujourd'hui ?
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.1rem;">
+            <label for="dailyEggCount" class="form-label" data-i18n="daily_eggs_input_lbl" style="font-weight: 700;">
+              Nombre total d'œufs récoltés aujourd'hui
+            </label>
+            <div style="position: relative;">
+              <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" placeholder="Ex: 150" required style="font-size: 1.35rem; font-weight: 800; padding: 0.75rem 1rem; color: var(--primary); letter-spacing: 0.05em;">
+              <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);">🥚 Œufs</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.15rem;">
+            <label for="dailyEggDestination" class="form-label" data-i18n="daily_eggs_dest_lbl">
+              Destination principale des œufs
+            </label>
+            <select id="dailyEggDestination" class="input-field" onchange="app.handleDailyEggDestChange()">
+              <option value="vente" selected data-i18n="daily_eggs_opt_sale">💰 Vente directe (Revenu commercial)</option>
+              <option value="couveuse" data-i18n="daily_eggs_opt_incubator">🤖 Mettre en Couveuse / Incubation</option>
+              <option value="stock" data-i18n="daily_eggs_opt_stock">🏠 Consommation / Réserve de la ferme</option>
+            </select>
+          </div>
+
+          <div id="dailyEggPriceRow" class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="dailyEggPricePerUnit" class="form-label">
+              <span data-i18n="daily_eggs_price_lbl">Prix unitaire estimé</span> (<span class="currency-label">DT</span>/œuf)
+            </label>
+            <input type="number" id="dailyEggPricePerUnit" class="input-field" step="0.01" min="0" placeholder="Ex: 0.40" value="0.40">
+          </div>
+
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.75rem; font-size: 1rem; box-shadow: 0 4px 14px var(--primary-glow);">
+            <span data-i18n="daily_eggs_btn_save">Valider ma Récolte</span>
+          </button>
         </div>
       </form>
     </div>

@@ -432,6 +432,12 @@ const app = {
     this.renderAll();
     this.runSimulator();
     this.calcHatchPreview();
+
+    // Reschedule daily 17h egg notification in the selected language
+    if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
+      window.MobileBridge.scheduleDailyEggNotification(newLang);
+    }
+
     this.showToast(this.t('toast_lang_changed'));
   },
 
@@ -501,6 +507,28 @@ const app = {
     if (this.cloudSync) {
       this.cloudSync.init();
     }
+
+    // Schedule 17h daily egg collection notification in active language
+    if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
+      window.MobileBridge.scheduleDailyEggNotification(appState.lang || 'fr');
+    }
+
+    // Listen for Service Worker notification clicks (PWA / Web)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.action === 'open_daily_eggs') {
+          this.openDailyEggModal();
+        }
+      });
+    }
+
+    // Deep link or action parameter from notification click
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('action') === 'daily_eggs') {
+        setTimeout(() => this.openDailyEggModal(), 600);
+      }
+    } catch (e) {}
   },
 
   // State Persistence
@@ -833,6 +861,89 @@ const app = {
   closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.add('hidden');
+  },
+
+  // Daily 17h Egg Collection Modal & Actions
+  openDailyEggModal() {
+    this.openModal('modalDailyEggs');
+    const input = document.getElementById('dailyEggCount');
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 150);
+    }
+    const dest = document.getElementById('dailyEggDestination');
+    if (dest) dest.value = 'vente';
+    this.handleDailyEggDestChange();
+  },
+
+  handleDailyEggDestChange() {
+    const dest = document.getElementById('dailyEggDestination')?.value;
+    const priceRow = document.getElementById('dailyEggPriceRow');
+    if (priceRow) {
+      priceRow.style.display = dest === 'vente' ? 'block' : 'none';
+    }
+  },
+
+  handleSaveDailyEggs(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const countInput = document.getElementById('dailyEggCount');
+    const count = parseInt(countInput?.value, 10);
+    if (!count || count <= 0) {
+      this.showToast(this.t('err_fill_required') || 'Veuillez saisir un nombre valide.');
+      return;
+    }
+
+    const dest = document.getElementById('dailyEggDestination')?.value || 'vente';
+    const todayStr = this.getTodayStr();
+    const lang = appState.lang || 'fr';
+
+    if (dest === 'vente') {
+      const unitPrice = parseFloat(document.getElementById('dailyEggPricePerUnit')?.value) || 0.40;
+      const total = count * unitPrice;
+      let desc = `Récolte quotidienne d'œufs (${count} œufs)`;
+      if (lang === 'ar') desc = `جمع بيض يومي (${count} بيضة)`;
+      else if (lang === 'en') desc = `Daily egg harvest (${count} eggs)`;
+
+      const newSale = {
+        id: 'sale-' + Date.now().toString(36),
+        date: todayStr,
+        productType: 'oeufs',
+        description: desc,
+        format: 'oeuf-unite',
+        quantity: count,
+        unitPrice: unitPrice,
+        total: total,
+        linkedLotId: 'none',
+        ageText: ''
+      };
+      appState.sales.unshift(newSale);
+    }
+
+    // Save date in localStorage to avoid duplicate prompt today
+    localStorage.setItem('fermegest_last_egg_notif_date', todayStr);
+
+    this.saveState();
+    this.closeModal('modalDailyEggs');
+    this.renderAll();
+    this.showToast(this.t('daily_eggs_toast_success', { count: count }));
+
+    if (countInput) countInput.value = '';
+
+    if (dest === 'couveuse') {
+      setTimeout(() => {
+        const confirmMsg = lang === 'ar'
+          ? 'هل تريد الانتقال إلى شاشة الحاضنة الآن لتسجيل دفعة تفقيس جديدة بهذا البيض؟'
+          : (lang === 'en'
+            ? 'Would you like to open the Incubator tab now to start a new batch with these eggs?'
+            : 'Voulez-vous ouvrir l\'onglet Couveuse maintenant pour démarrer un nouveau lot avec ces œufs ?');
+        if (confirm(confirmMsg)) {
+          this.switchTab('incubator');
+          this.openModal('modalAddIncubator');
+          const batchEggs = document.getElementById('batchEggsCount');
+          if (batchEggs) batchEggs.value = count;
+        }
+      }, 400);
+    }
   },
 
   // Populate dynamic select options in modals
