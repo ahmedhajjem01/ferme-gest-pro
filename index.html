@@ -452,8 +452,11 @@
                 </div>
               </div>
               <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right;">
-                  <span style="font-size: 0.7rem; color: var(--text-secondary); display: block;" data-i18n="farm_feed_daily_total">Consommation journalière</span>
+                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right; cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalDailyFeedRation')" title="Cliquer pour ajuster votre ration réelle (ex: 2 kg / 3 boîtes Sicam)">
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem;">
+                    <span style="font-size: 0.7rem; color: var(--text-secondary);" data-i18n="farm_feed_daily_total">Consommation journalière</span>
+                    <span style="font-size: 0.72rem; color: var(--accent-amber);">✏️</span>
+                  </div>
                   <strong style="font-size: 1.15rem; color: var(--accent-amber);" id="farmFeedTodayKg">0.00 kg / j</strong>
                 </div>
                 <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right;">
@@ -1711,6 +1714,82 @@
 
           <button type="submit" class="btn btn-primary btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;">
             Valider le Stock en Réserve
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Régime & Ration Quotidienne Réelle (Plein air / Boîtes Sicam) -->
+  <div id="modalDailyFeedRation" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>🌾 Ration Quotidienne Réelle de la Ferme</h3>
+        <button class="modal-close" onclick="app.closeModal('modalDailyFeedRation')">&times;</button>
+      </div>
+      <form id="formDailyFeedRation" onsubmit="app.handleSaveDailyFeedRation(event)">
+        <div class="modal-body">
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem;">
+            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.45;">
+              🐔 <strong>Élevage Fermier & Plein Air :</strong> Les volailles picorent aussi dehors (herbe, insectes, épluchures). Indiquez la quantité de grains/granulés que vous distribuez réellement par jour pour que vos coûts reflètent la réalité !
+            </p>
+          </div>
+
+          <!-- Mode de calcul -->
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" style="font-weight: 700;">Mode d'alimentation de votre basse-cour</label>
+            <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+              <label style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-card); padding: 0.65rem 0.8rem; border-radius: var(--radius-md); border: 1.5px solid var(--primary); cursor: pointer;">
+                <input type="radio" id="feedModeCustomRadio" name="feedRationModeRadio" value="custom" checked onchange="app.toggleFeedRationModeUI()">
+                <div>
+                  <strong style="color: var(--primary);">🌾 Ration Fermière Réelle (Mesurée / Boîtes Sicam)</strong>
+                  <div style="font-size: 0.72rem; color: var(--text-secondary);">Vous distribuez une quantité quotidienne définie (ex: 2 kg / 3 boîtes Sicam)</div>
+                </div>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-card); padding: 0.65rem 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer;">
+                <input type="radio" id="feedModeIndustrialRadio" name="feedRationModeRadio" value="industrial" onchange="app.toggleFeedRationModeUI()">
+                <div>
+                  <strong>🏭 Table Agronomique Théorique (À volonté / Intensif)</strong>
+                  <div style="font-size: 0.72rem; color: var(--text-secondary);">Calcul automatique d'usine en bâtiment clos (~5 kg/j)</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Section Saisie Ration Réelle (Affichée en mode custom) -->
+          <div id="feedRationCustomBlock" style="background: var(--bg-surface); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.15rem;">
+            <!-- Convertisseur Boîte Sicam 800g -->
+            <div class="form-group" style="margin-bottom: 0.85rem;">
+              <label for="feedSicamCansInput" class="form-label" style="font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                <span>🥫 Nombre de boîtes Sicam (800g) par jour</span>
+                <span class="badge-pill text-amber" style="font-size: 0.72rem;">Mesurette locale</span>
+              </label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="number" id="feedSicamCansInput" class="input-field" step="0.5" min="0" value="3" placeholder="3" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-amber);" oninput="app.calcSicamToKg()">
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;">boîtes / j</span>
+              </div>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
+                Votre menu : 1.5 boîte de بوشونات + 1.5 boîte de blé = <strong>3 boîtes Sicam</strong>
+              </small>
+            </div>
+
+            <!-- Équivalent en kg par jour -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="feedCustomKgInput" class="form-label" style="font-weight: 700;">
+                ⚖️ Poids total équivalent distribué par jour (kg/j)
+              </label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="number" id="feedCustomKgInput" class="input-field" step="0.1" min="0.1" value="2.0" placeholder="2.0" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.calcKgToSicam()">
+                <strong style="font-size: 1.1rem; color: var(--accent-emerald);">kg / jour</strong>
+              </div>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
+                3 boîtes Sicam pèsent environ <strong>~1.95 à 2.0 kg</strong> de grains/concentré.
+              </small>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;">
+            Appliquer cette Ration Quotidienne
           </button>
         </div>
       </form>

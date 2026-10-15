@@ -432,6 +432,9 @@
           feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
           feedStockDate: state.feedStockDate || null,
           feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
+          feedRationMode: state.feedRationMode || 'custom',
+          customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
+          sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
           animals: Array.isArray(state.animals) ? state.animals : [],
           expenses: Array.isArray(state.expenses) ? state.expenses : [],
           sales: Array.isArray(state.sales) ? state.sales : [],
@@ -658,6 +661,11 @@
         state.feedStockDate = cloudData.feedStockDate || null;
         state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
       }
+      if (cloudData.customDailyFeedKg !== undefined) {
+        state.feedRationMode = cloudData.feedRationMode || 'custom';
+        state.customDailyFeedKg = cloudData.customDailyFeedKg !== null ? Number(cloudData.customDailyFeedKg) : 2.0;
+        state.sicamCansCount = cloudData.sicamCansCount !== undefined ? Number(cloudData.sicamCansCount) : 3;
+      }
 
       if (doMerge) {
         state.animals = this.mergeCollections(state.animals, cloudData.animals || []);
@@ -694,6 +702,9 @@
         window.appState.feedStockKg = state.feedStockKg;
         window.appState.feedStockDate = state.feedStockDate;
         window.appState.feedStockCostPerKg = state.feedStockCostPerKg;
+        window.appState.feedRationMode = state.feedRationMode;
+        window.appState.customDailyFeedKg = state.customDailyFeedKg;
+        window.appState.sicamCansCount = state.sicamCansCount;
         window.appState.animals = state.animals;
         window.appState.expenses = state.expenses;
         window.appState.sales = state.sales;
@@ -712,6 +723,9 @@
           feedStockKg: state.feedStockKg,
           feedStockDate: state.feedStockDate,
           feedStockCostPerKg: state.feedStockCostPerKg,
+          feedRationMode: state.feedRationMode,
+          customDailyFeedKg: state.customDailyFeedKg,
+          sicamCansCount: state.sicamCansCount,
           animals: state.animals,
           expenses: state.expenses,
           sales: state.sales,

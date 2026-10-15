@@ -15,6 +15,9 @@ const appState = {
   feedStockKg: null,
   feedStockDate: null,
   feedStockCostPerKg: 1.0,
+  feedRationMode: 'custom',
+  customDailyFeedKg: 2.0,
+  sicamCansCount: 3,
   
   animals: [],
   expenses: [],
@@ -552,6 +555,9 @@ const app = {
         feedStockKg: appState.feedStockKg !== undefined ? appState.feedStockKg : null,
         feedStockDate: appState.feedStockDate || null,
         feedStockCostPerKg: appState.feedStockCostPerKg || 1.0,
+        feedRationMode: appState.feedRationMode || 'custom',
+        customDailyFeedKg: appState.customDailyFeedKg !== undefined ? appState.customDailyFeedKg : 2.0,
+        sicamCansCount: appState.sicamCansCount !== undefined ? appState.sicamCansCount : 3,
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
@@ -580,6 +586,9 @@ const app = {
         appState.feedStockKg = parsed.feedStockKg !== undefined ? parsed.feedStockKg : null;
         appState.feedStockDate = parsed.feedStockDate || null;
         appState.feedStockCostPerKg = parsed.feedStockCostPerKg ? Number(parsed.feedStockCostPerKg) : 1.0;
+        appState.feedRationMode = parsed.feedRationMode || 'custom';
+        appState.customDailyFeedKg = parsed.customDailyFeedKg !== undefined ? Number(parsed.customDailyFeedKg) : 2.0;
+        appState.sicamCansCount = parsed.sicamCansCount !== undefined ? Number(parsed.sicamCansCount) : 3;
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
@@ -893,6 +902,19 @@ const app = {
         this.calcFeedStockValuation();
         const expCheck = document.getElementById('feedStockRecordExpense');
         if (expCheck) expCheck.checked = false;
+      }
+
+      if (modalId === 'modalDailyFeedRation') {
+        const customKgInput = document.getElementById('feedCustomKgInput');
+        const sicamInput = document.getElementById('feedSicamCansInput');
+        const customRadio = document.getElementById('feedModeCustomRadio');
+        const industrialRadio = document.getElementById('feedModeIndustrialRadio');
+        const isCustom = appState.feedRationMode !== 'industrial';
+        if (customRadio) customRadio.checked = isCustom;
+        if (industrialRadio) industrialRadio.checked = !isCustom;
+        if (customKgInput) customKgInput.value = (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? appState.customDailyFeedKg : 2.0;
+        if (sicamInput) sicamInput.value = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? appState.sicamCansCount : 3;
+        this.toggleFeedRationModeUI();
       }
     }
   },
@@ -1759,10 +1781,15 @@ const app = {
     const totalDays = Math.max(1, Math.round(ageDays));
     const startDays = Math.max(0, Math.round(startAgeDays || 0));
 
+    let rawKg = 0;
     if (startDays > 0 && totalDays > startDays) {
-      return Math.max(0, calcFromZero(totalDays) - calcFromZero(startDays));
+      rawKg = Math.max(0, calcFromZero(totalDays) - calcFromZero(startDays));
+    } else {
+      rawKg = calcFromZero(totalDays);
     }
-    return calcFromZero(totalDays);
+
+    const scalingRatio = (typeof this.getFeedScalingRatio === 'function') ? this.getFeedScalingRatio() : 1.0;
+    return rawKg * scalingRatio;
   },
 
   getAverageFeedPricePerKg() {
@@ -1874,6 +1901,60 @@ const app = {
     this.showToast(`✅ Stock d'aliment mis à jour : ${kg.toFixed(1)} kg en réserve (~${this.formatMoney(kg * priceKg)})`);
   },
 
+  calcSicamToKg() {
+    const cans = parseFloat(document.getElementById('feedSicamCansInput')?.value) || 0;
+    const kgEl = document.getElementById('feedCustomKgInput');
+    if (kgEl) kgEl.value = (cans * 0.667).toFixed(1);
+  },
+
+  calcKgToSicam() {
+    const kg = parseFloat(document.getElementById('feedCustomKgInput')?.value) || 0;
+    const cansEl = document.getElementById('feedSicamCansInput');
+    if (cansEl) cansEl.value = (kg / 0.667).toFixed(1);
+  },
+
+  toggleFeedRationModeUI() {
+    const isCustom = document.getElementById('feedModeCustomRadio')?.checked;
+    const block = document.getElementById('feedRationCustomBlock');
+    if (block) block.style.display = isCustom ? 'block' : 'none';
+  },
+
+  handleSaveDailyFeedRation(e) {
+    e.preventDefault();
+    const isCustom = document.getElementById('feedModeCustomRadio')?.checked;
+    appState.feedRationMode = isCustom ? 'custom' : 'industrial';
+    if (isCustom) {
+      const kg = parseFloat(document.getElementById('feedCustomKgInput')?.value) || 2.0;
+      const cans = parseFloat(document.getElementById('feedSicamCansInput')?.value) || 3;
+      appState.customDailyFeedKg = Math.max(0.1, kg);
+      appState.sicamCansCount = Math.max(0.5, cans);
+    } else {
+      appState.customDailyFeedKg = null;
+    }
+    this.saveState();
+    this.closeModal('modalDailyFeedRation');
+    this.renderAll();
+    this.showToast(isCustom ? `✅ Ration fermière appliquée : ${appState.customDailyFeedKg} kg/j (~${appState.sicamCansCount} boîtes Sicam)` : '✅ Mode table agronomique théorique activé');
+  },
+
+  getFeedScalingRatio() {
+    if (appState.feedRationMode === 'industrial') return 1.0;
+    if (appState.customDailyFeedKg === null || appState.customDailyFeedKg === undefined || appState.customDailyFeedKg <= 0) return 1.0;
+
+    let theoreticalDailyKg = 0;
+    (appState.animals || []).forEach(a => {
+      const qty = Number(a.currentQuantity) || 0;
+      if (qty <= 0) return;
+      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
+      const feedData = this.getAgronomicFeedData(a.species, aAge, a.stage, a.breed);
+      theoreticalDailyKg += (qty * feedData.avgGrams) / 1000;
+    });
+
+    if (theoreticalDailyKg <= 0) return 1.0;
+    const ratio = appState.customDailyFeedKg / theoreticalDailyKg;
+    return Math.max(0.15, Math.min(2.5, ratio));
+  },
+
   renderFarmFeedSummary() {
     const card = document.getElementById('farmFeedSummaryCard');
     if (!card) return;
@@ -1892,6 +1973,7 @@ const app = {
     }
 
     const feedPriceKg = this.getAverageFeedPricePerKg();
+    const scalingRatio = this.getFeedScalingRatio();
     let totalFarmDailyGrams = 0;
     let lotsHtml = '';
 
@@ -1904,8 +1986,9 @@ const app = {
       const lotDailyGrams = qty * feedData.avgGrams;
       totalFarmDailyGrams += lotDailyGrams;
 
-      const lotDailyKg = lotDailyGrams / 1000;
+      const lotDailyKg = (lotDailyGrams / 1000) * scalingRatio;
       const lotDailyCost = lotDailyKg * feedPriceKg;
+      const effectiveGramsPerHead = Math.round(feedData.avgGrams * scalingRatio);
       const stageName = appState.lang === 'ar' ? feedData.labelAr : (appState.lang === 'en' ? feedData.labelEn : feedData.labelFr);
 
       lotsHtml += `
@@ -1915,7 +1998,7 @@ const app = {
               ${this.getSpeciesIcon(animal.species)} ${animal.name} (${qty})
             </div>
             <div style="font-size: 0.72rem; color: var(--text-secondary);">
-              ${stageName} &bull; <span class="text-amber">${feedData.avgGrams} g/j/tête</span>
+              ${stageName} &bull; <span class="text-amber">${effectiveGramsPerHead} g/j/tête ${scalingRatio < 0.95 ? '(plein air)' : ''}</span>
             </div>
           </div>
           <div style="text-align: right; flex-shrink: 0;">
@@ -1925,6 +2008,17 @@ const app = {
         </div>
       `;
     });
+
+    const isCustom = appState.feedRationMode !== 'industrial' && appState.customDailyFeedKg > 0;
+    const totalFarmDailyKg = isCustom ? appState.customDailyFeedKg : (totalFarmDailyGrams / 1000);
+    const totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
+
+    if (todayKgEl) {
+      todayKgEl.textContent = isCustom 
+        ? `${totalFarmDailyKg.toFixed(2)} kg / j (~${appState.sicamCansCount || 3} boîtes Sicam)` 
+        : `${totalFarmDailyKg.toFixed(2)} kg / j`;
+    }
+    if (todayCostEl) todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)} / j`;
 
     // Calcul du stock d'aliment restant en réserve
     const totalPurchasedFeedCost = (appState.expenses || [])
@@ -1963,11 +2057,6 @@ const app = {
       `;
     }
 
-    const totalFarmDailyKg = totalFarmDailyGrams / 1000;
-    const totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
-
-    if (todayKgEl) todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} kg / j`;
-    if (todayCostEl) todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)} / j`;
     if (stockKgEl) {
       stockKgEl.textContent = feedStockRemainingKg > 0
         ? `${feedStockRemainingKg.toFixed(1)} kg (${this.formatMoney(feedStockRemaining)})`
