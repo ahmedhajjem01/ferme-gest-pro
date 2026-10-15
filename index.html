@@ -87,7 +87,11 @@
           </svg>
         </button>
 
-
+        <!-- Quick Excel Export Button -->
+        <button class="btn btn-emerald btn-sm" onclick="app.exportExcelCSV()" title="Télécharger le registre complet sous Excel (.csv)" style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700; padding: 0.4rem 0.8rem; border-radius: var(--radius-pill);">
+          <span>📊</span>
+          <span data-i18n="btn_export_excel_short">Tableau Excel</span>
+        </button>
 
         <!-- Quick Data Modal Trigger -->
         <button id="dataOptionsBtn" class="icon-btn" title="Options de données / Sauvegarde" aria-label="Paramètres données">
@@ -169,12 +173,16 @@
           <!-- 4. Données & Sauvegarde -->
           <div class="drawer-group">
             <label class="drawer-label">
-              <span class="drawer-icon">💾</span>
-              <span data-i18n="modal_settings_title">Données & Sauvegarde</span>
+              <span class="drawer-icon">📊</span>
+              <span>Tableaux & Données</span>
             </label>
-            <button type="button" class="btn btn-secondary btn-full drawer-btn" onclick="app.toggleMobileMenu(); app.openModal('modalDataOptions');">
-              <span>📦</span>
-              <span data-i18n="btn_manage_data">Gérer Sauvegarde & Démo</span>
+            <button type="button" class="btn btn-emerald btn-full drawer-btn" onclick="app.toggleMobileMenu(); app.exportExcelCSV();">
+              <span>📊</span>
+              <span data-i18n="btn_export_excel">Télécharger Tableau Excel (.csv)</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-full drawer-btn" style="margin-top: 0.45rem;" onclick="app.toggleMobileMenu(); app.openModal('modalDataOptions');">
+              <span>⚙️</span>
+              <span data-i18n="btn_manage_data">Options & Sauvegarde</span>
             </button>
           </div>
 
@@ -1331,15 +1339,18 @@
         <p class="modal-desc" data-i18n="modal_settings_desc">Gérez vos données locales ou chargez l'exemple complet pour explorer toutes les fonctionnalités d'élevage et de comptabilité.</p>
         
         <div class="data-options-buttons">
+          <button class="btn btn-emerald btn-full" onclick="app.exportExcelCSV()" data-i18n="btn_export_excel" style="font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem;">
+            📊 Télécharger le Tableau Excel (.csv)
+          </button>
           <button class="btn btn-secondary btn-full" onclick="app.loadSampleData()" data-i18n="btn_load_sample">
             📦 Charger un Exemple de Démonstration (Démo)
           </button>
-          <button class="btn btn-outline btn-full" onclick="app.exportDataJSON()" data-i18n="btn_export_json">
-            💾 Exporter la Sauvegarde (Fichier JSON)
+          <button class="btn btn-outline btn-full" onclick="app.exportDataJSON()" data-i18n="btn_export_backup">
+            💾 Créer un Fichier de Sauvegarde
           </button>
           <label class="btn btn-outline btn-full label-file-btn">
-            <span data-i18n="btn_import_json">📂 Importer une Sauvegarde JSON</span>
-            <input type="file" id="importJsonInput" accept=".json" style="display:none;" onchange="app.importDataJSON(event)">
+            <span data-i18n="btn_import_backup">📂 Restaurer une Sauvegarde</span>
+            <input type="file" id="importJsonInput" accept=".json,.csv" style="display:none;" onchange="app.importDataJSON(event)">
           </label>
           <button class="btn btn-danger-outline btn-full" onclick="app.resetAllData()" data-i18n="btn_reset_all">
             🗑️ Réinitialiser Toutes les Données à 0

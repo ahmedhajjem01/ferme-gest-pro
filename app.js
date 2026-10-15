@@ -2997,6 +2997,129 @@ const app = {
     }
   },
 
+  // Export direct vers Excel (Fichier .csv avec BOM UTF-8 séparateur point-virgule)
+  exportExcelCSV() {
+    const currency = appState.currency || 'TND';
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR');
+
+    const totalRev = appState.sales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+    const totalExp = appState.expenses.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+    const netProfit = totalRev - totalExp;
+    const totalAnimals = appState.animals.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+
+    // BOM UTF-8 (\uFEFF) indispensable pour que Microsoft Excel ouvre les accents français et arabes sans problème
+    let csv = '\uFEFF';
+
+    // 1. En-tête & Bilan Général
+    csv += '========================================================================================\n';
+    csv += `FERMEGEST PRO - BILAN & COMPTABILITÉ DE L'EXPLOITATION (${dateStr})\n`;
+    csv += '========================================================================================\n';
+    csv += `Date d'exportation;${dateStr} à ${now.toLocaleTimeString('fr-FR')}\n`;
+    csv += `Devise;${currency}\n`;
+    csv += `Cheptel Total Actuel;${totalAnimals} têtes / volailles\n`;
+    csv += `Revenus Totaux (Ventes);${totalRev.toFixed(3)} ${currency}\n`;
+    csv += `Dépenses Totales (Charges);${totalExp.toFixed(3)} ${currency}\n`;
+    csv += `Bénéfice Net Réel;${netProfit.toFixed(3)} ${currency}\n\n`;
+
+    // 2. Tableau du Cheptel
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'TABLEAU 1 : REGISTRE DU CHEPTEL & DES VOLAILLES (ANIMAUX)\n';
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'Bande / Nom du Lot;Espèce;Race;Date d\'Arrivée ou Éclosion;Effectif Initial;Pertes (Mortalité);Effectif Actuel Restant;Coût d\'Achat Unitaire;Valeur Totale;Stade / Notes\n';
+    if (!appState.animals || appState.animals.length === 0) {
+      csv += 'Aucun animal enregistré;;;;;;;;;\n';
+    } else {
+      appState.animals.forEach(a => {
+        const initial = Number(a.initialQuantity) || 0;
+        const current = Number(a.currentQuantity) || 0;
+        const mort = Number(a.mortality) || 0;
+        const cost = Number(a.costPerHead) || 0;
+        const val = (current * cost).toFixed(3);
+        const cleanNotes = (a.notes || a.stage || '').replace(/[\r\n;]/g, ' ');
+        csv += `"${a.name || ''}";"${a.species || ''}";"${a.breed || ''}";"${a.birthDate || ''}";${initial};${mort};${current};${cost.toFixed(3)} ${currency};${val} ${currency};"${cleanNotes}"\n`;
+      });
+    }
+    csv += '\n';
+
+    // 3. Tableau des Ventes
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'TABLEAU 2 : REGISTRE DES VENTES & RECETTES\n';
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'Date de Vente;Type de Produit;Détail / Format;Quantité Vendue;Prix Unitaire;Montant Total Encaissé;Lot / Bande Concerné\n';
+    if (!appState.sales || appState.sales.length === 0) {
+      csv += 'Aucune vente enregistrée;;;;;;\n';
+    } else {
+      appState.sales.forEach(s => {
+        const lotName = this.getLotNameById(s.linkedLotId);
+        const qty = Number(s.quantity) || 0;
+        const unit = Number(s.unitPrice) || 0;
+        const tot = Number(s.total) || 0;
+        const cleanDesc = (s.description || s.format || '').replace(/[\r\n;]/g, ' ');
+        csv += `"${s.date || ''}";"${s.productType || ''}";"${cleanDesc}";${qty};${unit.toFixed(3)} ${currency};${tot.toFixed(3)} ${currency};"${lotName}"\n`;
+      });
+    }
+    csv += '\n';
+
+    // 4. Tableau des Dépenses
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'TABLEAU 3 : REGISTRE DES DÉPENSES & CHARGES (ALIMENT, SOINS...)\n';
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'Date de Dépense;Catégorie de Charge;Libellé de la Dépense;Quantité;Prix Unitaire;Montant Total Payé;Lot / Bande Associé\n';
+    if (!appState.expenses || appState.expenses.length === 0) {
+      csv += 'Aucune dépense enregistrée;;;;;;\n';
+    } else {
+      appState.expenses.forEach(e => {
+        const lotName = this.getLotNameById(e.linkedLotId);
+        const qty = Number(e.quantity) || 1;
+        const unit = Number(e.unitPrice) || Number(e.total) || 0;
+        const tot = Number(e.total) || 0;
+        const cleanTitle = (e.title || '').replace(/[\r\n;]/g, ' ');
+        csv += `"${e.date || ''}";"${e.category || ''}";"${cleanTitle}";${qty};${unit.toFixed(3)} ${currency};${tot.toFixed(3)} ${currency};"${lotName}"\n`;
+      });
+    }
+    csv += '\n';
+
+    // 5. Tableau de la Couveuse
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'TABLEAU 4 : REGISTRE DE L\'INCUBATEUR & DES COUVÉES\n';
+    csv += '----------------------------------------------------------------------------------------\n';
+    csv += 'Nom de la Couvée;Espèce d\'Œufs;Méthode (Poule ou Machine);Nombre d\'Œufs;Date de Début;Date d\'Éclosion Prévue (J+21);Température (°C);Humidité (%);Notes\n';
+    if (!appState.incubatorBatches || appState.incubatorBatches.length === 0) {
+      csv += 'Aucune couvée enregistrée;;;;;;;;\n';
+    } else {
+      appState.incubatorBatches.forEach(b => {
+        const eggs = Number(b.eggsCount) || 0;
+        const cleanNotes = (b.notes || '').replace(/[\r\n;]/g, ' ');
+        csv += `"${b.name || ''}";"${b.eggSpecies || b.breed || ''}";"${b.method || 'machine'}";${eggs};"${b.startDate || ''}";"${b.hatchDate || ''}";${b.temp || ''};${b.humidity || ''};"${cleanNotes}"\n`;
+      });
+    }
+
+    const filename = `ferme_gestion_excel_${now.toISOString().split('T')[0]}.csv`;
+
+    if (window.MobileBridge && window.MobileBridge.isNative) {
+      window.MobileBridge.shareData({
+        title: 'Tableau Excel FermeGest PRO',
+        text: csv,
+        dialogTitle: 'Partager / Sauvegarder le Tableau Excel'
+      });
+      this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel prêt au partage.');
+      return;
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel téléchargé avec succès !');
+  },
+
   exportDataJSON() {
     const data = {
       exportDate: new Date().toISOString(),
@@ -3016,7 +3139,7 @@ const app = {
         text: jsonStr,
         dialogTitle: 'Partager / Sauvegarder FermeGest PRO'
       });
-      this.showToast(this.t('toast_backup_exported') || 'Sauvegarde prête au partage.');
+      this.showToast(this.t('toast_backup_exported') || 'Fichier de sauvegarde prêt au partage.');
       return;
     }
 
@@ -3027,7 +3150,7 @@ const app = {
     a.download = `fermegest_sauvegarde_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    this.showToast(this.t('toast_backup_exported') || 'Sauvegarde JSON téléchargée.');
+    this.showToast(this.t('toast_backup_exported') || 'Fichier de sauvegarde téléchargé.');
   },
 
   importDataJSON(e) {

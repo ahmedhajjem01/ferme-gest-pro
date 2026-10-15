@@ -373,10 +373,13 @@ const TRANSLATIONS = {
 
     modal_settings_title: "Paramètres des Données & Démo",
     modal_settings_desc: "Gérez vos données locales ou chargez l'exemple complet pour explorer toutes les fonctionnalités d'élevage et de comptabilité.",
+    btn_export_excel: "📊 Télécharger le Tableau Excel (.csv)",
+    btn_export_excel_short: "Tableau Excel",
     btn_load_sample: "📦 Charger un Exemple de Démonstration (Démo)",
-    btn_export_json: "💾 Exporter la Sauvegarde (Fichier JSON)",
-    btn_import_json: "📂 Importer une Sauvegarde JSON",
+    btn_export_backup: "💾 Créer un Fichier de Sauvegarde",
+    btn_import_backup: "📂 Restaurer une Sauvegarde",
     btn_reset_all: "🗑️ Réinitialiser Toutes les Données à 0",
+    toast_excel_downloaded: "Tableau Excel téléchargé avec succès !",
 
     // Toasts & Alerts
     toast_lang_changed: "Langue changée en Français",
@@ -793,10 +796,13 @@ const TRANSLATIONS = {
 
     modal_settings_title: "إعدادات البيانات والنسخ الاحتياطي",
     modal_settings_desc: "يمكنك حفظ نسخة من بياناتك محلياً أو تجربة نموذج جاهز لاستكشاف كافة المزايا.",
+    btn_export_excel: "📊 تنزيل جدول إكسيل كامل (.csv)",
+    btn_export_excel_short: "جدول إكسيل",
     btn_load_sample: "📦 تحميل نموذج تجريبي جاهز (ديمو)",
-    btn_export_json: "💾 تصدير وحفظ نسخة احتياطية (ملف JSON)",
-    btn_import_json: "📂 استيراد نسخة احتياطية سابقة",
+    btn_export_backup: "💾 حفظ ملف نسخة احتياطية",
+    btn_import_backup: "📂 استرجاع نسخة احتياطية",
     btn_reset_all: "🗑️ إعادة ضبط كافة البيانات إلى 0",
+    toast_excel_downloaded: "تم تنزيل جدول الإكسيل بنجاح!",
 
     // Toasts & Alerts
     toast_lang_changed: "تم تغيير لغة التطبيق إلى العربية",
@@ -1212,10 +1218,13 @@ const TRANSLATIONS = {
 
     modal_settings_title: "Data Settings & Demo",
     modal_settings_desc: "Manage your local data or load a complete demo to test all farm features.",
+    btn_export_excel: "📊 Download Excel Spreadsheet (.csv)",
+    btn_export_excel_short: "Excel Export",
     btn_load_sample: "📦 Load Sample Demo Data",
-    btn_export_json: "💾 Export Backup (JSON File)",
-    btn_import_json: "📂 Import Previous JSON Backup",
+    btn_export_backup: "💾 Create Backup File",
+    btn_import_backup: "📂 Restore Backup File",
     btn_reset_all: "🗑️ Reset All Data to 0",
+    toast_excel_downloaded: "Excel spreadsheet downloaded successfully!",
 
     // Toasts & Alerts
     toast_lang_changed: "Language changed to English",
