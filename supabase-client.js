@@ -38,7 +38,8 @@
         animals: [],
         expenses: [],
         sales: [],
-        incubatorBatches: []
+        incubatorBatches: [],
+        feedDistributions: []
       };
     },
 
@@ -435,6 +436,7 @@
           feedRationMode: state.feedRationMode || 'custom',
           customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
           sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
+          feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
           animals: Array.isArray(state.animals) ? state.animals : [],
           expenses: Array.isArray(state.expenses) ? state.expenses : [],
           sales: Array.isArray(state.sales) ? state.sales : [],
@@ -503,6 +505,13 @@
         theme: state.theme || 'dark',
         eggStock: Number(state.eggStock) || 0,
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+        feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
+        feedStockDate: state.feedStockDate || null,
+        feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
+        feedRationMode: state.feedRationMode || 'custom',
+        customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
+        sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
+        feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
         animals: Array.isArray(state.animals) ? state.animals : [],
         expenses: Array.isArray(state.expenses) ? state.expenses : [],
         sales: Array.isArray(state.sales) ? state.sales : [],
@@ -666,6 +675,9 @@
         state.customDailyFeedKg = cloudData.customDailyFeedKg !== null ? Number(cloudData.customDailyFeedKg) : 2.0;
         state.sicamCansCount = cloudData.sicamCansCount !== undefined ? Number(cloudData.sicamCansCount) : 3;
       }
+      if (cloudData.feedDistributions !== undefined) {
+        state.feedDistributions = Array.isArray(cloudData.feedDistributions) ? cloudData.feedDistributions : [];
+      }
 
       if (doMerge) {
         state.animals = this.mergeCollections(state.animals, cloudData.animals || []);
@@ -673,12 +685,14 @@
         state.sales = this.mergeCollections(state.sales, cloudData.sales || []);
         state.incubatorBatches = this.mergeCollections(state.incubatorBatches, cloudData.incubatorBatches || []);
         state.eggHarvests = this.mergeCollections(state.eggHarvests, cloudData.eggHarvests || []);
+        state.feedDistributions = this.mergeCollections(state.feedDistributions, cloudData.feedDistributions || []);
       } else {
         if (Array.isArray(cloudData.animals)) state.animals = cloudData.animals;
         if (Array.isArray(cloudData.expenses)) state.expenses = cloudData.expenses;
         if (Array.isArray(cloudData.sales)) state.sales = cloudData.sales;
         if (Array.isArray(cloudData.incubatorBatches)) state.incubatorBatches = cloudData.incubatorBatches;
         if (Array.isArray(cloudData.eggHarvests)) state.eggHarvests = cloudData.eggHarvests;
+        if (Array.isArray(cloudData.feedDistributions)) state.feedDistributions = cloudData.feedDistributions;
       }
 
       // Filter out any bovine or ovine residue
@@ -705,6 +719,7 @@
         window.appState.feedRationMode = state.feedRationMode;
         window.appState.customDailyFeedKg = state.customDailyFeedKg;
         window.appState.sicamCansCount = state.sicamCansCount;
+        window.appState.feedDistributions = state.feedDistributions;
         window.appState.animals = state.animals;
         window.appState.expenses = state.expenses;
         window.appState.sales = state.sales;
@@ -726,6 +741,7 @@
           feedRationMode: state.feedRationMode,
           customDailyFeedKg: state.customDailyFeedKg,
           sicamCansCount: state.sicamCansCount,
+          feedDistributions: state.feedDistributions,
           animals: state.animals,
           expenses: state.expenses,
           sales: state.sales,
@@ -1088,6 +1104,13 @@
         theme: state.theme || 'dark',
         eggStock: Number(state.eggStock) || 0,
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+        feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
+        feedStockDate: state.feedStockDate || null,
+        feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
+        feedRationMode: state.feedRationMode || 'custom',
+        customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
+        sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
+        feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
         animals: Array.isArray(state.animals) ? state.animals : [],
         expenses: Array.isArray(state.expenses) ? state.expenses : [],
         sales: Array.isArray(state.sales) ? state.sales : [],

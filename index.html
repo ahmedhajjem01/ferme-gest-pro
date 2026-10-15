@@ -1796,6 +1796,65 @@
     </div>
   </div>
 
+  <!-- Modal: Distribution Réelle d'Aliment du Jour -->
+  <div id="modalFeedDistribution" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3>🌾 Distribuer l'Aliment du Jour</h3>
+        <button class="modal-close" onclick="app.closeModal('modalFeedDistribution')">&times;</button>
+      </div>
+      <form id="formFeedDistribution" onsubmit="app.handleSaveFeedDistribution(event)">
+        <div class="modal-body">
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem;">
+            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.45;">
+              🥫 <strong>Ration variable selon les jours :</strong> Pas besoin de donner une quantité fixe ! Cliquez sur une boîte Sicam ou entrez le poids distribué aujourd'hui. L'application déduit du stock et calcule votre vraie moyenne.
+            </p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.85rem;">
+            <label for="distribDate" class="form-label" style="font-weight: 700;">Date de distribution</label>
+            <input type="date" id="distribDate" class="input-field" required>
+          </div>
+
+          <!-- Raccourcis Boîtes Sicam rapides -->
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" style="font-weight: 700;">Raccourcis rapides (Boîtes Sicam)</label>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem;">
+              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.2rem; font-size: 0.76rem; font-weight: 700;" onclick="app.setQuickDistribSicam(1)">
+                🥫 1 boîte<br><span style="font-size: 0.7rem; color: var(--text-muted);">~0.7 kg</span>
+              </button>
+              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.2rem; font-size: 0.76rem; font-weight: 700;" onclick="app.setQuickDistribSicam(2)">
+                🥫 2 boîtes<br><span style="font-size: 0.7rem; color: var(--text-muted);">~1.3 kg</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.2rem; font-size: 0.76rem; font-weight: 800;" onclick="app.setQuickDistribSicam(3)">
+                🥫 3 boîtes<br><span style="font-size: 0.7rem; color: var(--text-muted);">~2.0 kg</span>
+              </button>
+              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.2rem; font-size: 0.76rem; font-weight: 700;" onclick="app.setQuickDistribSicam(4)">
+                🥫 4 boîtes<br><span style="font-size: 0.7rem; color: var(--text-muted);">~2.7 kg</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Saisie en kg -->
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="distribKgInput" class="form-label" style="font-weight: 700;">Quantité distribuée (kg)</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="number" id="distribKgInput" class="input-field" step="0.1" min="0.1" value="2.0" required style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.calcDistribSicamHint()">
+              <span style="font-weight: 800; font-size: 1.1rem; color: var(--text-secondary);">kg</span>
+            </div>
+            <small id="distribSicamEquivHint" class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
+              Équivalent à ~3 boîtes Sicam (800g)
+            </small>
+          </div>
+
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;">
+            Valider la Distribution & Déduire du Stock
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal: Sauvegarde & Données de Démonstration -->
   <div id="modalDataOptions" class="modal-overlay hidden">
     <div class="modal-card">

@@ -18,6 +18,7 @@ const appState = {
   feedRationMode: 'custom',
   customDailyFeedKg: 2.0,
   sicamCansCount: 3,
+  feedDistributions: [],
   
   animals: [],
   expenses: [],
@@ -558,6 +559,7 @@ const app = {
         feedRationMode: appState.feedRationMode || 'custom',
         customDailyFeedKg: appState.customDailyFeedKg !== undefined ? appState.customDailyFeedKg : 2.0,
         sicamCansCount: appState.sicamCansCount !== undefined ? appState.sicamCansCount : 3,
+        feedDistributions: Array.isArray(appState.feedDistributions) ? appState.feedDistributions : [],
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
@@ -589,6 +591,7 @@ const app = {
         appState.feedRationMode = parsed.feedRationMode || 'custom';
         appState.customDailyFeedKg = parsed.customDailyFeedKg !== undefined ? Number(parsed.customDailyFeedKg) : 2.0;
         appState.sicamCansCount = parsed.sicamCansCount !== undefined ? Number(parsed.sicamCansCount) : 3;
+        appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
@@ -915,6 +918,14 @@ const app = {
         if (customKgInput) customKgInput.value = (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? appState.customDailyFeedKg : 2.0;
         if (sicamInput) sicamInput.value = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? appState.sicamCansCount : 3;
         this.toggleFeedRationModeUI();
+      }
+
+      if (modalId === 'modalFeedDistribution') {
+        const dateInput = document.getElementById('distribDate');
+        const kgInput = document.getElementById('distribKgInput');
+        if (dateInput) dateInput.value = this.getTodayStr();
+        if (kgInput) kgInput.value = (appState.customDailyFeedKg || 2.0).toFixed(1);
+        this.calcDistribSicamHint();
       }
     }
   },
@@ -1913,6 +1924,61 @@ const app = {
     if (cansEl) cansEl.value = (kg / 0.667).toFixed(1);
   },
 
+  setQuickDistribSicam(cans) {
+    const cansNum = Number(cans) || 1;
+    const kg = (cansNum * 0.667).toFixed(1);
+    const kgInput = document.getElementById('distribKgInput');
+    if (kgInput) kgInput.value = kg;
+    this.calcDistribSicamHint();
+  },
+
+  calcDistribSicamHint() {
+    const kg = parseFloat(document.getElementById('distribKgInput')?.value) || 0;
+    const hint = document.getElementById('distribSicamEquivHint');
+    if (hint) {
+      const cans = (kg / 0.667).toFixed(1);
+      hint.textContent = `Équivalent à ~${cans} boîte(s) Sicam (800g)`;
+    }
+  },
+
+  handleSaveFeedDistribution(e) {
+    e.preventDefault();
+    const date = document.getElementById('distribDate')?.value || this.getTodayStr();
+    const kg = parseFloat(document.getElementById('distribKgInput')?.value) || 2.0;
+    const cans = (kg / 0.667).toFixed(1);
+
+    const distrib = {
+      id: 'distrib-' + Date.now().toString(36),
+      date,
+      kg,
+      cans
+    };
+
+    if (!Array.isArray(appState.feedDistributions)) {
+      appState.feedDistributions = [];
+    }
+    appState.feedDistributions.unshift(distrib);
+
+    // Déduire du stock physique disponible si défini
+    if (appState.feedStockKg !== null && appState.feedStockKg !== undefined) {
+      appState.feedStockKg = Math.max(0, appState.feedStockKg - kg);
+      appState.feedStockDate = date;
+    }
+
+    // Mettre à jour la moyenne mobile de consommation journalière
+    const recent = appState.feedDistributions.slice(0, 14);
+    if (recent.length > 0) {
+      const avgKg = recent.reduce((sum, d) => sum + (Number(d.kg) || 0), 0) / recent.length;
+      appState.customDailyFeedKg = parseFloat(avgKg.toFixed(2));
+      appState.sicamCansCount = parseFloat((avgKg / 0.667).toFixed(1));
+    }
+
+    this.saveState();
+    this.closeModal('modalFeedDistribution');
+    this.renderAll();
+    this.showToast(`🌾 Distribution enregistrée : ${kg.toFixed(1)} kg (~${cans} boîtes Sicam). Stock restant : ${(this.getAvailableFeedStockKg()).toFixed(1)} kg`);
+  },
+
   toggleFeedRationModeUI() {
     const isCustom = document.getElementById('feedModeCustomRadio')?.checked;
     const block = document.getElementById('feedRationCustomBlock');
@@ -2041,9 +2107,14 @@ const app = {
             <span>${stockLabel}</span>
             <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">(Non imputé aux poussins tant que non consommé)</span>
           </div>
-          <button class="btn btn-sm btn-emerald" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
-            ✏️ Déclarer / Ajuster Stock
-          </button>
+          <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-sm btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800; color: var(--accent-amber);" onclick="app.openModal('modalFeedDistribution')">
+              🥫 Distribuer
+            </button>
+            <button class="btn btn-sm btn-emerald" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
+              📦 Stock Magasin
+            </button>
+          </div>
         </div>
       `;
     } else {
