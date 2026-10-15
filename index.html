@@ -88,7 +88,7 @@
         </button>
 
         <!-- Quick Excel Export Button -->
-        <button class="btn btn-emerald btn-sm" onclick="app.exportExcelCSV()" title="Télécharger le registre complet sous Excel (.csv)" style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700; padding: 0.4rem 0.8rem; border-radius: var(--radius-pill);">
+        <button class="btn btn-emerald btn-sm" onclick="app.exportExcel()" title="Télécharger le registre complet sous Excel (.xlsx)" style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700; padding: 0.4rem 0.8rem; border-radius: var(--radius-pill);">
           <span>📊</span>
           <span data-i18n="btn_export_excel_short">Tableau Excel</span>
         </button>
@@ -176,9 +176,9 @@
               <span class="drawer-icon">📊</span>
               <span>Tableaux & Données</span>
             </label>
-            <button type="button" class="btn btn-emerald btn-full drawer-btn" onclick="app.toggleMobileMenu(); app.exportExcelCSV();">
+            <button type="button" class="btn btn-emerald btn-full drawer-btn" onclick="app.toggleMobileMenu(); app.exportExcel();">
               <span>📊</span>
-              <span data-i18n="btn_export_excel">Télécharger Tableau Excel (.csv)</span>
+              <span data-i18n="btn_export_excel">Télécharger Tableau Excel (.xlsx)</span>
             </button>
             <button type="button" class="btn btn-secondary btn-full drawer-btn" style="margin-top: 0.45rem;" onclick="app.toggleMobileMenu(); app.openModal('modalDataOptions');">
               <span>⚙️</span>
@@ -1339,8 +1339,8 @@
         <p class="modal-desc" data-i18n="modal_settings_desc">Gérez vos données locales ou chargez l'exemple complet pour explorer toutes les fonctionnalités d'élevage et de comptabilité.</p>
         
         <div class="data-options-buttons">
-          <button class="btn btn-emerald btn-full" onclick="app.exportExcelCSV()" data-i18n="btn_export_excel" style="font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem;">
-            📊 Télécharger le Tableau Excel (.csv)
+          <button class="btn btn-emerald btn-full" onclick="app.exportExcel()" data-i18n="btn_export_excel" style="font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem;">
+            📊 Télécharger le Tableau Excel (.xlsx)
           </button>
           <button class="btn btn-secondary btn-full" onclick="app.loadSampleData()" data-i18n="btn_load_sample">
             📦 Charger un Exemple de Démonstration (Démo)
@@ -1366,6 +1366,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="mobile-bridge.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="translations.js?v=4"></script>
   <script src="app.js?v=4"></script>
 </body>

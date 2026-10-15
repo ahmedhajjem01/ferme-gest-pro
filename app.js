@@ -2997,117 +2997,466 @@ const app = {
     }
   },
 
-  // Export direct vers Excel (Fichier .csv avec BOM UTF-8 séparateur point-virgule)
-  exportExcelCSV() {
+  // Export officiel vers Excel (Classeur Multi-Onglets .xlsx avec fallback XML Spreadsheet)
+  exportExcel() {
     const currency = appState.currency || 'TND';
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR');
+    const fileDate = now.toISOString().split('T')[0];
 
     const totalRev = appState.sales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
     const totalExp = appState.expenses.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
     const netProfit = totalRev - totalExp;
     const totalAnimals = appState.animals.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
 
-    // BOM UTF-8 (\uFEFF) indispensable pour que Microsoft Excel ouvre les accents français et arabes sans problème
-    let csv = '\uFEFF';
+    // =========================================================================
+    // OPTION 1 : Génération directe via SheetJS (Fichier binaire officiel .xlsx)
+    // =========================================================================
+    if (typeof window.XLSX !== 'undefined' && window.XLSX.utils) {
+      try {
+        const wb = window.XLSX.utils.book_new();
 
-    // 1. En-tête & Bilan Général
-    csv += '========================================================================================\n';
-    csv += `FERMEGEST PRO - BILAN & COMPTABILITÉ DE L'EXPLOITATION (${dateStr})\n`;
-    csv += '========================================================================================\n';
-    csv += `Date d'exportation;${dateStr} à ${now.toLocaleTimeString('fr-FR')}\n`;
-    csv += `Devise;${currency}\n`;
-    csv += `Cheptel Total Actuel;${totalAnimals} têtes / volailles\n`;
-    csv += `Revenus Totaux (Ventes);${totalRev.toFixed(3)} ${currency}\n`;
-    csv += `Dépenses Totales (Charges);${totalExp.toFixed(3)} ${currency}\n`;
-    csv += `Bénéfice Net Réel;${netProfit.toFixed(3)} ${currency}\n\n`;
+        // 1. Onglet : Bilan & Résumé
+        const wsBilan = window.XLSX.utils.aoa_to_sheet([
+          ["RAPPORT DE GESTION & BILAN DE L'EXPLOITATION"],
+          ["Application", "FermeGest PRO (Gestion d'Élevage & Volailles)"],
+          ["Date d'exportation", `${dateStr} à ${now.toLocaleTimeString('fr-FR')}`],
+          ["Devise officielle", currency],
+          [],
+          ["INDICATEUR CLÉ", "VALEUR", "DÉTAIL"],
+          ["Cheptel Total Actuel", totalAnimals, "Volailles / Têtes vivantes"],
+          ["Chiffre d'Affaires Total (Ventes)", totalRev, `${currency} encaissés`],
+          ["Charges Totales (Dépenses)", totalExp, `${currency} déboursés`],
+          ["Bénéfice Net Réel", netProfit, `${currency} de résultat net`],
+          ["Marge Nette de l'Exploitation", totalRev > 0 ? Number(((netProfit / totalRev) * 100).toFixed(1)) : 0, "% de marge nette"]
+        ]);
+        wsBilan['!cols'] = [{ wch: 32 }, { wch: 20 }, { wch: 30 }];
+        window.XLSX.utils.book_append_sheet(wb, wsBilan, "Bilan & Résumé");
 
-    // 2. Tableau du Cheptel
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'TABLEAU 1 : REGISTRE DU CHEPTEL & DES VOLAILLES (ANIMAUX)\n';
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'Bande / Nom du Lot;Espèce;Race;Date d\'Arrivée ou Éclosion;Effectif Initial;Pertes (Mortalité);Effectif Actuel Restant;Coût d\'Achat Unitaire;Valeur Totale;Stade / Notes\n';
-    if (!appState.animals || appState.animals.length === 0) {
-      csv += 'Aucun animal enregistré;;;;;;;;;\n';
-    } else {
-      appState.animals.forEach(a => {
-        const initial = Number(a.initialQuantity) || 0;
-        const current = Number(a.currentQuantity) || 0;
-        const mort = Number(a.mortality) || 0;
-        const cost = Number(a.costPerHead) || 0;
-        const val = (current * cost).toFixed(3);
-        const cleanNotes = (a.notes || a.stage || '').replace(/[\r\n;]/g, ' ');
-        csv += `"${a.name || ''}";"${a.species || ''}";"${a.breed || ''}";"${a.birthDate || ''}";${initial};${mort};${current};${cost.toFixed(3)} ${currency};${val} ${currency};"${cleanNotes}"\n`;
-      });
+        // 2. Onglet : Cheptel & Volailles
+        const animalRows = [
+          [
+            "Bande / Nom du Lot",
+            "Espèce",
+            "Race",
+            "Date d'Arrivée ou Éclosion",
+            "Effectif Initial",
+            "Pertes (Mortalité)",
+            "Effectif Actuel Restant",
+            `Coût Achat Unitaire (${currency})`,
+            `Valeur Totale du Lot (${currency})`,
+            "Stade / Notes"
+          ]
+        ];
+        if (appState.animals && appState.animals.length > 0) {
+          appState.animals.forEach(a => {
+            const initial = Number(a.initialQuantity) || 0;
+            const mort = Number(a.mortality) || 0;
+            const current = Number(a.currentQuantity) || 0;
+            const cost = Number(a.costPerHead) || 0;
+            animalRows.push([
+              a.name || '',
+              a.species || '',
+              a.breed || '',
+              a.birthDate || '',
+              initial,
+              mort,
+              current,
+              cost,
+              Number((current * cost).toFixed(3)),
+              a.notes || a.stage || ''
+            ]);
+          });
+        }
+        const wsAnimals = window.XLSX.utils.aoa_to_sheet(animalRows);
+        wsAnimals['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 22 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 35 }];
+        window.XLSX.utils.book_append_sheet(wb, wsAnimals, "Cheptel & Volailles");
+
+        // 3. Onglet : Ventes & Recettes
+        const saleRows = [
+          [
+            "Date de Vente",
+            "Type de Produit",
+            "Détail / Format Vendu",
+            "Quantité Vendue",
+            `Prix Unitaire (${currency})`,
+            `Montant Total Encaissé (${currency})`,
+            "Lot / Bande Concerné"
+          ]
+        ];
+        if (appState.sales && appState.sales.length > 0) {
+          appState.sales.forEach(s => {
+            saleRows.push([
+              s.date || '',
+              s.productType || '',
+              s.description || s.format || '',
+              Number(s.quantity) || 0,
+              Number(s.unitPrice) || 0,
+              Number(s.total) || 0,
+              this.getLotNameById(s.linkedLotId)
+            ]);
+          });
+        }
+        const wsSales = window.XLSX.utils.aoa_to_sheet(saleRows);
+        wsSales['!cols'] = [{ wch: 15 }, { wch: 18 }, { wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 24 }, { wch: 26 }];
+        window.XLSX.utils.book_append_sheet(wb, wsSales, "Ventes & Recettes");
+
+        // 4. Onglet : Dépenses & Charges
+        const expRows = [
+          [
+            "Date de Dépense",
+            "Catégorie de Charge",
+            "Libellé / Désignation de la Dépense",
+            "Quantité",
+            `Prix Unitaire (${currency})`,
+            `Montant Total Payé (${currency})`,
+            "Lot / Bande Associé"
+          ]
+        ];
+        if (appState.expenses && appState.expenses.length > 0) {
+          appState.expenses.forEach(e => {
+            expRows.push([
+              e.date || '',
+              e.category || '',
+              e.title || '',
+              Number(e.quantity) || 1,
+              Number(e.unitPrice) || Number(e.total) || 0,
+              Number(e.total) || 0,
+              this.getLotNameById(e.linkedLotId)
+            ]);
+          });
+        }
+        const wsExp = window.XLSX.utils.aoa_to_sheet(expRows);
+        wsExp['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 35 }, { wch: 14 }, { wch: 18 }, { wch: 22 }, { wch: 26 }];
+        window.XLSX.utils.book_append_sheet(wb, wsExp, "Dépenses & Charges");
+
+        // 5. Onglet : Couveuse & Incubation
+        const incRows = [
+          [
+            "Nom de la Couvée",
+            "Espèce d'Œufs",
+            "Méthode (Poule ou Machine)",
+            "Nombre d'Œufs",
+            "Date de Début",
+            "Date d'Éclosion Prévue (J+21)",
+            "Température (°C)",
+            "Humidité (%)",
+            "Notes & Observations"
+          ]
+        ];
+        if (appState.incubatorBatches && appState.incubatorBatches.length > 0) {
+          appState.incubatorBatches.forEach(b => {
+            incRows.push([
+              b.name || '',
+              b.eggSpecies || b.breed || '',
+              b.method || 'machine',
+              Number(b.eggsCount) || 0,
+              b.startDate || '',
+              b.hatchDate || '',
+              b.temp || '',
+              b.humidity || '',
+              b.notes || ''
+            ]);
+          });
+        }
+        const wsInc = window.XLSX.utils.aoa_to_sheet(incRows);
+        wsInc['!cols'] = [{ wch: 26 }, { wch: 18 }, { wch: 24 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 16 }, { wch: 35 }];
+        window.XLSX.utils.book_append_sheet(wb, wsInc, "Couveuse & Incubation");
+
+        const filename = `fermegest_tableau_excel_${fileDate}.xlsx`;
+        window.XLSX.writeFile(wb, filename);
+
+        this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel (.xlsx) téléchargé avec succès !');
+        return;
+      } catch (err) {
+        console.warn('SheetJS export error, falling back to SpreadsheetML:', err);
+      }
     }
-    csv += '\n';
 
-    // 3. Tableau des Ventes
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'TABLEAU 2 : REGISTRE DES VENTES & RECETTES\n';
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'Date de Vente;Type de Produit;Détail / Format;Quantité Vendue;Prix Unitaire;Montant Total Encaissé;Lot / Bande Concerné\n';
-    if (!appState.sales || appState.sales.length === 0) {
-      csv += 'Aucune vente enregistrée;;;;;;\n';
-    } else {
-      appState.sales.forEach(s => {
-        const lotName = this.getLotNameById(s.linkedLotId);
-        const qty = Number(s.quantity) || 0;
-        const unit = Number(s.unitPrice) || 0;
-        const tot = Number(s.total) || 0;
-        const cleanDesc = (s.description || s.format || '').replace(/[\r\n;]/g, ' ');
-        csv += `"${s.date || ''}";"${s.productType || ''}";"${cleanDesc}";${qty};${unit.toFixed(3)} ${currency};${tot.toFixed(3)} ${currency};"${lotName}"\n`;
-      });
-    }
-    csv += '\n';
+    // =========================================================================
+    // OPTION 2 (Fallback) : Excel XML SpreadsheetML (Multi-onglets universel .xls)
+    // 100% UTF-8 natif : aucun problème d'accentuation sur Windows et Mac
+    // =========================================================================
+    this.exportSpreadsheetML(currency, dateStr, fileDate, totalAnimals, totalRev, totalExp, netProfit);
+  },
 
-    // 4. Tableau des Dépenses
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'TABLEAU 3 : REGISTRE DES DÉPENSES & CHARGES (ALIMENT, SOINS...)\n';
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'Date de Dépense;Catégorie de Charge;Libellé de la Dépense;Quantité;Prix Unitaire;Montant Total Payé;Lot / Bande Associé\n';
-    if (!appState.expenses || appState.expenses.length === 0) {
-      csv += 'Aucune dépense enregistrée;;;;;;\n';
-    } else {
-      appState.expenses.forEach(e => {
-        const lotName = this.getLotNameById(e.linkedLotId);
-        const qty = Number(e.quantity) || 1;
-        const unit = Number(e.unitPrice) || Number(e.total) || 0;
-        const tot = Number(e.total) || 0;
-        const cleanTitle = (e.title || '').replace(/[\r\n;]/g, ' ');
-        csv += `"${e.date || ''}";"${e.category || ''}";"${cleanTitle}";${qty};${unit.toFixed(3)} ${currency};${tot.toFixed(3)} ${currency};"${lotName}"\n`;
-      });
-    }
-    csv += '\n';
+  exportExcelCSV() {
+    this.exportExcel();
+  },
 
-    // 5. Tableau de la Couveuse
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'TABLEAU 4 : REGISTRE DE L\'INCUBATEUR & DES COUVÉES\n';
-    csv += '----------------------------------------------------------------------------------------\n';
-    csv += 'Nom de la Couvée;Espèce d\'Œufs;Méthode (Poule ou Machine);Nombre d\'Œufs;Date de Début;Date d\'Éclosion Prévue (J+21);Température (°C);Humidité (%);Notes\n';
-    if (!appState.incubatorBatches || appState.incubatorBatches.length === 0) {
-      csv += 'Aucune couvée enregistrée;;;;;;;;\n';
-    } else {
-      appState.incubatorBatches.forEach(b => {
-        const eggs = Number(b.eggsCount) || 0;
-        const cleanNotes = (b.notes || '').replace(/[\r\n;]/g, ' ');
-        csv += `"${b.name || ''}";"${b.eggSpecies || b.breed || ''}";"${b.method || 'machine'}";${eggs};"${b.startDate || ''}";"${b.hatchDate || ''}";${b.temp || ''};${b.humidity || ''};"${cleanNotes}"\n`;
-      });
-    }
+  exportSpreadsheetML(currency, dateStr, fileDate, totalAnimals, totalRev, totalExp, netProfit) {
+    const esc = (str) => {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    };
 
-    const filename = `ferme_gestion_excel_${now.toISOString().split('T')[0]}.csv`;
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#000000"/>
+  </Style>
+  <Style ss:ID="Title">
+   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#0f172a"/>
+  </Style>
+  <Style ss:ID="Header">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#cbd5e1"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#10b981" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="BoldCell">
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
+  </Style>
+  <Style ss:ID="CurrencyCell">
+   <NumberFormat ss:Format="#,##0.000"/>
+  </Style>
+  <Style ss:ID="IntegerCell">
+   <NumberFormat ss:Format="#,##0"/>
+  </Style>
+ </Styles>
+
+ <!-- 1. Onglet : Bilan Général -->
+ <Worksheet ss:Name="Bilan Général">
+  <Table ss:DefaultColumnWidth="140">
+   <Column ss:Width="220"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="200"/>
+   <Row>
+    <Cell ss:StyleID="Title"><Data ss:Type="String">FERMEGEST PRO - BILAN &amp; GESTION D'ÉLEVAGE</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">Date d'exportation :</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(dateStr)}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">Devise :</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(currency)}</Data></Cell>
+   </Row>
+   <Row/>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Indicateur Clé</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Montant / Valeur</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Unité / Détail</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">Cheptel Total Actuel</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${totalAnimals}</Data></Cell>
+    <Cell><Data ss:Type="String">Volailles vivantes</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">Chiffre d'Affaires (Ventes Totales)</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${totalRev.toFixed(3)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(currency)}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">Charges Totales (Dépenses)</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${totalExp.toFixed(3)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(currency)}</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">Bénéfice Net Réel</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${netProfit.toFixed(3)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(currency)}</Data></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+
+ <!-- 2. Onglet : Cheptel & Volailles -->
+ <Worksheet ss:Name="Cheptel &amp; Volailles">
+  <Table ss:DefaultColumnWidth="120">
+   <Column ss:Width="180"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="220"/>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Bande / Nom du Lot</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Espèce</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Race</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Date d'Arrivée / Éclosion</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Effectif Initial</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Pertes</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Effectif Restant</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Coût Unitaire (${esc(currency)})</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Valeur Totale (${esc(currency)})</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Stade / Notes</Data></Cell>
+   </Row>`;
+
+    appState.animals.forEach(a => {
+      const initial = Number(a.initialQuantity) || 0;
+      const mort = Number(a.mortality) || 0;
+      const current = Number(a.currentQuantity) || 0;
+      const cost = Number(a.costPerHead) || 0;
+      const val = (current * cost).toFixed(3);
+      xml += `
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">${esc(a.name)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(a.species)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(a.breed)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(a.birthDate)}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${initial}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${mort}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${current}</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${cost.toFixed(3)}</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${val}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(a.notes || a.stage)}</Data></Cell>
+   </Row>`;
+    });
+
+    xml += `
+  </Table>
+ </Worksheet>
+
+ <!-- 3. Onglet : Ventes & Recettes -->
+ <Worksheet ss:Name="Ventes &amp; Recettes">
+  <Table ss:DefaultColumnWidth="130">
+   <Column ss:Width="110"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="200"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="150"/>
+   <Column ss:Width="180"/>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Date de Vente</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Type de Produit</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Description / Format</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Quantité Vendue</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Prix Unitaire (${esc(currency)})</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Montant Total (${esc(currency)})</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lot Lié</Data></Cell>
+   </Row>`;
+
+    appState.sales.forEach(s => {
+      xml += `
+   <Row>
+    <Cell><Data ss:Type="String">${esc(s.date)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(s.productType)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(s.description || s.format)}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${Number(s.quantity) || 0}</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${(Number(s.unitPrice) || 0).toFixed(3)}</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${(Number(s.total) || 0).toFixed(3)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(this.getLotNameById(s.linkedLotId))}</Data></Cell>
+   </Row>`;
+    });
+
+    xml += `
+  </Table>
+ </Worksheet>
+
+ <!-- 4. Onglet : Dépenses & Charges -->
+ <Worksheet ss:Name="Dépenses &amp; Charges">
+  <Table ss:DefaultColumnWidth="130">
+   <Column ss:Width="110"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="230"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="150"/>
+   <Column ss:Width="180"/>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Date de Dépense</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Catégorie</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Libellé de la Dépense</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Quantité</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Prix Unitaire (${esc(currency)})</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Montant Total (${esc(currency)})</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Lot Associé</Data></Cell>
+   </Row>`;
+
+    appState.expenses.forEach(e => {
+      xml += `
+   <Row>
+    <Cell><Data ss:Type="String">${esc(e.date)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(e.category)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(e.title)}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${Number(e.quantity) || 1}</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${(Number(e.unitPrice) || Number(e.total) || 0).toFixed(3)}</Data></Cell>
+    <Cell ss:StyleID="CurrencyCell"><Data ss:Type="Number">${(Number(e.total) || 0).toFixed(3)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(this.getLotNameById(e.linkedLotId))}</Data></Cell>
+   </Row>`;
+    });
+
+    xml += `
+  </Table>
+ </Worksheet>
+
+ <!-- 5. Onglet : Couveuse & Incubation -->
+ <Worksheet ss:Name="Couveuse &amp; Incubation">
+  <Table ss:DefaultColumnWidth="130">
+   <Column ss:Width="180"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="130"/>
+   <Column ss:Width="140"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="220"/>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nom de la Couvée</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Espèce d'Œufs</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Méthode</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Nombre d'Œufs</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Date de Début</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Éclosion Estimée (J+21)</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Température (°C)</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Humidité (%)</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Notes &amp; Observations</Data></Cell>
+   </Row>`;
+
+    appState.incubatorBatches.forEach(b => {
+      xml += `
+   <Row>
+    <Cell ss:StyleID="BoldCell"><Data ss:Type="String">${esc(b.name)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(b.eggSpecies || b.breed)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(b.method || 'machine')}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${Number(b.eggsCount) || 0}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(b.startDate)}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(b.hatchDate)}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${b.temp || 0}</Data></Cell>
+    <Cell ss:StyleID="IntegerCell"><Data ss:Type="Number">${b.humidity || 0}</Data></Cell>
+    <Cell><Data ss:Type="String">${esc(b.notes)}</Data></Cell>
+   </Row>`;
+    });
+
+    xml += `
+  </Table>
+ </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const filename = `fermegest_tableau_excel_${fileDate}.xls`;
 
     if (window.MobileBridge && window.MobileBridge.isNative) {
       window.MobileBridge.shareData({
         title: 'Tableau Excel FermeGest PRO',
-        text: csv,
-        dialogTitle: 'Partager / Sauvegarder le Tableau Excel'
+        text: xml,
+        dialogTitle: 'Partager le Tableau Excel'
       });
       this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel prêt au partage.');
       return;
     }
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -3117,7 +3466,7 @@ const app = {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel téléchargé avec succès !');
+    this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel (.xls) téléchargé avec succès !');
   },
 
   exportDataJSON() {
