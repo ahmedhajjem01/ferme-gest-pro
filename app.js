@@ -27,7 +27,8 @@ const appState = {
   animals: [],
   expenses: [],
   sales: [],
-  incubatorBatches: []
+  incubatorBatches: [],
+  dismissedSaleAlerts: []
 };
 
 // Expose appState on global window for multi-device sync
@@ -565,7 +566,8 @@ const app = {
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
-        incubatorBatches: appState.incubatorBatches
+        incubatorBatches: appState.incubatorBatches,
+        dismissedSaleAlerts: Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : []
       }));
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
@@ -602,6 +604,7 @@ const app = {
         } else {
           appState.feedTypes = parsed.feedTypes;
         }
+        appState.dismissedSaleAlerts = Array.isArray(parsed.dismissedSaleAlerts) ? parsed.dismissedSaleAlerts : [];
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
@@ -1419,18 +1422,22 @@ const app = {
       }
     });
 
-    // Check animal stages ready for sale (poulet chair > 35 days)
+    // Check animal stages ready for sale (poulet chair > 35 days and <= 70 days, not dismissed, living subjects)
+    const dismissed = Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : [];
     appState.animals.forEach(a => {
-      if (a.species === 'poulet') {
-        const age = this.calculateAgeInDays(a.birthDate);
-        if (age >= 35) {
+      if (a.species === 'poulet' && (Number(a.currentQuantity) || 0) > 0 && !dismissed.includes(a.id)) {
+        const age = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
+        // Only notify during typical broiler harvest window (35 to 70 days)
+        if (age >= 35 && age <= 70 && a.stage !== 'Ponte' && a.stage !== 'Reproduction') {
           const div = document.createElement('div');
           div.className = 'alert-card alert-info';
           div.innerHTML = `
-            <div>
-              <strong>Bande prête pour la vente (${a.name}) :</strong> Âge: ${age} jours (${a.currentQuantity} sujets prêts).
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem;">
+              <div>
+                <strong>Bande prête pour la vente (${a.name || a.id}) :</strong> Âge: ${age} jours (${a.currentQuantity} sujets prêts).
+              </div>
+              <button class="btn btn-sm btn-outline" style="border:none; cursor:pointer; font-size:1.1rem; line-height:1;" title="Ne plus afficher" onclick="app.dismissSaleAlert('${a.id}')">&times;</button>
             </div>
-            <button class="btn btn-sm btn-outline" style="border:none;" onclick="this.parentElement.remove()">&times;</button>
           `;
           container.appendChild(div);
         }
@@ -1453,6 +1460,17 @@ const app = {
       `;
       container.appendChild(div);
     }
+  },
+
+  dismissSaleAlert(animalId) {
+    if (!Array.isArray(appState.dismissedSaleAlerts)) {
+      appState.dismissedSaleAlerts = [];
+    }
+    if (!appState.dismissedSaleAlerts.includes(animalId)) {
+      appState.dismissedSaleAlerts.push(animalId);
+      this.saveState();
+    }
+    this.renderDashboardAlerts();
   },
 
   renderBreakdowns(totalRev, totalExp) {
