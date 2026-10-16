@@ -1983,14 +1983,30 @@ const app = {
   },
 
   sanitizeFeedTypes(feedTypes) {
-    if (!Array.isArray(feedTypes)) return [];
-    return feedTypes.map(ft => {
+    if (!Array.isArray(feedTypes) || feedTypes.length === 0) {
+      return [
+        { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
+        { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
+      ];
+    }
+    let list = feedTypes.map(ft => {
       let name = ft.name || '';
       if (name.includes('بليه') || name === 'قمح / بليه') {
         name = 'Blé';
       }
       return { ...ft, name };
     });
+
+    const hasBle = list.some(ft => ft.id === 'feed-ble' || (ft.name && (ft.name.toLowerCase().includes('blé') || ft.name.toLowerCase().includes('ble') || ft.name.includes('قمح'))));
+    const hasBouchon = list.some(ft => ft.id === 'feed-bouchon' || (ft.name && (ft.name.toLowerCase().includes('bouchon') || ft.name.toLowerCase().includes('ponte') || ft.name.includes('بوشون'))));
+
+    if (!hasBle) {
+      list.unshift({ id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 });
+    }
+    if (!hasBouchon) {
+      list.push({ id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 });
+    }
+    return list;
   },
 
   renderSmartFeedPresets() {
@@ -2001,83 +2017,84 @@ const app = {
     const favorite = appState.savedFavoriteFeedRoutine;
     const routine = favorite || (hasHistory ? appState.feedDistributions[0] : null);
 
-    if (!routine || !Array.isArray(routine.items) || routine.items.length === 0) {
-      // Mode de démarrage : boutons propres + conseil d'apprentissage
-      container.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-          <label class="form-label" style="font-weight: 700; font-size: 0.8rem; margin: 0;">
-            ${this.t('feed_smart_starter_title')}
-          </label>
-          <span class="badge-pill" style="font-size: 0.68rem; color: var(--accent-amber); background: rgba(245, 158, 11, 0.1);">
-            ${this.t('feed_smart_starter_badge')}
-          </span>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
-          <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('half_can')">
-            🥫 0.5 ${appState.lang === 'ar' ? 'علبة' : (appState.lang === 'en' ? 'can' : 'boîte')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.33 ${appState.lang === 'ar' ? 'كغ / نوع' : (appState.lang === 'en' ? 'kg / feed' : 'kg / aliment')}</span>
-          </button>
-          <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('one_can')">
-            🥫 1 ${appState.lang === 'ar' ? 'علبة' : (appState.lang === 'en' ? 'can' : 'boîte')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.67 ${appState.lang === 'ar' ? 'كغ / نوع' : (appState.lang === 'en' ? 'kg / feed' : 'kg / aliment')}</span>
-          </button>
-          <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
-            ${this.t('feed_smart_clear')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">${appState.lang === 'ar' ? '0 كغ في الكل' : (appState.lang === 'en' ? '0 kg everywhere' : '0 kg partout')}</span>
-          </button>
-        </div>
-        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.35;">
-          ${this.t('feed_smart_learning_tip')}
-        </div>
-      `;
-      return;
-    }
-
-    // Mode adaptatif : L'application a analysé les distributions réelles du fermier
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
-    const summaryItems = routine.items
-      .map(it => `${it.kg} ${unitKg} ${this.getFeedShortName(it)}`)
-      .slice(0, 3)
-      .join(' + ');
-    const totalKg = routine.totalKg || routine.items.reduce((sum, it) => sum + (Number(it.kg) || 0), 0);
-    const halfKg = (totalKg * 0.5).toFixed(2);
 
-    const halfLabel = isAr ? `${halfKg} كغ إجمالي` : (isEn ? `${halfKg} kg total` : `${halfKg} kg total`);
-    const zeroLabel = isAr ? '0 كغ في الكل' : (isEn ? '0 kg everywhere' : '0 kg partout');
-    const statsLabel = isAr 
-      ? `📊 ${totalKg.toFixed(2)} كغ معتادة (~${(totalKg / 0.667).toFixed(1)} علبة سيكام)`
-      : (isEn ? `📊 ${totalKg.toFixed(2)} kg routine (~${(totalKg / 0.667).toFixed(1)} Sicam cans)` : `📊 ${totalKg.toFixed(2)} kg habituels (~${(totalKg / 0.667).toFixed(1)} boîtes Sicam)`);
+    let routineHtml = '';
+    if (routine && Array.isArray(routine.items) && routine.items.length > 0) {
+      const summaryItems = routine.items
+        .map(it => `${it.kg} ${unitKg} ${this.getFeedShortName(it)}`)
+        .slice(0, 3)
+        .join(' + ');
+      const totalKg = routine.totalKg || routine.items.reduce((sum, it) => sum + (Number(it.kg) || 0), 0);
+      const halfKg = (totalKg * 0.5).toFixed(2);
+      const halfLabel = isAr ? `${halfKg} كغ إجمالي` : `${halfKg} kg total`;
+
+      routineHtml = `
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.55rem; margin-bottom: 0.55rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <span style="font-weight: 800; font-size: 0.78rem; color: var(--accent-emerald);">
+              ${this.t('feed_smart_title')}
+            </span>
+            <span class="badge-pill text-emerald" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.15);">
+              ${this.t('feed_smart_learned_badge')}
+            </span>
+          </div>
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.35rem;">
+            <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.3rem; font-size: 0.75rem; font-weight: 800; border-color: var(--accent-emerald);" onclick="app.applyLearnedRoutine('repeat')">
+              ⭐ ${this.t('feed_smart_repeat')}<br>
+              <span style="font-size: 0.66rem; color: var(--accent-emerald); font-weight: 700;">${summaryItems || totalKg.toFixed(1) + ' ' + unitKg}</span>
+            </button>
+            <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.3rem; font-size: 0.75rem; font-weight: 700;" onclick="app.applyLearnedRoutine('half')">
+              ☀️ ${this.t('feed_smart_half')}<br>
+              <span style="font-size: 0.66rem; color: var(--text-muted);">${halfLabel}</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
 
     container.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
         <label class="form-label" style="font-weight: 700; font-size: 0.8rem; margin: 0;">
-          ${this.t('feed_smart_title')}
+          ${this.t('feed_smart_starter_title')}
         </label>
-        <span class="badge-pill text-emerald" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.1);">
-          ${this.t('feed_smart_learned_badge')}
+        <span class="badge-pill" style="font-size: 0.68rem; color: var(--accent-amber); background: rgba(245, 158, 11, 0.1);">
+          ⚡ 1-Clic
         </span>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
-        <!-- Bouton 1: Répéter la routine habituelle -->
-        <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800; border-color: var(--accent-emerald);" onclick="app.applyLearnedRoutine('repeat')">
-          ${this.t('feed_smart_repeat')}<br>
-          <span style="font-size: 0.66rem; color: var(--accent-emerald); font-weight: 700;">${summaryItems || totalKg.toFixed(1) + ' ' + unitKg}</span>
-        </button>
 
-        <!-- Bouton 2: Demi-ration (50%) -->
-        <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyLearnedRoutine('half')">
-          ${this.t('feed_smart_half')}<br>
-          <span style="font-size: 0.66rem; color: var(--text-muted);">${halfLabel}</span>
-        </button>
+      ${routineHtml}
 
-        <!-- Bouton 3: Remettre à zéro -->
-        <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('clear')">
-          ${this.t('feed_smart_clear')}<br>
-          <span style="font-size: 0.66rem; color: var(--text-muted);">${zeroLabel}</span>
+      <!-- Combos 1-clic Blé + Bouchon -->
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; margin-bottom: 0.4rem;">
+        <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.applyDistribPreset('ble_1_bouchon_1')">
+          <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-emerald);">${this.t('feed_preset_combo_1_1')}</div>
+          <div style="font-size: 0.67rem; color: var(--text-muted);">${this.t('feed_preset_combo_1_1_sub')}</div>
+        </button>
+        <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.applyDistribPreset('ble_1_bouchon_half')">
+          <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-amber);">${this.t('feed_preset_combo_1_half')}</div>
+          <div style="font-size: 0.67rem; color: var(--text-muted);">${this.t('feed_preset_combo_1_half_sub')}</div>
         </button>
       </div>
+
+      <!-- Raccourcis individuels + Reset -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;">
+        <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.applyDistribPreset('ble_1_only')">
+          ${this.t('feed_preset_ble_only')}
+        </button>
+        <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.applyDistribPreset('bouchon_1_only')">
+          ${this.t('feed_preset_bouchon_only')}
+        </button>
+        <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
+          ${this.t('feed_smart_clear')}
+        </button>
+      </div>
+
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; flex-wrap: wrap; gap: 0.3rem;">
         <small style="font-size: 0.7rem; color: var(--text-muted);">
-          ${statsLabel}
+          ${this.t('feed_smart_learning_tip')}
         </small>
         <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 0.15rem 0.45rem; font-weight: 700;" onclick="app.saveCurrentDistributionAsFavorite()">
           ${this.t('btn_save_favorite_routine')}
@@ -2089,7 +2106,7 @@ const app = {
   applyLearnedRoutine(mode) {
     const routine = appState.savedFavoriteFeedRoutine || (appState.feedDistributions && appState.feedDistributions[0]);
     if (!routine || !Array.isArray(routine.items)) {
-      this.applyDistribPreset('one_can');
+      this.applyDistribPreset('ble_1_bouchon_1');
       return;
     }
 
@@ -2097,16 +2114,15 @@ const app = {
 
     // Réinitialiser les champs à zéro d'abord
     (appState.feedTypes || []).forEach(ft => {
-      const input = document.getElementById(`distribKg_${ft.id}`);
-      if (input) input.value = '0.00';
+      this.setFeedTypeDistribSicam(ft.id, 0);
     });
 
     // Remplir chaque aliment selon la routine mémorisée
     routine.items.forEach(it => {
-      const targetKg = (Number(it.kg) * ratio).toFixed(2);
-      const input = document.getElementById(`distribKg_${it.feedTypeId}`);
-      if (input) {
-        input.value = targetKg;
+      const cans = it.cans !== undefined ? Number(it.cans) * ratio : (Number(it.kg) * ratio) / 0.667;
+      const feed = (appState.feedTypes || []).find(ft => ft.id === it.feedTypeId || ft.name === it.name || (it.name && ft.name && ft.name.toLowerCase().includes(it.name.toLowerCase())));
+      if (feed) {
+        this.setFeedTypeDistribSicam(feed.id, Math.round(cans * 2) / 2);
       }
     });
 
@@ -2120,7 +2136,8 @@ const app = {
       const input = document.getElementById(`distribKg_${ft.id}`);
       const kg = parseFloat(input?.value) || 0;
       if (kg > 0) {
-        items.push({ feedTypeId: ft.id, name: ft.name, kg: parseFloat(kg.toFixed(2)) });
+        const cans = parseFloat((kg / 0.667).toFixed(1));
+        items.push({ feedTypeId: ft.id, name: ft.name, kg: parseFloat(kg.toFixed(2)), cans });
         totalKg += kg;
       }
     });
@@ -2180,69 +2197,76 @@ const app = {
   },
 
   renderFeedDistributionModal() {
+    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
     this.renderSmartFeedPresets();
 
     const container = document.getElementById('feedDistribItemsContainer');
     if (!container) return;
-
-    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
-      appState.feedTypes = [
-        { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
-        { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
-      ];
-    }
 
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
     const inStockPrefix = isAr ? 'في المخزون :' : (isEn ? 'In stock:' : 'En stock :');
     const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
-    const btesLabel = isAr ? 'علب' : (isEn ? 'cans' : 'btes');
     const sicamCansLabel = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
 
     let html = '';
     appState.feedTypes.forEach((ft) => {
-      const defaultKg = '0.0';
-      const defaultCans = '0';
+      const defaultKg = '0.00';
       const stockKg = Number(ft.stockKg) || 0;
       const displayName = this.getFeedDisplayName(ft);
 
       html += `
-        <div class="feed-distrib-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
-            <div style="font-weight: 800; font-size: 0.95rem; color: var(--text-main);">
-              🌾 ${displayName}
+        <div class="feed-distrib-card" style="background: var(--bg-surface); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 0.75rem;">
+          <!-- Titre & Badge Stock / Sélection -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.55rem; flex-wrap: wrap; gap: 0.35rem;">
+            <div style="font-weight: 800; font-size: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem;">
+              <span>🌾</span> <span>${displayName}</span>
             </div>
-            <span class="badge-pill" style="font-size: 0.72rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
-              ${inStockPrefix} <strong>${stockKg.toFixed(1)} ${unitKg}</strong>
-            </span>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span id="distribCanBadge_${ft.id}" class="badge-pill text-muted" style="font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.55rem; background: var(--bg-elevated); border: 1px solid var(--border-subtle);">
+                0 ${bteLabel}
+              </span>
+              <span class="badge-pill" style="font-size: 0.72rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
+                ${inStockPrefix} <strong>${stockKg.toFixed(1)} ${unitKg}</strong>
+              </span>
+            </div>
           </div>
 
-          <!-- Raccourcis Boîtes Sicam rapides pour cet aliment -->
-          <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.3rem; margin-bottom: 0.45rem;">
-            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 0)">
-              0
+          <!-- Stepper [-] + Raccourcis Clic Rapide + Stepper [+] -->
+          <div style="display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.55rem;">
+            <button type="button" class="btn btn-outline" style="width: 38px; height: 38px; padding: 0; font-size: 1.25rem; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: var(--radius-sm);" onclick="app.adjustFeedTypeDistribSicamStep('${ft.id}', -0.5)" title="-0.5 can">
+              −
             </button>
-            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 0.5)">
-              🥫 0.5 ${bteLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.3 ${unitKg}</span>
-            </button>
-            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.0)">
-              🥫 1 ${bteLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.7 ${unitKg}</span>
-            </button>
-            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.5)">
-              🥫 1.5 ${bteLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.0 ${unitKg}</span>
-            </button>
-            <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 2.0)">
-              🥫 2 ${btesLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.3 ${unitKg}</span>
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.25rem; flex: 1;">
+              <button type="button" class="btn btn-outline sicam-btn-${ft.id} active-sicam-btn" data-cans="0" style="padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: 700; border-radius: var(--radius-sm);" onclick="app.setFeedTypeDistribSicam('${ft.id}', 0)">
+                0
+              </button>
+              <button type="button" class="btn btn-outline sicam-btn-${ft.id}" data-cans="0.5" style="padding: 0.4rem 0.1rem; font-size: 0.72rem; font-weight: 700; border-radius: var(--radius-sm);" onclick="app.setFeedTypeDistribSicam('${ft.id}', 0.5)">
+                0.5
+              </button>
+              <button type="button" class="btn btn-outline sicam-btn-${ft.id}" data-cans="1" style="padding: 0.4rem 0.1rem; font-size: 0.72rem; font-weight: 700; border-radius: var(--radius-sm);" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.0)">
+                1
+              </button>
+              <button type="button" class="btn btn-outline sicam-btn-${ft.id}" data-cans="1.5" style="padding: 0.4rem 0.1rem; font-size: 0.72rem; font-weight: 700; border-radius: var(--radius-sm);" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.5)">
+                1.5
+              </button>
+              <button type="button" class="btn btn-outline sicam-btn-${ft.id}" data-cans="2" style="padding: 0.4rem 0.1rem; font-size: 0.72rem; font-weight: 700; border-radius: var(--radius-sm);" onclick="app.setFeedTypeDistribSicam('${ft.id}', 2.0)">
+                2
+              </button>
+            </div>
+            <button type="button" class="btn btn-outline" style="width: 38px; height: 38px; padding: 0; font-size: 1.25rem; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: var(--radius-sm);" onclick="app.adjustFeedTypeDistribSicamStep('${ft.id}', 0.5)" title="+0.5 can">
+              +
             </button>
           </div>
 
-          <!-- Saisie en kg et affichage équivalent Sicam -->
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="0.05" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${ft.pricePerKg || 1}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-amber); max-width: 120px;" oninput="app.recalcDistribTotal()">
-            <span style="font-weight: 700; color: var(--text-secondary); font-size: 0.95rem;">${unitKg}</span>
-            <span id="distribHint_${ft.id}" style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto;">
-              ~${defaultCans} ${sicamCansLabel}
+          <!-- Saisie directe en kg et équivalence -->
+          <div style="display: flex; gap: 0.5rem; align-items: center; background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">⚖️ ${isAr ? 'الوزن بالكغ :' : (isEn ? 'Weight (kg):' : 'Poids (kg) :')}</span>
+            <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="0.05" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${ft.pricePerKg || 1}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-emerald); max-width: 110px; padding: 0.3rem 0.5rem;" oninput="app.recalcDistribTotal()">
+            <span style="font-weight: 800; color: var(--text-main); font-size: 0.95rem;">${unitKg}</span>
+            <span id="distribHint_${ft.id}" style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto; font-weight: 600;">
+              0 ${bteLabel}
             </span>
           </div>
         </div>
@@ -2253,34 +2277,80 @@ const app = {
     this.recalcDistribTotal();
   },
 
+  adjustFeedTypeDistribSicamStep(feedId, delta) {
+    const input = document.getElementById(`distribKg_${feedId}`);
+    const currentKg = parseFloat(input?.value) || 0;
+    const currentCans = currentKg / 0.667;
+    let nextCans = Math.round((currentCans + delta) * 2) / 2;
+    if (nextCans < 0) nextCans = 0;
+    this.setFeedTypeDistribSicam(feedId, nextCans);
+  },
+
   setFeedTypeDistribSicam(feedId, cans) {
-    const cansNum = Number(cans) || 0;
+    const cansNum = Math.max(0, Number(cans) || 0);
     const kg = (cansNum * 0.667).toFixed(2);
     const input = document.getElementById(`distribKg_${feedId}`);
     if (input) {
       input.value = kg;
     }
-    const hint = document.getElementById(`distribHint_${feedId}`);
+
+    // Mettre à jour l'état actif sur les boutons de cet aliment
+    document.querySelectorAll(`.sicam-btn-${feedId}`).forEach(btn => {
+      const btnCans = parseFloat(btn.getAttribute('data-cans'));
+      if (Math.abs(btnCans - cansNum) < 0.05) {
+        btn.classList.add('active-sicam-btn');
+      } else {
+        btn.classList.remove('active-sicam-btn');
+      }
+    });
+
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
-    const canWord = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
-    const zeroWord = isAr ? '0 علبة' : (isEn ? '0 can' : '0 boîte');
-    if (hint) {
-      hint.textContent = cansNum > 0 ? `~${cansNum} ${canWord}` : zeroWord;
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const canWord = isAr ? 'علبة' : (isEn ? 'can' : 'boîte');
+    const cansWord = isAr ? 'علب' : (isEn ? 'cans' : 'boîtes');
+
+    const badge = document.getElementById(`distribCanBadge_${feedId}`);
+    if (badge) {
+      badge.textContent = cansNum > 0 ? `🥫 ${cansNum} ${cansNum > 1 ? cansWord : canWord} (${kg} ${unitKg})` : (isAr ? '0 علبة' : '0 boîte');
+      badge.className = cansNum > 0 ? 'badge-pill text-emerald' : 'badge-pill text-muted';
+      badge.style.background = cansNum > 0 ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-elevated)';
     }
+
+    const hint = document.getElementById(`distribHint_${feedId}`);
+    if (hint) {
+      hint.textContent = cansNum > 0 ? `~${cansNum} ${cansNum > 1 ? cansWord : canWord}` : (isAr ? '0 علبة' : '0 boîte');
+    }
+
     this.recalcDistribTotal();
   },
 
   applyDistribPreset(presetName) {
-    (appState.feedTypes || []).forEach((ft) => {
-      if (presetName === 'half_can') {
-        this.setFeedTypeDistribSicam(ft.id, 0.5);
-      } else if (presetName === 'one_can') {
-        this.setFeedTypeDistribSicam(ft.id, 1.0);
-      } else if (presetName === 'clear') {
-        this.setFeedTypeDistribSicam(ft.id, 0);
-      }
-    });
+    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+    const bleFeed = (appState.feedTypes || []).find(ft => ft.id === 'feed-ble' || ft.name?.toLowerCase().includes('blé') || ft.name?.toLowerCase().includes('ble') || ft.name?.includes('قمح'));
+    const bouchonFeed = (appState.feedTypes || []).find(ft => ft.id === 'feed-bouchon' || ft.name?.toLowerCase().includes('bouchon') || ft.name?.toLowerCase().includes('ponte') || ft.name?.includes('بوشون'));
+
+    if (presetName === 'ble_1_bouchon_1') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+      if (bleFeed) this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
+      if (bouchonFeed) this.setFeedTypeDistribSicam(bouchonFeed.id, 1.0);
+    } else if (presetName === 'ble_1_bouchon_half') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+      if (bleFeed) this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
+      if (bouchonFeed) this.setFeedTypeDistribSicam(bouchonFeed.id, 0.5);
+    } else if (presetName === 'ble_1_only') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+      if (bleFeed) this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
+    } else if (presetName === 'bouchon_1_only') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+      if (bouchonFeed) this.setFeedTypeDistribSicam(bouchonFeed.id, 1.0);
+    } else if (presetName === 'half_can') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0.5));
+    } else if (presetName === 'one_can') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 1.0));
+    } else if (presetName === 'clear') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+    }
     this.recalcDistribTotal();
   },
 
@@ -2290,17 +2360,39 @@ const app = {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
-    const canWord = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
-    const zeroWord = isAr ? '0 علبة' : (isEn ? '0 can' : '0 boîte');
+    const canWord = isAr ? 'علبة' : (isEn ? 'can' : 'boîte');
+    const cansWord = isAr ? 'علب' : (isEn ? 'cans' : 'boîtes');
 
     (appState.feedTypes || []).forEach(ft => {
       const input = document.getElementById(`distribKg_${ft.id}`);
       const kg = parseFloat(input?.value) || 0;
-      const cans = (kg / 0.667).toFixed(1);
+      const cans = Math.round((kg / 0.667) * 2) / 2;
+      const exactCans = (kg / 0.667).toFixed(1);
+
+      // Synchroniser les classes actives des boutons
+      document.querySelectorAll(`.sicam-btn-${ft.id}`).forEach(btn => {
+        const btnCans = parseFloat(btn.getAttribute('data-cans'));
+        if (kg > 0 && Math.abs(btnCans - cans) < 0.05) {
+          btn.classList.add('active-sicam-btn');
+        } else if (kg === 0 && btnCans === 0) {
+          btn.classList.add('active-sicam-btn');
+        } else {
+          btn.classList.remove('active-sicam-btn');
+        }
+      });
+
+      const badge = document.getElementById(`distribCanBadge_${ft.id}`);
+      if (badge) {
+        badge.textContent = kg > 0 ? `🥫 ${exactCans} ${isAr ? 'علبة' : 'boîte'} (${kg.toFixed(2)} ${unitKg})` : (isAr ? '0 علبة' : '0 boîte');
+        badge.className = kg > 0 ? 'badge-pill text-emerald' : 'badge-pill text-muted';
+        badge.style.background = kg > 0 ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-elevated)';
+      }
+
       const hint = document.getElementById(`distribHint_${ft.id}`);
       if (hint) {
-        hint.textContent = kg > 0 ? `~${cans} ${canWord}` : zeroWord;
+        hint.textContent = kg > 0 ? `~${exactCans} ${isAr ? 'علبة' : 'boîte'}` : (isAr ? '0 علبة' : '0 boîte');
       }
+
       totalKg += kg;
       totalCost += kg * (Number(ft.pricePerKg) || 1.0);
     });
@@ -2385,15 +2477,9 @@ const app = {
   },
 
   renderFeedStockAdjustModal() {
+    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
     const container = document.getElementById('feedStockTypesContainer');
     if (!container) return;
-
-    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
-      appState.feedTypes = [
-        { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
-        { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
-      ];
-    }
 
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
@@ -2410,12 +2496,13 @@ const app = {
       const priceKg = Number(ft.pricePerKg) || 1.0;
       const subtotal = stockKg * priceKg;
       const displayName = this.getFeedDisplayName(ft);
+      const isBaseFeed = ft.id === 'feed-ble' || ft.id === 'feed-bouchon';
 
       html += `
         <div class="feed-stock-row" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
             <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${displayName}</strong>
-            ${appState.feedTypes.length > 1 ? `
+            ${!isBaseFeed ? `
               <button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-rose); padding: 0.15rem 0.45rem; font-size: 0.7rem;" onclick="app.deleteFeedType('${ft.id}')">
                 ${btnDeleteText}
               </button>
@@ -2543,6 +2630,15 @@ const app = {
   },
 
   deleteFeedType(id) {
+    if (id === 'feed-ble' || id === 'feed-bouchon') {
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+      const msg = isAr 
+        ? 'هذا العلف الأساسي (قمح / بوشون) ضروري للمزرعة ولا يمكن حذفه.' 
+        : (isEn ? 'Base feed (Wheat / Layer Pellets) is essential and cannot be deleted.' : 'Cet aliment de base (Blé / Bouchon) est indispensable et ne peut être supprimé.');
+      this.showToast(msg, 'warning');
+      return;
+    }
     const ft = (appState.feedTypes || []).find(f => f.id === id);
     if (!ft) return;
     if (!confirm(`Voulez-vous vraiment supprimer l'aliment "${ft.name}" ?`)) return;
