@@ -520,9 +520,6 @@ const app = {
     this.applyTranslations();
     this.renderAll();
     this.runSimulator();
-    if (this.cloudSync) {
-      this.cloudSync.init();
-    }
 
     // Schedule 17h daily egg collection notification in active language
     if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
@@ -1911,13 +1908,6 @@ const app = {
     return feedPriceKg > 0 ? (feedStockRemaining / feedPriceKg) : 0;
   },
 
-  calcFeedStockValuation() {
-    const kg = parseFloat(document.getElementById('feedStockCurrentKg')?.value) || 0;
-    const priceKg = parseFloat(document.getElementById('feedStockUnitPriceKg')?.value) || 0;
-    const valEl = document.getElementById('feedStockTotalValue');
-    if (valEl) valEl.value = (kg * priceKg).toFixed(2);
-  },
-
   renderFeedDistributionModal() {
     const container = document.getElementById('feedDistribItemsContainer');
     if (!container) return;
@@ -2288,27 +2278,21 @@ const app = {
   },
 
   toggleFeedRationModeUI() {
-    const isCustom = document.getElementById('feedModeCustomRadio')?.checked;
-    const block = document.getElementById('feedRationCustomBlock');
-    if (block) block.style.display = isCustom ? 'block' : 'none';
+    // Mode is consistently tailored to real farm ration
   },
 
   handleSaveDailyFeedRation(e) {
     e.preventDefault();
-    const isCustom = document.getElementById('feedModeCustomRadio')?.checked;
-    appState.feedRationMode = isCustom ? 'custom' : 'industrial';
-    if (isCustom) {
-      const kg = parseFloat(document.getElementById('feedCustomKgInput')?.value) || 2.0;
-      const cans = parseFloat(document.getElementById('feedSicamCansInput')?.value) || 3;
-      appState.customDailyFeedKg = Math.max(0.1, kg);
-      appState.sicamCansCount = Math.max(0.5, cans);
-    } else {
-      appState.customDailyFeedKg = null;
-    }
+    appState.feedRationMode = 'custom';
+    const kg = parseFloat(document.getElementById('feedCustomKgInput')?.value) || 2.0;
+    const cans = parseFloat(document.getElementById('feedSicamCansInput')?.value) || 3;
+    appState.customDailyFeedKg = Math.max(0.1, kg);
+    appState.sicamCansCount = Math.max(0.5, cans);
+
     this.saveState();
     this.closeModal('modalDailyFeedRation');
     this.renderAll();
-    this.showToast(isCustom ? `✅ Ration fermière appliquée : ${appState.customDailyFeedKg} kg/j (~${appState.sicamCansCount} boîtes Sicam)` : '✅ Mode table agronomique théorique activé');
+    this.showToast(`✅ Ration fermière appliquée : ${appState.customDailyFeedKg} kg/j (~${appState.sicamCansCount} boîtes Sicam)`);
   },
 
   getFeedScalingRatio() {
@@ -2661,26 +2645,6 @@ const app = {
       `;
       grid.appendChild(card);
     });
-  },
-
-  // Rendre un lot immédiatement gratuit (0 DT) en 1 clic
-  setLotFree(animalId) {
-    const animal = (appState.animals || []).find(a => a.id === animalId);
-    if (!animal) return;
-
-    animal.costPerHead = 0;
-    this.saveState();
-    this.renderAll();
-
-    const isAr = appState.lang === 'ar';
-    const msg = isAr 
-      ? `تم تحديد "${animal.name}" كمجاني (0 د.ت)`
-      : `Lot "${animal.name}" défini comme gratuit (0 DT) !`;
-    this.showToast(msg);
-
-    if (window.appAuth && appAuth.pushData) {
-      appAuth.pushData();
-    }
   },
 
   // Ouvre le modal HTML d'édition du lot (100% compatible iPhone PWA sans window.prompt)
@@ -4687,10 +4651,6 @@ const app = {
     this.exportSpreadsheetML(currency, dateStr, fileDate, totalAnimals, totalRev, totalExp, netProfit);
   },
 
-  exportExcelCSV() {
-    this.exportExcel();
-  },
-
   exportSpreadsheetML(currency, dateStr, fileDate, totalAnimals, totalRev, totalExp, netProfit) {
     const esc = (str) => {
       if (str === null || str === undefined) return '';
@@ -4976,69 +4936,6 @@ const app = {
     this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel (.xls) téléchargé avec succès !');
   },
 
-  exportDataJSON() {
-    const data = {
-      exportDate: new Date().toISOString(),
-      currency: appState.currency,
-      lang: appState.lang,
-      animals: appState.animals,
-      expenses: appState.expenses,
-      sales: appState.sales,
-      incubatorBatches: appState.incubatorBatches
-    };
-
-    const jsonStr = JSON.stringify(data, null, 2);
-
-    if (window.MobileBridge && window.MobileBridge.isNative) {
-      window.MobileBridge.shareData({
-        title: 'Sauvegarde FermeGest PRO',
-        text: jsonStr,
-        dialogTitle: 'Partager / Sauvegarder FermeGest PRO'
-      });
-      this.showToast(this.t('toast_backup_exported') || 'Fichier de sauvegarde prêt au partage.');
-      return;
-    }
-
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fermegest_sauvegarde_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    this.showToast(this.t('toast_backup_exported') || 'Fichier de sauvegarde téléchargé.');
-  },
-
-  importDataJSON(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target.result);
-        if (parsed.animals && parsed.expenses && parsed.sales) {
-          appState.animals = parsed.animals;
-          appState.expenses = parsed.expenses;
-          appState.sales = parsed.sales;
-          appState.incubatorBatches = parsed.incubatorBatches || [];
-          if (parsed.currency) appState.currency = parsed.currency;
-          if (parsed.lang) appState.lang = parsed.lang;
-
-          this.saveState();
-          this.closeModal('modalDataOptions');
-          this.renderAll();
-          this.showToast('✅ Data restored successfully!');
-        } else {
-          alert('Fichier JSON invalide. Structure non reconnue.');
-        }
-      } catch (err) {
-        alert('Erreur lors de la lecture du fichier JSON : ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-  },
-
   resetAllData() {
     if (confirm('ATTENTION: Cette action va supprimer toutes vos données. Continuer ?')) {
       appState.animals = [];
@@ -5174,417 +5071,6 @@ const app = {
     }
     const lot = appState.animals.find(a => a.id === lotId);
     return lot ? lot.name : (this.t('opt_general_farm') || 'Exploitation Générale');
-  },
-
-  // =========================================================================
-  // Cloud Sync Controller (Supabase Multi-Device Realtime Engine)
-  // =========================================================================
-  cloudSync: {
-    client: null,
-    realtimeChannel: null,
-    config: {
-      enabled: false,
-      url: '',
-      key: '',
-      farmCode: 'ferme-principale',
-      autoSync: true
-    },
-    lastSyncedAt: null,
-    isSyncing: false,
-
-    init() {
-      this.loadConfig();
-      this.populateForm();
-      this.updateStatusUI();
-
-      if (this.config.enabled && this.config.url && this.config.key) {
-        this.initClient();
-      }
-
-      // Re-sync on network reconnect or when switching back to tab
-      window.addEventListener('online', () => {
-        if (this.config.enabled) {
-          this.pullFromCloud(true);
-        }
-      });
-
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && this.config.enabled) {
-          this.pullFromCloud(true);
-        }
-      });
-    },
-
-    loadConfig() {
-      try {
-        const saved = localStorage.getItem('fermegest_cloud_config');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          this.config = Object.assign({}, this.config, parsed);
-        }
-      } catch (e) {
-        console.warn('Could not read cloud config:', e);
-      }
-    },
-
-    saveConfig() {
-      try {
-        localStorage.setItem('fermegest_cloud_config', JSON.stringify(this.config));
-      } catch (e) {
-        console.warn('Could not save cloud config:', e);
-      }
-    },
-
-    populateForm() {
-      const urlInput = document.getElementById('cloudSupabaseUrl');
-      const keyInput = document.getElementById('cloudSupabaseKey');
-      const codeInput = document.getElementById('cloudFarmCode');
-      const autoSyncCheck = document.getElementById('cloudAutoSync');
-
-      if (urlInput) urlInput.value = this.config.url || '';
-      if (keyInput) keyInput.value = this.config.key || '';
-      if (codeInput) codeInput.value = this.config.farmCode || 'ferme-principale';
-      if (autoSyncCheck) autoSyncCheck.checked = this.config.autoSync !== false;
-    },
-
-    openModal() {
-      this.populateForm();
-      this.updateStatusUI();
-      app.openModal('modalCloudSync');
-    },
-
-    initClient() {
-      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-        console.warn('Supabase JS SDK not loaded yet');
-        return;
-      }
-      try {
-        this.client = window.supabase.createClient(this.config.url, this.config.key, {
-          auth: { persistSession: false }
-        });
-        this.subscribeRealtime();
-        this.pullFromCloud(true);
-      } catch (e) {
-        console.error('Failed to create Supabase client:', e);
-        this.updateStatusUI('error');
-      }
-    },
-
-    subscribeRealtime() {
-      if (!this.client || !this.config.farmCode) return;
-      if (this.realtimeChannel) {
-        try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
-      }
-
-      try {
-        this.realtimeChannel = this.client
-          .channel(`farm_sync_${this.config.farmCode}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'farm_sync',
-              filter: `farm_id=eq.${this.config.farmCode}`
-            },
-            (payload) => {
-              if (payload.new && payload.new.data) {
-                this.applyCloudData(payload.new.data, payload.new.updated_at);
-                this.lastSyncedAt = new Date();
-                this.updateStatusUI('connected');
-              }
-            }
-          )
-          .subscribe();
-      } catch (e) {
-        console.warn('Realtime subscription error:', e);
-      }
-    },
-
-    async saveAndConnect() {
-      const urlInput = document.getElementById('cloudSupabaseUrl');
-      const keyInput = document.getElementById('cloudSupabaseKey');
-      const codeInput = document.getElementById('cloudFarmCode');
-      const autoSyncCheck = document.getElementById('cloudAutoSync');
-
-      const url = urlInput ? urlInput.value.trim().replace(/\/+$/, '') : '';
-      const key = keyInput ? keyInput.value.trim() : '';
-      const farmCode = codeInput ? codeInput.value.trim() : 'ferme-principale';
-      const autoSync = autoSyncCheck ? autoSyncCheck.checked : true;
-
-      if (!url || !key || !farmCode) {
-        app.showToast('Veuillez remplir l\'URL, la Clé et le Code Ferme.', 'danger');
-        return;
-      }
-
-      this.config.url = url;
-      this.config.key = key;
-      this.config.farmCode = farmCode;
-      this.config.autoSync = autoSync;
-      this.config.enabled = true;
-      this.saveConfig();
-
-      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-        app.showToast('Le SDK Supabase n\'a pas pu être chargé. Vérifiez votre connexion Internet.', 'danger');
-        return;
-      }
-
-      this.updateStatusUI('syncing');
-
-      try {
-        this.client = window.supabase.createClient(url, key, {
-          auth: { persistSession: false }
-        });
-
-        // Test connection by attempting to read table
-        const { data, error } = await this.client
-          .from('farm_sync')
-          .select('farm_id, data, updated_at')
-          .eq('farm_id', farmCode)
-          .maybeSingle();
-
-        if (error) {
-          throw error;
-        }
-
-        if (data && data.data) {
-          this.applyCloudData(data.data, data.updated_at);
-          app.showToast(app.t('toast_cloud_connected') || 'Connecté avec succès au Cloud !');
-        } else {
-          // Push current state to initialize cloud record
-          await this.pushToCloud(false);
-          app.showToast(app.t('toast_cloud_connected') || 'Connecté ! Données initialisées sur le Cloud.');
-        }
-
-        this.lastSyncedAt = new Date();
-        this.updateStatusUI('connected');
-        this.subscribeRealtime();
-      } catch (err) {
-        console.error('Supabase connection test failed:', err);
-        this.updateStatusUI('error');
-        const msg = err.message ? `Erreur Supabase: ${err.message}` : (app.t('toast_cloud_error') || 'Erreur de connexion');
-        app.showToast(msg, 'danger');
-      }
-    },
-
-    async pushToCloud(showToast = false) {
-      if (!this.client || !this.config.enabled || !this.config.farmCode) return;
-      if (this.isSyncing) return;
-      this.isSyncing = true;
-      this.updateStatusUI('syncing');
-
-      const payload = {
-        version: '2.2.0-poultry',
-        currency: appState.currency,
-        lang: appState.lang || 'fr',
-        theme: appState.theme,
-        animals: appState.animals,
-        expenses: appState.expenses,
-        sales: appState.sales,
-        incubatorBatches: appState.incubatorBatches,
-        timestamp: Date.now()
-      };
-
-      try {
-        const { error } = await this.client
-          .from('farm_sync')
-          .upsert({
-            farm_id: this.config.farmCode,
-            data: payload,
-            updated_at: new Date().toISOString()
-          });
-
-        if (error) throw error;
-
-        this.lastSyncedAt = new Date();
-        this.updateStatusUI('connected');
-        if (showToast) {
-          app.showToast(app.t('toast_cloud_pushed') || 'Données envoyées au Cloud avec succès !');
-        }
-      } catch (err) {
-        console.error('Push to cloud error:', err);
-        this.updateStatusUI('error');
-        if (showToast) {
-          app.showToast(app.t('toast_cloud_error') || 'Erreur d\'envoi vers le Cloud', 'danger');
-        }
-      } finally {
-        this.isSyncing = false;
-      }
-    },
-
-    async pullFromCloud(isSilent = false) {
-      if (!this.client || !this.config.enabled || !this.config.farmCode) return;
-      this.updateStatusUI('syncing');
-
-      try {
-        const { data, error } = await this.client
-          .from('farm_sync')
-          .select('*')
-          .eq('farm_id', this.config.farmCode)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (data && data.data) {
-          this.applyCloudData(data.data, data.updated_at);
-          this.lastSyncedAt = new Date();
-          this.updateStatusUI('connected');
-          if (!isSilent) {
-            app.showToast(app.t('toast_cloud_pulled') || 'Dernières données du Cloud téléchargées !');
-          }
-        } else {
-          this.updateStatusUI('connected');
-          if (!isSilent) {
-            app.showToast('Aucune donnée trouvée sur le Cloud pour ce Code Ferme.');
-          }
-        }
-      } catch (err) {
-        console.error('Pull from cloud error:', err);
-        this.updateStatusUI('error');
-        if (!isSilent) {
-          app.showToast(app.t('toast_cloud_error') || 'Erreur de téléchargement', 'danger');
-        }
-      }
-    },
-
-    applyCloudData(cloudData, updatedAt) {
-      if (!cloudData) return;
-
-      if (cloudData.currency) appState.currency = cloudData.currency;
-      if (Array.isArray(cloudData.animals)) {
-        appState.animals = cloudData.animals.filter(a => a.species !== 'bovin' && a.species !== 'ovin');
-      }
-      if (Array.isArray(cloudData.expenses)) {
-        appState.expenses = cloudData.expenses;
-      }
-      if (Array.isArray(cloudData.sales)) {
-        appState.sales = cloudData.sales;
-      }
-      if (Array.isArray(cloudData.incubatorBatches)) {
-        appState.incubatorBatches = cloudData.incubatorBatches;
-      }
-
-      try {
-        localStorage.setItem('fermegest_state', JSON.stringify({
-          version: '2.2.0-poultry',
-          currency: appState.currency,
-          lang: appState.lang || 'fr',
-          theme: appState.theme,
-          animals: appState.animals,
-          expenses: appState.expenses,
-          sales: appState.sales,
-          incubatorBatches: appState.incubatorBatches
-        }));
-      } catch (e) {}
-
-      app.updateCurrencySymbols();
-      app.renderAll();
-      app.runSimulator();
-    },
-
-    disconnectCloud() {
-      if (confirm('Voulez-vous désactiver la synchronisation Cloud ? Vos données actuelles resteront enregistrées sur cet appareil.')) {
-        this.config.enabled = false;
-        this.saveConfig();
-        if (this.realtimeChannel && this.client) {
-          try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
-        }
-        this.client = null;
-        this.updateStatusUI('offline');
-        app.showToast(app.t('toast_cloud_disconnected') || 'Synchronisation Cloud désactivée.');
-        app.closeModal('modalCloudSync');
-      }
-    },
-
-    copySqlScript() {
-      const codeEl = document.getElementById('cloudSqlCode');
-      const text = codeEl ? codeEl.innerText : '';
-      if (navigator.clipboard && text) {
-        navigator.clipboard.writeText(text).then(() => {
-          app.showToast('✅ Script SQL copié dans le presse-papier !');
-        }).catch(() => {
-          this.fallbackCopy(text);
-        });
-      } else {
-        this.fallbackCopy(text);
-      }
-    },
-
-    fallbackCopy(text) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand('copy');
-        app.showToast('✅ Script SQL copié !');
-      } catch (e) {
-        alert('Veuillez copier le script manuellement depuis l\'encadré.');
-      }
-      document.body.removeChild(ta);
-    },
-
-    updateStatusUI(forcedState) {
-      const state = forcedState || (this.config.enabled && this.client ? 'connected' : 'offline');
-
-      const headerDot = document.getElementById('headerCloudDot');
-      const headerText = document.getElementById('headerCloudText');
-      const drawerDot = document.getElementById('drawerCloudDot');
-      const drawerText = document.getElementById('drawerCloudText');
-
-      const banner = document.getElementById('cloudStatusBanner');
-      const bannerIcon = document.getElementById('cloudBannerIcon');
-      const bannerTitle = document.getElementById('cloudBannerTitle');
-      const bannerSub = document.getElementById('cloudBannerSub');
-
-      const timeStr = this.lastSyncedAt
-        ? `${String(this.lastSyncedAt.getHours()).padStart(2, '0')}:${String(this.lastSyncedAt.getMinutes()).padStart(2, '0')}`
-        : '';
-
-      if (state === 'connected') {
-        if (headerDot) headerDot.className = 'cloud-dot connected';
-        if (headerText) headerText.textContent = timeStr ? `☁️ Cloud (${timeStr})` : '☁️ Cloud Actif';
-        if (drawerDot) drawerDot.className = 'cloud-dot connected';
-        if (drawerText) drawerText.textContent = timeStr ? `Connecté (${timeStr})` : 'Connecté au Cloud';
-
-        if (banner) banner.className = 'cloud-status-banner is-connected';
-        if (bannerIcon) bannerIcon.textContent = '🟢';
-        if (bannerTitle) bannerTitle.textContent = app.t('cloud_status_connected') || '🟢 Connecté au Cloud (Synchronisé)';
-        if (bannerSub) bannerSub.textContent = `Ferme ID: "${this.config.farmCode}" • Dernière synchronisation: ${timeStr || 'À l\'instant'}`;
-      } else if (state === 'syncing') {
-        if (headerDot) headerDot.className = 'cloud-dot syncing';
-        if (headerText) headerText.textContent = '🔄 Synchro...';
-        if (drawerDot) drawerDot.className = 'cloud-dot syncing';
-        if (drawerText) drawerText.textContent = 'Synchronisation...';
-
-        if (banner) banner.className = 'cloud-status-banner is-syncing';
-        if (bannerIcon) bannerIcon.textContent = '🔄';
-        if (bannerTitle) bannerTitle.textContent = app.t('cloud_status_syncing') || '🔄 Synchronisation en cours...';
-        if (bannerSub) bannerSub.textContent = 'Transfert des données vers/depuis Supabase...';
-      } else if (state === 'error') {
-        if (headerDot) headerDot.className = 'cloud-dot offline';
-        if (headerText) headerText.textContent = '⚠️ Erreur Cloud';
-        if (drawerDot) drawerDot.className = 'cloud-dot offline';
-        if (drawerText) drawerText.textContent = 'Erreur de connexion';
-
-        if (banner) banner.className = 'cloud-status-banner is-offline';
-        if (bannerIcon) bannerIcon.textContent = '⚠️';
-        if (bannerTitle) bannerTitle.textContent = 'Erreur de connexion Cloud';
-        if (bannerSub) bannerSub.textContent = 'Vérifiez l\'URL, la clé Anon et l\'existence de la table farm_sync.';
-      } else {
-        if (headerDot) headerDot.className = 'cloud-dot offline';
-        if (headerText) headerText.textContent = app.t('nav_cloud_sync') || '☁️ Synchro Cloud';
-        if (drawerDot) drawerDot.className = 'cloud-dot offline';
-        if (drawerText) drawerText.textContent = 'Mode Local (Non connecté)';
-
-        if (banner) banner.className = 'cloud-status-banner is-offline';
-        if (bannerIcon) bannerIcon.textContent = '🟠';
-        if (bannerTitle) bannerTitle.textContent = app.t('cloud_status_offline') || '🟠 Mode Local (Sauvegardé sur cet appareil)';
-        if (bannerSub) bannerSub.textContent = 'Vos données sont stockées en local sur cet appareil. Activez Supabase pour synchroniser.';
-      }
-    }
   }
 };
 

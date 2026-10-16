@@ -446,9 +446,9 @@
                 <div>
                   <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Ration & Alimentation Quotidienne</h3>
-                    <span class="badge-pill text-amber" style="font-size: 0.72rem;">Table Agronomique</span>
+                    <span class="badge-pill text-amber" style="font-size: 0.72rem;">Alimentation Réelle (بوشون & بليه)</span>
                   </div>
-                  <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Calcul biologique exact selon l'âge réel de chaque bande</small>
+                  <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Ration quotidienne mesurée selon vos distributions réelles</small>
                 </div>
               </div>
               <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
@@ -1723,26 +1723,7 @@
             </p>
           </div>
 
-          <!-- Mode de calcul -->
-          <div class="form-group" style="margin-bottom: 1rem;">
-            <label class="form-label" style="font-weight: 700;">Mode d'alimentation de votre basse-cour</label>
-            <div style="display: flex; gap: 0.5rem; flex-direction: column;">
-              <label style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-card); padding: 0.65rem 0.8rem; border-radius: var(--radius-md); border: 1.5px solid var(--primary); cursor: pointer;">
-                <input type="radio" id="feedModeCustomRadio" name="feedRationModeRadio" value="custom" checked onchange="app.toggleFeedRationModeUI()">
-                <div>
-                  <strong style="color: var(--primary);">🌾 Ration Fermière Réelle (Mesurée / Boîtes Sicam)</strong>
-                  <div style="font-size: 0.72rem; color: var(--text-secondary);">Vous distribuez une quantité quotidienne définie (ex: 2 kg / 3 boîtes Sicam)</div>
-                </div>
-              </label>
-              <label style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-card); padding: 0.65rem 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer;">
-                <input type="radio" id="feedModeIndustrialRadio" name="feedRationModeRadio" value="industrial" onchange="app.toggleFeedRationModeUI()">
-                <div>
-                  <strong>🏭 Table Agronomique Théorique (À volonté / Intensif)</strong>
-                  <div style="font-size: 0.72rem; color: var(--text-secondary);">Calcul automatique d'usine en bâtiment clos (~5 kg/j)</div>
-                </div>
-              </label>
-            </div>
-          </div>
+          <input type="hidden" id="feedModeCustomRadio" name="feedRationModeRadio" value="custom">
 
           <!-- Section Saisie Ration Réelle (Affichée en mode custom) -->
           <div id="feedRationCustomBlock" style="background: var(--bg-surface); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.15rem;">
