@@ -950,15 +950,40 @@
               <h2 class="section-title" data-i18n="section_calendar_title">Calendrier des Générations & Événements</h2>
               <p class="section-desc" data-i18n="section_calendar_desc">Visualisez l'âge de chaque génération de poulets, dates d'éclosion, rappels de vaccination et dates de vente optimales.</p>
             </div>
-            <div class="calendar-nav-buttons">
-              <button class="btn btn-sm btn-outline" id="calPrevMonthBtn">&larr; <span data-i18n="cal_prev_month">Mois Précédent</span></button>
-              <span class="calendar-current-month" id="calCurrentMonthLabel">Octobre 2026</span>
-              <button class="btn btn-sm btn-outline" id="calNextMonthBtn"><span data-i18n="cal_next_month">Mois Suivant</span> &rarr;</button>
+          </div>
+
+          <!-- Visual Calendar Grid (Éphéméride & Événements Agricoles avec Navigation Mois Intégrée) -->
+          <div class="panel-card mb-4">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 0.85rem; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+                <h3 data-i18n="cal_calendar_grid_title" style="margin: 0;">📅 Éphéméride & Événements Agricoles</h3>
+                <div class="calendar-legends">
+                  <span class="legend-item"><span class="legend-color legend-hatch"></span> <span data-i18n="cal_legend_hatch">Éclosion</span></span>
+                  <span class="legend-item"><span class="legend-color legend-mirage"></span> <span data-i18n="cal_legend_mirage">Mirage / Couveuse</span></span>
+                  <span class="legend-item"><span class="legend-color legend-vaccine"></span> <span data-i18n="cal_legend_vaccine">Vaccin / Soin</span></span>
+                  <span class="legend-item"><span class="legend-color legend-sale"></span> <span data-i18n="cal_legend_sale">Vente Prévue</span></span>
+                </div>
+              </div>
+
+              <!-- Contrôles du Mois directement attachés au Calendrier -->
+              <div class="calendar-nav-buttons" style="margin: 0; background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: inline-flex; align-items: center; gap: 0.5rem;">
+                <button class="btn btn-sm btn-outline" id="calPrevMonthBtn" style="padding: 0.35rem 0.65rem;">&larr; <span data-i18n="cal_prev_month">Mois Précédent</span></button>
+                <span class="calendar-current-month" id="calCurrentMonthLabel" style="font-weight: 800; font-size: 1rem; min-width: 130px; text-align: center; color: var(--text-main);">Octobre 2026</span>
+                <button class="btn btn-sm btn-outline" id="calNextMonthBtn" style="padding: 0.35rem 0.65rem;"><span data-i18n="cal_next_month">Mois Suivant</span> &rarr;</button>
+              </div>
+            </div>
+            <div class="calendar-grid-wrapper" style="padding: 0.75rem 1.25rem 1.25rem;">
+              <div class="calendar-weekdays" id="calendarWeekdaysHeader">
+                <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+              </div>
+              <div class="calendar-days-grid" id="calendarDaysGrid">
+                <!-- Rendered dynamically -->
+              </div>
             </div>
           </div>
 
           <!-- Generations Age Tracker Table -->
-          <div class="panel-card mb-4">
+          <div class="panel-card">
             <div class="panel-header">
               <h3 data-i18n="cal_generations_tracker_title">Suivi Dynamique de l'Âge des Générations</h3>
               <span class="badge-pill" data-i18n="cal_generations_tracker_pill">Calcul Automatique en Jours</span>
@@ -980,27 +1005,6 @@
                   <!-- Rendered dynamically -->
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          <!-- Visual Calendar Grid -->
-          <div class="panel-card">
-            <div class="panel-header">
-              <h3 data-i18n="cal_calendar_grid_title">Éphéméride & Événements Agricoles</h3>
-              <div class="calendar-legends">
-                <span class="legend-item"><span class="legend-color legend-hatch"></span> <span data-i18n="cal_legend_hatch">Éclosion</span></span>
-                <span class="legend-item"><span class="legend-color legend-mirage"></span> <span data-i18n="cal_legend_mirage">Mirage / Couveuse</span></span>
-                <span class="legend-item"><span class="legend-color legend-vaccine"></span> <span data-i18n="cal_legend_vaccine">Vaccin / Soin</span></span>
-                <span class="legend-item"><span class="legend-color legend-sale"></span> <span data-i18n="cal_legend_sale">Vente Prévue</span></span>
-              </div>
-            </div>
-            <div class="calendar-grid-wrapper">
-              <div class="calendar-weekdays" id="calendarWeekdaysHeader">
-                <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
-              </div>
-              <div class="calendar-days-grid" id="calendarDaysGrid">
-                <!-- Rendered dynamically -->
-              </div>
             </div>
           </div>
 
