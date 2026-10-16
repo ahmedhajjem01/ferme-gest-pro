@@ -1350,6 +1350,16 @@
             </div>
           </div>
 
+          <!-- Choix du Lot d'Origine -->
+          <div class="form-group">
+            <label for="saleLotLinked" data-i18n="lbl_sale_deduct_flock">Déduire du Cheptel / Lot d'origine</label>
+            <select id="saleLotLinked" class="input-field">
+              <option value="none" data-i18n="opt_no_lot">Aucun lot spécifique (Production courante)</option>
+              <!-- Populated by JS -->
+            </select>
+            <small class="helper-text" data-i18n="sale_deduct_helper">Si vous choisissez un lot, l'effectif sera automatiquement déduit et la marge nette calculée précisément.</small>
+          </div>
+
           <!-- Dynamic Age Selection Row (for Poussins & Poulets) -->
           <div id="saleAgeRow" class="form-row hidden">
             <div class="form-group flex-1">
@@ -1364,6 +1374,23 @@
                 <option value="mois" data-i18n="opt_age_months">Mois (1 à 6 mois)</option>
                 <option value="adulte" data-i18n="opt_age_adult">Adulte (> 6 mois) [Par défaut si vide]</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Quantité Vendue, Prix Unitaire & Total -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="saleQuantity"><span data-i18n="table_col_qty">Quantité Vendue</span> <span id="saleQtyUnitLabel">(Haras / Plateaux)</span></label>
+              <input type="number" id="saleQuantity" class="input-field" step="1" value="5" min="1" required oninput="app.calcSaleTotal()">
+              <small id="saleQtyWarning" style="color: #ef4444; font-size: 0.76rem; font-weight: 700; display: none; margin-top: 0.35rem; line-height: 1.3;"></small>
+            </div>
+            <div class="form-group flex-1">
+              <label for="saleUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
+              <input type="number" id="saleUnitPrice" class="input-field" step="0.01" value="1.80" min="0" required oninput="app.calcSaleTotal()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="saleTotalCalculated"><span data-i18n="lbl_total_calculated">Montant Total</span> (<span class="currency-label">DT</span>)</label>
+              <input type="number" id="saleTotalCalculated" class="input-field bold text-emerald" readonly value="9.00">
             </div>
           </div>
 
@@ -1385,7 +1412,7 @@
             <p class="egg-helper-note" data-i18n="egg_helper_note">💡 En Tunisie : 1 HARA (حارة) = 4 œufs. Vous pouvez vendre moins d'un plateau ou n'importe quel nombre d'œufs selon la demande du client !</p>
           </div>
 
-          <!-- Poultry & Chicks Intelligent Feed & Profit Box -->
+          <!-- Poultry & Chicks Intelligent Feed & Profit Box (Placé au-dessous après avoir tout rempli) -->
           <div id="saleSmartCalcBox" class="sale-smart-calc-box hidden">
             <div class="smart-calc-header">
               <span class="smart-calc-title" data-i18n="smart_calc_title">🤖 Calcul Intelligent : Aliment Mangé & Marge Réelle</span>
@@ -1421,31 +1448,6 @@
                 <span data-i18n="btn_apply_rec_price">🎯 Appliquer ce prix conseillé</span>
               </button>
             </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group flex-1">
-              <label for="saleQuantity"><span data-i18n="table_col_qty">Quantité Vendue</span> <span id="saleQtyUnitLabel">(Haras / Plateaux)</span></label>
-              <input type="number" id="saleQuantity" class="input-field" step="1" value="5" min="1" required oninput="app.calcSaleTotal()">
-              <small id="saleQtyWarning" style="color: #ef4444; font-size: 0.76rem; font-weight: 700; display: none; margin-top: 0.35rem; line-height: 1.3;"></small>
-            </div>
-            <div class="form-group flex-1">
-              <label for="saleUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="saleUnitPrice" class="input-field" step="0.01" value="1.80" min="0" required oninput="app.calcSaleTotal()">
-            </div>
-            <div class="form-group flex-1">
-              <label for="saleTotalCalculated"><span data-i18n="lbl_total_calculated">Montant Total</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="saleTotalCalculated" class="input-field bold text-emerald" readonly value="9.00">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="saleLotLinked" data-i18n="lbl_sale_deduct_flock">Déduire du Cheptel / Lot d'origine</label>
-            <select id="saleLotLinked" class="input-field">
-              <option value="none" data-i18n="opt_no_lot">Aucun lot spécifique (Production courante)</option>
-              <!-- Populated by JS -->
-            </select>
-            <small class="helper-text" data-i18n="sale_deduct_helper">Si vous choisissez un lot, l'effectif sera automatiquement déduit et la marge nette calculée précisément.</small>
           </div>
         </div>
         <div class="modal-footer">
