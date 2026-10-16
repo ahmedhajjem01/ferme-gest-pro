@@ -2036,9 +2036,18 @@ label {
   text-align: right;
 }
 
-[dir="rtl"] .select-filter {
+[dir="rtl"] .select-filter,
+[dir="rtl"] select.input-field {
   text-align: right;
   direction: rtl;
+  padding-left: 2.2rem !important;
+  padding-right: 1rem !important;
+  cursor: pointer;
+}
+
+[dir="rtl"] .cal-nav-arrow {
+  display: inline-block;
+  transform: scaleX(-1);
 }
 
 [dir="rtl"] .data-table th,

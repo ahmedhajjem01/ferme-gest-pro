@@ -357,6 +357,7 @@ const TRANSLATIONS = {
     lbl_total_calculated: "Total",
     lbl_link_lot: "Affecter à un lot spécifique (pour calcul marge précis)",
     opt_general_farm: "Frais Généraux de l'Exploitation",
+    expense_feed_notice: "📦 <strong>Règle du Stock & Aliments :</strong> Tout achat d'aliment ou de sacs est enregistré en <strong>réserve de stock</strong>. Le prix d'un sac fermé ne sera jamais imputé d'un coup sur vos poussins : leur coût de revient n'augmente que jour après jour à mesure qu'ils grandissent et consomment réellement leurs rations !",
     btn_validate_expense: "Valider la Dépense",
 
     modal_add_sale_title: "Enregistrer une Vente & Revenu",
@@ -889,6 +890,7 @@ const TRANSLATIONS = {
     lbl_total_calculated: "المبلغ الإجمالي",
     lbl_link_lot: "تخصيص لدفعة معينة (لحساب دقيق للأرباح)",
     opt_general_farm: "مصاريف عامة للمزرعة",
+    expense_feed_notice: "📦 <strong>قاعدة المخزون والأعلاف:</strong> كل شراء للأعلاف أو الأكياس يسجل في <strong>مخزون المستودع الاحتياطي</strong>. تكلفة الكيس المغلق لن تخصم دفعة واحدة أبداً من الكتاكيت، بل ترتفع تكلفة الرأس تدريجياً وبشكل يومي حسب الاستهلاك الفعلي للعلف!",
     btn_validate_expense: "تأكيد المصروف",
 
     modal_add_sale_title: "تسجيل عملية بيع ومداخيل",
@@ -1420,6 +1422,7 @@ const TRANSLATIONS = {
     lbl_total_calculated: "Total",
     lbl_link_lot: "Assign to specific batch (for accurate net margin)",
     opt_general_farm: "General Farm Overhead",
+    expense_feed_notice: "📦 <strong>Feed Stock Rule:</strong> Every feed purchase is recorded in <strong>warehouse reserve</strong>. The cost of a closed bag is never charged all at once on your chicks: their production cost increases day by day as they actually consume their rations!",
     btn_validate_expense: "Confirm Expense",
 
     modal_add_sale_title: "Record Sale & Revenue",

@@ -673,13 +673,23 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th data-i18n="table_col_date">Date</th>
+                  <th onclick="app.toggleExpenseSort('date')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_date">Date</span> <span id="sortArrowExpDate" style="color: var(--primary); font-size: 0.8rem;">▼</span>
+                  </th>
                   <th data-i18n="table_col_cat">Catégorie</th>
-                  <th data-i18n="table_col_item">Intitulé / Article</th>
+                  <th onclick="app.toggleExpenseSort('title')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_item">Intitulé / Article</span> <span id="sortArrowExpTitle" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
                   <th data-i18n="table_col_lot">Affecté à</th>
-                  <th data-i18n="table_col_qty">Quantité</th>
-                  <th data-i18n="table_col_unit_price">Prix Unitaire</th>
-                  <th data-i18n="table_col_total">Total</th>
+                  <th onclick="app.toggleExpenseSort('qty')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_qty">Quantité</span> <span id="sortArrowExpQty" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
+                  <th onclick="app.toggleExpenseSort('price')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_unit_price">Prix Unitaire</span> <span id="sortArrowExpPrice" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
+                  <th onclick="app.toggleExpenseSort('total')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_total">Total</span> <span id="sortArrowExpTotal" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
                   <th data-i18n="table_col_action">Action</th>
                 </tr>
               </thead>
@@ -729,12 +739,22 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th data-i18n="table_col_date">Date</th>
+                  <th onclick="app.toggleSaleSort('date')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_date">Date</span> <span id="sortArrowSaleDate" style="color: var(--primary); font-size: 0.8rem;">▼</span>
+                  </th>
                   <th data-i18n="table_col_prod_type">Type de Produit</th>
-                  <th data-i18n="table_col_client_desc">Client / Description</th>
-                  <th data-i18n="table_col_qty">Quantité</th>
-                  <th data-i18n="table_col_unit_price">Prix Unitaire</th>
-                  <th data-i18n="table_col_sold_total">Total Vendu</th>
+                  <th onclick="app.toggleSaleSort('title')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_client_desc">Client / Description</span> <span id="sortArrowSaleTitle" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
+                  <th onclick="app.toggleSaleSort('qty')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_qty">Quantité</span> <span id="sortArrowSaleQty" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
+                  <th onclick="app.toggleSaleSort('price')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_unit_price">Prix Unitaire</span> <span id="sortArrowSalePrice" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
+                  <th onclick="app.toggleSaleSort('total')" style="cursor: pointer; user-select: none;">
+                    <span data-i18n="table_col_sold_total">Total Vendu</span> <span id="sortArrowSaleTotal" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
+                  </th>
                   <th data-i18n="table_col_lot">Lot Lié</th>
                   <th data-i18n="table_col_margin_est">Marge Estimée</th>
                   <th data-i18n="table_col_action">Action</th>
@@ -940,9 +960,13 @@
 
               <!-- Contrôles du Mois directement attachés au Calendrier -->
               <div class="calendar-nav-buttons" style="margin: 0; background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: inline-flex; align-items: center; gap: 0.5rem;">
-                <button class="btn btn-sm btn-outline" id="calPrevMonthBtn" style="padding: 0.35rem 0.65rem;">&larr; <span data-i18n="cal_prev_month">Mois Précédent</span></button>
+                <button class="btn btn-sm btn-outline" id="calPrevMonthBtn" onclick="app.prevMonth()" style="padding: 0.35rem 0.65rem; cursor: pointer;">
+                  <span class="cal-nav-arrow">&larr;</span> <span data-i18n="cal_prev_month">Mois Précédent</span>
+                </button>
                 <span class="calendar-current-month" id="calCurrentMonthLabel" style="font-weight: 800; font-size: 1rem; min-width: 130px; text-align: center; color: var(--text-main);">Octobre 2026</span>
-                <button class="btn btn-sm btn-outline" id="calNextMonthBtn" style="padding: 0.35rem 0.65rem;"><span data-i18n="cal_next_month">Mois Suivant</span> &rarr;</button>
+                <button class="btn btn-sm btn-outline" id="calNextMonthBtn" onclick="app.nextMonth()" style="padding: 0.35rem 0.65rem; cursor: pointer;">
+                  <span data-i18n="cal_next_month">Mois Suivant</span> <span class="cal-nav-arrow">&rarr;</span>
+                </button>
               </div>
             </div>
             <div class="calendar-grid-wrapper" style="padding: 0.75rem 1.25rem 1.25rem;">
@@ -1273,7 +1297,7 @@
           </div>
 
           <!-- Feed Warehouse Stock Notice Banner -->
-          <div id="expenseFeedNotice" style="display: block; background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 0.6rem 0.8rem; margin-bottom: 0.9rem; font-size: 0.78rem; color: var(--text-main);">
+          <div id="expenseFeedNotice" style="display: block; background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 0.6rem 0.8rem; margin-bottom: 0.9rem; font-size: 0.78rem; color: var(--text-main);" data-i18n="expense_feed_notice">
             📦 <strong>Règle du Stock & Aliments :</strong> Tout achat d'aliment ou de sacs est enregistré en <strong>réserve de stock</strong>. Le prix d'un sac fermé ne sera <strong>JAMAIS</strong> imputé d'un coup sur vos poussins : leur coût de revient n'augmente que jour après jour à mesure qu'ils grandissent et consomment réellement leurs rations !
           </div>
 

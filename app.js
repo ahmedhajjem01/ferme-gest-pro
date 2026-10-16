@@ -10,6 +10,10 @@ const appState = {
   theme: 'dark',
   currentTab: 'dashboard',
   calendarDate: new Date(),
+  expenseSortField: 'date',
+  expenseSortOrder: 'desc',
+  saleSortField: 'date',
+  saleSortOrder: 'desc',
   eggStock: 0,
   eggHarvests: [],
   feedStockKg: null,
@@ -735,16 +739,10 @@ const app = {
     const prevMonthBtn = document.getElementById('calPrevMonthBtn');
     const nextMonthBtn = document.getElementById('calNextMonthBtn');
     if (prevMonthBtn) {
-      prevMonthBtn.addEventListener('click', () => {
-        appState.calendarDate.setMonth(appState.calendarDate.getMonth() - 1);
-        this.renderCalendar();
-      });
+      prevMonthBtn.onclick = () => this.prevMonth();
     }
     if (nextMonthBtn) {
-      nextMonthBtn.addEventListener('click', () => {
-        appState.calendarDate.setMonth(appState.calendarDate.getMonth() + 1);
-        this.renderCalendar();
-      });
+      nextMonthBtn.onclick = () => this.nextMonth();
     }
 
     // Default dates for modals to today
@@ -2529,11 +2527,15 @@ const app = {
 
     if (recordExpense && stockKg > 0 && priceKg > 0) {
       const totalCost = stockKg * priceKg;
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+      const feedTitlePrefix = isAr ? 'شراء علف' : (isEn ? 'Feed purchase' : 'Achat aliment');
+      const unitKg = isAr ? 'كغ' : 'kg';
       const newExp = {
         id: 'exp-' + Date.now().toString(36),
         date: this.getTodayStr(),
         category: 'nourriture',
-        title: `Achat aliment : ${name} (${stockKg} kg)`,
+        title: `${feedTitlePrefix} : ${name} (${stockKg} ${unitKg})`,
         quantity: stockKg,
         unitPrice: priceKg,
         total: totalCost,
@@ -3374,10 +3376,43 @@ const app = {
     if (salEl) salEl.textContent = this.formatMoney(salTot);
 
     const filtered = appState.expenses.filter(e => {
-      const matchesSearch = e.title.toLowerCase().includes(search);
+      const matchesSearch = e.title.toLowerCase().includes(search) || this.getTranslatedExpenseTitle(e.title).toLowerCase().includes(search);
       const matchesCat = catFilter === 'all' || e.category === catFilter;
       return matchesSearch && matchesCat;
-    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+    }).sort((a, b) => {
+      const order = appState.expenseSortOrder === 'asc' ? 1 : -1;
+      if (appState.expenseSortField === 'date') {
+        return (new Date(a.date) - new Date(b.date)) * order;
+      }
+      if (appState.expenseSortField === 'qty') {
+        return ((Number(a.quantity) || 0) - (Number(b.quantity) || 0)) * order;
+      }
+      if (appState.expenseSortField === 'price') {
+        return ((Number(a.unitPrice) || 0) - (Number(b.unitPrice) || 0)) * order;
+      }
+      if (appState.expenseSortField === 'total') {
+        return ((Number(a.total) || 0) - (Number(b.total) || 0)) * order;
+      }
+      if (appState.expenseSortField === 'title') {
+        return (a.title || '').localeCompare(b.title || '') * order;
+      }
+      return (new Date(b.date) - new Date(a.date));
+    });
+
+    // Update sort arrow indicators in the table header
+    const expFields = ['date', 'title', 'qty', 'price', 'total'];
+    expFields.forEach(f => {
+      const arrowEl = document.getElementById(`sortArrowExp${f.charAt(0).toUpperCase() + f.slice(1)}`);
+      if (arrowEl) {
+        if (appState.expenseSortField === f) {
+          arrowEl.textContent = appState.expenseSortOrder === 'asc' ? '▲' : '▼';
+          arrowEl.style.color = 'var(--primary)';
+        } else {
+          arrowEl.textContent = '↕';
+          arrowEl.style.color = 'var(--text-muted)';
+        }
+      }
+    });
 
     if (filtered.length === 0) {
       if (appState.expenses.length === 0) {
@@ -3401,11 +3436,12 @@ const app = {
       const tr = document.createElement('tr');
       const catBadge = this.getExpenseCategoryBadge(exp.category);
       const lotName = this.getLotNameById(exp.linkedLotId);
+      const displayTitle = this.getTranslatedExpenseTitle(exp.title);
 
       tr.innerHTML = `
         <td>${this.formatDateFR(exp.date)}</td>
         <td>${catBadge}</td>
-        <td><strong>${exp.title}</strong></td>
+        <td><strong>${displayTitle}</strong></td>
         <td>
           <button type="button" class="badge-pill btn-subtle" onclick="app.reassignExpenseLot('${exp.id}')" title="Cliquer pour changer le lot affecté" style="cursor:pointer; border:1px solid var(--border-color); background:var(--bg-card); padding:3px 8px; font-size:0.75rem;">
             ${lotName} ✏️
@@ -3532,7 +3568,40 @@ const app = {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const sorted = [...appState.sales].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sorted = [...appState.sales].sort((a, b) => {
+      const order = appState.saleSortOrder === 'asc' ? 1 : -1;
+      if (appState.saleSortField === 'date') {
+        return (new Date(a.date) - new Date(b.date)) * order;
+      }
+      if (appState.saleSortField === 'qty') {
+        return ((Number(a.quantity) || 0) - (Number(b.quantity) || 0)) * order;
+      }
+      if (appState.saleSortField === 'price') {
+        return ((Number(a.unitPrice) || 0) - (Number(b.unitPrice) || 0)) * order;
+      }
+      if (appState.saleSortField === 'total') {
+        return ((Number(a.total) || 0) - (Number(b.total) || 0)) * order;
+      }
+      if (appState.saleSortField === 'title') {
+        return (a.description || '').localeCompare(b.description || '') * order;
+      }
+      return (new Date(b.date) - new Date(a.date));
+    });
+
+    // Update sort arrow indicators in the table header
+    const saleFields = ['date', 'title', 'qty', 'price', 'total'];
+    saleFields.forEach(f => {
+      const arrowEl = document.getElementById(`sortArrowSale${f.charAt(0).toUpperCase() + f.slice(1)}`);
+      if (arrowEl) {
+        if (appState.saleSortField === f) {
+          arrowEl.textContent = appState.saleSortOrder === 'asc' ? '▲' : '▼';
+          arrowEl.style.color = 'var(--primary)';
+        } else {
+          arrowEl.textContent = '↕';
+          arrowEl.style.color = 'var(--text-muted)';
+        }
+      }
+    });
 
     if (sorted.length === 0) {
       tbody.innerHTML = `
@@ -3552,6 +3621,7 @@ const app = {
       const tr = document.createElement('tr');
       const prodBadge = this.getSaleProductBadge(sale.productType);
       const lotName = this.getLotNameById(sale.linkedLotId);
+      const displayDesc = this.getTranslatedSaleDescription(sale.description);
       
       // Calculate estimated net margin for this sale based on linked lot feed costs
       const estimatedMargin = this.calcSaleEstimatedMargin(sale);
@@ -3559,7 +3629,7 @@ const app = {
       tr.innerHTML = `
         <td>${this.formatDateFR(sale.date)}</td>
         <td>${prodBadge}</td>
-        <td><strong>${sale.description}</strong></td>
+        <td><strong>${displayDesc}</strong></td>
         <td>${this.formatSaleQuantityDisplay(sale)}</td>
         <td>${this.formatMoney(sale.unitPrice)}</td>
         <td class="text-emerald bold">${this.formatMoney(sale.total)}</td>
@@ -4761,6 +4831,167 @@ const app = {
   },
 
   // ==========================================
+  // CALENDAR NAVIGATION & SORTING METHODS
+  // ==========================================
+  prevMonth() {
+    if (!appState.calendarDate || !(appState.calendarDate instanceof Date) || isNaN(appState.calendarDate.getTime())) {
+      appState.calendarDate = new Date();
+    }
+    const curYear = appState.calendarDate.getFullYear();
+    const curMonth = appState.calendarDate.getMonth();
+    appState.calendarDate = new Date(curYear, curMonth - 1, 1);
+    this.renderCalendar();
+  },
+
+  nextMonth() {
+    if (!appState.calendarDate || !(appState.calendarDate instanceof Date) || isNaN(appState.calendarDate.getTime())) {
+      appState.calendarDate = new Date();
+    }
+    const curYear = appState.calendarDate.getFullYear();
+    const curMonth = appState.calendarDate.getMonth();
+    appState.calendarDate = new Date(curYear, curMonth + 1, 1);
+    this.renderCalendar();
+  },
+
+  toggleExpenseSort(field) {
+    if (appState.expenseSortField === field) {
+      appState.expenseSortOrder = appState.expenseSortOrder === 'desc' ? 'asc' : 'desc';
+    } else {
+      appState.expenseSortField = field;
+      appState.expenseSortOrder = 'desc';
+    }
+    this.renderExpenses();
+  },
+
+  toggleSaleSort(field) {
+    if (appState.saleSortField === field) {
+      appState.saleSortOrder = appState.saleSortOrder === 'desc' ? 'asc' : 'desc';
+    } else {
+      appState.saleSortField = field;
+      appState.saleSortOrder = 'desc';
+    }
+    this.renderSales();
+  },
+
+  getTranslatedExpenseTitle(title) {
+    if (!title) return '';
+    const lang = appState.lang || 'fr';
+
+    if (lang === 'ar') {
+      let t = title;
+      t = t.replace(/Achat aliment\s*:\s*/gi, 'شراء علف : ');
+      t = t.replace(/Achat aliment\s*\/\s*Stock r[eé]serve/gi, 'شراء علف / مخزون احتياطي بالمستودع');
+      t = t.replace(/Achat aliment/gi, 'شراء علف');
+      t = t.replace(/Stock r[eé]serve/gi, 'مخزون المستودع');
+      t = t.replace(/(\d+)\s*Sacs?\s*Aliment Croissance\s*\/\s*Finition\s*\(50kg\)/gi, '$1 أكياس علف نمو وتسمين (50 كغ)');
+      t = t.replace(/sacs?\s*d['\s]?alimentation/gi, 'أكياس علف');
+      t = t.replace(/sac\s*d['\s]?aliment/gi, 'كيس علف');
+      t = t.replace(/Aliment Pondeuse Granul[eé]s Sp[eé]cial Ponte/gi, 'علف دجاج بياض حبيبات (خاص بالإنتاج)');
+      t = t.replace(/Aliment D[eé]marrage Poussins\s*\(Miettes 1er [AÂ]ge\)/gi, 'علف بادي كتاكيت (مفتت مرحلة أولى)');
+      t = t.replace(/Vaccin Newcastle\s*\+\s*Gumboro\s*\(1000 doses\)/gi, 'تلقيح نيوكاسل + غومبورو (1000 جرعة)');
+      t = t.replace(/Facture [EÉ]lectricit[eé] STEG Exploitation/gi, 'فاتورة كهرباء الستاغ (STEG) للمزرعة');
+      t = t.replace(/Facture Eau SONEDE Abreuvoirs\s*&\s*Nettoyage/gi, 'فاتورة مياه الصوناد (SONEDE) للمزرعة');
+      t = t.replace(/Salaire Ouvrier Agricole\s*\(Mois de Septembre\)/gi, 'أجر عامل فلاحي (شهر سبتمبر)');
+      t = t.replace(/Liti[eè]re de copeaux\s*&\s*Chauffage [eé]leveuse poussins/gi, 'فرشة نشارة وتدفئة حاضنة الكتاكيت');
+      t = t.replace(/(\d+(?:\.\d+)?)\s*kg/gi, '$1 كغ');
+      return t;
+    }
+
+    if (lang === 'en') {
+      let t = title;
+      t = t.replace(/Achat aliment\s*:\s*/gi, 'Feed Purchase: ');
+      t = t.replace(/Achat aliment\s*\/\s*Stock r[eé]serve/gi, 'Feed Purchase / Reserve Stock');
+      t = t.replace(/Achat aliment/gi, 'Feed Purchase');
+      t = t.replace(/sacs?\s*d['\s]?alimentation/gi, 'feed bags');
+      t = t.replace(/Aliment Pondeuse Granul[eé]s Sp[eé]cial Ponte/gi, 'Laying Pellet Feed Special Production');
+      t = t.replace(/Aliment D[eé]marrage Poussins/gi, 'Chick Starter Crumble');
+      t = t.replace(/Facture [EÉ]lectricit[eé] STEG Exploitation/gi, 'STEG Electricity Bill');
+      t = t.replace(/Facture Eau SONEDE Abreuvoirs\s*&\s*Nettoyage/gi, 'SONEDE Water Bill');
+      t = t.replace(/Salaire Ouvrier Agricole/gi, 'Farm Worker Salary');
+      t = t.replace(/Liti[eè]re de copeaux\s*&\s*Chauffage/gi, 'Wood Shavings Bedding & Brooder Heating');
+      return t;
+    }
+
+    let t = title;
+    t = t.replace(/شراء علف\s*:\s*/gi, 'Achat aliment : ');
+    t = t.replace(/شراء علف\s*\/\s*مخزون احتياطي بالمستودع/gi, 'Achat aliment / Stock réserve');
+    t = t.replace(/أكياس علف/gi, 'Sacs d\'alimentation');
+    t = t.replace(/(\d+(?:\.\d+)?)\s*كغ/gi, '$1 kg');
+    return t;
+  },
+
+  getTranslatedSaleDescription(desc) {
+    if (!desc) return '';
+    const lang = appState.lang || 'fr';
+
+    if (lang === 'ar') {
+      let d = desc;
+      d = d.replace(/Vente 50 Plateaux d['’]œufs frais\s*\(March[eé] de Gros\)/gi, 'بيع 50 طبق بيض طازج (سوق الجملة)');
+      d = d.replace(/Vente 35 Poulets fermiers pr[eê]ts [aà] l['’]abattage\s*\(3\.5 mois\)/gi, 'بيع 35 دجاجة لحم بلدية جاهزة للذبح (3.5 أشهر)');
+      d = d.replace(/Vente 80 Poussins d[eé]marr[eé]s 21 jours vaccin[eé]s/gi, 'بيع 80 كتكوت بادي 21 يوماً ملقحة');
+      d = d.replace(/Vente 6 Coqs adultes reproducteurs\s*\(>\s*6 mois\s*-\s*par t[eê]te\)/gi, 'بيع 6 ديوك بالغة أمهات (> 6 أشهر - بالرأس)');
+      d = d.replace(/Vente 6 Poulets adultes reproducteurs\s*\(>\s*6 mois\s*-\s*par t[eê]te\)/gi, 'بيع 6 ديوك بالغة أمهات (> 6 أشهر - بالرأس)');
+      d = d.replace(/Vente\s+/gi, 'بيع ');
+      d = d.replace(/Plateau(?:x)? d['’]œufs/gi, 'طبق بيض');
+      d = d.replace(/par t[eê]te/gi, 'بالرأس');
+      return d;
+    }
+
+    if (lang === 'en') {
+      let d = desc;
+      d = d.replace(/Vente 50 Plateaux d['’]œufs frais\s*\(March[eé] de Gros\)/gi, 'Sale of 50 fresh egg trays (Wholesale)');
+      d = d.replace(/Vente 35 Poulets fermiers/gi, 'Sale of 35 farm broilers');
+      d = d.replace(/Vente 80 Poussins d[eé]marr[eé]s/gi, 'Sale of 80 started chicks');
+      d = d.replace(/Vente 6 Coqs adultes/gi, 'Sale of 6 adult roosters');
+      d = d.replace(/Vente\s+/gi, 'Sale of ');
+      return d;
+    }
+
+    return desc;
+  },
+
+  getTranslatedLotName(name) {
+    if (!name) return '';
+    const lang = appState.lang || 'fr';
+    if (lang === 'ar') {
+      let n = name;
+      n = n.replace(/Bande Poussins 1J Couveuse/gi, 'دفعة كتاكيت عمر 1 يوم فقاسة');
+      n = n.replace(/Bande Poussins D[eé]marr[eé]s #01/gi, 'دفعة كتاكيت بادئة #01');
+      n = n.replace(/Bande Poulets Fermiers Croissance/gi, 'دفعة دجاج بلدي مرحلة النمو');
+      n = n.replace(/Bande Pondeuses #03/gi, 'دفعة دجاج بياض #03');
+      n = n.replace(/Bande Coqs Adultes Reproducteurs/gi, 'دفعة ديوك بالغة أمهات');
+      n = n.replace(/Bande Poulets Adultes Reproducteurs/gi, 'دفعة ديوك بالغة أمهات');
+      n = n.replace(/Bande\s+/gi, 'دفعة ');
+      return n;
+    }
+    return name;
+  },
+
+  getTranslatedAgeText(ageText) {
+    if (!ageText) return '';
+    const lang = appState.lang || 'fr';
+    if (lang === 'ar') {
+      let t = ageText;
+      t = t.replace(/Adulte\s*\(>\s*6\s*mois\)/gi, 'بالغ (> 6 أشهر)');
+      t = t.replace(/Adulte/gi, 'بالغ');
+      t = t.replace(/(\d+)\s*mois/gi, '$1 أشهر');
+      t = t.replace(/(\d+)\s*jours?/gi, '$1 أيام');
+      t = t.replace(/(\d+)\s*semaines?/gi, '$1 أسابيع');
+      return t;
+    }
+    if (lang === 'en') {
+      let t = ageText;
+      t = t.replace(/Adulte\s*\(>\s*6\s*mois\)/gi, 'Adult (> 6 months)');
+      t = t.replace(/Adulte/gi, 'Adult');
+      t = t.replace(/(\d+)\s*mois/gi, '$1 months');
+      t = t.replace(/(\d+)\s*jours?/gi, '$1 days');
+      t = t.replace(/(\d+)\s*semaines?/gi, '$1 weeks');
+      return t;
+    }
+    return ageText;
+  },
+
+  // ==========================================
   // CALENDAR & GENERATIONS LIFECYCLE
   // ==========================================
   renderCalendar() {
@@ -5538,7 +5769,7 @@ const app = {
       return this.t('opt_general_farm') || 'Exploitation Générale';
     }
     const lot = appState.animals.find(a => a.id === lotId);
-    return lot ? lot.name : (this.t('opt_general_farm') || 'Exploitation Générale');
+    return lot ? this.getTranslatedLotName(lot.name) : (this.t('opt_general_farm') || 'Exploitation Générale');
   }
 };
 
