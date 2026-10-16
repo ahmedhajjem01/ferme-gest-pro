@@ -476,8 +476,8 @@
           feedStockDate: state.feedStockDate || null,
           feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
           feedRationMode: state.feedRationMode || 'custom',
-          customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
-          sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
+          customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
+          sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
           feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
           feedTypes: Array.isArray(state.feedTypes) ? state.feedTypes : [],
           animals: Array.isArray(state.animals) ? state.animals : [],
@@ -552,8 +552,8 @@
         feedStockDate: state.feedStockDate || null,
         feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
         feedRationMode: state.feedRationMode || 'custom',
-        customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
-        sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
+        customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
+        sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
         feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
         feedTypes: Array.isArray(state.feedTypes) ? state.feedTypes : [],
         animals: Array.isArray(state.animals) ? state.animals : [],
@@ -718,8 +718,8 @@
       }
       if (cloudData.customDailyFeedKg !== undefined) {
         state.feedRationMode = cloudData.feedRationMode || 'custom';
-        state.customDailyFeedKg = cloudData.customDailyFeedKg !== null ? Number(cloudData.customDailyFeedKg) : 2.0;
-        state.sicamCansCount = cloudData.sicamCansCount !== undefined ? Number(cloudData.sicamCansCount) : 3;
+        state.customDailyFeedKg = (cloudData.customDailyFeedKg !== undefined && cloudData.customDailyFeedKg !== null) ? Number(cloudData.customDailyFeedKg) : null;
+        state.sicamCansCount = (cloudData.sicamCansCount !== undefined && cloudData.sicamCansCount !== null) ? Number(cloudData.sicamCansCount) : null;
       }
 
       if (doMerge) {
@@ -1162,8 +1162,8 @@
         feedStockDate: state.feedStockDate || null,
         feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
         feedRationMode: state.feedRationMode || 'custom',
-        customDailyFeedKg: state.customDailyFeedKg !== undefined ? state.customDailyFeedKg : 2.0,
-        sicamCansCount: state.sicamCansCount !== undefined ? state.sicamCansCount : 3,
+        customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
+        sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
         feedDistributions: Array.isArray(state.feedDistributions) ? state.feedDistributions : [],
         feedTypes: Array.isArray(state.feedTypes) ? state.feedTypes : [],
         animals: Array.isArray(state.animals) ? state.animals : [],

@@ -16,12 +16,12 @@ const appState = {
   feedStockDate: null,
   feedStockCostPerKg: 1.0,
   feedRationMode: 'custom',
-  customDailyFeedKg: 2.0,
-  sicamCansCount: 3,
+  customDailyFeedKg: null,
+  sicamCansCount: null,
   feedDistributions: [],
   feedTypes: [
-    { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 45.0, pricePerKg: 1.10 },
-    { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 20.0, pricePerKg: 1.50 }
+    { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
+    { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
   ],
   
   animals: [],
@@ -558,11 +558,10 @@ const app = {
         feedStockDate: appState.feedStockDate || null,
         feedStockCostPerKg: appState.feedStockCostPerKg || 1.0,
         feedRationMode: appState.feedRationMode || 'custom',
-        customDailyFeedKg: appState.customDailyFeedKg !== undefined ? appState.customDailyFeedKg : 2.0,
-        sicamCansCount: appState.sicamCansCount !== undefined ? appState.sicamCansCount : 3,
+        customDailyFeedKg: (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? Number(appState.customDailyFeedKg) : null,
+        sicamCansCount: (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? Number(appState.sicamCansCount) : null,
         feedDistributions: Array.isArray(appState.feedDistributions) ? appState.feedDistributions : [],
         feedTypes: Array.isArray(appState.feedTypes) ? appState.feedTypes : [],
-        feedStockInvertedV24: true,
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
@@ -592,30 +591,16 @@ const app = {
         appState.feedStockDate = parsed.feedStockDate || null;
         appState.feedStockCostPerKg = parsed.feedStockCostPerKg ? Number(parsed.feedStockCostPerKg) : 1.0;
         appState.feedRationMode = parsed.feedRationMode || 'custom';
-        appState.customDailyFeedKg = parsed.customDailyFeedKg !== undefined ? Number(parsed.customDailyFeedKg) : 2.0;
-        appState.sicamCansCount = parsed.sicamCansCount !== undefined ? Number(parsed.sicamCansCount) : 3;
+        appState.customDailyFeedKg = (parsed.customDailyFeedKg !== undefined && parsed.customDailyFeedKg !== null) ? Number(parsed.customDailyFeedKg) : null;
+        appState.sicamCansCount = (parsed.sicamCansCount !== undefined && parsed.sicamCansCount !== null) ? Number(parsed.sicamCansCount) : null;
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
         if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
           appState.feedTypes = [
-            { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 45.0, pricePerKg: 1.10 },
-            { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 20.0, pricePerKg: 1.50 }
+            { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
+            { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
           ];
         } else {
           appState.feedTypes = parsed.feedTypes;
-          // Apply farmer's physical warehouse reality: 45 kg blé & 20 kg aliment ponte
-          if (!parsed.feedStockInvertedV24) {
-            const bouchon = appState.feedTypes.find(f => f.id === 'feed-bouchon' || f.name.includes('بوشون') || f.name.toLowerCase().includes('ponte'));
-            const ble = appState.feedTypes.find(f => f.id === 'feed-orge' || f.id === 'feed-ble' || f.name.includes('شعير') || f.name.includes('قمح') || f.name.toLowerCase().includes('bl'));
-            if (bouchon) {
-              bouchon.stockKg = 20.0;
-              bouchon.name = 'بوشون (علف بياضة / Aliment ponte)';
-            }
-            if (ble) {
-              ble.stockKg = 45.0;
-              ble.name = 'بليه / قمح (Blé)';
-            }
-            appState.feedStockKg = (appState.feedTypes || []).reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
-          }
         }
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
@@ -933,8 +918,8 @@ const app = {
         const isCustom = appState.feedRationMode !== 'industrial';
         if (customRadio) customRadio.checked = isCustom;
         if (industrialRadio) industrialRadio.checked = !isCustom;
-        if (customKgInput) customKgInput.value = (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? appState.customDailyFeedKg : 2.0;
-        if (sicamInput) sicamInput.value = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? appState.sicamCansCount : 3;
+        if (customKgInput) customKgInput.value = (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? appState.customDailyFeedKg : '';
+        if (sicamInput) sicamInput.value = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? appState.sicamCansCount : '';
         this.toggleFeedRationModeUI();
       }
 
@@ -1914,16 +1899,15 @@ const app = {
 
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [
-        { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 45.0, pricePerKg: 1.10 },
-        { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 20.0, pricePerKg: 1.50 }
+        { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
+        { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
       ];
     }
 
     let html = '';
-    appState.feedTypes.forEach((ft, idx) => {
-      // Default to 1.0 kg for first 2 types (bouchon and orge)
-      const defaultKg = (idx === 0 || idx === 1) ? '1.0' : '0.0';
-      const defaultCans = (idx === 0 || idx === 1) ? '1.5' : '0';
+    appState.feedTypes.forEach((ft) => {
+      const defaultKg = '0.0';
+      const defaultCans = '0';
       const stockKg = Number(ft.stockKg) || 0;
 
       html += `
@@ -1988,21 +1972,12 @@ const app = {
 
   applyDistribPreset(presetName) {
     (appState.feedTypes || []).forEach((ft) => {
-      const isBouchon = ft.id.includes('bouchon') || ft.name.includes('بوشون') || ft.name.toLowerCase().includes('ponte');
-      const isBle = ft.id.includes('orge') || ft.id.includes('ble') || ft.name.includes('شعير') || ft.name.includes('قمح') || ft.name.toLowerCase().includes('bl');
-
-      if (presetName === 'morning') {
-        if (isBouchon) this.setFeedTypeDistribSicam(ft.id, 1.0);
-        else if (isBle) this.setFeedTypeDistribSicam(ft.id, 0.5);
-        else this.setFeedTypeDistribSicam(ft.id, 0);
-      } else if (presetName === 'afternoon') {
-        if (isBouchon) this.setFeedTypeDistribSicam(ft.id, 0.5);
-        else if (isBle) this.setFeedTypeDistribSicam(ft.id, 1.0);
-        else this.setFeedTypeDistribSicam(ft.id, 0);
-      } else if (presetName === 'all_day') {
-        if (isBouchon) this.setFeedTypeDistribSicam(ft.id, 1.5);
-        else if (isBle) this.setFeedTypeDistribSicam(ft.id, 1.5);
-        else this.setFeedTypeDistribSicam(ft.id, 0);
+      if (presetName === 'half_can') {
+        this.setFeedTypeDistribSicam(ft.id, 0.5);
+      } else if (presetName === 'one_can') {
+        this.setFeedTypeDistribSicam(ft.id, 1.0);
+      } else if (presetName === 'clear') {
+        this.setFeedTypeDistribSicam(ft.id, 0);
       }
     });
     this.recalcDistribTotal();
@@ -2109,8 +2084,8 @@ const app = {
 
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [
-        { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 45.0, pricePerKg: 1.10 },
-        { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 20.0, pricePerKg: 1.50 }
+        { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
+        { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
       ];
     }
 
@@ -2372,8 +2347,11 @@ const app = {
     const totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
 
     if (todayKgEl) {
+      const cansText = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null)
+        ? ` (~${appState.sicamCansCount} boîtes Sicam)`
+        : '';
       todayKgEl.textContent = isCustom 
-        ? `${totalFarmDailyKg.toFixed(2)} kg / j (~${appState.sicamCansCount || 3} boîtes Sicam)` 
+        ? `${totalFarmDailyKg.toFixed(2)} kg / j${cansText}` 
         : `${totalFarmDailyKg.toFixed(2)} kg / j`;
     }
     if (todayCostEl) todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)} / j`;

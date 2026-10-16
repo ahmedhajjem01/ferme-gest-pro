@@ -446,13 +446,13 @@
                 <div>
                   <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Ration & Alimentation Quotidienne</h3>
-                    <span class="badge-pill text-amber" style="font-size: 0.72rem;">Alimentation Réelle (بوشون & بليه)</span>
+                    <span class="badge-pill text-amber" style="font-size: 0.72rem;">Suivi des Rations</span>
                   </div>
-                  <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Ration quotidienne mesurée selon vos distributions réelles</small>
+                  <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Ration quotidienne et distribution aux bandes</small>
                 </div>
               </div>
               <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right; cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalDailyFeedRation')" title="Cliquer pour ajuster votre ration réelle (ex: 2 kg / 3 boîtes Sicam)">
+                <div style="background: var(--bg-card); padding: 0.4rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: right; cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalDailyFeedRation')" title="Cliquer pour ajuster votre ration quotidienne (boîtes Sicam ou kg)">
                   <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem;">
                     <span style="font-size: 0.7rem; color: var(--text-secondary);" data-i18n="farm_feed_daily_total">Consommation journalière</span>
                     <span style="font-size: 0.72rem; color: var(--accent-amber);">✏️</span>
@@ -1669,7 +1669,7 @@
         <div class="modal-body">
           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;">
             <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;">
-              🌾 <strong>Inventaire Magasin :</strong> Gérez vos stocks de <strong>بوشون</strong>, <strong>شعير</strong> et vos autres aliments. Ajustez les kilos restants et ajoutez de nouveaux aliments à tout moment !
+              🌾 <strong>Inventaire Magasin :</strong> Gérez vos stocks d'aliments (granulés, céréales, mélanges...). Ajustez les kilos restants et ajoutez de nouveaux aliments à tout moment !
             </p>
           </div>
 
@@ -1734,11 +1734,11 @@
                 <span class="badge-pill text-amber" style="font-size: 0.72rem;">Mesurette locale</span>
               </label>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="number" id="feedSicamCansInput" class="input-field" step="0.5" min="0" value="3" placeholder="3" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-amber);" oninput="app.calcSicamToKg()">
+                <input type="number" id="feedSicamCansInput" class="input-field" step="0.5" min="0" placeholder="ex: 2 ou 3" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-amber);" oninput="app.calcSicamToKg()">
                 <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;">boîtes / j</span>
               </div>
               <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
-                Votre menu : 1.5 boîte de بوشونات + 1.5 boîte de blé = <strong>3 boîtes Sicam</strong>
+                1 boîte Sicam standard (800g) pleine de céréales ou granulés pèse environ <strong>~650g à 700g</strong>.
               </small>
             </div>
 
@@ -1748,11 +1748,11 @@
                 ⚖️ Poids total équivalent distribué par jour (kg/j)
               </label>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="number" id="feedCustomKgInput" class="input-field" step="0.1" min="0.1" value="2.0" placeholder="2.0" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.calcKgToSicam()">
+                <input type="number" id="feedCustomKgInput" class="input-field" step="0.1" min="0.1" placeholder="ex: 1.5 ou 2.0" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.calcKgToSicam()">
                 <strong style="font-size: 1.1rem; color: var(--accent-emerald);">kg / jour</strong>
               </div>
               <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
-                3 boîtes Sicam pèsent environ <strong>~1.95 à 2.0 kg</strong> de grains/concentré.
+                Saisie directe en kg ou calculée automatiquement depuis vos boîtes Sicam.
               </small>
             </div>
           </div>
@@ -1765,7 +1765,7 @@
     </div>
   </div>
 
-  <!-- Modal: Distribution Réelle d'Aliment du Jour (Multi-Types: بوشون, شعير, etc.) -->
+  <!-- Modal: Distribution Réelle d'Aliment du Jour (Multi-Types) -->
   <div id="modalFeedDistribution" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
@@ -1776,7 +1776,7 @@
         <div class="modal-body">
           <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;">
             <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.45;">
-              🥫 <strong>Ration variable selon les jours :</strong> Choisissez les quantités pour <strong>بوشون</strong> et <strong>شعير</strong>. Cliquez sur les boîtes Sicam ou tapez les kg. L'application déduit automatiquement des stocks.
+              🥫 <strong>Ration variable selon les jours :</strong> Choisissez les quantités pour chaque type d'aliment. Utilisez les raccourcis boîtes Sicam ou tapez directement les kg. L'application déduit automatiquement les sorties de vos stocks.
             </p>
           </div>
 
@@ -1791,14 +1791,14 @@
               <span>⚡ Raccourcis rapides en 1 clic :</span>
             </label>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
-              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('morning')">
-                ☀️ Matin<br><span style="font-size: 0.68rem; color: var(--text-muted);">1 bte بوشون + 0.5 بليه (blé)</span>
+              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('half_can')">
+                🥫 0.5 boîte / aliment<br><span style="font-size: 0.68rem; color: var(--text-muted);">~0.33 kg par type</span>
               </button>
-              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('afternoon')">
-                🌇 Après-midi<br><span style="font-size: 0.68rem; color: var(--text-muted);">0.5 بوشون + 1 bte بليه (blé)</span>
+              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('one_can')">
+                🥫 1 boîte / aliment<br><span style="font-size: 0.68rem; color: var(--text-muted);">~0.67 kg par type</span>
               </button>
-              <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800;" onclick="app.applyDistribPreset('all_day')">
-                ⭐ Journée complète<br><span style="font-size: 0.68rem; color: var(--text-muted);">1.5 بوشون + 1.5 بليه (~2kg)</span>
+              <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
+                🔄 Remettre à zéro<br><span style="font-size: 0.68rem; color: var(--text-muted);">0 kg partout</span>
               </button>
             </div>
           </div>
