@@ -108,15 +108,15 @@ const SAMPLE_DATA = {
     {
       id: 'lot-p-04',
       species: 'adulte',
-      breed: 'Poulets Beldi Fermiers & Coqs',
-      name: 'Bande Poulets Adultes Reproducteurs',
+      breed: 'Coqs Beldi Reproducteurs',
+      name: 'Bande Coqs Adultes Reproducteurs',
       initialQuantity: 45,
       currentQuantity: 44,
       mortality: 1,
       birthDate: '2026-03-01', // ~7 mois
       costPerHead: 22.000,
       stage: 'Reproduction',
-      notes: 'Parc plein air, reproducteurs adultes vigoureux (> 6 mois).'
+      notes: 'Parc plein air, coqs reproducteurs vigoureux (> 6 mois).'
     },
     {
       id: 'lot-p-05',
@@ -302,7 +302,7 @@ const SAMPLE_DATA = {
       id: 'sale-06',
       date: '2026-10-11',
       productType: 'poulet-adulte',
-      description: 'Vente 6 Poulets adultes reproducteurs (> 6 mois - par tête)',
+      description: 'Vente 6 Coqs adultes reproducteurs (> 6 mois - par tête)',
       format: 'unite',
       quantity: 6,
       unitPrice: 28.000,
@@ -1198,7 +1198,7 @@ const app = {
       if (sp === 'poulet') return this.t('chip_poulet') || 'Poulet';
       if (sp === 'pondeuse') return this.t('chip_pondeuse') || 'Pondeuse';
       if (sp === 'poussin') return this.t('chip_poussin') || 'Poussin';
-      if (sp === 'adulte') return this.t('chip_poulet_adulte') || 'Adulte';
+      if (sp === 'adulte') return this.t('chip_poulet_adulte') || 'Coqs Adultes';
       if (sp === 'pintade') return this.t('chip_pintade') || 'Pintade';
       if (sp === 'canard' || sp === 'canard_barbarie') return this.t('chip_canard') || 'Canard de Barbarie';
       return sp;
@@ -1487,7 +1487,7 @@ const app = {
         'poussin-1j': this.t('preset_chicks_1d') || 'Poussins 1 jour',
         'poussin-demarre': this.t('preset_chicks_started') || 'Poussins démarrés',
         poussin: this.t('preset_chicks_started') || 'Poussins démarrés',
-        'poulet-adulte': this.t('preset_chicken_adult') || 'Poulets adultes / Pondeuses',
+        'poulet-adulte': this.t('preset_chicken_adult') || '🐓 Coqs Adultes',
         pintade: this.t('opt_sale_pintade') || '🪶 Pintades',
         canard: this.t('opt_sale_canard') || '🦆 Canards de Barbarie',
         autre: this.t('opt_sale_other') || 'Autres volailles'
@@ -4238,7 +4238,7 @@ const app = {
       'poulet-croissance': this.t('matrix_cat_poulet_croissance') || '🍗 Poulets (1 à 6 mois)',
       'oeufs': this.t('matrix_cat_oeufs') || '🥚 Production d\'Œufs (Haras/Plateaux)',
       'poussin': this.t('matrix_cat_poussin') || '🐣 Poussins (1j & démarrés)',
-      'poulet-adulte': this.t('matrix_cat_poulet_adulte') || '🐔 Poulets Adultes & Pondeuses',
+      'poulet-adulte': this.t('matrix_cat_poulet_adulte') || '🐓 Coqs Adultes',
       'pintade': this.t('matrix_cat_pintade') || '🪶 Pintades (Chair & Repro)',
       'canard': this.t('matrix_cat_canard') || '🦆 Canards de Barbarie (Chair & Élevage)'
     };
@@ -5474,7 +5474,7 @@ const app = {
       case 'poulet': return '🍗';
       case 'pondeuse': return '🥚';
       case 'poussin': return '🐣';
-      case 'adulte': return '🐔';
+      case 'adulte': return '🐓';
       case 'pintade': return '🪶';
       case 'canard':
       case 'canard_barbarie': return '🦆';
@@ -5526,7 +5526,7 @@ const app = {
       case 'poussin': return `<span class="badge-tag text-warning">🐥 ${this.t('preset_chicks_started')}</span>`;
       case 'poulet-croissance':
       case 'poulet': return `<span class="badge-tag text-emerald">🍗 ${this.t('preset_chicken_growth')}</span>`;
-      case 'poulet-adulte': return `<span class="badge-tag text-emerald">🐔 ${this.t('preset_chicken_adult')}</span>`;
+      case 'poulet-adulte': return `<span class="badge-tag text-emerald">🐓 ${this.t('preset_chicken_adult')}</span>`;
       case 'pintade': return `<span class="badge-tag text-emerald">🪶 ${this.t('opt_sale_pintade')}</span>`;
       case 'canard': return `<span class="badge-tag text-emerald">🦆 ${this.t('opt_sale_canard')}</span>`;
       default: return `<span class="badge-tag">📦 ${this.t('opt_sale_other')}</span>`;
