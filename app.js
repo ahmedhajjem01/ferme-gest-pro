@@ -2955,12 +2955,12 @@ const app = {
             </span>
             <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:2px;">
               ${Number(animal.costPerHead) > 0 
-                ? `🏷️ Achat: ${this.formatMoney(animal.costPerHead)}` 
+                ? (appState.lang === 'ar' ? `🏷️ شراء: ${this.formatMoney(animal.costPerHead)}` : `🏷️ Achat: ${this.formatMoney(animal.costPerHead)}`) 
                 : (appState.lang === 'ar' ? '🎁 شراء: 0 د.ت (مجاني)' : '🎁 Achat: 0 DT (Gratuit)')}
             </div>
             ${cumulFeedCost > 0 ? `
               <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:1px; font-weight:600;">
-                🌾 +${this.formatMoney(feedPerSubject)} mangé (~${cumulFeedKg.toFixed(2)} kg)
+                🌾 +${this.formatMoney(feedPerSubject)} ${appState.lang === 'ar' ? 'مستهلك' : 'mangé'} (~${cumulFeedKg.toFixed(2)} ${appState.lang === 'ar' ? 'كغ' : 'kg'})
               </div>
             ` : ''}
           </div>
@@ -4951,7 +4951,8 @@ const app = {
 
   getTranslatedLotName(name) {
     if (!name) return '';
-    const lang = appState.lang || 'fr';
+    const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
+    const lang = isArabic ? 'ar' : (appState.lang || 'fr');
     if (lang === 'ar') {
       let n = name;
       n = n.replace(/Bande Poussins 1J Couveuse/gi, 'دفعة كتاكيت عمر 1 يوم فقاسة');
@@ -5000,8 +5001,8 @@ const app = {
 
   getTranslatedBreed(breed) {
     if (!breed || breed === '-') return '-';
-    const lang = appState.lang || 'fr';
-    if (lang === 'ar') {
+    const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
+    if (isArabic) {
       let b = breed;
       b = b.replace(/Fermier/gi, 'بلدي');
       b = b.replace(/Pondeuse/gi, 'بياض');
@@ -5020,7 +5021,8 @@ const app = {
 
     const poultry = appState.animals.filter(a => a.species === 'poulet' || a.species === 'pondeuse' || a.species === 'poussin' || a.species === 'pintade' || a.species === 'canard' || a.species === 'adulte');
 
-    const lang = appState.lang || 'fr';
+    const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
+    const lang = isArabic ? 'ar' : (appState.lang || 'fr');
 
     if (poultry.length === 0) {
       const emptyMsg = (lang === 'ar') 
@@ -5072,7 +5074,8 @@ const app = {
   },
 
   getPoultryDevelopmentStage(ageDays, species) {
-    const lang = appState.lang || 'fr';
+    const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
+    const lang = isArabic ? 'ar' : (appState.lang || 'fr');
     if (species === 'pondeuse') {
       if (ageDays < 42) {
         if (lang === 'ar') return { feed: 'علف بادي للدجاجات', nextEvent: 'تلقيح نيوكاسل (اليوم 28)' };
@@ -5768,7 +5771,8 @@ const app = {
 
   translateStage(stage) {
     if (!stage) return '';
-    const lang = appState.lang || 'fr';
+    const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
+    const lang = isArabic ? 'ar' : (appState.lang || 'fr');
     const s = stage.toString().trim();
     const sLower = s.toLowerCase();
 
