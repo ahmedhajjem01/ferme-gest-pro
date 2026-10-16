@@ -902,6 +902,11 @@ const app = {
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.remove('hidden');
+      const modalBody = modal.querySelector('.modal-body');
+      if (modalBody) {
+        modalBody.scrollTop = 0;
+        modalBody.scrollLeft = 0;
+      }
       this.populateLotDropdowns();
 
       if (modalId === 'modalAddAnimal') {

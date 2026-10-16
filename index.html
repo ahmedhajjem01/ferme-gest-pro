@@ -1154,20 +1154,22 @@
               </label>
               <input type="number" id="animalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 (si poussin 1j) ou 30 (si 1 mois)">
             </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="animalStage" data-i18n="lbl_current_stage">Stade Actuel</label>
+              <select id="animalStage" class="input-field">
+                <option value="Démarrage" data-i18n="opt_stage_start">Démarrage (0-14 jours)</option>
+                <option value="Croissance" data-i18n="opt_stage_growth">Croissance (15-35 jours / 1-6 mois)</option>
+                <option value="Finition" data-i18n="opt_stage_finish">Finition / Engraissement</option>
+                <option value="Adulte" data-i18n="opt_stage_adulte" selected>Adulte</option>
+              </select>
+            </div>
             <div class="form-group flex-1">
               <label for="animalCostPerHead"><span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small></label>
               <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0" min="0" placeholder="0 (si gratuit / éclosion)">
             </div>
-          </div>
-
-          <div class="form-group">
-            <label for="animalStage" data-i18n="lbl_current_stage">Stade Actuel</label>
-            <select id="animalStage" class="input-field">
-              <option value="Démarrage" data-i18n="opt_stage_start">Démarrage (0-14 jours)</option>
-              <option value="Croissance" data-i18n="opt_stage_growth">Croissance (15-35 jours / 1-6 mois)</option>
-              <option value="Finition" data-i18n="opt_stage_finish">Finition / Engraissement</option>
-              <option value="Adulte" data-i18n="opt_stage_adulte" selected>Adulte</option>
-            </select>
           </div>
 
           <div class="form-group">
@@ -1185,7 +1187,7 @@
 
   <!-- Modal: Modifier un Lot / Prix d'Achat unitaire -->
   <div id="modalEditAnimal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 480px;">
+    <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
         <h3 id="editAnimalModalTitle">✏️ <span data-i18n="modal_edit_lot_title">Modifier le Lot d'Animaux</span></h3>
         <button class="modal-close" onclick="app.closeModal('modalEditAnimal')">&times;</button>
@@ -1210,7 +1212,7 @@
             </div>
           </div>
 
-          <!-- Date d'Éclosion / Arrivée, Âge à l'achat & Stade de Développement -->
+          <!-- Date d'Éclosion / Arrivée & Âge à l'achat -->
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="editAnimalBirthDate"><span data-i18n="lbl_arrival_date">Date d'Éclosion / Arrivée</span></label>
@@ -1222,6 +1224,10 @@
               </label>
               <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 si poussin / 30 si 1 mois">
             </div>
+          </div>
+
+          <!-- Stade Actuel & Prix d'Achat unitaire -->
+          <div class="form-row">
             <div class="form-group flex-1">
               <label for="editAnimalStage"><span data-i18n="lbl_current_stage">Stade Actuel</span></label>
               <select id="editAnimalStage" class="input-field">
@@ -1232,17 +1238,16 @@
                 <option value="Adulte" data-i18n="opt_stage_adulte">Adulte</option>
               </select>
             </div>
+            <div class="form-group flex-1">
+              <label for="editAnimalCostPerHead">
+                <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small>
+              </label>
+              <input type="number" id="editAnimalCostPerHead" class="input-field" step="0.05" min="0" value="0" placeholder="0 si gratuit">
+            </div>
           </div>
-
-          <div class="form-group">
-            <label for="editAnimalCostPerHead">
-              <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small>
-            </label>
-            <input type="number" id="editAnimalCostPerHead" class="input-field" step="0.05" min="0" value="0" placeholder="0 si gratuit">
-            <small class="text-muted" style="font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-              Indiquez 0 si les sujets sont nés à la ferme, issus de votre couveuse ou reçus gratuitement.
-            </small>
-          </div>
+          <small class="text-muted" style="font-size: 0.75rem; margin-top: -0.4rem; display: block;">
+            Indiquez 0 si les sujets sont nés à la ferme, issus de votre couveuse ou reçus gratuitement.
+          </small>
 
           <div class="form-group">
             <label for="editAnimalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span></label>
