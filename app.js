@@ -2261,6 +2261,10 @@ const app = {
     if (!ft) return;
     if (!confirm(`Voulez-vous vraiment supprimer l'aliment "${ft.name}" ?`)) return;
 
+    if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+      appAuth.addDeletedId(id);
+    }
+
     appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id);
     appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
 

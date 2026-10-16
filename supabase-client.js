@@ -150,22 +150,56 @@
           this.updateUI();
         });
 
-        // Auto-reconnect when device comes back online
-        window.addEventListener('online', () => {
+        const handleWakeup = () => {
           if (this.currentUser) {
-            this.syncNow(false);
+            this.pullData(true);
+            this.reconnectRealtimeIfNeeded();
+          }
+        };
+
+        // Multi-device wake-up listeners (Mobile screen unlock, returning to tab, reconnecting)
+        window.addEventListener('online', handleWakeup);
+        window.addEventListener('focus', handleWakeup);
+        window.addEventListener('pageshow', handleWakeup);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            handleWakeup();
           }
         });
 
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible' && this.currentUser) {
-            this.syncNow(false);
-          }
-        });
+        // Capacitor app lifecycle (Android / iOS)
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+          try {
+            window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+              if (state && state.isActive) {
+                handleWakeup();
+              }
+            });
+          } catch (e) {}
+        }
+
+        // Active foreground heartbeat (every 20s) to keep PC and phone 100% in sync
+        if (!this._heartbeatInterval) {
+          this._heartbeatInterval = setInterval(() => {
+            if (this.currentUser && !document.hidden && !this.isSyncing) {
+              this.pullData(true);
+            }
+          }, 20000);
+        }
 
       } catch (e) {
         console.error('[SupabaseAuth] Init error:', e);
       }
+    },
+
+    reconnectRealtimeIfNeeded() {
+      if (!this.client || !this.currentUser) return;
+      const now = Date.now();
+      if (this._lastReconnectTime && (now - this._lastReconnectTime < 5000)) return;
+      this._lastReconnectTime = now;
+      this.subscribeRealtime();
+      this.subscribeUserSync();
+      this.subscribeCollaborativeRealtime();
     },
 
     async handleAuthStateChange(event, session) {
@@ -356,7 +390,8 @@
 
     // 5. Pull Cloud Data from 'user_farms' with Smart Merging
     async pullData(isSilent = false) {
-      if (!this.client || !this.currentUser) return;
+      if (!this.client || !this.currentUser || this.isSyncing) return;
+      this.isSyncing = true;
 
       try {
         const { data, error } = await this.client
@@ -368,11 +403,15 @@
         if (error) throw error;
 
         if (data && data.data && Object.keys(data.data).length > 0) {
-          this.applyCloudData(data.data, true);
-          this.lastSyncedAt = new Date();
-          this.updateUI();
-          if (!isSilent && window.app && app.showToast) {
-            app.showToast('☁️ Données synchronisées avec votre compte !');
+          const cloudUpdatedAt = data.updated_at || (data.data && data.data.lastUpdated);
+          if (!isSilent || !this._lastCloudTimestamp || this._lastCloudTimestamp !== cloudUpdatedAt) {
+            this._lastCloudTimestamp = cloudUpdatedAt;
+            this.applyCloudData(data.data, true);
+            this.lastSyncedAt = new Date();
+            this.updateUI();
+            if (!isSilent && window.app && app.showToast) {
+              app.showToast('☁️ Données synchronisées avec votre compte !');
+            }
           }
         } else {
           // Initialize cloud row with current local data
@@ -382,6 +421,8 @@
         }
       } catch (err) {
         console.warn('[SupabaseAuth] Pull error:', err);
+      } finally {
+        this.isSyncing = false;
       }
     },
 
@@ -584,7 +625,7 @@
                 this.lastSyncedAt = new Date();
                 this.updateUI();
                 if (window.app && app.showToast) {
-                  app.showToast('🔄 Synchronisé depuis votre autre téléphone !');
+                  app.showToast('⚡ Synchronisé en direct avec votre autre appareil !');
                 }
               }
             }
@@ -610,10 +651,11 @@
             config: { broadcast: { self: false } }
           })
           .on('broadcast', { event: 'device_state_update' }, (payload) => {
-            if (!payload || !payload.payload) return;
-            const data = payload.payload;
+            const raw = (payload && payload.payload) ? payload.payload : payload;
+            if (!raw) return;
+            const data = raw;
             // Ignore echoes from this exact tab/session
-            if (data.senderSessionId === this.sessionId) return;
+            if (data.senderSessionId && data.senderSessionId === this.sessionId) return;
 
             console.log('[UserSync] Realtime broadcast received from another device session:', data.senderSessionId);
             if (data.farmData) {
@@ -626,8 +668,9 @@
             }
           })
           .on('broadcast', { event: 'request_state' }, (payload) => {
-            if (!payload || !payload.payload) return;
-            if (payload.payload.senderSessionId === this.sessionId) return;
+            const raw = (payload && payload.payload) ? payload.payload : payload;
+            if (!raw) return;
+            if (raw.senderSessionId && raw.senderSessionId === this.sessionId) return;
             this.broadcastCurrentState();
           })
           .subscribe((status) => {
@@ -678,12 +721,6 @@
         state.customDailyFeedKg = cloudData.customDailyFeedKg !== null ? Number(cloudData.customDailyFeedKg) : 2.0;
         state.sicamCansCount = cloudData.sicamCansCount !== undefined ? Number(cloudData.sicamCansCount) : 3;
       }
-      if (cloudData.feedDistributions !== undefined) {
-        state.feedDistributions = Array.isArray(cloudData.feedDistributions) ? cloudData.feedDistributions : [];
-      }
-      if (cloudData.feedTypes !== undefined) {
-        state.feedTypes = Array.isArray(cloudData.feedTypes) ? cloudData.feedTypes : [];
-      }
 
       if (doMerge) {
         state.animals = this.mergeCollections(state.animals, cloudData.animals || []);
@@ -701,6 +738,11 @@
         if (Array.isArray(cloudData.eggHarvests)) state.eggHarvests = cloudData.eggHarvests;
         if (Array.isArray(cloudData.feedDistributions)) state.feedDistributions = cloudData.feedDistributions;
         if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
+      }
+
+      // Keep total feedStockKg in sync with feedTypes
+      if (Array.isArray(state.feedTypes) && state.feedTypes.length > 0) {
+        state.feedStockKg = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
       }
 
       // Filter out any bovine or ovine residue
@@ -1049,33 +1091,35 @@
             config: { broadcast: { self: false } }
           })
           .on('broadcast', { event: 'farm_update' }, (payload) => {
-            if (payload && payload.payload) {
-              const data = payload.payload;
-              const sender = data.senderEmail || 'Votre associé';
-              // Ignorer les messages provenant de cette exacte même session
-              if (data.senderSessionId && data.senderSessionId === this.sessionId) return;
+            const raw = (payload && payload.payload) ? payload.payload : payload;
+            if (!raw) return;
+            const data = raw;
+            const sender = data.senderEmail || 'Votre associé';
+            // Ignorer les messages provenant de cette exacte même session
+            if (data.senderSessionId && data.senderSessionId === this.sessionId) return;
 
-              if (data.farmData) {
-                this.applyCloudData(data.farmData, true);
-                this.lastSyncedAt = new Date();
-                this.updateUI();
-                if (window.app && app.showToast) {
-                  const name = sender.split('@')[0];
-                  const msg = (window.app && app.t)
-                    ? app.t('team_toast_partner_update', { name: name })
-                    : `🔄 Mis à jour en direct par votre associé (${name}) !`;
-                  app.showToast(msg);
-                }
+            if (data.farmData) {
+              this.applyCloudData(data.farmData, true);
+              this.lastSyncedAt = new Date();
+              this.updateUI();
+              if (window.app && app.showToast) {
+                const name = sender.split('@')[0];
+                const msg = (window.app && app.t)
+                  ? app.t('team_toast_partner_update', { name: name })
+                  : `🔄 Mis à jour en direct par votre associé (${name}) !`;
+                app.showToast(msg);
               }
             }
           })
           .on('broadcast', { event: 'request_state' }, (payload) => {
-            if (payload && payload.payload && payload.payload.senderSessionId === this.sessionId) return;
+            const raw = (payload && payload.payload) ? payload.payload : payload;
+            if (!raw) return;
+            if (raw.senderSessionId && raw.senderSessionId === this.sessionId) return;
             // Un associé vient de se connecter, on lui envoie les dernières données
             this.broadcastCurrentState();
-            if (payload && payload.payload && window.app && app.showToast) {
-              const requester = payload.payload.requesterEmail || 'Un associé';
-              if (!this.currentUser || payload.payload.requesterEmail !== this.currentUser.email) {
+            if (window.app && app.showToast) {
+              const requester = raw.requesterEmail || 'Un associé';
+              if (!this.currentUser || raw.requesterEmail !== this.currentUser.email) {
                 app.showToast((window.app && app.t) ? app.t('team_toast_partner_joined') : `🤝 Associé connecté (${requester.split('@')[0]}) !`);
               }
             }
