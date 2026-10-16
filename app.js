@@ -476,6 +476,8 @@ const app = {
       if (val && val !== key) {
         if (el.tagName === 'INPUT' && (el.type === 'button' || el.type === 'submit')) {
           el.value = val;
+        } else if (val.includes('<') || el.hasAttribute('data-i18n-html') || el.id === 'expenseFeedNotice') {
+          el.innerHTML = val;
         } else if (el.children.length === 0) {
           el.textContent = val;
         } else {
@@ -925,6 +927,10 @@ const app = {
 
       if (modalId === 'modalAddSale') {
         this.validateSaleQuantityAgainstLot();
+      }
+
+      if (modalId === 'modalAddExpense') {
+        this.handleExpenseCatChange();
       }
     }
   },
@@ -3502,13 +3508,29 @@ const app = {
     const cat = document.getElementById('expenseCategory').value;
     const title = document.getElementById('expenseTitle');
     const feedNotice = document.getElementById('expenseFeedNotice');
-    if (feedNotice) feedNotice.style.display = (cat === 'nourriture') ? 'block' : 'none';
+    if (feedNotice) {
+      feedNotice.style.display = (cat === 'nourriture') ? 'block' : 'none';
+      const noticeHtml = this.t('expense_feed_notice');
+      if (noticeHtml) feedNotice.innerHTML = noticeHtml;
+    }
 
-    if (cat === 'electricite' && title) title.placeholder = this.t('opt_exp_elec');
-    else if (cat === 'eau' && title) title.placeholder = this.t('opt_exp_water');
-    else if (cat === 'salaire' && title) title.placeholder = this.t('opt_exp_sal');
-    else if (cat === 'nourriture' && title) title.placeholder = this.t('opt_exp_food');
-    else if (cat === 'veterinaire' && title) title.placeholder = this.t('opt_exp_vet');
+    if (title) {
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+      if (cat === 'nourriture') {
+        title.placeholder = isAr ? 'مثال: 5 أكياس علف بداية، قمح...' : (isEn ? 'e.g. 5 bags starter feed, wheat...' : 'Ex: 5 sacs d\'aliment Démarrage, Blé...');
+      } else if (cat === 'veterinaire') {
+        title.placeholder = isAr ? 'مثال: تلقيح نيوكاسل، فيتامينات...' : (isEn ? 'e.g. Newcastle vaccine, vitamins...' : 'Ex: Vaccin Newcastle, Vitamines...');
+      } else if (cat === 'electricite') {
+        title.placeholder = isAr ? 'فاتورة الكهرباء (STEG)' : (isEn ? 'Electricity bill (STEG)' : 'Facture Électricité (STEG)');
+      } else if (cat === 'eau') {
+        title.placeholder = isAr ? 'فاتورة المياه (SONEDE)' : (isEn ? 'Water bill (SONEDE)' : 'Facture Eau (SONEDE)');
+      } else if (cat === 'salaire') {
+        title.placeholder = isAr ? 'أجر عامل فلاحي' : (isEn ? 'Farm worker wages' : 'Salaire Ouvrier Agricole');
+      } else {
+        title.placeholder = isAr ? 'مصاريف صيانة، نشارة...' : (isEn ? 'Maintenance, bedding shavings...' : 'Entretien, copeaux de litière...');
+      }
+    }
   },
 
   handleSaveExpense(e) {
