@@ -5021,29 +5021,72 @@ const app = {
     this.renderMonthlyCalendarGrid();
   },
 
+  getTranslatedBreed(breed) {
+    if (!breed || breed === '-') return '-';
+    const lang = appState.lang || 'fr';
+    if (lang === 'ar') {
+      let b = breed;
+      b = b.replace(/Fermier/gi, 'بلدي');
+      b = b.replace(/Pondeuse/gi, 'بياض');
+      b = b.replace(/Chair/gi, 'لحم');
+      b = b.replace(/Barbarie/gi, 'بربري');
+      b = b.replace(/Local/gi, 'محلي');
+      return b;
+    }
+    return breed;
+  },
+
   renderGenerationsTable() {
     const tbody = document.getElementById('generationsTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const poultry = appState.animals.filter(a => a.species === 'poulet' || a.species === 'pondeuse' || a.species === 'poussin' || a.species === 'pintade' || a.species === 'canard');
+    const poultry = appState.animals.filter(a => a.species === 'poulet' || a.species === 'pondeuse' || a.species === 'poussin' || a.species === 'pintade' || a.species === 'canard' || a.species === 'adulte');
+
+    const lang = appState.lang || 'fr';
 
     if (poultry.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Aucune génération de volailles enregistrée.</td></tr>';
+      const emptyMsg = (lang === 'ar') 
+        ? 'لا توجد أجيال دواجن مسجلة حالياً.' 
+        : ((lang === 'en') ? 'No poultry generations recorded.' : 'Aucune génération de volailles enregistrée.');
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">${emptyMsg}</td></tr>`;
       return;
     }
 
     poultry.forEach(flock => {
-      const ageDays = this.calculateAgeInDays(flock.birthDate);
+      const daysSinceArrival = this.calculateAgeInDays(flock.birthDate);
+      const arrivalAgeDays = Number(flock.arrivalAgeDays) || 0;
+      const ageDays = daysSinceArrival + arrivalAgeDays;
       const stageInfo = this.getPoultryDevelopmentStage(ageDays, flock.species);
+
+      const weeks = Math.floor(ageDays / 7);
+      let ageDisplay = '';
+      if (lang === 'ar') {
+        ageDisplay = weeks > 0 
+          ? `${ageDays} يوماً (${weeks} أسبوع)` 
+          : `${ageDays} يوماً`;
+      } else if (lang === 'en') {
+        ageDisplay = weeks > 0 
+          ? `${ageDays} days (${weeks} wks)` 
+          : `${ageDays} days`;
+      } else {
+        ageDisplay = weeks > 0 
+          ? `${ageDays} jours (${weeks} sem.)` 
+          : `${ageDays} jours`;
+      }
+
+      const translatedStage = this.translateStage(flock.stage);
+      const stageClass = this.getStageBadgeClass(flock.stage);
+      const translatedLotName = this.getTranslatedLotName(flock.name);
+      const translatedBreed = this.getTranslatedBreed(flock.breed);
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${flock.name}</strong></td>
-        <td>${flock.breed}</td>
+        <td><strong>${translatedLotName}</strong></td>
+        <td>${translatedBreed}</td>
         <td>${this.formatDateFR(flock.birthDate)}</td>
-        <td><span class="badge-tag text-emerald">${ageDays} jours (${Math.floor(ageDays / 7)} sem.)</span></td>
-        <td><span class="stage-badge ${this.getStageBadgeClass(flock.stage)}">${flock.stage}</span></td>
+        <td><span class="badge-tag text-emerald" dir="auto">${ageDisplay}</span></td>
+        <td><span class="stage-badge ${stageClass}">${translatedStage}</span></td>
         <td><small class="text-muted">${stageInfo.feed}</small></td>
         <td><small class="bold text-amber">${stageInfo.nextEvent}</small></td>
       `;
@@ -5069,7 +5112,13 @@ const app = {
       return { feed: 'Aliment Ponte avec Calcium', nextEvent: 'Pic de ponte quotidien (85-95%)' };
     }
 
-    // Poulet de chair
+    if (species === 'adulte') {
+      if (lang === 'ar') return { feed: 'علف حبوب وصيانة للديوك', nextEvent: 'متابعة الخصوبة والتلقيح' };
+      if (lang === 'en') return { feed: 'Maintenance & Grain Feed', nextEvent: 'Fertility & Mating Monitor' };
+      return { feed: 'Aliment Entretien & Céréales', nextEvent: 'Suivi fertilité & reproduction' };
+    }
+
+    // Poulet de chair & autres
     if (ageDays <= 14) {
       if (lang === 'ar') return { feed: 'علف بادي مفتت (21% بروتين)', nextEvent: 'تذكير لقاح غامبورو (اليوم 14)' };
       if (lang === 'en') return { feed: 'Starter Crumbs (21% Protein)', nextEvent: 'Gumboro Booster D14' };
@@ -5080,9 +5129,14 @@ const app = {
       if (lang === 'en') return { feed: 'Grower Pellets (19% Protein)', nextEvent: 'Target Weight Check (1.8kg)' };
       return { feed: 'Aliment Croissance Granulés (19% Protéines)', nextEvent: 'Pesée de contrôle (Cible 1.8kg)' };
     }
-    if (lang === 'ar') return { feed: 'علف ناهي بدون أدوية', nextEvent: 'الموعد المثالي للبيع/الذبح (40-45 يوماً)' };
-    if (lang === 'en') return { feed: 'Finisher Feed (Withdrawal)', nextEvent: 'Optimal Harvest Date (D+40 to D+45)' };
-    return { feed: 'Aliment Finition sans médicament', nextEvent: 'Date optimale d\'abattage / Vente (J+40 à J+45)' };
+    if (ageDays <= 55) {
+      if (lang === 'ar') return { feed: 'علف ناهي بدون أدوية', nextEvent: 'الموعد المثالي للبيع/الذبح (40-45 يوماً)' };
+      if (lang === 'en') return { feed: 'Finisher Feed (Withdrawal)', nextEvent: 'Optimal Harvest Date (D+40 to D+45)' };
+      return { feed: 'Aliment Finition sans médicament', nextEvent: 'Date optimale d\'abattage / Vente (J+40 à J+45)' };
+    }
+    if (lang === 'ar') return { feed: 'علف حبوب وصيانة', nextEvent: 'جاهز تماماً للذبح / استهلاك المزرعة' };
+    if (lang === 'en') return { feed: 'Maintenance & Grain Feed', nextEvent: 'Mature / Ready for farm consumption' };
+    return { feed: 'Aliment Entretien & Céréales', nextEvent: 'Maturité complète / Consommation ferme' };
   },
 
   renderMonthlyCalendarGrid() {
@@ -5737,27 +5791,73 @@ const app = {
 
   translateStage(stage) {
     if (!stage) return '';
-    switch (stage) {
-      case 'Démarrage': return (this.t('opt_stage_start') || 'Démarrage').split(' (')[0];
-      case 'Croissance': return (this.t('opt_stage_growth') || 'Croissance').split(' (')[0];
-      case 'Finition': return (this.t('opt_stage_finish') || 'Finition').split(' /')[0];
-      case 'Adulte':
-      case 'Ponte':
-      case 'Reproduction': return (this.t('opt_stage_adulte') || 'Adulte');
-      default: return stage;
+    const lang = appState.lang || 'fr';
+    const s = stage.toString().trim();
+    const sLower = s.toLowerCase();
+
+    if (lang === 'ar') {
+      if (sLower.includes('démarrage') || sLower.includes('demarrage') || sLower.includes('start') || sLower.includes('بداية') || sLower.includes('تحضين')) {
+        return 'بداية / تحضين';
+      }
+      if (sLower.includes('croissance') || sLower.includes('growth') || sLower.includes('نمو')) {
+        return 'نمو';
+      }
+      if (sLower.includes('finition') || sLower.includes('finish') || sLower.includes('engraissement') || sLower.includes('تسمين')) {
+        return 'تسمين';
+      }
+      if (sLower.includes('ponte') || sLower.includes('lay') || sLower.includes('بيض')) {
+        return 'إنتاج بيض';
+      }
+      if (sLower.includes('reproduction') || sLower.includes('repro') || sLower.includes('أمهات') || sLower.includes('تكاثر')) {
+        return 'أمهات / تكاثر';
+      }
+      if (sLower.includes('adulte') || sLower.includes('adult') || sLower.includes('بالغ')) {
+        return 'بالغ';
+      }
+      return stage;
     }
+
+    if (lang === 'en') {
+      if (sLower.includes('démarrage') || sLower.includes('demarrage') || sLower.includes('start') || sLower.includes('بداية')) {
+        return 'Starter';
+      }
+      if (sLower.includes('croissance') || sLower.includes('growth') || sLower.includes('نمو')) {
+        return 'Grower';
+      }
+      if (sLower.includes('finition') || sLower.includes('finish') || sLower.includes('engraissement') || sLower.includes('تسمين')) {
+        return 'Finisher';
+      }
+      if (sLower.includes('ponte') || sLower.includes('lay')) {
+        return 'Laying';
+      }
+      if (sLower.includes('reproduction') || sLower.includes('repro')) {
+        return 'Breeder';
+      }
+      if (sLower.includes('adulte') || sLower.includes('adult') || sLower.includes('بالغ')) {
+        return 'Adult';
+      }
+      return stage;
+    }
+
+    // French
+    if (sLower.includes('démarrage') || sLower.includes('demarrage')) return 'Démarrage';
+    if (sLower.includes('croissance')) return 'Croissance';
+    if (sLower.includes('finition')) return 'Finition';
+    if (sLower.includes('ponte')) return 'Ponte';
+    if (sLower.includes('reproduction')) return 'Reproduction';
+    if (sLower.includes('adulte')) return 'Adulte';
+    return stage;
   },
 
   getStageBadgeClass(stage) {
-    switch (stage) {
-      case 'Démarrage': return 'badge-stage-start';
-      case 'Croissance': return 'badge-stage-growth';
-      case 'Finition': return 'badge-stage-finish';
-      case 'Adulte':
-      case 'Ponte':
-      case 'Reproduction': return 'badge-stage-repro';
-      default: return 'badge-stage-growth';
-    }
+    if (!stage) return 'badge-stage-growth';
+    const s = stage.toString().toLowerCase().trim();
+    if (s.includes('démarrage') || s.includes('demarrage') || s.includes('start') || s.includes('بداية') || s.includes('تحضين')) return 'badge-stage-start';
+    if (s.includes('croissance') || s.includes('growth') || s.includes('نمو')) return 'badge-stage-growth';
+    if (s.includes('finition') || s.includes('finish') || s.includes('تسمين')) return 'badge-stage-finish';
+    if (s.includes('ponte') || s.includes('lay') || s.includes('بيض')) return 'badge-stage-laying';
+    if (s.includes('adulte') || s.includes('adult') || s.includes('repro') || s.includes('بالغ') || s.includes('أمهات') || s.includes('تكاثر')) return 'badge-stage-repro';
+    return 'badge-stage-growth';
   },
 
   getExpenseCategoryBadge(cat) {
