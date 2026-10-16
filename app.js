@@ -588,7 +588,7 @@ const app = {
       const saved = localStorage.getItem('fermegest_state');
       if (saved) {
         const parsed = JSON.parse(saved);
-        appState.currency = parsed.currency || 'TND';
+        appState.currency = 'TND'; // Verrouillé définitivement au Dinar Tunisien (TND)
         appState.lang = parsed.lang || 'fr';
         appState.theme = parsed.theme || 'dark';
         appState.eggStock = Number(parsed.eggStock) || 0;
@@ -658,8 +658,7 @@ const app = {
     document.documentElement.setAttribute('lang', appState.lang);
     document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
 
-    const currencySelect = document.getElementById('currencySelect');
-    if (currencySelect) currencySelect.value = appState.currency;
+
 
     const langSelect = document.getElementById('langSelect');
     if (langSelect) langSelect.value = appState.lang;
@@ -697,33 +696,7 @@ const app = {
       themeBtn.addEventListener('click', () => this.toggleTheme());
     }
 
-    // Currency selector (Desktop & Mobile)
-    const currencySelect = document.getElementById('currencySelect');
-    if (currencySelect) {
-      currencySelect.addEventListener('change', (e) => {
-        appState.currency = e.target.value;
-        const mobCur = document.getElementById('mobileCurrencySelect');
-        if (mobCur) mobCur.value = e.target.value;
-        this.updateCurrencySymbols();
-        this.saveState();
-        this.renderAll();
-        this.runSimulator();
-        this.showToast(this.t('toast_currency_changed', { c: appState.currency }));
-      });
-    }
-    const mobileCurrency = document.getElementById('mobileCurrencySelect');
-    if (mobileCurrency) {
-      mobileCurrency.addEventListener('change', (e) => {
-        appState.currency = e.target.value;
-        const cur = document.getElementById('currencySelect');
-        if (cur) cur.value = e.target.value;
-        this.updateCurrencySymbols();
-        this.saveState();
-        this.renderAll();
-        this.runSimulator();
-        this.showToast(this.t('toast_currency_changed', { c: appState.currency }));
-      });
-    }
+
 
     // Mobile Hamburger Menu Button
     const mobileMenuBtn = document.getElementById('mobileHeaderMenuBtn');
