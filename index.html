@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -1824,7 +1824,7 @@
         <h3 data-i18n="modal_distrib_title">🌾 Distribuer l'Aliment du Jour</h3>
         <button class="modal-close" onclick="app.closeModal('modalFeedDistribution')">&times;</button>
       </div>
-      <form id="formFeedDistribution" onsubmit="app.handleSaveFeedDistribution(event)">
+      <form id="formFeedDistribution" onsubmit="app.handleSaveFeedDistribution(event)" novalidate>
         <div class="modal-body">
           <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;">
             <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.45;" data-i18n="modal_distrib_desc">
@@ -2127,8 +2127,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=16"></script>
-  <script src="translations.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="supabase-client.js?v=17"></script>
+  <script src="translations.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>

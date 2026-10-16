@@ -2263,7 +2263,7 @@ const app = {
           <!-- Saisie directe en kg et équivalence -->
           <div style="display: flex; gap: 0.5rem; align-items: center; background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
             <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">⚖️ ${isAr ? 'الوزن بالكغ :' : (isEn ? 'Weight (kg):' : 'Poids (kg) :')}</span>
-            <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="0.05" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${ft.pricePerKg || 1}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-emerald); max-width: 110px; padding: 0.3rem 0.5rem;" oninput="app.recalcDistribTotal()">
+            <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="any" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${ft.pricePerKg || 1}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-emerald); max-width: 110px; padding: 0.3rem 0.5rem;" oninput="app.recalcDistribTotal()">
             <span style="font-weight: 800; color: var(--text-main); font-size: 0.95rem;">${unitKg}</span>
             <span id="distribHint_${ft.id}" style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto; font-weight: 600;">
               0 ${bteLabel}
@@ -2279,7 +2279,8 @@ const app = {
 
   adjustFeedTypeDistribSicamStep(feedId, delta) {
     const input = document.getElementById(`distribKg_${feedId}`);
-    const currentKg = parseFloat(input?.value) || 0;
+    const rawVal = String(input?.value || '').replace(',', '.');
+    const currentKg = parseFloat(rawVal) || 0;
     const currentCans = currentKg / 0.667;
     let nextCans = Math.round((currentCans + delta) * 2) / 2;
     if (nextCans < 0) nextCans = 0;
@@ -2365,7 +2366,8 @@ const app = {
 
     (appState.feedTypes || []).forEach(ft => {
       const input = document.getElementById(`distribKg_${ft.id}`);
-      const kg = parseFloat(input?.value) || 0;
+      const rawVal = String(input?.value || '').replace(',', '.');
+      const kg = parseFloat(rawVal) || 0;
       const cans = Math.round((kg / 0.667) * 2) / 2;
       const exactCans = (kg / 0.667).toFixed(1);
 
@@ -2408,8 +2410,10 @@ const app = {
   },
 
   handleSaveFeedDistribution(e) {
-    e.preventDefault();
-    const date = document.getElementById('distribDate')?.value || this.getTodayStr();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const dateInput = document.getElementById('distribDate');
+    const date = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
+    if (dateInput && !dateInput.value) dateInput.value = date;
 
     let totalKg = 0;
     let totalCost = 0;
@@ -2417,7 +2421,8 @@ const app = {
 
     (appState.feedTypes || []).forEach(ft => {
       const input = document.getElementById(`distribKg_${ft.id}`);
-      const kg = parseFloat(input?.value) || 0;
+      const rawVal = String(input?.value || '').replace(',', '.');
+      const kg = parseFloat(rawVal) || 0;
       if (kg > 0) {
         const cans = parseFloat((kg / 0.667).toFixed(1));
         const cost = kg * (Number(ft.pricePerKg) || 1.0);
@@ -2438,7 +2443,12 @@ const app = {
     });
 
     if (totalKg <= 0) {
-      this.showToast('Veuillez indiquer au moins une quantité distribuée.', 'warning');
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+      const msg = isAr 
+        ? 'يرجى اختيار كمية علف واحدة على الأقل قبل التأكيد (حدد علبة سيكام أو أدخل الكيلوغرام).' 
+        : (isEn ? 'Please choose at least one feed quantity before confirming (select a can or enter kg).' : 'Veuillez indiquer au moins une quantité distribuée avant de valider (choisissez une boîte ou entrez les kg).');
+      this.showToast(msg, 'warning');
       return;
     }
 
