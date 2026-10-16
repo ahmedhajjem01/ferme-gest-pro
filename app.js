@@ -924,6 +924,10 @@ const app = {
       if (modalId === 'modalAddFeedType') {
         this.renderFeedSuggestions();
       }
+
+      if (modalId === 'modalAddSale') {
+        this.validateSaleQuantityAgainstLot();
+      }
     }
   },
 
@@ -3599,6 +3603,7 @@ const app = {
   },
 
   calcSaleTotal() {
+    this.validateSaleQuantityAgainstLot();
     const q = parseFloat(document.getElementById('saleQuantity')?.value) || 0;
     const p = parseFloat(document.getElementById('saleUnitPrice')?.value) || 0;
     const totalEl = document.getElementById('saleTotalCalculated');
@@ -3753,13 +3758,78 @@ const app = {
     }
   },
 
+  validateSaleQuantityAgainstLot() {
+    const qtyInput = document.getElementById('saleQuantity');
+    const warningEl = document.getElementById('saleQtyWarning');
+    const linkedLotId = document.getElementById('saleLotLinked')?.value;
+    if (!qtyInput) return true;
+
+    if (!linkedLotId || linkedLotId === 'none') {
+      qtyInput.classList.remove('has-error', 'input-error');
+      if (warningEl) {
+        warningEl.style.display = 'none';
+        warningEl.textContent = '';
+      }
+      return true;
+    }
+
+    const lot = (appState.animals || []).find(a => a.id === linkedLotId);
+    if (!lot) {
+      qtyInput.classList.remove('has-error', 'input-error');
+      if (warningEl) {
+        warningEl.style.display = 'none';
+        warningEl.textContent = '';
+      }
+      return true;
+    }
+
+    const remaining = Number(lot.currentQuantity) || 0;
+    const requested = parseFloat(qtyInput.value) || 0;
+
+    if (requested > remaining) {
+      // Dépassement de stock -> Bordure rouge visible et alerte immédiate !
+      qtyInput.classList.add('has-error', 'input-error');
+      if (warningEl) {
+        const isAr = appState.lang === 'ar';
+        const isEn = appState.lang === 'en';
+        warningEl.style.display = 'block';
+        if (isAr) {
+          warningEl.textContent = `⚠️ تنبيه: الكمية المطلوبة (${requested}) تتجاوز العدد المتبقي في الدفعة (${remaining} طائر)!`;
+        } else if (isEn) {
+          warningEl.textContent = `⚠️ Warning: Requested quantity (${requested}) exceeds remaining flock count (${remaining} birds)!`;
+        } else {
+          warningEl.textContent = `⚠️ Attention : La quantité demandée (${requested}) dépasse l'effectif restant du lot (${remaining} sujets) !`;
+        }
+      }
+      return false;
+    } else {
+      // Conforme -> Bordure normale
+      qtyInput.classList.remove('has-error', 'input-error');
+      if (warningEl) {
+        warningEl.style.display = 'none';
+        warningEl.textContent = '';
+      }
+      return true;
+    }
+  },
+
   handleSaleLotSelection(lotId) {
+    const qtyInput = document.getElementById('saleQuantity');
     if (!lotId || lotId === 'none') {
+      if (qtyInput) qtyInput.removeAttribute('max');
+      this.validateSaleQuantityAgainstLot();
       this.calcSaleTotal();
       return;
     }
     const lot = (appState.animals || []).find(a => a.id === lotId);
     if (!lot) return;
+
+    // 1. Définir automatiquement la quantité avec le reste de la bande !
+    const remaining = Number(lot.currentQuantity) || 0;
+    if (qtyInput) {
+      qtyInput.value = remaining;
+      qtyInput.max = remaining;
+    }
 
     const typeSelect = document.getElementById('saleProductType');
     const ageUnit = document.getElementById('saleAgeUnit');
@@ -3796,6 +3866,7 @@ const app = {
         ageInput.disabled = true;
       }
     }
+    this.validateSaleQuantityAgainstLot();
     this.calcSaleTotal();
   },
 

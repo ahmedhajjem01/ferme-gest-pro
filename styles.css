@@ -1700,6 +1700,12 @@ label {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px var(--primary-light);
 }
+.input-field.has-error,
+.input-field.input-error {
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
 .helper-text {
   font-size: 0.72rem;
   color: var(--text-muted);

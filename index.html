@@ -1427,6 +1427,7 @@
             <div class="form-group flex-1">
               <label for="saleQuantity"><span data-i18n="table_col_qty">Quantité Vendue</span> <span id="saleQtyUnitLabel">(Haras / Plateaux)</span></label>
               <input type="number" id="saleQuantity" class="input-field" step="1" value="5" min="1" required oninput="app.calcSaleTotal()">
+              <small id="saleQtyWarning" style="color: #ef4444; font-size: 0.76rem; font-weight: 700; display: none; margin-top: 0.35rem; line-height: 1.3;"></small>
             </div>
             <div class="form-group flex-1">
               <label for="saleUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
