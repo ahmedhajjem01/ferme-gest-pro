@@ -3799,12 +3799,14 @@ const app = {
 
     // Affichage dans le modal
     if (recPriceValEl) {
-      recPriceValEl.textContent = `${this.formatMoney(targetRecPrice)} / sujet (+40% net)`;
+      const perUnitLabel = lang === 'ar' ? 'طائر (+40% صافي)' : (lang === 'en' ? 'head (+40% net)' : 'sujet (+40% net)');
+      recPriceValEl.textContent = `${this.formatMoney(targetRecPrice)} / ${perUnitLabel}`;
     }
 
     if (stageBadge) {
       const stageName = lang === 'ar' ? feedData.labelAr : (lang === 'en' ? feedData.labelEn : feedData.labelFr);
-      stageBadge.textContent = `${stageName} [${days} j]`;
+      const daySuffix = lang === 'ar' ? 'ي' : (lang === 'en' ? 'd' : 'j');
+      stageBadge.textContent = `${stageName} [${days} ${daySuffix}]`;
     }
 
     if (feedKgEl) {
