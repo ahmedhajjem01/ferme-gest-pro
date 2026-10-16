@@ -4649,13 +4649,10 @@ const app = {
 
   handleIncubationMethodChange() {
     const method = document.getElementById('batchMethod')?.value;
-    const machineRow = document.getElementById('machineParamsRow');
     const notes = document.getElementById('batchNotes');
     if (method === 'poule') {
-      if (machineRow) machineRow.style.display = 'none';
       if (notes && !notes.value) notes.value = 'Incubation naturelle (21 jours +/- 2j)';
     } else {
-      if (machineRow) machineRow.style.display = 'flex';
       if (notes && notes.value.includes('naturelle')) notes.value = '';
     }
     this.calcHatchPreview();
@@ -4705,8 +4702,8 @@ const app = {
     const name = document.getElementById('batchName').value.trim();
     const eggsCount = parseInt(document.getElementById('batchEggsCount').value, 10);
     const startDate = document.getElementById('batchStartDate').value;
-    const temp = parseFloat(document.getElementById('batchTemp')?.value) || 37.7;
-    const humidity = parseInt(document.getElementById('batchHumidity')?.value, 10) || 48;
+    const temp = 37.7;
+    const humidity = 48;
     const notes = document.getElementById('batchNotes')?.value.trim() || '';
 
     if (!breed || !name || !eggsCount || !startDate) {
