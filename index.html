@@ -1662,13 +1662,13 @@
   <div id="modalAdjustFeedStock" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
-        <h3 id="adjustFeedStockModalTitle">📦 Stocks d'Aliments en Réserve</h3>
+        <h3 id="adjustFeedStockModalTitle" data-i18n="modal_adjust_feed_title">📦 Stocks d'Aliments en Réserve</h3>
         <button class="modal-close" onclick="app.closeModal('modalAdjustFeedStock')">&times;</button>
       </div>
       <form id="formAdjustFeedStock" onsubmit="app.handleSaveFeedStockAdjustment(event)">
         <div class="modal-body">
           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;">
-            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;">
+            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;" data-i18n="modal_adjust_feed_desc">
               🌾 <strong>Inventaire Magasin :</strong> Gérez vos stocks d'aliments (granulés, céréales, mélanges...). Ajustez les kilos restants et ajoutez de nouveaux aliments à tout moment !
             </p>
           </div>
@@ -1679,7 +1679,7 @@
           </div>
 
           <div style="text-align: center; margin-bottom: 1rem;">
-            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')">
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')" data-i18n="btn_buy_add_feed">
               ➕ Acheter / Ajouter un nouveau type d'aliment
             </button>
           </div>
@@ -1687,20 +1687,20 @@
           <!-- Total combiné du magasin -->
           <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <div style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Stock total en magasin</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;" data-i18n="lbl_total_stock_magasin">Stock total en magasin</div>
               <div style="font-size: 1.25rem; font-weight: 800; color: var(--accent-amber);" id="stockAdjustTotalKgDisplay">
                 0.0 kg
               </div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Valeur totale estimée</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;" data-i18n="lbl_total_val_magasin">Valeur totale estimée</div>
               <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-emerald);" id="stockAdjustTotalValDisplay">
                 0.000 DT
               </div>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;">
+          <button type="submit" class="btn btn-primary btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;" data-i18n="btn_save_stock_magasin">
             Enregistrer les Stocks Magasin
           </button>
         </div>
@@ -1769,19 +1769,19 @@
   <div id="modalFeedDistribution" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
-        <h3>🌾 Distribuer l'Aliment du Jour</h3>
+        <h3 data-i18n="modal_distrib_title">🌾 Distribuer l'Aliment du Jour</h3>
         <button class="modal-close" onclick="app.closeModal('modalFeedDistribution')">&times;</button>
       </div>
       <form id="formFeedDistribution" onsubmit="app.handleSaveFeedDistribution(event)">
         <div class="modal-body">
           <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;">
-            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.45;">
+            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.45;" data-i18n="modal_distrib_desc">
               🥫 <strong>Ration variable selon les jours :</strong> Choisissez les quantités pour chaque type d'aliment. Utilisez les raccourcis boîtes Sicam ou tapez directement les kg. L'application déduit automatiquement les sorties de vos stocks.
             </p>
           </div>
 
           <div class="form-group" style="margin-bottom: 0.85rem;">
-            <label for="distribDate" class="form-label" style="font-weight: 700;">Date de distribution</label>
+            <label for="distribDate" class="form-label" style="font-weight: 700;" data-i18n="lbl_distrib_date">Date de distribution</label>
             <input type="date" id="distribDate" class="input-field" required>
           </div>
 
@@ -1797,7 +1797,7 @@
 
           <!-- Bouton ajouter un nouveau type d'aliment -->
           <div style="text-align: center; margin-bottom: 1rem;">
-            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')">
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')" data-i18n="btn_add_another_feed">
               ➕ Ajouter un autre type d'aliment (ex: Maïs, Son, Tournesol...)
             </button>
           </div>
@@ -1805,7 +1805,7 @@
           <!-- Récapitulatif Total du Jour -->
           <div style="background: var(--bg-surface); border: 1.5px solid var(--accent-emerald); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
             <div>
-              <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Total distribué aujourd'hui</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;" data-i18n="lbl_distrib_total_today">Total distribué aujourd'hui</div>
               <div style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);">
                 <span id="distribTotalKg">0.00 kg</span>
                 <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">
@@ -1814,14 +1814,14 @@
               </div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Coût estimé</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;" data-i18n="lbl_distrib_total_cost">Coût estimé</div>
               <div style="font-size: 1.15rem; font-weight: 800; color: var(--accent-rose);" id="distribTotalCost">
                 0.000 DT
               </div>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;">
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;" data-i18n="btn_submit_distrib">
             Valider la Distribution & Déduire des Stocks
           </button>
         </div>
@@ -1833,37 +1833,33 @@
   <div id="modalAddFeedType" class="modal-overlay hidden" style="z-index: 10001;">
     <div class="modal-card" style="max-width: 440px;">
       <div class="modal-header">
-        <h3>🌾 Ajouter un Nouveau Type d'Aliment</h3>
+        <h3 data-i18n="modal_add_feed_title">🌾 Ajouter un Nouveau Type d'Aliment</h3>
         <button class="modal-close" onclick="app.closeModal('modalAddFeedType')">&times;</button>
       </div>
       <form id="formAddFeedType" onsubmit="app.handleSaveNewFeedType(event)">
         <div class="modal-body">
           <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 0.85rem;">
-            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;">
+            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;" data-i18n="modal_add_feed_desc">
               Ajoutez un nouvel aliment acheté pour vos volailles. Il sera immédiatement disponible dans vos distributions et votre stock.
             </p>
           </div>
 
-          <!-- Suggestions rapides en 1 clic -->
+          <!-- Suggestions rapides selon la langue (Arabe ou Français) -->
           <div class="form-group" style="margin-bottom: 0.85rem;">
-            <label class="form-label" style="font-size: 0.78rem;">💡 Suggestions rapides :</label>
-            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('mais')">🌽 Maïs</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('son')">🌾 Son de blé</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('ponte')">🥚 Aliment ponte</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('demarrage')">🐥 Démarrage</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('feverole')">🌱 Féverole</button>
+            <label class="form-label" style="font-size: 0.78rem;" data-i18n="feed_sugg_label">💡 Suggestions rapides :</label>
+            <div id="feedSuggestionsButtonsContainer" style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+              <!-- Rendu dynamiquement par renderFeedSuggestions() selon la langue -->
             </div>
           </div>
 
           <div class="form-group" style="margin-bottom: 0.85rem;">
-            <label for="newFeedTypeName" class="form-label" style="font-weight: 700;">Nom de l'aliment *</label>
+            <label for="newFeedTypeName" class="form-label" style="font-weight: 700;" data-i18n="lbl_feed_name">Nom de l'aliment *</label>
             <input type="text" id="newFeedTypeName" class="input-field" placeholder="Ex: Maïs concassé, Son de blé, Tournesol..." required>
           </div>
 
           <div class="form-row" style="margin-bottom: 0.85rem;">
             <div class="form-group flex-1">
-              <label for="newFeedTypeStockKg" class="form-label" style="font-weight: 700;">Stock acheté (kg) *</label>
+              <label for="newFeedTypeStockKg" class="form-label" style="font-weight: 700;" data-i18n="lbl_feed_stock_purchased">Stock acheté (kg) *</label>
               <input type="number" id="newFeedTypeStockKg" class="input-field" step="0.5" min="0" value="50" placeholder="50" required>
             </div>
             <div class="form-group flex-1">
@@ -1875,11 +1871,11 @@
           <div class="form-group" style="margin-bottom: 1.2rem; background: var(--bg-card); padding: 0.65rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.82rem; font-weight: 600;">
               <input type="checkbox" id="newFeedTypeRecordExpense" checked style="width: 17px; height: 17px;">
-              <span>Enregistrer également comme dépense dans la comptabilité</span>
+              <span data-i18n="lbl_feed_record_expense">Enregistrer également comme dépense dans la comptabilité</span>
             </label>
           </div>
 
-          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.75rem;">
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.75rem;" data-i18n="btn_save_new_feed">
             ➕ Enregistrer le Nouvel Aliment
           </button>
         </div>

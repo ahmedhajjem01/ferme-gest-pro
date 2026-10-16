@@ -20,7 +20,7 @@ const appState = {
   sicamCansCount: null,
   feedDistributions: [],
   feedTypes: [
-    { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+    { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
     { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
   ],
   
@@ -512,6 +512,8 @@ const app = {
       const days = TRANSLATIONS[lang].cal_days_short;
       weekdaysContainer.innerHTML = days.map(d => `<span>${d}</span>`).join('');
     }
+
+    this.renderFeedSuggestions();
   },
 
   // Initialization
@@ -600,13 +602,19 @@ const app = {
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
         if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
           appState.feedTypes = [
-            { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+            { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
             { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
           ];
         } else {
-          appState.feedTypes = parsed.feedTypes;
+          appState.feedTypes = this.sanitizeFeedTypes(parsed.feedTypes);
         }
-        appState.dismissedSaleAlerts = Array.isArray(parsed.dismissedSaleAlerts) ? parsed.dismissedSaleAlerts : [];
+        if (parsed.savedFavoriteFeedRoutine && Array.isArray(parsed.savedFavoriteFeedRoutine.items)) {
+          parsed.savedFavoriteFeedRoutine.items.forEach(it => {
+            if (it.name && (it.name.includes('بليه') || it.name === 'قمح / بليه')) {
+              it.name = 'Blé';
+            }
+          });
+        }
         appState.savedFavoriteFeedRoutine = parsed.savedFavoriteFeedRoutine || null;
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
@@ -933,6 +941,10 @@ const app = {
         const dateInput = document.getElementById('distribDate');
         if (dateInput) dateInput.value = this.getTodayStr();
         this.renderFeedDistributionModal();
+      }
+
+      if (modalId === 'modalAddFeedType') {
+        this.renderFeedSuggestions();
       }
     }
   },
@@ -1917,30 +1929,104 @@ const app = {
   getFeedDisplayName(ft) {
     if (!ft) return '';
     const lang = appState.lang || 'fr';
-    const name = ft.name || '';
-    const id = ft.id || ft.feedTypeId || '';
+    const name = String(ft.name || '');
+    const id = String(ft.id || ft.feedTypeId || '');
+    const lower = name.toLowerCase();
 
-    if (id === 'feed-ble' || name.includes('Blé') || name.includes('blé') || name.includes('بليه') || name.includes('قمح')) {
-      if (lang === 'ar') return 'قمح / بليه';
-      if (lang === 'en') return 'Wheat / Grains';
-      return 'Blé / Céréales';
+    // Blé / قمح (Notice: "بليه" is permanently excluded from display and replaced by Blé / قمح)
+    if (id === 'feed-ble' || lower.includes('blé') || lower.includes('ble') || name.includes('قمح') || name.includes('بليه')) {
+      if (lang === 'ar') return 'قمح';
+      if (lang === 'en') return 'Wheat';
+      return 'Blé';
     }
-    if (id === 'feed-bouchon' || name.includes('بوشون') || name.toLowerCase().includes('ponte')) {
+    // Bouchon / Aliment ponte
+    if (id === 'feed-bouchon' || name.includes('بوشون') || lower.includes('ponte') || lower.includes('bouchon')) {
       if (lang === 'ar') return 'علف بياضة (بوشون)';
       if (lang === 'en') return 'Layer Feed (Pellets)';
       return 'Aliment ponte (Bouchon)';
     }
-    if (name.includes('Maïs') || name.includes('maïs') || name.includes('ذرَة') || name.includes('ذرة')) {
+    // Maïs
+    if (lower.includes('maïs') || lower.includes('mais') || name.includes('ذرَة') || name.includes('ذرة')) {
       if (lang === 'ar') return 'ذرة مرحية';
       if (lang === 'en') return 'Cracked Corn';
       return 'Maïs concassé';
     }
-    if (name.includes('Son') || name.includes('son') || name.includes('نخالة')) {
+    // Son
+    if (lower.includes('son') || name.includes('نخالة')) {
       if (lang === 'ar') return 'نخالة القمح';
       if (lang === 'en') return 'Wheat Bran';
       return 'Son de blé';
     }
+    // Démarrage
+    if (lower.includes('démarrage') || lower.includes('demarrage') || name.includes('بداية')) {
+      if (lang === 'ar') return 'علف بداية';
+      if (lang === 'en') return 'Starter Feed';
+      return 'Aliment démarrage';
+    }
+    // Féverole
+    if (lower.includes('feverole') || lower.includes('féverole') || name.includes('فول')) {
+      if (lang === 'ar') return 'فول مدشش';
+      if (lang === 'en') return 'Faba Beans';
+      return 'Féverole';
+    }
     return name;
+  },
+
+  getFeedShortName(ft) {
+    if (!ft) return '';
+    const lang = appState.lang || 'fr';
+    const name = String(ft.name || '');
+    const id = String(ft.id || ft.feedTypeId || '');
+    const lower = name.toLowerCase();
+
+    // Blé / قمح
+    if (id === 'feed-ble' || lower.includes('blé') || lower.includes('ble') || name.includes('قمح') || name.includes('بليه')) {
+      if (lang === 'ar') return 'قمح';
+      if (lang === 'en') return 'Wheat';
+      return 'Blé';
+    }
+    // Bouchon
+    if (id === 'feed-bouchon' || name.includes('بوشون') || lower.includes('ponte') || lower.includes('bouchon')) {
+      if (lang === 'ar') return 'بوشون';
+      if (lang === 'en') return 'Pellets';
+      return 'Bouchon';
+    }
+    // Maïs
+    if (lower.includes('maïs') || lower.includes('mais') || name.includes('ذرَة') || name.includes('ذرة')) {
+      if (lang === 'ar') return 'ذرة';
+      if (lang === 'en') return 'Corn';
+      return 'Maïs';
+    }
+    // Son
+    if (lower.includes('son') || name.includes('نخالة')) {
+      if (lang === 'ar') return 'نخالة';
+      if (lang === 'en') return 'Bran';
+      return 'Son';
+    }
+    // Démarrage
+    if (lower.includes('démarrage') || lower.includes('demarrage') || name.includes('بداية')) {
+      if (lang === 'ar') return 'علف بداية';
+      if (lang === 'en') return 'Starter';
+      return 'Démarrage';
+    }
+    // Féverole
+    if (lower.includes('feverole') || lower.includes('féverole') || name.includes('فول')) {
+      if (lang === 'ar') return 'فول';
+      if (lang === 'en') return 'Beans';
+      return 'Féverole';
+    }
+    return name.split(' ')[0] || name;
+  },
+
+  sanitizeFeedTypes(feedTypes) {
+    if (!Array.isArray(feedTypes)) return [];
+    return feedTypes.map(ft => {
+      let name = ft.name || '';
+      if (name.includes('بليه') || name === 'قمح / بليه') {
+        name = 'Blé';
+      }
+      return { ...ft, name };
+    });
   },
 
   renderSmartFeedPresets() {
@@ -1964,13 +2050,13 @@ const app = {
         </div>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
           <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('half_can')">
-            🥫 0.5 boîte<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.33 kg / aliment</span>
+            🥫 0.5 ${appState.lang === 'ar' ? 'علبة' : (appState.lang === 'en' ? 'can' : 'boîte')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.33 ${appState.lang === 'ar' ? 'كغ / نوع' : (appState.lang === 'en' ? 'kg / feed' : 'kg / aliment')}</span>
           </button>
           <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('one_can')">
-            🥫 1 boîte<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.67 kg / aliment</span>
+            🥫 1 ${appState.lang === 'ar' ? 'علبة' : (appState.lang === 'en' ? 'can' : 'boîte')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.67 ${appState.lang === 'ar' ? 'كغ / نوع' : (appState.lang === 'en' ? 'kg / feed' : 'kg / aliment')}</span>
           </button>
           <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
-            ${this.t('feed_smart_clear')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">0 kg partout</span>
+            ${this.t('feed_smart_clear')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">${appState.lang === 'ar' ? '0 كغ في الكل' : (appState.lang === 'en' ? '0 kg everywhere' : '0 kg partout')}</span>
           </button>
         </div>
         <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.35;">
@@ -1981,12 +2067,21 @@ const app = {
     }
 
     // Mode adaptatif : L'application a analysé les distributions réelles du fermier
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
     const summaryItems = routine.items
-      .map(it => `${it.kg}kg ${this.getFeedDisplayName(it).split(' ')[0]}`)
+      .map(it => `${it.kg} ${unitKg} ${this.getFeedShortName(it)}`)
       .slice(0, 3)
       .join(' + ');
     const totalKg = routine.totalKg || routine.items.reduce((sum, it) => sum + (Number(it.kg) || 0), 0);
     const halfKg = (totalKg * 0.5).toFixed(2);
+
+    const halfLabel = isAr ? `${halfKg} كغ إجمالي` : (isEn ? `${halfKg} kg total` : `${halfKg} kg total`);
+    const zeroLabel = isAr ? '0 كغ في الكل' : (isEn ? '0 kg everywhere' : '0 kg partout');
+    const statsLabel = isAr 
+      ? `📊 ${totalKg.toFixed(2)} كغ معتادة (~${(totalKg / 0.667).toFixed(1)} علبة سيكام)`
+      : (isEn ? `📊 ${totalKg.toFixed(2)} kg routine (~${(totalKg / 0.667).toFixed(1)} Sicam cans)` : `📊 ${totalKg.toFixed(2)} kg habituels (~${(totalKg / 0.667).toFixed(1)} boîtes Sicam)`);
 
     container.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
@@ -2001,24 +2096,24 @@ const app = {
         <!-- Bouton 1: Répéter la routine habituelle -->
         <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800; border-color: var(--accent-emerald);" onclick="app.applyLearnedRoutine('repeat')">
           ${this.t('feed_smart_repeat')}<br>
-          <span style="font-size: 0.66rem; color: var(--accent-emerald); font-weight: 700;">${summaryItems || totalKg.toFixed(1) + ' kg'}</span>
+          <span style="font-size: 0.66rem; color: var(--accent-emerald); font-weight: 700;">${summaryItems || totalKg.toFixed(1) + ' ' + unitKg}</span>
         </button>
 
         <!-- Bouton 2: Demi-ration (50%) -->
         <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyLearnedRoutine('half')">
           ${this.t('feed_smart_half')}<br>
-          <span style="font-size: 0.66rem; color: var(--text-muted);">${halfKg} kg total</span>
+          <span style="font-size: 0.66rem; color: var(--text-muted);">${halfLabel}</span>
         </button>
 
         <!-- Bouton 3: Remettre à zéro -->
         <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('clear')">
           ${this.t('feed_smart_clear')}<br>
-          <span style="font-size: 0.66rem; color: var(--text-muted);">0 kg partout</span>
+          <span style="font-size: 0.66rem; color: var(--text-muted);">${zeroLabel}</span>
         </button>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; flex-wrap: wrap; gap: 0.3rem;">
         <small style="font-size: 0.7rem; color: var(--text-muted);">
-          📊 ${totalKg.toFixed(2)} kg habituels (~${(totalKg / 0.667).toFixed(1)} boîtes Sicam)
+          ${statsLabel}
         </small>
         <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 0.15rem 0.45rem; font-weight: 700;" onclick="app.saveCurrentDistributionAsFavorite()">
           ${this.t('btn_save_favorite_routine')}
@@ -2080,6 +2175,33 @@ const app = {
     this.showToast(`⭐ Routine favorite mémorisée : ${totalKg.toFixed(2)} kg/j !`);
   },
 
+  renderFeedSuggestions() {
+    const container = document.getElementById('feedSuggestionsButtonsContainer');
+    if (!container) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    const suggestions = [
+      { key: 'mais', label: isAr ? '🌽 ذرة مرحية' : (isEn ? '🌽 Cracked corn' : '🌽 Maïs concassé'), val: isAr ? 'ذرة مرحية' : (isEn ? 'Cracked corn' : 'Maïs concassé') },
+      { key: 'son', label: isAr ? '🌾 نخالة القمح' : (isEn ? '🌾 Wheat bran' : '🌾 Son de blé'), val: isAr ? 'نخالة القمح' : (isEn ? 'Wheat bran' : 'Son de blé') },
+      { key: 'ponte', label: isAr ? '🥚 علف بياضة' : (isEn ? '🥚 Layer feed' : '🥚 Aliment ponte'), val: isAr ? 'علف بياضة' : (isEn ? 'Layer feed' : 'Aliment ponte') },
+      { key: 'demarrage', label: isAr ? '🐥 علف بداية' : (isEn ? '🐥 Starter feed' : '🐥 Aliment démarrage'), val: isAr ? 'علف بداية' : (isEn ? 'Starter feed' : 'Aliment démarrage') },
+      { key: 'feverole', label: isAr ? '🌱 فول مدشش' : (isEn ? '🌱 Faba beans' : '🌱 Féverole'), val: isAr ? 'فول مدشش' : (isEn ? 'Faba beans' : 'Féverole') }
+    ];
+
+    container.innerHTML = suggestions.map(s => `
+      <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('newFeedTypeName').value = '${s.val}'">
+        ${s.label}
+      </button>
+    `).join('');
+
+    const nameInput = document.getElementById('newFeedTypeName');
+    if (nameInput) {
+      nameInput.placeholder = isAr ? 'مثال: ذرة مرحية، نخالة، بياض...' : (isEn ? 'Ex: Cracked corn, Wheat bran...' : 'Ex: Maïs concassé, Son de blé, Tournesol...');
+    }
+  },
+
   setQuickFeedSuggestion(type) {
     const isAr = appState.lang === 'ar';
     const names = {
@@ -2101,10 +2223,18 @@ const app = {
 
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [
-        { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+        { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
         { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
       ];
     }
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const inStockPrefix = isAr ? 'في المخزون :' : (isEn ? 'In stock:' : 'En stock :');
+    const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
+    const btesLabel = isAr ? 'علب' : (isEn ? 'cans' : 'btes');
+    const sicamCansLabel = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
 
     let html = '';
     appState.feedTypes.forEach((ft) => {
@@ -2120,7 +2250,7 @@ const app = {
               🌾 ${displayName}
             </div>
             <span class="badge-pill" style="font-size: 0.72rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
-              En stock : <strong>${stockKg.toFixed(1)} kg</strong>
+              ${inStockPrefix} <strong>${stockKg.toFixed(1)} ${unitKg}</strong>
             </span>
           </div>
 
@@ -2130,25 +2260,25 @@ const app = {
               0
             </button>
             <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 0.5)">
-              🥫 0.5 bte<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.3kg</span>
+              🥫 0.5 ${bteLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.3 ${unitKg}</span>
             </button>
             <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.0)">
-              🥫 1 bte<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.7kg</span>
+              🥫 1 ${bteLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~0.7 ${unitKg}</span>
             </button>
             <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 1.5)">
-              🥫 1.5 bte<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.0kg</span>
+              🥫 1.5 ${bteLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.0 ${unitKg}</span>
             </button>
             <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.1rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setFeedTypeDistribSicam('${ft.id}', 2.0)">
-              🥫 2 btes<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.3kg</span>
+              🥫 2 ${btesLabel}<br><span style="font-size: 0.65rem; color: var(--text-muted);">~1.3 ${unitKg}</span>
             </button>
           </div>
 
           <!-- Saisie en kg et affichage équivalent Sicam -->
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="0.05" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${ft.pricePerKg || 1}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-amber); max-width: 120px;" oninput="app.recalcDistribTotal()">
-            <span style="font-weight: 700; color: var(--text-secondary); font-size: 0.95rem;">kg</span>
+            <span style="font-weight: 700; color: var(--text-secondary); font-size: 0.95rem;">${unitKg}</span>
             <span id="distribHint_${ft.id}" style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto;">
-              ~${defaultCans} boîte(s) Sicam
+              ~${defaultCans} ${sicamCansLabel}
             </span>
           </div>
         </div>
@@ -2167,8 +2297,12 @@ const app = {
       input.value = kg;
     }
     const hint = document.getElementById(`distribHint_${feedId}`);
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const canWord = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
+    const zeroWord = isAr ? '0 علبة' : (isEn ? '0 can' : '0 boîte');
     if (hint) {
-      hint.textContent = cansNum > 0 ? `~${cansNum} boîte(s) Sicam` : '0 boîte';
+      hint.textContent = cansNum > 0 ? `~${cansNum} ${canWord}` : zeroWord;
     }
     this.recalcDistribTotal();
   },
@@ -2189,6 +2323,11 @@ const app = {
   recalcDistribTotal() {
     let totalKg = 0;
     let totalCost = 0;
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const canWord = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
+    const zeroWord = isAr ? '0 علبة' : (isEn ? '0 can' : '0 boîte');
 
     (appState.feedTypes || []).forEach(ft => {
       const input = document.getElementById(`distribKg_${ft.id}`);
@@ -2196,7 +2335,7 @@ const app = {
       const cans = (kg / 0.667).toFixed(1);
       const hint = document.getElementById(`distribHint_${ft.id}`);
       if (hint) {
-        hint.textContent = kg > 0 ? `~${cans} boîte(s) Sicam` : '0 boîte';
+        hint.textContent = kg > 0 ? `~${cans} ${canWord}` : zeroWord;
       }
       totalKg += kg;
       totalCost += kg * (Number(ft.pricePerKg) || 1.0);
@@ -2207,8 +2346,8 @@ const app = {
     const totalCansEl = document.getElementById('distribTotalCans');
     const totalCostEl = document.getElementById('distribTotalCost');
 
-    if (totalKgEl) totalKgEl.textContent = `${totalKg.toFixed(2)} kg`;
-    if (totalCansEl) totalCansEl.textContent = `${totalCans} boîte(s)`;
+    if (totalKgEl) totalKgEl.textContent = `${totalKg.toFixed(2)} ${unitKg}`;
+    if (totalCansEl) totalCansEl.textContent = `${totalCans} ${isAr ? 'علبة' : (isEn ? 'can(s)' : 'boîte(s)')}`;
     if (totalCostEl) totalCostEl.textContent = this.formatMoney(totalCost);
   },
 
@@ -2287,10 +2426,19 @@ const app = {
 
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [
-        { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+        { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
         { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
       ];
     }
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const currSym = this.getCurrencySymbol();
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const btnDeleteText = isAr ? '🗑️ حذف' : (isEn ? '🗑️ Delete' : '🗑️ Supprimer');
+    const lblStockText = isAr ? 'المخزون بالمستودع (كغ)' : (isEn ? 'Stock in reserve (kg)' : 'Stock en réserve (kg)');
+    const lblPriceText = isAr ? `سعر الكيلوغرام (${currSym}/${unitKg})` : (isEn ? `Price per kg (${currSym}/${unitKg})` : `Prix au kg (${currSym}/kg)`);
+    const valStockText = isAr ? 'قيمة المخزون :' : (isEn ? 'Stock value:' : 'Valeur du stock :');
 
     let html = '';
     appState.feedTypes.forEach(ft => {
@@ -2305,22 +2453,22 @@ const app = {
             <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${displayName}</strong>
             ${appState.feedTypes.length > 1 ? `
               <button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-rose); padding: 0.15rem 0.45rem; font-size: 0.7rem;" onclick="app.deleteFeedType('${ft.id}')">
-                🗑️ Supprimer
+                ${btnDeleteText}
               </button>
             ` : ''}
           </div>
           <div class="form-row" style="margin-bottom: 0; gap: 0.5rem;">
             <div class="form-group flex-1" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 0.72rem; font-weight: 700;">Stock en réserve (kg)</label>
+              <label class="form-label" style="font-size: 0.72rem; font-weight: 700;">${lblStockText}</label>
               <input type="number" id="stockKg_${ft.id}" class="input-field" step="0.5" min="0" value="${stockKg.toFixed(1)}" style="font-weight: 800; font-size: 1.1rem; color: var(--accent-amber);" oninput="app.recalcStockAdjustValuation()">
             </div>
             <div class="form-group flex-1" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 0.72rem; font-weight: 700;">Prix au kg (DT/kg)</label>
+              <label class="form-label" style="font-size: 0.72rem; font-weight: 700;">${lblPriceText}</label>
               <input type="number" id="priceKg_${ft.id}" class="input-field" step="0.01" min="0" value="${priceKg.toFixed(2)}" style="font-weight: 700; font-size: 1.05rem;" oninput="app.recalcStockAdjustValuation()">
             </div>
           </div>
           <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.35rem; text-align: right;">
-            Valeur du stock : <strong style="color: var(--accent-emerald);" id="subtotalVal_${ft.id}">${this.formatMoney(subtotal)}</strong>
+            ${valStockText} <strong style="color: var(--accent-emerald);" id="subtotalVal_${ft.id}">${this.formatMoney(subtotal)}</strong>
           </div>
         </div>
       `;
@@ -2347,7 +2495,8 @@ const app = {
 
     const totalKgEl = document.getElementById('stockAdjustTotalKgDisplay');
     const totalValEl = document.getElementById('stockAdjustTotalValDisplay');
-    if (totalKgEl) totalKgEl.textContent = `${totalKg.toFixed(1)} kg`;
+    const unitKg = appState.lang === 'ar' ? 'كغ' : 'kg';
+    if (totalKgEl) totalKgEl.textContent = `${totalKg.toFixed(1)} ${unitKg}`;
     if (totalValEl) totalValEl.textContent = this.formatMoney(totalVal);
   },
 
@@ -2570,36 +2719,61 @@ const app = {
     const feedStockRemaining = feedStockRemainingKg * unitFeedVal;
 
     if (feedStockRemainingKg > 0 || totalPurchasedFeedCost > 0) {
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+      const unit = isAr ? 'كغ' : 'kg';
+
       const typesBreakdown = (appState.feedTypes || [])
-        .map(ft => `${this.getFeedDisplayName(ft).split(' ')[0]}: ${(ft.stockKg || 0).toFixed(1)}kg`)
+        .map(ft => {
+          const shortName = this.getFeedShortName(ft);
+          const stock = (Number(ft.stockKg) || 0).toFixed(1);
+          return `<span style="white-space: nowrap; display: inline-block;">${shortName} : ${stock} ${unit}</span>`;
+        })
         .join(' &bull; ');
-      const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;
-      const stockBadgeFr = `📦 Réserve d'aliment en magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;
-      const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;
-      const stockLabel = appState.lang === 'ar' ? stockBadgeAr : (appState.lang === 'en' ? stockBadgeEn : stockBadgeFr);
+
+      const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ)${typesBreakdown ? ' &bull; ' + typesBreakdown : ''}`;
+      const stockBadgeFr = `📦 Réserve d'aliment en magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg)${typesBreakdown ? ' &bull; ' + typesBreakdown : ''}`;
+      const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg)${typesBreakdown ? ' &bull; ' + typesBreakdown : ''}`;
+      const stockLabel = isAr ? stockBadgeAr : (isEn ? stockBadgeEn : stockBadgeFr);
+
+      const subText = isAr 
+        ? '(غير محتسب على الكتاكيت حتى يتم استهلاكه)' 
+        : (isEn ? '(Not charged to chicks until consumed)' : '(Non imputé aux poussins tant que non consommé)');
+
+      const btnDistribText = isAr ? '🥫 توزيع' : (isEn ? '🥫 Distribute' : '🥫 Distribuer');
+      const btnStockText = isAr ? '📦 مخزون المستودع' : (isEn ? '📦 Warehouse Stock' : '📦 Stock Magasin');
 
       lotsHtml += `
         <div style="grid-column: 1 / -1; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; color: var(--accent-emerald); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
             <span>${stockLabel}</span>
-            <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">(Non imputé aux poussins tant que non consommé)</span>
+            <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">${subText}</span>
           </div>
           <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
             <button class="btn btn-sm btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800; color: var(--accent-amber);" onclick="app.openModal('modalFeedDistribution')">
-              🥫 Distribuer
+              ${btnDistribText}
             </button>
             <button class="btn btn-sm btn-emerald" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
-              📦 Stock Magasin
+              ${btnStockText}
             </button>
           </div>
         </div>
       `;
     } else {
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+      const emptyMsg = isAr 
+        ? '📦 <strong>مخزون العلف :</strong> لا يوجد أكياس مسجلة في المخزن.'
+        : (isEn ? '📦 <strong>Feed stock:</strong> No bags recorded in warehouse.' : '📦 <strong>Stock d\'aliment :</strong> Aucun sac déclaré en réserve.');
+      const emptyBtn = isAr
+        ? '➕ إدخال مخزون المستودع (مثال: 65 كغ)'
+        : (isEn ? '➕ Declare Warehouse Stock (e.g. 65 kg)' : '➕ Déclarer Stock de Réserve (ex: 65 kg)');
+
       lotsHtml += `
         <div style="grid-column: 1 / -1; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-          <span>📦 <strong>Stock d'aliment :</strong> Aucun sac déclaré en réserve.</span>
+          <span>${emptyMsg}</span>
           <button class="btn btn-sm btn-primary" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
-            ➕ Déclarer Stock de Réserve (ex: 65 kg)
+            ${emptyBtn}
           </button>
         </div>
       `;
