@@ -576,6 +576,56 @@
             </button>
           </div>
 
+          <!-- Toolbar: Tri & Filtres par Âge et Nombre -->
+          <div class="animal-controls-toolbar" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; justify-content: space-between;">
+            <!-- Recherche rapide -->
+            <div style="flex: 1; min-width: 170px;">
+              <input type="text" id="animalSearchInput" class="input-field" placeholder="🔍 Rechercher lot, race, bande..." data-i18n-placeholder="animal_search_placeholder" style="padding: 0.4rem 0.7rem; font-size: 0.82rem; margin: 0;" oninput="app.handleAnimalFilterChange()">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <!-- Tri par Âge / Nombre -->
+              <div style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                <label for="animalSortSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_sort_by">Trier par :</label>
+                <select id="animalSortSelect" class="input-field" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; width: auto; font-weight: 600; margin: 0;" onchange="app.handleAnimalFilterChange()">
+                  <option value="default" data-i18n="sort_default">🕒 Date d'ajout (Par défaut)</option>
+                  <option value="age_asc" data-i18n="sort_age_asc">🐣 Âge croissant (Plus jeunes)</option>
+                  <option value="age_desc" data-i18n="sort_age_desc">🐔 Âge décroissant (Plus âgés)</option>
+                  <option value="qty_desc" data-i18n="sort_qty_desc">📈 Nombre décroissant (Plus nombreux)</option>
+                  <option value="qty_asc" data-i18n="sort_qty_asc">📉 Nombre croissant (Moins nombreux)</option>
+                  <option value="name_asc" data-i18n="sort_name_asc">🔤 Nom (A → Z)</option>
+                </select>
+              </div>
+
+              <!-- Filtre par tranche d'âge -->
+              <div style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                <label for="animalAgeFilterSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_filter_age">Âge :</label>
+                <select id="animalAgeFilterSelect" class="input-field" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; width: auto; font-weight: 600; margin: 0;" onchange="app.handleAnimalFilterChange()">
+                  <option value="all" data-i18n="filter_age_all">Tous les âges</option>
+                  <option value="chick" data-i18n="filter_age_chick">🐣 Poussins (&lt; 1 mois)</option>
+                  <option value="growing" data-i18n="filter_age_growing">🍗 Croissance (1 à 6 mois)</option>
+                  <option value="adult" data-i18n="filter_age_adult">🐔 Adultes (&gt; 6 mois)</option>
+                </select>
+              </div>
+
+              <!-- Filtre par effectif -->
+              <div style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                <label for="animalQtyFilterSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_filter_qty">Effectif :</label>
+                <select id="animalQtyFilterSelect" class="input-field" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; width: auto; font-weight: 600; margin: 0;" onchange="app.handleAnimalFilterChange()">
+                  <option value="all" data-i18n="filter_qty_all">Tous effectifs</option>
+                  <option value="large" data-i18n="filter_qty_large">Grands lots (&gt; 50)</option>
+                  <option value="medium" data-i18n="filter_qty_medium">Lots moyens (10 - 50)</option>
+                  <option value="small" data-i18n="filter_qty_small">Petits lots (&lt; 10)</option>
+                </select>
+              </div>
+
+              <!-- Bouton Réinitialiser -->
+              <button type="button" class="btn btn-xs btn-outline" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; font-weight: 700;" onclick="app.resetAnimalFilters()" data-i18n="btn_reset_filters" title="Réinitialiser filtres et tri">
+                🔄 Réinitialiser
+              </button>
+            </div>
+          </div>
+
           <!-- Filter Chips -->
           <div class="filter-chips-row">
             <button class="chip active" data-filter-animal="all"><span data-i18n="chip_all">Tous</span> (<span id="chipAllCount">0</span>)</button>

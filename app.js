@@ -2763,10 +2763,15 @@ const app = {
   // ==========================================
   // ANIMALS (CHEPTEL & RACES) MODULE
   // ==========================================
-  renderAnimals(filter = 'all') {
+  renderAnimals(filter = null) {
     const grid = document.getElementById('animalsGrid');
     if (!grid) return;
     grid.innerHTML = '';
+
+    if (filter !== null && filter !== undefined) {
+      this.currentAnimalFilter = filter;
+    }
+    const activeSpecies = this.currentAnimalFilter || 'all';
 
     // Filter count chips
     const counts = { all: appState.animals.length, poulet: 0, pondeuse: 0, poussin: 0, adulte: 0, pintade: 0, canard: 0 };
@@ -2784,9 +2789,64 @@ const app = {
     setChip('chipPintadeCount', counts.pintade);
     setChip('chipCanardCount', counts.canard);
 
-    const filtered = filter === 'all'
+    const sortMode = document.getElementById('animalSortSelect')?.value || 'default';
+    const ageFilter = document.getElementById('animalAgeFilterSelect')?.value || 'all';
+    const qtyFilter = document.getElementById('animalQtyFilterSelect')?.value || 'all';
+    const searchQuery = (document.getElementById('animalSearchInput')?.value || '').trim().toLowerCase();
+
+    // 1. Filtrer par espèce (chips)
+    let filtered = activeSpecies === 'all'
       ? appState.animals
-      : appState.animals.filter(a => a.species === filter || (filter === 'canard' && a.species === 'canard_barbarie'));
+      : appState.animals.filter(a => a.species === activeSpecies || (activeSpecies === 'canard' && a.species === 'canard_barbarie'));
+
+    // 2. Filtrer par recherche textuelle
+    if (searchQuery) {
+      filtered = filtered.filter(a => {
+        const name = (a.name || '').toLowerCase();
+        const breed = (a.breed || '').toLowerCase();
+        const notes = (a.notes || '').toLowerCase();
+        const species = (a.species || '').toLowerCase();
+        const id = (a.id || '').toLowerCase();
+        return name.includes(searchQuery) || breed.includes(searchQuery) || notes.includes(searchQuery) || species.includes(searchQuery) || id.includes(searchQuery);
+      });
+    }
+
+    // 3. Filtrer par tranche d'âge
+    if (ageFilter !== 'all') {
+      filtered = filtered.filter(a => {
+        const days = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
+        if (ageFilter === 'chick') return days < 30;
+        if (ageFilter === 'growing') return days >= 30 && days <= 180;
+        if (ageFilter === 'adult') return days > 180;
+        return true;
+      });
+    }
+
+    // 4. Filtrer par effectif / nombre
+    if (qtyFilter !== 'all') {
+      filtered = filtered.filter(a => {
+        const qty = Number(a.currentQuantity) || 0;
+        if (qtyFilter === 'large') return qty > 50;
+        if (qtyFilter === 'medium') return qty >= 10 && qty <= 50;
+        if (qtyFilter === 'small') return qty < 10;
+        return true;
+      });
+    }
+
+    // 5. Tri (par Âge croissant/décroissant, Nombre croissant/décroissant, Nom, ou défaut)
+    filtered = [...filtered].sort((a, b) => {
+      const ageA = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
+      const ageB = this.calculateAgeInDays(b.birthDate) + (Number(b.arrivalAgeDays) || 0);
+      const qtyA = Number(a.currentQuantity) || 0;
+      const qtyB = Number(b.currentQuantity) || 0;
+
+      if (sortMode === 'age_asc') return ageA - ageB;
+      if (sortMode === 'age_desc') return ageB - ageA;
+      if (sortMode === 'qty_desc') return qtyB - qtyA;
+      if (sortMode === 'qty_asc') return qtyA - qtyB;
+      if (sortMode === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      return 0;
+    });
 
     if (filtered.length === 0) {
       if (appState.animals.length === 0) {
@@ -2803,8 +2863,15 @@ const app = {
           </div>
         `;
       } else {
-        const noMatch = appState.lang === 'ar' ? 'لا توجد دفعات طيور مطابقة لهذا التصنيف.' : (appState.lang === 'en' ? 'No animal batches found for this filter.' : 'Aucun lot d\'animaux trouvé pour ce filtre.');
-        grid.innerHTML = `<div class="panel-card" style="grid-column: 1/-1; text-align: center; padding: 2.5rem;"><p class="text-muted">${noMatch}</p></div>`;
+        const noMatch = appState.lang === 'ar' ? 'لا توجد دفعات طيور مطابقة لمعايير البحث والفرز.' : (appState.lang === 'en' ? 'No animal batches found matching these filter and sort criteria.' : 'Aucun lot d\'animaux ne correspond à vos critères de recherche et filtrage.');
+        grid.innerHTML = `
+          <div class="panel-card" style="grid-column: 1/-1; text-align: center; padding: 2.5rem;">
+            <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.95rem;">${noMatch}</p>
+            <button class="btn btn-sm btn-outline" onclick="app.resetAnimalFilters()">
+              ${this.t('btn_reset_filters') || '🔄 Réinitialiser'}
+            </button>
+          </div>
+        `;
       }
       return;
     }
@@ -2974,6 +3041,27 @@ const app = {
       `;
       grid.appendChild(card);
     });
+  },
+
+  handleAnimalFilterChange() {
+    this.renderAnimals(this.currentAnimalFilter || 'all');
+  },
+
+  resetAnimalFilters() {
+    const searchInput = document.getElementById('animalSearchInput');
+    const sortSelect = document.getElementById('animalSortSelect');
+    const ageSelect = document.getElementById('animalAgeFilterSelect');
+    const qtySelect = document.getElementById('animalQtyFilterSelect');
+    if (searchInput) searchInput.value = '';
+    if (sortSelect) sortSelect.value = 'default';
+    if (ageSelect) ageSelect.value = 'all';
+    if (qtySelect) qtySelect.value = 'all';
+    this.currentAnimalFilter = 'all';
+    document.querySelectorAll('[data-filter-animal]').forEach(c => {
+      if (c.getAttribute('data-filter-animal') === 'all') c.classList.add('active');
+      else c.classList.remove('active');
+    });
+    this.renderAnimals('all');
   },
 
   // Ouvre le modal HTML d'édition du lot (100% compatible iPhone PWA sans window.prompt)
