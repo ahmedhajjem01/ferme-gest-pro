@@ -2650,64 +2650,36 @@ const app = {
     const todayCostEl = document.getElementById('farmFeedTodayCost');
     const stockKgEl = document.getElementById('farmFeedStockKg');
 
-    if (!appState.animals || appState.animals.length === 0) {
-      if (todayKgEl) todayKgEl.textContent = '0.00 kg / j';
-      if (todayCostEl) todayCostEl.textContent = this.formatMoney(0) + ' / j';
-      if (stockKgEl) stockKgEl.textContent = '0.0 kg';
-      if (breakdownEl) breakdownEl.innerHTML = `<div class="text-muted" style="grid-column: 1/-1; text-align: center; padding: 0.5rem;">${appState.lang === 'ar' ? 'لا توجد دفعات طيور مسجلة حالياً.' : 'Aucun lot d\'animaux enregistré.'}</div>`;
-      return;
-    }
-
     const feedPriceKg = this.getAverageFeedPricePerKg();
-    const scalingRatio = this.getFeedScalingRatio();
     let totalFarmDailyGrams = 0;
     let lotsHtml = '';
 
-    appState.animals.forEach(animal => {
-      const qty = Number(animal.currentQuantity) || 0;
-      if (qty <= 0) return;
-
-      const ageDays = this.calculateAgeInDays(animal.birthDate) + (Number(animal.arrivalAgeDays) || 0);
-      const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
-      const lotDailyGrams = qty * feedData.avgGrams;
-      totalFarmDailyGrams += lotDailyGrams;
-
-      const lotDailyKg = (lotDailyGrams / 1000) * scalingRatio;
-      const lotDailyCost = lotDailyKg * feedPriceKg;
-      const effectiveGramsPerHead = Math.round(feedData.avgGrams * scalingRatio);
-      const stageName = appState.lang === 'ar' ? feedData.labelAr : (appState.lang === 'en' ? feedData.labelEn : feedData.labelFr);
-
-      lotsHtml += `
-        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.6rem 0.8rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-          <div style="min-width: 0;">
-            <div style="font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              ${this.getSpeciesIcon(animal.species)} ${animal.name} (${qty})
-            </div>
-            <div style="font-size: 0.72rem; color: var(--text-secondary);">
-              ${stageName} &bull; <span class="text-amber">${effectiveGramsPerHead} g/j/tête ${scalingRatio < 0.95 ? '(plein air)' : ''}</span>
-            </div>
-          </div>
-          <div style="text-align: right; flex-shrink: 0;">
-            <div style="font-weight: 800; color: var(--accent-amber);">${lotDailyKg.toFixed(2)} kg/j</div>
-            <div style="font-size: 0.72rem; color: var(--accent-rose); font-weight: 600;">${this.formatMoney(lotDailyCost)}/j</div>
-          </div>
-        </div>
-      `;
-    });
+    if (Array.isArray(appState.animals)) {
+      appState.animals.forEach(animal => {
+        const qty = Number(animal.currentQuantity) || 0;
+        if (qty <= 0) return;
+        const ageDays = this.calculateAgeInDays(animal.birthDate) + (Number(animal.arrivalAgeDays) || 0);
+        const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
+        totalFarmDailyGrams += qty * feedData.avgGrams;
+      });
+    }
 
     const isCustom = appState.feedRationMode !== 'industrial' && appState.customDailyFeedKg > 0;
     const totalFarmDailyKg = isCustom ? appState.customDailyFeedKg : (totalFarmDailyGrams / 1000);
     const totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
 
     if (todayKgEl) {
+      const isAr = appState.lang === 'ar';
       const cansText = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null)
-        ? ` (~${appState.sicamCansCount} boîtes Sicam)`
+        ? (isAr ? ` (~${appState.sicamCansCount} علبة سيكام)` : ` (~${appState.sicamCansCount} boîtes Sicam)`)
         : '';
-      todayKgEl.textContent = isCustom 
-        ? `${totalFarmDailyKg.toFixed(2)} kg / j${cansText}` 
-        : `${totalFarmDailyKg.toFixed(2)} kg / j`;
+      const unit = isAr ? 'كغ / يوم' : 'kg / j';
+      todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} ${unit}${cansText}`;
     }
-    if (todayCostEl) todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)} / j`;
+    if (todayCostEl) {
+      const unitCost = appState.lang === 'ar' ? ' / يوم' : ' / j';
+      todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)}${unitCost}`;
+    }
 
     // Calcul du stock d'aliment restant en réserve
     const totalPurchasedFeedCost = (appState.expenses || [])
@@ -2780,9 +2752,10 @@ const app = {
     }
 
     if (stockKgEl) {
+      const unit = appState.lang === 'ar' ? 'كغ' : 'kg';
       stockKgEl.textContent = feedStockRemainingKg > 0
-        ? `${feedStockRemainingKg.toFixed(1)} kg (${this.formatMoney(feedStockRemaining)})`
-        : '0.0 kg en stock';
+        ? `${feedStockRemainingKg.toFixed(1)} ${unit} (${this.formatMoney(feedStockRemaining)})`
+        : (appState.lang === 'ar' ? '0.0 كغ بالمخزن' : '0.0 kg en stock');
     }
     if (breakdownEl) breakdownEl.innerHTML = lotsHtml;
   },

@@ -39,9 +39,10 @@ const TRANSLATIONS = {
     kpi_animals_unit: "{n} têtes",
     kpi_animals_sub: "Poulets, Pondeuses, Poussins (Aviculture)",
 
-    // Farm Daily Feed & Ration Card (Table Agronomique)
-    farm_feed_title: "Ration & Alimentation Quotidienne",
-    farm_feed_subtitle: "Calcul biologique exact selon l'âge réel de chaque bande",
+    // Farm Daily Feed & Ration Card (Consommation Générale)
+    farm_feed_title: "Ration & Consommation Générale",
+    farm_feed_subtitle: "Consommation journalière globale de la ferme et réserve en magasin",
+    farm_feed_badge: "Consommation Générale",
     farm_feed_daily_total: "Consommation journalière",
     farm_feed_cost_total: "Coût aliment / jour",
     farm_feed_stock_reserve: "Stock sacs en réserve",
@@ -549,9 +550,10 @@ const TRANSLATIONS = {
     kpi_animals_unit: "{n} طائر",
     kpi_animals_sub: "دجاج، بياض، كتاكيت (تربية الدواجن)",
 
-    // Farm Daily Feed & Ration Card (Table Agronomique)
-    farm_feed_title: "العليقة واستهلاك العلف اليومي",
-    farm_feed_subtitle: "حساب بيولوجي دقيق حسب العمر الحقيقي لكل دفعة (الجدول العلمي)",
+    // Farm Daily Feed & Ration Card (Consommation Générale)
+    farm_feed_title: "العليقة والاستهلاك العام للعلف",
+    farm_feed_subtitle: "الاستهلاك اليومي الإجمالي للمزرعة والمخزون المتوفر بالمستودع",
+    farm_feed_badge: "الاستهلاك العام",
     farm_feed_daily_total: "الاستهلاك اليومي الإجمالي",
     farm_feed_cost_total: "تكلفة العلف / يوم",
     farm_feed_stock_reserve: "مخزون الأكياس بالمستودع",
@@ -1059,9 +1061,10 @@ const TRANSLATIONS = {
     kpi_animals_unit: "{n} birds",
     kpi_animals_sub: "Broilers, Layers, Chicks (Poultry)",
 
-    // Farm Daily Feed & Ration Card (Table Agronomique)
-    farm_feed_title: "Daily Feed & Ration Management",
-    farm_feed_subtitle: "Exact biological calculation based on real age per flock",
+    // Farm Daily Feed & Ration Card (Consommation Générale)
+    farm_feed_title: "General Feed & Ration Consumption",
+    farm_feed_subtitle: "Overall daily farm feed consumption and warehouse stock",
+    farm_feed_badge: "General Consumption",
     farm_feed_daily_total: "Daily farm consumption",
     farm_feed_cost_total: "Daily feed cost",
     farm_feed_stock_reserve: "Warehouse feed stock",
