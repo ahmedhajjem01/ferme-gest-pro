@@ -4661,7 +4661,8 @@ const app = {
         if (existingFlock) {
           existingFlock.currentQuantity += liveCount;
           existingFlock.initialQuantity += liveCount;
-          existingFlock.notes = (existingFlock.notes || '') + ` [Ajout +${liveCount} poussins nés le 12/10/2026 de ${batch.name}]`;
+          const hatchDate = batch.hatchDate || this.getTodayStr();
+          existingFlock.notes = (existingFlock.notes || '') + ` [Ajout +${liveCount} poussins nés le ${this.formatDateFR(hatchDate)} de ${batch.name}]`;
         } else {
           this.createNewFlockFromHatch(batch, liveCount);
         }
@@ -4682,18 +4683,19 @@ const app = {
 
   createNewFlockFromHatch(batch, liveCount) {
     const methodTag = batch.method === 'poule' ? 'Poule' : 'Machine';
+    const hatchDate = batch.hatchDate || this.getTodayStr();
     const newFlock = {
       id: 'lot-chick-' + Date.now().toString(36),
       species: batch.eggSpecies === 'poule' ? 'poussin' : (batch.eggSpecies === 'pintade' ? 'pintade' : ((batch.eggSpecies === 'canard' || batch.eggSpecies === 'canard_barbarie') ? 'canard' : 'autre')),
-      breed: batch.breed,
+      breed: batch.breed || 'Beldi',
       name: `Génération Éclose (${batch.name} - ${methodTag})`,
       initialQuantity: liveCount,
       currentQuantity: liveCount,
       mortality: 0,
-      birthDate: '2026-10-12',
+      birthDate: hatchDate,
       costPerHead: batch.method === 'poule' ? 0.20 : 0.40,
       stage: 'Démarrage',
-      notes: `Éclos le 12/10/2026 (${liveCount} poussins sortis de ${batch.eggsCount} œufs mis à couver via ${methodTag}).`
+      notes: `Éclos le ${this.formatDateFR(hatchDate)} (${liveCount} poussins sortis de ${batch.eggsCount} œufs mis à couver via ${methodTag}).`
     };
     appState.animals.unshift(newFlock);
   },
