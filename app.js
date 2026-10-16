@@ -20,15 +20,16 @@ const appState = {
   sicamCansCount: null,
   feedDistributions: [],
   feedTypes: [
-    { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
-    { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
+    { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+    { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
   ],
   
   animals: [],
   expenses: [],
   sales: [],
   incubatorBatches: [],
-  dismissedSaleAlerts: []
+  dismissedSaleAlerts: [],
+  savedFavoriteFeedRoutine: null
 };
 
 // Expose appState on global window for multi-device sync
@@ -567,7 +568,8 @@ const app = {
         expenses: appState.expenses,
         sales: appState.sales,
         incubatorBatches: appState.incubatorBatches,
-        dismissedSaleAlerts: Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : []
+        dismissedSaleAlerts: Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : [],
+        savedFavoriteFeedRoutine: appState.savedFavoriteFeedRoutine || null
       }));
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
@@ -598,13 +600,14 @@ const app = {
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
         if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
           appState.feedTypes = [
-            { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
-            { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
+            { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+            { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
           ];
         } else {
           appState.feedTypes = parsed.feedTypes;
         }
         appState.dismissedSaleAlerts = Array.isArray(parsed.dismissedSaleAlerts) ? parsed.dismissedSaleAlerts : [];
+        appState.savedFavoriteFeedRoutine = parsed.savedFavoriteFeedRoutine || null;
 
         // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
@@ -1911,14 +1914,195 @@ const app = {
     return feedPriceKg > 0 ? (feedStockRemaining / feedPriceKg) : 0;
   },
 
+  getFeedDisplayName(ft) {
+    if (!ft) return '';
+    const lang = appState.lang || 'fr';
+    const name = ft.name || '';
+    const id = ft.id || ft.feedTypeId || '';
+
+    if (id === 'feed-ble' || name.includes('Blé') || name.includes('blé') || name.includes('بليه') || name.includes('قمح')) {
+      if (lang === 'ar') return 'قمح / بليه';
+      if (lang === 'en') return 'Wheat / Grains';
+      return 'Blé / Céréales';
+    }
+    if (id === 'feed-bouchon' || name.includes('بوشون') || name.toLowerCase().includes('ponte')) {
+      if (lang === 'ar') return 'علف بياضة (بوشون)';
+      if (lang === 'en') return 'Layer Feed (Pellets)';
+      return 'Aliment ponte (Bouchon)';
+    }
+    if (name.includes('Maïs') || name.includes('maïs') || name.includes('ذرَة') || name.includes('ذرة')) {
+      if (lang === 'ar') return 'ذرة مرحية';
+      if (lang === 'en') return 'Cracked Corn';
+      return 'Maïs concassé';
+    }
+    if (name.includes('Son') || name.includes('son') || name.includes('نخالة')) {
+      if (lang === 'ar') return 'نخالة القمح';
+      if (lang === 'en') return 'Wheat Bran';
+      return 'Son de blé';
+    }
+    return name;
+  },
+
+  renderSmartFeedPresets() {
+    const container = document.getElementById('feedSmartPresetsContainer');
+    if (!container) return;
+
+    const hasHistory = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+    const favorite = appState.savedFavoriteFeedRoutine;
+    const routine = favorite || (hasHistory ? appState.feedDistributions[0] : null);
+
+    if (!routine || !Array.isArray(routine.items) || routine.items.length === 0) {
+      // Mode de démarrage : boutons propres + conseil d'apprentissage
+      container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <label class="form-label" style="font-weight: 700; font-size: 0.8rem; margin: 0;">
+            ${this.t('feed_smart_starter_title')}
+          </label>
+          <span class="badge-pill" style="font-size: 0.68rem; color: var(--accent-amber); background: rgba(245, 158, 11, 0.1);">
+            ${this.t('feed_smart_starter_badge')}
+          </span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
+          <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('half_can')">
+            🥫 0.5 boîte<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.33 kg / aliment</span>
+          </button>
+          <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('one_can')">
+            🥫 1 boîte<br><span style="font-size: 0.66rem; color: var(--text-muted);">~0.67 kg / aliment</span>
+          </button>
+          <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
+            ${this.t('feed_smart_clear')}<br><span style="font-size: 0.66rem; color: var(--text-muted);">0 kg partout</span>
+          </button>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.35;">
+          ${this.t('feed_smart_learning_tip')}
+        </div>
+      `;
+      return;
+    }
+
+    // Mode adaptatif : L'application a analysé les distributions réelles du fermier
+    const summaryItems = routine.items
+      .map(it => `${it.kg}kg ${this.getFeedDisplayName(it).split(' ')[0]}`)
+      .slice(0, 3)
+      .join(' + ');
+    const totalKg = routine.totalKg || routine.items.reduce((sum, it) => sum + (Number(it.kg) || 0), 0);
+    const halfKg = (totalKg * 0.5).toFixed(2);
+
+    container.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+        <label class="form-label" style="font-weight: 700; font-size: 0.8rem; margin: 0;">
+          ${this.t('feed_smart_title')}
+        </label>
+        <span class="badge-pill text-emerald" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.1);">
+          ${this.t('feed_smart_learned_badge')}
+        </span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
+        <!-- Bouton 1: Répéter la routine habituelle -->
+        <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800; border-color: var(--accent-emerald);" onclick="app.applyLearnedRoutine('repeat')">
+          ${this.t('feed_smart_repeat')}<br>
+          <span style="font-size: 0.66rem; color: var(--accent-emerald); font-weight: 700;">${summaryItems || totalKg.toFixed(1) + ' kg'}</span>
+        </button>
+
+        <!-- Bouton 2: Demi-ration (50%) -->
+        <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyLearnedRoutine('half')">
+          ${this.t('feed_smart_half')}<br>
+          <span style="font-size: 0.66rem; color: var(--text-muted);">${halfKg} kg total</span>
+        </button>
+
+        <!-- Bouton 3: Remettre à zéro -->
+        <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('clear')">
+          ${this.t('feed_smart_clear')}<br>
+          <span style="font-size: 0.66rem; color: var(--text-muted);">0 kg partout</span>
+        </button>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; flex-wrap: wrap; gap: 0.3rem;">
+        <small style="font-size: 0.7rem; color: var(--text-muted);">
+          📊 ${totalKg.toFixed(2)} kg habituels (~${(totalKg / 0.667).toFixed(1)} boîtes Sicam)
+        </small>
+        <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 0.15rem 0.45rem; font-weight: 700;" onclick="app.saveCurrentDistributionAsFavorite()">
+          ${this.t('btn_save_favorite_routine')}
+        </button>
+      </div>
+    `;
+  },
+
+  applyLearnedRoutine(mode) {
+    const routine = appState.savedFavoriteFeedRoutine || (appState.feedDistributions && appState.feedDistributions[0]);
+    if (!routine || !Array.isArray(routine.items)) {
+      this.applyDistribPreset('one_can');
+      return;
+    }
+
+    const ratio = mode === 'half' ? 0.5 : 1.0;
+
+    // Réinitialiser les champs à zéro d'abord
+    (appState.feedTypes || []).forEach(ft => {
+      const input = document.getElementById(`distribKg_${ft.id}`);
+      if (input) input.value = '0.00';
+    });
+
+    // Remplir chaque aliment selon la routine mémorisée
+    routine.items.forEach(it => {
+      const targetKg = (Number(it.kg) * ratio).toFixed(2);
+      const input = document.getElementById(`distribKg_${it.feedTypeId}`);
+      if (input) {
+        input.value = targetKg;
+      }
+    });
+
+    this.recalcDistribTotal();
+  },
+
+  saveCurrentDistributionAsFavorite() {
+    const items = [];
+    let totalKg = 0;
+    (appState.feedTypes || []).forEach(ft => {
+      const input = document.getElementById(`distribKg_${ft.id}`);
+      const kg = parseFloat(input?.value) || 0;
+      if (kg > 0) {
+        items.push({ feedTypeId: ft.id, name: ft.name, kg: parseFloat(kg.toFixed(2)) });
+        totalKg += kg;
+      }
+    });
+
+    if (totalKg <= 0) {
+      this.showToast('Veuillez indiquer les quantités distribuées avant de mémoriser.', 'warning');
+      return;
+    }
+
+    appState.savedFavoriteFeedRoutine = {
+      totalKg: parseFloat(totalKg.toFixed(2)),
+      items
+    };
+    this.saveState();
+    this.renderSmartFeedPresets();
+    this.showToast(`⭐ Routine favorite mémorisée : ${totalKg.toFixed(2)} kg/j !`);
+  },
+
+  setQuickFeedSuggestion(type) {
+    const isAr = appState.lang === 'ar';
+    const names = {
+      mais: isAr ? 'ذرة مرحية' : 'Maïs concassé',
+      son: isAr ? 'نخالة القمح' : 'Son de blé',
+      ponte: isAr ? 'علف بياضة' : 'Aliment ponte',
+      demarrage: isAr ? 'علف بداية' : 'Aliment démarrage',
+      feverole: isAr ? 'فول مدشش' : 'Féverole concassée'
+    };
+    const input = document.getElementById('newFeedTypeName');
+    if (input) input.value = names[type] || '';
+  },
+
   renderFeedDistributionModal() {
+    this.renderSmartFeedPresets();
+
     const container = document.getElementById('feedDistribItemsContainer');
     if (!container) return;
 
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [
-        { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
-        { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
+        { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+        { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
       ];
     }
 
@@ -1927,12 +2111,13 @@ const app = {
       const defaultKg = '0.0';
       const defaultCans = '0';
       const stockKg = Number(ft.stockKg) || 0;
+      const displayName = this.getFeedDisplayName(ft);
 
       html += `
         <div class="feed-distrib-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
             <div style="font-weight: 800; font-size: 0.95rem; color: var(--text-main);">
-              🌾 ${ft.name}
+              🌾 ${displayName}
             </div>
             <span class="badge-pill" style="font-size: 0.72rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
               En stock : <strong>${stockKg.toFixed(1)} kg</strong>
@@ -2092,7 +2277,7 @@ const app = {
     this.closeModal('modalFeedDistribution');
     this.renderAll();
 
-    const details = items.map(it => `${it.kg}kg ${it.name.split(' ')[0]}`).join(' + ');
+    const details = items.map(it => `${it.kg}kg ${this.getFeedDisplayName(it).split(' ')[0]}`).join(' + ');
     this.showToast(`🌾 Distribution enregistrée : ${details} (Total ${totalKg.toFixed(1)} kg) !`);
   },
 
@@ -2102,8 +2287,8 @@ const app = {
 
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [
-        { id: 'feed-ble', name: 'بليه / قمح (Blé)', stockKg: 0, pricePerKg: 1.10 },
-        { id: 'feed-bouchon', name: 'بوشون (علف بياضة / Aliment ponte)', stockKg: 0, pricePerKg: 1.50 }
+        { id: 'feed-ble', name: 'Blé / Céréales', stockKg: 0, pricePerKg: 1.10 },
+        { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
       ];
     }
 
@@ -2112,11 +2297,12 @@ const app = {
       const stockKg = Number(ft.stockKg) || 0;
       const priceKg = Number(ft.pricePerKg) || 1.0;
       const subtotal = stockKg * priceKg;
+      const displayName = this.getFeedDisplayName(ft);
 
       html += `
         <div class="feed-stock-row" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
-            <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${ft.name}</strong>
+            <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${displayName}</strong>
             ${appState.feedTypes.length > 1 ? `
               <button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-rose); padding: 0.15rem 0.45rem; font-size: 0.7rem;" onclick="app.deleteFeedType('${ft.id}')">
                 🗑️ Supprimer
@@ -2385,7 +2571,7 @@ const app = {
 
     if (feedStockRemainingKg > 0 || totalPurchasedFeedCost > 0) {
       const typesBreakdown = (appState.feedTypes || [])
-        .map(ft => `${ft.name.split(' ')[0]}: ${(ft.stockKg || 0).toFixed(1)}kg`)
+        .map(ft => `${this.getFeedDisplayName(ft).split(' ')[0]}: ${(ft.stockKg || 0).toFixed(1)}kg`)
         .join(' &bull; ');
       const stockBadgeAr = `📦 مخزون العلف المتوفر بالمستودع: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} كغ) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;
       const stockBadgeFr = `📦 Réserve d'aliment en magasin : ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg) ${typesBreakdown ? '&bull; ' + typesBreakdown : ''}`;

@@ -1785,22 +1785,9 @@
             <input type="date" id="distribDate" class="input-field" required>
           </div>
 
-          <!-- Raccourcis Magiques par Moment de la Journée -->
-          <div class="form-group" style="margin-bottom: 0.85rem;">
-            <label class="form-label" style="font-weight: 700; font-size: 0.8rem; display: flex; justify-content: space-between;">
-              <span>⚡ Raccourcis rapides en 1 clic :</span>
-            </label>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
-              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('half_can')">
-                🥫 0.5 boîte / aliment<br><span style="font-size: 0.68rem; color: var(--text-muted);">~0.33 kg par type</span>
-              </button>
-              <button type="button" class="btn btn-outline" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 700;" onclick="app.applyDistribPreset('one_can')">
-                🥫 1 boîte / aliment<br><span style="font-size: 0.68rem; color: var(--text-muted);">~0.67 kg par type</span>
-              </button>
-              <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.45rem 0.25rem; font-size: 0.74rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
-                🔄 Remettre à zéro<br><span style="font-size: 0.68rem; color: var(--text-muted);">0 kg partout</span>
-              </button>
-            </div>
+          <!-- Raccourcis Intelligents et Adaptatifs en 1 clic -->
+          <div class="form-group" style="margin-bottom: 0.85rem;" id="feedSmartPresetsContainer">
+            <!-- Dynamiquement généré par renderSmartFeedPresets() selon les habitudes du fermier -->
           </div>
 
           <!-- Liste dynamique des aliments pour distribution -->
@@ -1811,7 +1798,7 @@
           <!-- Bouton ajouter un nouveau type d'aliment -->
           <div style="text-align: center; margin-bottom: 1rem;">
             <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')">
-              ➕ Ajouter un autre type d'aliment (ex: ذرَة Maïs, نخالة Son...)
+              ➕ Ajouter un autre type d'aliment (ex: Maïs, Son, Tournesol...)
             </button>
           </div>
 
@@ -1859,19 +1846,19 @@
 
           <!-- Suggestions rapides en 1 clic -->
           <div class="form-group" style="margin-bottom: 0.85rem;">
-            <label class="form-label" style="font-size: 0.78rem;">💡 Suggestions rapides en 1 clic :</label>
+            <label class="form-label" style="font-size: 0.78rem;">💡 Suggestions rapides :</label>
             <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-              <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('newFeedTypeName').value = 'ذرَة (Maïs concassé)'">🌽 ذرَة (Maïs)</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('newFeedTypeName').value = 'نخالة (Son de blé)'">🌾 نخالة (Son)</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('newFeedTypeName').value = 'علف بياضة (Aliment Ponte)'">🥚 علف بياضة (Ponte)</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('newFeedTypeName').value = 'علف بداية (Démarrage)'">🐥 علف بداية (Démarrage)</button>
-              <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('newFeedTypeName').value = 'فول مدشش (Féverole)'">🌱 فول (Féverole)</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('mais')">🌽 Maïs</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('son')">🌾 Son de blé</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('ponte')">🥚 Aliment ponte</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('demarrage')">🐥 Démarrage</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setQuickFeedSuggestion('feverole')">🌱 Féverole</button>
             </div>
           </div>
 
           <div class="form-group" style="margin-bottom: 0.85rem;">
             <label for="newFeedTypeName" class="form-label" style="font-weight: 700;">Nom de l'aliment *</label>
-            <input type="text" id="newFeedTypeName" class="input-field" placeholder="Ex: ذرَة (Maïs) ou علف بياضة" required>
+            <input type="text" id="newFeedTypeName" class="input-field" placeholder="Ex: Maïs concassé, Son de blé, Tournesol..." required>
           </div>
 
           <div class="form-row" style="margin-bottom: 0.85rem;">

@@ -48,6 +48,15 @@ const TRANSLATIONS = {
     recommended_sell_price_title: "🎯 Prix de vente conseillé (+40% bénéfice net) :",
     btn_apply_rec_price: "🎯 Appliquer ce prix conseillé",
     feed_cumul_label: "Cumul mangé",
+    feed_smart_title: "⚡ Raccourcis intelligents (Habitudes de votre ferme) :",
+    feed_smart_starter_title: "⚡ Raccourcis de démarrage rapides :",
+    feed_smart_learned_badge: "✨ Appris de vos distributions",
+    feed_smart_starter_badge: "🌱 Mode démarrage",
+    feed_smart_repeat: "⭐ Ma routine habituelle",
+    feed_smart_half: "☀️ Demi-ration (50%)",
+    feed_smart_clear: "🔄 Remettre à zéro",
+    feed_smart_learning_tip: "💡 Distribuez vos rations pendant 1 ou 2 jours. FermeGest va automatiquement analyser vos habitudes et créer vos raccourcis 1-clic sur-mesure !",
+    btn_save_favorite_routine: "💾 Mémoriser comme routine favorite",
 
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 Bienvenue ! Votre exploitation commence à zéro.",
@@ -529,6 +538,15 @@ const TRANSLATIONS = {
     recommended_sell_price_title: "🎯 سعر البيع المقترح (+40% ربح صافي):",
     btn_apply_rec_price: "🎯 تطبيق السعر المقترح",
     feed_cumul_label: "المستهلك التراكمي",
+    feed_smart_title: "⚡ اختصارات ذكية (عادات مزرعتك الفعلية):",
+    feed_smart_starter_title: "⚡ اختصارات سريعة للبدء:",
+    feed_smart_learned_badge: "✨ تم استنتاجها من توزيعاتك",
+    feed_smart_starter_badge: "🌱 وضع البداية",
+    feed_smart_repeat: "⭐ عادتي اليومية المعتادة",
+    feed_smart_half: "☀️ نصف الوجبة (50%)",
+    feed_smart_clear: "🔄 تصفير الكل",
+    feed_smart_learning_tip: "💡 وزع طعام طيورك بشكل طبيعي لمدة يوم أو يومين، وسيتعلم التطبيق عاداتك تلقائياً لإنشاء اختصارات بنقرة واحدة مخصصة لمزرعتك!",
+    btn_save_favorite_routine: "💾 حفظ كعادتي المفضلة",
 
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 مرحباً بك! مشروعك يبدأ من الصفر.",
@@ -1010,6 +1028,15 @@ const TRANSLATIONS = {
     recommended_sell_price_title: "🎯 Recommended Selling Price (+40% net profit):",
     btn_apply_rec_price: "🎯 Apply Recommended Price",
     feed_cumul_label: "Cumulative feed",
+    feed_smart_title: "⚡ Smart Shortcuts (Learned from your farm):",
+    feed_smart_starter_title: "⚡ Quick Starter Shortcuts:",
+    feed_smart_learned_badge: "✨ Learned from your feeding history",
+    feed_smart_starter_badge: "🌱 Starter mode",
+    feed_smart_repeat: "⭐ My usual routine",
+    feed_smart_half: "☀️ Half ration (50%)",
+    feed_smart_clear: "🔄 Reset to zero",
+    feed_smart_learning_tip: "💡 Distribute feed normally for 1 or 2 days. FermeGest will automatically analyze your habits and create tailored 1-click shortcuts!",
+    btn_save_favorite_routine: "💾 Save as favorite routine",
 
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 Welcome! Your farm project starts at zero.",
