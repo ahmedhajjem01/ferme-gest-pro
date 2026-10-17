@@ -3089,40 +3089,31 @@ const app = {
     const card = document.getElementById('farmFeedSummaryCard');
     if (!card) return;
 
+    const fullSection = document.getElementById('farmFeedSummaryFull');
+    const diminishedSection = document.getElementById('farmFeedSummaryDiminished');
+
     const breakdownEl = document.getElementById('farmFeedLotsBreakdown');
     const todayKgEl = document.getElementById('farmFeedTodayKg');
     const todayCostEl = document.getElementById('farmFeedTodayCost');
     const stockKgEl = document.getElementById('farmFeedStockKg');
 
+    const todayKgCompact = document.getElementById('farmFeedTodayKgCompact');
+    const todayCostCompact = document.getElementById('farmFeedTodayCostCompact');
+    const stockKgCompact = document.getElementById('farmFeedStockKgCompact');
+
     const feedPriceKg = this.getAverageFeedPricePerKg();
     let totalFarmDailyGrams = 0;
-    let lotsHtml = '';
+    let totalLivingAnimals = 0;
 
     if (Array.isArray(appState.animals)) {
       appState.animals.forEach(animal => {
         const qty = Number(animal.currentQuantity) || 0;
         if (qty <= 0) return;
+        totalLivingAnimals += qty;
         const ageDays = this.calculateAgeInDays(animal.birthDate) + (Number(animal.arrivalAgeDays) || 0);
         const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
         totalFarmDailyGrams += qty * feedData.avgGrams;
       });
-    }
-
-    const isCustom = appState.feedRationMode !== 'industrial' && appState.customDailyFeedKg > 0;
-    const totalFarmDailyKg = isCustom ? appState.customDailyFeedKg : (totalFarmDailyGrams / 1000);
-    const totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
-
-    if (todayKgEl) {
-      const isAr = appState.lang === 'ar';
-      const cansText = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null)
-        ? (isAr ? ` (~${appState.sicamCansCount} علبة سيكام)` : ` (~${appState.sicamCansCount} boîtes Sicam)`)
-        : '';
-      const unit = isAr ? 'كغ / يوم' : 'kg / j';
-      todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} ${unit}${cansText}`;
-    }
-    if (todayCostEl) {
-      const unitCost = appState.lang === 'ar' ? ' / يوم' : ' / j';
-      todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)}${unitCost}`;
     }
 
     // Calcul du stock d'aliment restant en réserve
@@ -3130,20 +3121,86 @@ const app = {
       .filter(e => e.category === 'nourriture')
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-    const feedStockRemainingKg = this.getAvailableFeedStockKg();
+    let feedStockRemainingKg = Math.max(0, this.getAvailableFeedStockKg() || 0);
     const unitFeedVal = appState.feedStockCostPerKg || feedPriceKg;
-    const feedStockRemaining = feedStockRemainingKg * unitFeedVal;
+    let feedStockRemaining = feedStockRemainingKg * unitFeedVal;
 
+    const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+
+    // Détermination de l'état : Aucune donnée saisie au début
+    const hasData = (totalLivingAnimals > 0) || (feedStockRemainingKg > 0.05) || (totalPurchasedFeedCost > 0) || hasDistributions;
+
+    // Calcul des valeurs avec garantie stricte de 0 si aucun animal ou aucune donnée
+    let totalFarmDailyKg = 0;
+    let totalFarmDailyCost = 0;
+
+    if (totalLivingAnimals > 0) {
+      const isCustom = appState.feedRationMode !== 'industrial' && appState.customDailyFeedKg > 0;
+      totalFarmDailyKg = isCustom ? appState.customDailyFeedKg : (totalFarmDailyGrams / 1000);
+      totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
+    }
+
+    if (!hasData) {
+      totalFarmDailyKg = 0;
+      totalFarmDailyCost = 0;
+      feedStockRemainingKg = 0;
+      feedStockRemaining = 0;
+    }
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKgDay = isAr ? 'كغ / يوم' : (isEn ? 'kg / day' : 'kg / j');
+    const unitCostDay = isAr ? ' / يوم' : (isEn ? ' / day' : ' / j');
+    const unitKg = isAr ? 'كغ' : 'kg';
+
+    // Remplissage des métriques compactes (Diminished mode)
+    if (todayKgCompact) {
+      todayKgCompact.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKgDay}`;
+    }
+    if (todayCostCompact) {
+      todayCostCompact.textContent = `${this.formatMoney(totalFarmDailyCost)}${unitCostDay}`;
+    }
+    if (stockKgCompact) {
+      stockKgCompact.textContent = `${feedStockRemainingKg.toFixed(1)} ${unitKg} (${this.formatMoney(feedStockRemaining)})`;
+    }
+
+    // Remplissage des métriques de la vue complète
+    if (todayKgEl) {
+      const cansText = (totalLivingAnimals > 0 && appState.sicamCansCount !== undefined && appState.sicamCansCount !== null)
+        ? (isAr ? ` (~${appState.sicamCansCount} علبة سيكام)` : ` (~${appState.sicamCansCount} boîtes Sicam)`)
+        : '';
+      todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKgDay}${cansText}`;
+    }
+    if (todayCostEl) {
+      todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)}${unitCostDay}`;
+    }
+    if (stockKgEl) {
+      stockKgEl.textContent = feedStockRemainingKg > 0
+        ? `${feedStockRemainingKg.toFixed(1)} ${unitKg} (${this.formatMoney(feedStockRemaining)})`
+        : (isAr ? '0.0 كغ بالمخزن' : (isEn ? '0.0 kg in stock' : '0.0 kg en stock'));
+    }
+
+    // Basculement visuel entre mode Diminué et mode Complet
+    if (!hasData) {
+      card.classList.add('is-diminished');
+      if (diminishedSection) diminishedSection.style.display = 'block';
+      if (fullSection) fullSection.style.display = 'none';
+      if (breakdownEl) breakdownEl.innerHTML = '';
+      return;
+    }
+
+    // Mode Complet
+    card.classList.remove('is-diminished');
+    if (diminishedSection) diminishedSection.style.display = 'none';
+    if (fullSection) fullSection.style.display = 'block';
+
+    let lotsHtml = '';
     if (feedStockRemainingKg > 0 || totalPurchasedFeedCost > 0) {
-      const isAr = appState.lang === 'ar';
-      const isEn = appState.lang === 'en';
-      const unit = isAr ? 'كغ' : 'kg';
-
       const typesBreakdown = (appState.feedTypes || [])
         .map(ft => {
           const shortName = this.getFeedShortName(ft);
           const stock = (Number(ft.stockKg) || 0).toFixed(1);
-          return `<span style="white-space: nowrap; display: inline-block;">${shortName} : ${stock} ${unit}</span>`;
+          return `<span style="white-space: nowrap; display: inline-block;">${shortName} : ${stock} ${unitKg}</span>`;
         })
         .join(' &bull; ');
 
@@ -3166,18 +3223,16 @@ const app = {
             <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">${subText}</span>
           </div>
           <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-sm btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800; color: var(--accent-amber);" onclick="app.openModal('modalFeedDistribution')">
+            <button type="button" class="btn btn-sm btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800; color: var(--accent-amber);" onclick="app.openModal('modalFeedDistribution')">
               ${btnDistribText}
             </button>
-            <button class="btn btn-sm btn-emerald" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
+            <button type="button" class="btn btn-sm btn-emerald" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
               ${btnStockText}
             </button>
           </div>
         </div>
       `;
     } else {
-      const isAr = appState.lang === 'ar';
-      const isEn = appState.lang === 'en';
       const emptyMsg = isAr 
         ? '📦 <strong>مخزون العلف :</strong> لا يوجد أكياس مسجلة في المخزن.'
         : (isEn ? '📦 <strong>Feed stock:</strong> No bags recorded in warehouse.' : '📦 <strong>Stock d\'aliment :</strong> Aucun sac déclaré en réserve.');
@@ -3188,19 +3243,13 @@ const app = {
       lotsHtml += `
         <div style="grid-column: 1 / -1; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <span>${emptyMsg}</span>
-          <button class="btn btn-sm btn-primary" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
+          <button type="button" class="btn btn-sm btn-primary" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
             ${emptyBtn}
           </button>
         </div>
       `;
     }
 
-    if (stockKgEl) {
-      const unit = appState.lang === 'ar' ? 'كغ' : 'kg';
-      stockKgEl.textContent = feedStockRemainingKg > 0
-        ? `${feedStockRemainingKg.toFixed(1)} ${unit} (${this.formatMoney(feedStockRemaining)})`
-        : (appState.lang === 'ar' ? '0.0 كغ بالمخزن' : '0.0 kg en stock');
-    }
     if (breakdownEl) breakdownEl.innerHTML = lotsHtml;
   },
 

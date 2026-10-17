@@ -2978,10 +2978,109 @@ label {
 
 /* Farm Daily Feed Summary Card & Smart Pricing */
 .farm-feed-summary-card {
-  transition: var(--transition);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08));
+  border: 1.5px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.35rem;
+  margin-bottom: 1.35rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s ease;
 }
 .farm-feed-summary-card:hover {
   border-color: rgba(245, 158, 11, 0.55);
+}
+
+/* Diminished State (empty initial farm state: diminished height & zero values) */
+.farm-feed-summary-card.is-diminished {
+  background: rgba(245, 158, 11, 0.04);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.95rem;
+  margin-bottom: 0.85rem;
+  box-shadow: none;
+}
+.farm-feed-summary-card.is-diminished:hover {
+  background: rgba(245, 158, 11, 0.07);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.farm-feed-diminished-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.farm-feed-diminished-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.farm-feed-diminished-icon {
+  font-size: 1.15rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.farm-feed-diminished-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-main);
+}
+.farm-feed-diminished-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.farm-feed-diminished-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(245, 158, 11, 0.2);
+}
+.farm-feed-diminished-metrics {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.farm-feed-diminished-pill {
+  background: var(--bg-card);
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  transition: var(--transition);
+}
+.farm-feed-diminished-pill strong {
+  color: var(--accent-amber);
+  font-weight: 800;
+}
+.farm-feed-diminished-pill:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: translateY(-1px);
+}
+.farm-feed-diminished-hint {
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  margin-inline-start: auto;
 }
 .smart-rec-price-row {
   transition: var(--transition);

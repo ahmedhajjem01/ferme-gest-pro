@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=19">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -412,47 +412,110 @@
           </div>
 
           <!-- Farm Daily Feed & Ration Card (Table Agronomique Réelle) -->
-          <div id="farmFeedSummaryCard" class="farm-feed-summary-card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08)); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-lg); padding: 1.2rem 1.35rem; margin-bottom: 1.35rem; box-shadow: var(--shadow-sm);">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="font-size: 2rem; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);">🌾</div>
-                <div>
-                  <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Ration & Consommation Générale</h3>
-                    <span class="badge-pill text-amber" style="font-size: 0.72rem;" data-i18n="farm_feed_badge">Consommation Générale</span>
+          <!-- Farm Daily Feed & Ration Card (Table Agronomique Réelle) -->
+          <div id="farmFeedSummaryCard" class="farm-feed-summary-card">
+            
+            <!-- Diminished Initial Mode (si aucune donnée saisie dans le début) -->
+            <div id="farmFeedSummaryDiminished" class="farm-feed-diminished-section" style="display: none;">
+              <div class="farm-feed-diminished-header">
+                <div class="farm-feed-diminished-title-group">
+                  <span class="farm-feed-diminished-icon">🌾</span>
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                      <h4 class="farm-feed-diminished-title" data-i18n="farm_feed_title">Ration & Consommation Générale</h4>
+                      <span class="badge-pill text-amber" style="font-size: 0.68rem; padding: 0.1rem 0.45rem;" data-i18n="farm_feed_badge_initial">Début (0 donnée)</span>
+                    </div>
                   </div>
-                  <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Consommation journalière globale de la ferme et réserve en magasin</small>
                 </div>
+                <div class="farm-feed-diminished-actions">
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.2rem 0.55rem; font-size: 0.74rem; font-weight: 700; color: var(--accent-amber);" onclick="app.openModal('modalDailyFeedRation')">
+                    ⚙️ <span data-i18n="btn_adjust_ration">Ration</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.2rem 0.55rem; font-size: 0.74rem; font-weight: 700;" onclick="app.openModal('modalFeedPortionsTable')">
+                    📊 <span data-i18n="btn_view_portions_table">Barème Portions</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-primary" style="padding: 0.2rem 0.6rem; font-size: 0.74rem; font-weight: 700;" onclick="app.openModal('modalAddAnimal')">
+                    ➕ <span data-i18n="btn_add_first_animal">Ajouter un lot</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="farm-feed-diminished-body">
+                <div class="farm-feed-diminished-metrics">
+                  <div class="farm-feed-diminished-pill">
+                    <span data-i18n="farm_feed_daily_short">Conso :</span>
+                    <strong id="farmFeedTodayKgCompact">0.00 kg / j</strong>
+                  </div>
+
+                  <div class="farm-feed-diminished-pill">
+                    <span data-i18n="farm_feed_cost_short">Coût :</span>
+                    <strong style="color: var(--accent-rose);" id="farmFeedTodayCostCompact">0,000 DT / j</strong>
+                  </div>
+
+                  <div class="farm-feed-diminished-pill" style="cursor: pointer;" onclick="app.openModal('modalAdjustFeedStock')" title="Cliquer pour déclarer le stock">
+                    <span data-i18n="farm_feed_stock_short">Stock réserve :</span>
+                    <strong style="color: var(--accent-emerald);" id="farmFeedStockKgCompact">0.0 kg (0,000 DT)</strong>
+                    <span style="font-size: 0.7rem; color: var(--accent-amber);">✏️</span>
+                  </div>
+                </div>
+
+                <small class="farm-feed-diminished-hint" data-i18n="farm_feed_empty_hint">
+                  Aucune volaille ni stock d'aliment saisis pour le moment. Les valeurs restent à 0 jusqu'à l'enregistrement de votre premier lot.
+                </small>
               </div>
             </div>
 
-            <!-- 3 Cartes de Consommation Générale -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 0.85rem;">
-              <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalDailyFeedRation')" title="Cliquer pour ajuster votre ration quotidienne (boîtes Sicam ou kg)">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; margin-bottom: 0.25rem;">
-                  <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" data-i18n="farm_feed_daily_total">Consommation journalière</span>
-                  <span style="font-size: 0.75rem; color: var(--accent-amber);">✏️</span>
+            <!-- Full Rich Mode (dès qu'au moins une donnée existe) -->
+            <div id="farmFeedSummaryFull" class="farm-feed-full-section">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div style="font-size: 2rem; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);">🌾</div>
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                      <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Ration & Consommation Générale</h3>
+                      <span class="badge-pill text-amber" style="font-size: 0.72rem;" data-i18n="farm_feed_badge">Consommation Générale</span>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Consommation journalière globale de la ferme et réserve en magasin</small>
+                  </div>
                 </div>
-                <strong style="font-size: 1.25rem; color: var(--accent-amber); display: block;" id="farmFeedTodayKg">0.00 kg / j</strong>
-              </div>
-
-              <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 0.25rem;" data-i18n="farm_feed_cost_total">Coût aliment / jour</span>
-                <strong style="font-size: 1.25rem; color: var(--accent-rose); display: block;" id="farmFeedTodayCost">0,000 DT / j</strong>
-              </div>
-
-              <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalAdjustFeedStock')" title="Cliquer pour déclarer ou ajuster le stock réel">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; margin-bottom: 0.25rem;">
-                  <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" data-i18n="farm_feed_stock_reserve">Stock sacs en réserve</span>
-                  <span style="font-size: 0.75rem; color: var(--accent-amber);">✏️</span>
+                <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 700;" onclick="app.openModal('modalFeedPortionsTable')" title="Voir le barème officiel des portions par âge">
+                    📊 <span data-i18n="btn_view_portions_table">Barème Portions</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 700; color: var(--accent-amber);" onclick="app.openModal('modalDailyFeedRation')" title="Ajuster la ration">
+                    ⚙️ <span data-i18n="btn_adjust_ration">Ration</span>
+                  </button>
                 </div>
-                <strong style="font-size: 1.25rem; color: var(--accent-emerald); display: block;" id="farmFeedStockKg">0.0 kg en stock</strong>
               </div>
-            </div>
 
-            <!-- Réserve de stock magasin & actions de distribution -->
-            <div id="farmFeedLotsBreakdown">
-              <!-- Dynamically populated with warehouse reserve banner -->
+              <!-- 3 Cartes de Consommation Générale -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 0.85rem;">
+                <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalDailyFeedRation')" title="Cliquer pour ajuster votre ration quotidienne (boîtes Sicam ou kg)">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" data-i18n="farm_feed_daily_total">Consommation journalière</span>
+                    <span style="font-size: 0.75rem; color: var(--accent-amber);">✏️</span>
+                  </div>
+                  <strong style="font-size: 1.25rem; color: var(--accent-amber); display: block;" id="farmFeedTodayKg">0.00 kg / j</strong>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                  <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 0.25rem;" data-i18n="farm_feed_cost_total">Coût aliment / jour</span>
+                  <strong style="font-size: 1.25rem; color: var(--accent-rose); display: block;" id="farmFeedTodayCost">0,000 DT / j</strong>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalAdjustFeedStock')" title="Cliquer pour déclarer ou ajuster le stock réel">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" data-i18n="farm_feed_stock_reserve">Stock sacs en réserve</span>
+                    <span style="font-size: 0.75rem; color: var(--accent-amber);">✏️</span>
+                  </div>
+                  <strong style="font-size: 1.25rem; color: var(--accent-emerald); display: block;" id="farmFeedStockKg">0.0 kg en stock</strong>
+                </div>
+              </div>
+
+              <!-- Réserve de stock magasin & actions de distribution -->
+              <div id="farmFeedLotsBreakdown">
+                <!-- Dynamically populated with warehouse reserve banner -->
+              </div>
             </div>
           </div>
 
@@ -2247,8 +2310,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=18"></script>
-  <script src="translations.js?v=18"></script>
-  <script src="app.js?v=18"></script>
+  <script src="supabase-client.js?v=19"></script>
+  <script src="translations.js?v=19"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
