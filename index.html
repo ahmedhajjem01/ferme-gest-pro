@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=18">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -540,13 +540,18 @@
               <h2 class="section-title" data-i18n="section_animals_title">Gestion du Cheptel & des Bandes</h2>
               <p class="section-desc" data-i18n="section_animals_desc">Suivez chaque génération, race, âge en jours/semaines, taux de survie et alimentation.</p>
             </div>
-            <button class="btn btn-primary" onclick="app.openModal('modalAddAnimal')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span data-i18n="btn_new_lot">Nouveau Lot / Animal</span>
-            </button>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button class="btn btn-secondary" onclick="app.openFeedPortionsModal()" style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700;">
+                🌾 <span data-i18n="btn_portions_table">Barème des Portions</span>
+              </button>
+              <button class="btn btn-primary" onclick="app.openModal('modalAddAnimal')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span data-i18n="btn_new_lot">Nouveau Lot / Animal</span>
+              </button>
+            </div>
           </div>
 
           <!-- Toolbar: Tri & Filtres par Âge et Nombre -->
@@ -1114,33 +1119,50 @@
       </div>
       <form id="formAddAnimal" onsubmit="app.handleSaveAnimal(event)">
         <div class="modal-body">
+          <!-- 1) Type d'animal & 2) Statut / Stade -->
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="animalSpecies" data-i18n="lbl_species_type">Espèce / Type</label>
-              <select id="animalSpecies" class="input-field" required>
-                <option value="poulet" data-i18n="opt_species_poulet">Poulet (1 à 6 mois)</option>
-                <option value="pondeuse" data-i18n="opt_species_pondeuse">Poule Pondeuse</option>
-                <option value="poussin" data-i18n="opt_species_poussin">Poussins (1j / Démarrage)</option>
-                <option value="adulte" data-i18n="opt_species_poulet_adulte">🐓 Coq Adulte (Reproducteur)</option>
-                <option value="pintade" data-i18n="opt_species_pintade">🪶 Pintade (Chair / Élevage)</option>
-                <option value="canard" data-i18n="opt_species_canard">🦆 Canard de Barbarie (Chair / Élevage)</option>
-                <option value="autre" data-i18n="opt_species_other">Autre volaille (Dinde, Caille...)</option>
+              <label for="animalSpecies" style="font-weight: 700; color: var(--accent-emerald);">
+                <span data-i18n="lbl_species_type">1. Type d'animal</span>
+              </label>
+              <select id="animalSpecies" class="input-field" required onchange="app.handleAnimalSpeciesChange(this.value, 'animal')">
+                <option value="poulet" selected>🐔 Poule / Poulet (Gallinacés)</option>
+                <option value="canard">🦆 Canard (Palmipèdes / Barbarie)</option>
+                <option value="pintade">🪶 Pintade (Chair / Élevage)</option>
+                <option value="autre">🦃 Autre volaille (Dinde, Caille...)</option>
               </select>
             </div>
             <div class="form-group flex-1">
-              <label for="animalBreed"><span data-i18n="lbl_breed">Race / Variété</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="text" id="animalBreed" class="input-field" placeholder="Ex: Sasso, Beldi... (Optionnel)">
+              <label for="animalStageSelect" style="font-weight: 700; color: var(--accent-amber);">
+                <span data-i18n="lbl_animal_status_select">2. Statut & Âge de la bande</span>
+              </label>
+              <select id="animalStageSelect" class="input-field" required onchange="app.handleAnimalStagePresetChange(this.value, 'animal')">
+                <!-- Rempli dynamiquement -->
+              </select>
             </div>
+          </div>
+
+          <!-- Dynamic Portion & Agronomic Guidance Banner -->
+          <div id="animalPortionBanner" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.5rem 0.75rem; margin-bottom: 0.85rem; font-size: 0.78rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem;">
+            <div id="animalPortionBannerText" style="color: var(--text-secondary);">
+              🌾 <strong class="text-amber">Portion de démarrage : ~30 g / j</strong> (Coefficient Ci = 1.0)
+            </div>
+            <a href="javascript:void(0)" onclick="app.openFeedPortionsModal(document.getElementById('animalSpecies').value)" style="color: var(--accent-amber); font-weight: 700; text-decoration: underline; font-size: 0.75rem;">
+              📋 Voir le barème complet
+            </a>
           </div>
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="animalName"><span data-i18n="lbl_identifier">Identifiant / N° de Lot</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="text" id="animalName" class="input-field" placeholder="Laisser vide pour ID auto (ex: 1, 2, 3...)">
-            </div>
-            <div class="form-group flex-1">
               <label for="animalQuantity" data-i18n="lbl_initial_qty">Nombre de Têtes (Effectif Initial)</label>
               <input type="number" id="animalQuantity" class="input-field" min="1" value="50" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="animalCostPerHead">
+                <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) 
+                <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit / éclos)</small>
+              </label>
+              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0" min="0" placeholder="0 (si gratuit / éclosion)">
             </div>
           </div>
 
@@ -1151,7 +1173,7 @@
             </div>
             <div class="form-group flex-1">
               <label for="animalArrivalAgeDays">
-                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.78rem;">(ex: 30 si 1 mois)</small>
+                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.78rem;">(auto selon statut ou personnalisé)</small>
               </label>
               <input type="number" id="animalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 (si poussin 1j) ou 30 (si 1 mois)">
             </div>
@@ -1159,23 +1181,20 @@
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="animalStage" data-i18n="lbl_current_stage">Stade Actuel</label>
-              <select id="animalStage" class="input-field">
-                <option value="Démarrage" data-i18n="opt_stage_start">Démarrage (0-14 jours)</option>
-                <option value="Croissance" data-i18n="opt_stage_growth">Croissance (15-35 jours / 1-6 mois)</option>
-                <option value="Finition" data-i18n="opt_stage_finish">Finition / Engraissement</option>
-                <option value="Adulte" data-i18n="opt_stage_adulte" selected>Adulte</option>
-              </select>
+              <label for="animalBreed"><span data-i18n="lbl_breed">Race / Variété</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+              <input type="text" id="animalBreed" class="input-field" placeholder="Ex: Sasso, Beldi... (Optionnel)">
             </div>
             <div class="form-group flex-1">
-              <label for="animalCostPerHead"><span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small></label>
-              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0" min="0" placeholder="0 (si gratuit / éclosion)">
+              <label for="animalName"><span data-i18n="lbl_identifier">Identifiant / N° de Lot</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+              <input type="text" id="animalName" class="input-field" placeholder="Laisser vide pour ID auto (ex: 1, 2, 3...)">
             </div>
           </div>
 
+          <input type="hidden" id="animalStage" value="Démarrage">
+
           <div class="form-group">
             <label for="animalNotes" data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</label>
-            <textarea id="animalNotes" class="input-field" rows="2" placeholder="Ex: Bâtiment A, vaccination Marek faite..."></textarea>
+            <textarea id="animalNotes" class="input-field" rows="2" placeholder="Ex: Bâtiment A, vaccination faite..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -1196,6 +1215,29 @@
       <form id="formEditAnimal" onsubmit="app.handleSaveEditAnimal(event)">
         <div class="modal-body">
           <input type="hidden" id="editAnimalId">
+
+          <!-- 1) Type d'animal & 2) Statut / Stade -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="editAnimalSpecies" style="font-weight: 700; color: var(--accent-emerald);">
+                <span data-i18n="lbl_species_type">1. Type d'animal</span>
+              </label>
+              <select id="editAnimalSpecies" class="input-field" required onchange="app.handleAnimalSpeciesChange(this.value, 'editAnimal')">
+                <option value="poulet">🐔 Poule / Poulet (Gallinacés)</option>
+                <option value="canard">🦆 Canard (Palmipèdes / Barbarie)</option>
+                <option value="pintade">🪶 Pintade (Chair / Élevage)</option>
+                <option value="autre">🦃 Autre volaille (Dinde, Caille...)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="editAnimalStageSelect" style="font-weight: 700; color: var(--accent-amber);">
+                <span data-i18n="lbl_animal_status_select">2. Statut & Âge de la bande</span>
+              </label>
+              <select id="editAnimalStageSelect" class="input-field" required onchange="app.handleAnimalStagePresetChange(this.value, 'editAnimal')">
+                <!-- Rempli dynamiquement -->
+              </select>
+            </div>
+          </div>
 
           <div class="form-group">
             <label for="editAnimalName"><span data-i18n="lbl_identifier">Nom / N° du Lot</span></label>
@@ -1221,24 +1263,14 @@
             </div>
             <div class="form-group flex-1">
               <label for="editAnimalArrivalAgeDays">
-                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.76rem;">(ex: 30 si 1 mois)</small>
+                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.76rem;">(ex: 0 si poussin / 30 si 1 mois)</small>
               </label>
               <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 si poussin / 30 si 1 mois">
             </div>
           </div>
 
-          <!-- Stade Actuel & Prix d'Achat unitaire -->
+          <!-- Prix d'Achat unitaire -->
           <div class="form-row">
-            <div class="form-group flex-1">
-              <label for="editAnimalStage"><span data-i18n="lbl_current_stage">Stade Actuel</span></label>
-              <select id="editAnimalStage" class="input-field">
-                <option value="Démarrage" data-i18n="opt_stage_start">Démarrage (0-14 jours)</option>
-                <option value="Croissance" data-i18n="opt_stage_growth">Croissance (15-35 jours / 1-6 mois)</option>
-                <option value="Ponte" data-i18n="opt_stage_ponte">Ponte</option>
-                <option value="Finition" data-i18n="opt_stage_finish">Finition / Engraissement</option>
-                <option value="Adulte" data-i18n="opt_stage_adulte">Adulte</option>
-              </select>
-            </div>
             <div class="form-group flex-1">
               <label for="editAnimalCostPerHead">
                 <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small>
@@ -1249,6 +1281,8 @@
           <small class="text-muted" style="font-size: 0.75rem; margin-top: -0.4rem; display: block;">
             Indiquez 0 si les sujets sont nés à la ferme, issus de votre couveuse ou reçus gratuitement.
           </small>
+
+          <input type="hidden" id="editAnimalStage" value="Adulte">
 
           <div class="form-group">
             <label for="editAnimalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span></label>
@@ -1946,6 +1980,9 @@
         <p class="modal-desc" data-i18n="modal_settings_desc">Gérez vos données locales ou chargez l'exemple complet pour explorer toutes les fonctionnalités d'élevage et de comptabilité.</p>
         
         <div class="data-options-buttons">
+          <button class="btn btn-secondary btn-full" onclick="app.closeModal('modalDataOptions'); app.openFeedPortionsModal();" style="font-weight: 700; margin-bottom: 0.65rem;">
+            🌾 <span data-i18n="btn_portions_table">Barème des Portions & Coefficients</span>
+          </button>
           <button class="btn btn-emerald btn-full" onclick="app.exportExcel()" data-i18n="btn_export_excel" style="font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem;">
             📊 Télécharger le Tableau Excel (.xlsx)
           </button>
@@ -1956,6 +1993,89 @@
             🗑️ Réinitialiser Toutes les Données à 0
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Barème des Portions & Coefficients d'Alimentation et Simulateur de Coût Réel -->
+  <div id="modalFeedPortionsTable" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 860px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <div>
+          <h3 style="display: flex; align-items: center; gap: 0.4rem; font-size: 1.15rem; margin: 0;">
+            <span>🌾</span> <span data-i18n="modal_feed_portions_title">Barème des Portions & Coefficients d'Alimentation</span>
+          </h3>
+          <p class="modal-desc" style="font-size: 0.8rem; margin: 0.2rem 0 0 0; color: var(--text-secondary);" data-i18n="modal_feed_portions_sub">
+            Tables zootechniques officielles (Poule & Canard). Estimation automatique du coût / sujet en temps réel.
+          </p>
+        </div>
+        <button class="modal-close" onclick="app.closeModal('modalFeedPortionsTable')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1rem;">
+        <!-- Tabs Espèces -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.6rem; overflow-x: auto;">
+          <button type="button" class="btn btn-sm" id="btnPortionsTabPoulet" onclick="app.switchPortionsTab('poulet')" style="font-weight: 700; border-radius: var(--radius-pill);">
+            🐔 Poule & Poulet (Gallinacés)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" id="btnPortionsTabCanard" onclick="app.switchPortionsTab('canard')" style="font-weight: 700; border-radius: var(--radius-pill);">
+            🦆 Canard (Palmipèdes / Barbarie)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" id="btnPortionsTabPintade" onclick="app.switchPortionsTab('pintade')" style="font-weight: 700; border-radius: var(--radius-pill);">
+            🪶 Pintade & Volailles
+          </button>
+        </div>
+
+        <!-- Tableau des Portions Dynamique -->
+        <div id="portionsTableContainer" style="margin-bottom: 1.25rem;">
+          <!-- Injecté par app.renderFeedPortionsTable() -->
+        </div>
+
+        <!-- Simulateur Intelligent de Coût / Sujet selon l'Âge Réel -->
+        <div style="background: var(--bg-card); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-lg); padding: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.6rem;">
+            <div style="font-weight: 800; font-size: 0.95rem; color: var(--accent-emerald); display: flex; align-items: center; gap: 0.4rem;">
+              <span>🧮</span> <span data-i18n="sim_title">Simulateur Intelligent de Coût / Sujet selon l'Âge Réel</span>
+            </div>
+            <span style="font-size: 0.74rem; background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 700;">
+              ✨ Calcul jour par jour
+            </span>
+          </div>
+
+          <div class="form-row" style="margin-bottom: 0.75rem;">
+            <div class="form-group flex-1">
+              <label for="simSpeciesSelect" style="font-size: 0.76rem; font-weight: 700;">Espèce :</label>
+              <select id="simSpeciesSelect" class="input-field" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" onchange="app.updatePortionSimulation()">
+                <option value="poulet">🐔 Poule / Poulet</option>
+                <option value="canard">🦆 Canard</option>
+                <option value="pintade">🪶 Pintade</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="simAgeDaysInput" style="font-size: 0.76rem; font-weight: 700;">Âge réel (jours) :</label>
+              <input type="number" id="simAgeDaysInput" class="input-field" value="45" min="1" max="730" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="simAcqCostInput" style="font-size: 0.76rem; font-weight: 700;">Prix d'achat unitaire (DT) :</label>
+              <input type="number" id="simAcqCostInput" class="input-field" value="1.20" step="0.1" min="0" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="simFeedPriceInput" style="font-size: 0.76rem; font-weight: 700;">Prix moyen aliment (DT/kg) :</label>
+              <input type="number" id="simFeedPriceInput" class="input-field" value="1.00" step="0.05" min="0.1" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
+            </div>
+          </div>
+
+          <!-- Simulation Output Cards Grid -->
+          <div id="simResultsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.6rem;">
+            <!-- Rempli par app.updatePortionSimulation() -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 0.75rem 1rem;">
+        <button type="button" class="btn btn-primary" onclick="app.closeModal('modalFeedPortionsTable')" data-i18n="btn_close">
+          Compris & Fermer
+        </button>
       </div>
     </div>
   </div>
@@ -2127,8 +2247,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=17"></script>
-  <script src="translations.js?v=17"></script>
-  <script src="app.js?v=17"></script>
+  <script src="supabase-client.js?v=18"></script>
+  <script src="translations.js?v=18"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>

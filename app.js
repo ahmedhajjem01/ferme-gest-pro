@@ -3,6 +3,277 @@
  * Mobile-First & Desktop Agrarian Management PWA
  */
 
+// Official Agronomic Feed Portions & Coefficients Reference Tables (Poulet & Canard)
+const FEED_PORTION_TABLES = {
+  poulet: {
+    id: 'poulet',
+    titleFr: 'Poule & Poulet (Gallinacés)',
+    titleAr: 'الدجاج والدواجن (Gallinacés)',
+    titleEn: 'Chickens & Poultry',
+    baseCiGrams: 30,
+    stages: [
+      {
+        id: 'poussin_demarrage',
+        nameFr: 'Poussin démarrage',
+        nameAr: 'كتكوت بداية / فلالس',
+        nameEn: 'Chick starter',
+        ageFr: '0 à 4 semaines (J1–J28)',
+        ageAr: '0 إلى 4 أسابيع (1-28 يوم)',
+        ageEn: '0 to 4 weeks (D1–D28)',
+        minDays: 0,
+        maxDays: 28,
+        dailyGrams: 30,
+        ci: 1.0,
+        notesFr: 'Miettes démarrage (protéines 20-22%)',
+        notesAr: 'علف بادي 20-22% بروتين'
+      },
+      {
+        id: 'poulet_croissance',
+        nameFr: 'Poulet croissance',
+        nameAr: 'دجاج نمو / نامي',
+        nameEn: 'Growing chicken',
+        ageFr: '5 à 10 semaines (J29–J70)',
+        ageAr: '5 إلى 10 أسابيع (29-70 يوم)',
+        ageEn: '5 to 10 weeks (D29–D70)',
+        minDays: 29,
+        maxDays: 70,
+        dailyGrams: 60,
+        ci: 2.0,
+        notesFr: 'Croissance osseuse et musculaire soutenue',
+        notesAr: 'نمو هيكلي سريع وترييش'
+      },
+      {
+        id: 'jeune_poulet',
+        nameFr: 'Jeune poulet / Poulette',
+        nameAr: 'فرروج صغير / فرخة شابة',
+        nameEn: 'Young chicken / Pullet',
+        ageFr: '11 à 16 semaines (~3 à 4 mois / J71–J112)',
+        ageAr: '11 إلى 16 أسبوعاً (3-4 أشهر)',
+        ageEn: '11 to 16 weeks (~3-4 mos)',
+        minDays: 71,
+        maxDays: 112,
+        dailyGrams: 80,
+        ci: 2.7,
+        notesFr: 'Transition vers engraissement / ponte',
+        notesAr: 'مرحلة البلوغ الأولي والتحضير'
+      },
+      {
+        id: 'poulette_finition',
+        nameFr: 'Poulette pré-ponte / Finition',
+        nameAr: 'بشاير مقبلة على البيض / تسمين',
+        nameEn: 'Pre-layer / Finisher',
+        ageFr: '17 à 22 semaines (~4 à 5 mois / J113–J154)',
+        ageAr: '17 إلى 22 أسبوعاً (4-5 أشهر)',
+        ageEn: '17 to 22 weeks (~4-5 mos)',
+        minDays: 113,
+        maxDays: 154,
+        dailyGrams: 95,
+        ci: 3.2,
+        notesFr: 'Aliment pré-ponte riche en calcium',
+        notesAr: 'علف غني بالكالسيوم والبروتين'
+      },
+      {
+        id: 'poule_pondeuse',
+        nameFr: 'Poule pondeuse adulte',
+        nameAr: 'دجاجة بياضة بالغة',
+        nameEn: 'Adult layer hen',
+        ageFr: 'À partir de 23 semaines (> 5 mois / J155+)',
+        ageAr: 'من عمر 23 أسبوعاً فما فوق (> 5 أشهر)',
+        ageEn: 'From 23 weeks (> 5 mos)',
+        minDays: 155,
+        maxDays: 9999,
+        dailyGrams: 115,
+        ci: 3.8,
+        notesFr: 'Pic de ponte quotidien (bouchon)',
+        notesAr: 'إنتاج البيض اليومي المستمر'
+      },
+      {
+        id: 'coq_adulte',
+        nameFr: 'Coq adulte (Reproducteur)',
+        nameAr: 'سردوك بالغ (فحل مخصب)',
+        nameEn: 'Adult rooster',
+        ageFr: 'Adulte (> 23 semaines)',
+        ageAr: 'بالغ مخصب (> 23 أسبوعاً)',
+        ageEn: 'Adult breeder (> 23 wks)',
+        minDays: 155,
+        maxDays: 9999,
+        dailyGrams: 130,
+        ci: 4.3,
+        notesFr: 'Maintien de condition reproducteur',
+        notesAr: 'فحول مخصبة للتلقيح'
+      }
+    ]
+  },
+  canard: {
+    id: 'canard',
+    titleFr: 'Canard (Palmipèdes / Barbarie)',
+    titleAr: 'البط والمسكوفي (Palmipèdes)',
+    titleEn: 'Ducks & Waterfowl',
+    baseCiGrams: 30,
+    stages: [
+      {
+        id: 'caneton_demarrage',
+        nameFr: 'Caneton démarrage',
+        nameAr: 'فراخ بط بداية',
+        nameEn: 'Duckling starter',
+        ageFr: '0 à 3 semaines (J1–J21)',
+        ageAr: '0 إلى 3 أسابيع (1-21 يوم)',
+        ageEn: '0 to 3 weeks (D1–D21)',
+        minDays: 0,
+        maxDays: 21,
+        dailyGrams: 40,
+        ci: 1.3,
+        notesFr: 'Miettes démarrage',
+        notesAr: 'حبيبات بداية'
+      },
+      {
+        id: 'caneton_croissance_1',
+        nameFr: 'Caneton croissance 1',
+        nameAr: 'بط نمو مرحلة 1',
+        nameEn: 'Duckling grower 1',
+        ageFr: '4 à 7 semaines (1 à 2 mois / J22–J49)',
+        ageAr: '4 إلى 7 أسابيع (1-2 شهر)',
+        ageEn: '4 to 7 weeks (1-2 mos)',
+        minDays: 22,
+        maxDays: 49,
+        dailyGrams: 90,
+        ci: 3.0,
+        notesFr: 'Croissance osseuse rapide',
+        notesAr: 'نمو عظمي سريع'
+      },
+      {
+        id: 'jeune_canard_croissance_2',
+        nameFr: 'Jeune canard croissance 2',
+        nameAr: 'بط يافع نمو مرحلة 2',
+        nameEn: 'Young duck grower 2',
+        ageFr: '8 à 12 semaines (2 à 3 mois / J50–J84)',
+        ageAr: '8 إلى 12 أسبوعاً (2-3 أشهر)',
+        ageEn: '8 to 12 weeks (2-3 mos)',
+        minDays: 50,
+        maxDays: 84,
+        dailyGrams: 140,
+        ci: 4.7,
+        notesFr: 'Pic d\'appétit / plumage',
+        notesAr: 'ذروة الشهية واكتمال الريش'
+      },
+      {
+        id: 'canard_finition',
+        nameFr: 'Canard en finition',
+        nameAr: 'بط مرحلة تسمين نهائي',
+        nameEn: 'Finishing duck',
+        ageFr: '13 à 16 semaines (~3 à 4 mois / J85–J112)',
+        ageAr: '13 إلى 16 أسبوعاً (3-4 أشهر)',
+        ageEn: '13 to 16 weeks (~3-4 mos)',
+        minDays: 85,
+        maxDays: 112,
+        dailyGrams: 170,
+        ci: 5.7,
+        notesFr: 'Prise de gras et masse',
+        notesAr: 'اكتساب الوزن واللحم'
+      },
+      {
+        id: 'canne_adulte',
+        nameFr: 'Canne adulte (femelle)',
+        nameAr: 'أنثى بط بالغة (بياضة)',
+        nameEn: 'Adult female duck',
+        ageFr: 'Adulte (> 4-5 mois / J113+)',
+        ageAr: 'بالغة (> 4-5 أشهر)',
+        ageEn: 'Adult female (> 4-5 mos)',
+        minDays: 113,
+        maxDays: 9999,
+        dailyGrams: 130,
+        ci: 4.3,
+        notesFr: 'Plus légère que le mâle (ponte)',
+        notesAr: 'أخف وزناً من الذكر (إنتاج بيض)'
+      },
+      {
+        id: 'canard_adulte_male',
+        nameFr: 'Canard adulte (mâle)',
+        nameAr: 'ذكر بط بالغ (فحل)',
+        nameEn: 'Adult drake (male)',
+        ageFr: 'Adulte (> 4-5 mois / J113+)',
+        ageAr: 'بالغ فحل (> 4-5 أشهر)',
+        ageEn: 'Adult drake (> 4-5 mos)',
+        minDays: 113,
+        maxDays: 9999,
+        dailyGrams: 170,
+        ci: 5.7,
+        notesFr: 'Pèse souvent le double',
+        notesAr: 'يزن غالباً ضعف الأنثى'
+      },
+      {
+        id: 'canard_adulte_mixte',
+        nameFr: 'Moyenne adulte mixte',
+        nameAr: 'متوسط بالغين (ذكور وإناث)',
+        nameEn: 'Adult mixed flock',
+        ageFr: 'Adulte (> 4-5 mois)',
+        ageAr: 'بالغ مختلط',
+        ageEn: 'Adult mixed',
+        minDays: 113,
+        maxDays: 9999,
+        dailyGrams: 150,
+        ci: 5.0,
+        notesFr: 'Si mâles et femelles mélangés',
+        notesAr: 'في حالة خلط الذكور والإناث معاً'
+      }
+    ]
+  },
+  pintade: {
+    id: 'pintade',
+    titleFr: 'Pintade (Gallinacés sauvages)',
+    titleAr: 'دجاج الوادي (غرغر)',
+    titleEn: 'Guinea Fowl',
+    baseCiGrams: 30,
+    stages: [
+      {
+        id: 'pintadeau_demarrage',
+        nameFr: 'Pintadeau démarrage',
+        nameAr: 'كتاكيت دجاج الوادي',
+        nameEn: 'Guinea keets',
+        ageFr: '0 à 4 semaines (J1–J28)',
+        ageAr: '0 إلى 4 أسابيع (1-28 يوم)',
+        ageEn: '0 to 4 weeks (D1–D28)',
+        minDays: 0,
+        maxDays: 28,
+        dailyGrams: 26.5,
+        ci: 0.9,
+        notesFr: 'Démarrage sous éleveuse',
+        notesAr: 'حضانة دافئة وتغذية دقيقة'
+      },
+      {
+        id: 'pintade_croissance',
+        nameFr: 'Pintade jeune / croissance',
+        nameAr: 'دجاج الوادي نامي',
+        nameEn: 'Growing guinea',
+        ageFr: '5 à 12 semaines (J29–J84)',
+        ageAr: '5 إلى 12 أسبوعاً (1-3 أشهر)',
+        ageEn: '5 to 12 weeks',
+        minDays: 29,
+        maxDays: 84,
+        dailyGrams: 62.5,
+        ci: 2.1,
+        notesFr: 'Croissance et plumage',
+        notesAr: 'نمو ريشي وجسدي'
+      },
+      {
+        id: 'pintade_adulte',
+        nameFr: 'Pintade adulte',
+        nameAr: 'دجاج الوادي بالغ',
+        nameEn: 'Adult guinea',
+        ageFr: 'Adulte (> 12 semaines / > 3 mois)',
+        ageAr: 'بالغ (> 3 أشهر)',
+        ageEn: 'Adult (> 12 wks)',
+        minDays: 85,
+        maxDays: 9999,
+        dailyGrams: 107.5,
+        ci: 3.6,
+        notesFr: 'Maturité chair / reproduction',
+        notesAr: 'نضج للتربية والتكاثر'
+      }
+    ]
+  }
+};
+
 // Central App State
 const appState = {
   currency: 'TND',
@@ -605,6 +876,10 @@ const app = {
         appState.feedRationMode = parsed.feedRationMode || 'custom';
         appState.customDailyFeedKg = (parsed.customDailyFeedKg !== undefined && parsed.customDailyFeedKg !== null) ? Number(parsed.customDailyFeedKg) : null;
         appState.sicamCansCount = (parsed.sicamCansCount !== undefined && parsed.sicamCansCount !== null) ? Number(parsed.sicamCansCount) : null;
+        if (appState.customDailyFeedKg !== null && (appState.customDailyFeedKg < 1.0 || isNaN(appState.customDailyFeedKg))) {
+          appState.customDailyFeedKg = null;
+          appState.sicamCansCount = null;
+        }
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
         if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
           appState.feedTypes = [
@@ -892,10 +1167,17 @@ const app = {
         if (costInput && (!costInput.value || costInput.value === '20')) {
           costInput.value = '0';
         }
-        const stageSelect = document.getElementById('animalStage');
-        if (stageSelect && !stageSelect.value) {
-          stageSelect.value = 'Adulte';
+        const birthDateInput = document.getElementById('animalBirthDate');
+        if (birthDateInput && !birthDateInput.value) {
+          birthDateInput.value = this.getTodayStr();
         }
+        const sp = document.getElementById('animalSpecies')?.value || 'poulet';
+        this.handleAnimalSpeciesChange(sp, 'animal');
+      }
+
+      if (modalId === 'modalFeedPortionsTable') {
+        this.renderFeedPortionsTable(this._currentPortionsTab || 'poulet');
+        this.updatePortionSimulation();
       }
 
       if (modalId === 'modalAdjustFeedStock') {
@@ -1587,218 +1869,314 @@ const app = {
   },
 
   // ==========================================
-  // AGRONOMIC FEED ENGINE & BIOLOGICAL MATRIX
-  // (Base de données scientifique & table d'alimentation)
+  // AGRONOMIC FEED ENGINE & OFFICIAL PORTIONS MATRIX
+  // (Barème zootechnique officiel - Poule & Canard)
   // ==========================================
+
+  getDailyGramsForAge(species = 'poulet', day = 1, stage = '', breed = '') {
+    const sp = (species || '').toLowerCase();
+    const d = Math.max(1, Math.round(Number(day) || 1));
+    const stg = (stage || '').toLowerCase();
+    const brd = (breed || '').toLowerCase();
+
+    // 1. CANARD / PALMIPÈDES (Table officielle)
+    if (sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck')) {
+      if (d <= 21) return 40;   // 0 à 3 sem (J1–J21): ~40 g (Ci 1.3)
+      if (d <= 49) return 90;   // 4 à 7 sem (J22–J49): ~90 g (Ci 3.0)
+      if (d <= 84) return 140;  // 8 à 12 sem (J50–J84): ~140 g (Ci 4.7)
+      if (d <= 112) return 170; // 13 à 16 sem (J85–J112): ~170 g (Ci 5.7)
+      
+      // Adulte (> 112j / > 16 sem / > 4 mois)
+      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكر') || brd.includes('mâle') || brd.includes('male');
+      const isFemale = stg.includes('femelle') || stg.includes('female') || stg.includes('أنثى') || stg.includes('canne') || brd.includes('canne');
+      if (isMale) return 170;   // Canard adulte mâle: ~170 g (Ci 5.7)
+      if (isFemale) return 130; // Canne adulte femelle: ~130 g (Ci 4.3)
+      return 150;               // Moyenne adulte mixte: ~150 g (Ci 5.0)
+    }
+
+    // 2. PINTADE
+    if (sp === 'pintade' || sp.includes('guinea')) {
+      if (d <= 28) return 26.5;
+      if (d <= 84) return 62.5;
+      return 107.5;
+    }
+
+    // 3. AUTRE VOLAILLE (Dinde, etc.)
+    if (sp === 'autre' || sp === 'dinde' || sp.includes('turkey')) {
+      if (d <= 28) return 35;
+      if (d <= 84) return 75;
+      return 120;
+    }
+
+    // 4. POULE & POULET / GALLINACÉS (Table officielle)
+    if (d <= 28) return 30;   // 0 à 4 sem (J1–J28): ~30 g (Ci 1.0)
+    if (d <= 70) return 60;   // 5 à 10 sem (J29–J70): ~60 g (Ci 2.0)
+    if (d <= 112) return 80;  // 11 à 16 sem (J71–J112): ~80 g (Ci 2.7)
+    if (d <= 154) return 95;  // 17 à 22 sem (J113–J154): ~95 g (Ci 3.2)
+
+    // Adulte (> 154j / > 22 sem / > 5 mois)
+    const isRooster = stg.includes('coq') || stg.includes('rooster') || stg.includes('سردوك') || stg.includes('فحل') || brd.includes('coq');
+    if (isRooster) return 130; // Coq adulte: ~130 g (Ci 4.3)
+    return 115;                // Poule pondeuse adulte: ~115 g (Ci 3.8)
+  },
 
   getAgronomicFeedData(species = 'poulet', ageDays = 30, stage = '', breed = '') {
     const sp = (species || '').toLowerCase();
     const stg = (stage || '').toLowerCase();
     const brd = (breed || '').toLowerCase();
-    const days = Math.max(1, Math.round(ageDays));
+    const days = Math.max(1, Math.round(Number(ageDays) || 1));
 
-    const isDuck = sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck');
-    const isPintade = sp === 'pintade' || sp.includes('guinea');
-
-    if (isDuck) {
-      // 1. كتاكيت بط مسكوفي: من 1 إلى 4 أسابيع -> 30 إلى 60 غرام
-      if (days <= 28) {
+    if (sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck')) {
+      if (days <= 21) {
         return {
-          minGrams: 30,
-          maxGrams: 60,
-          avgGrams: 45,
-          dailyGrams: 45,
-          stageKey: 'duck_chick',
-          labelAr: 'كتاكيت بط مسكوفي (1-4 أسابيع)',
-          labelFr: 'Canetons de Barbarie (1-4 sem.)',
-          labelEn: 'Muscovy Ducklings (1-4 wks)'
+          minGrams: 35,
+          maxGrams: 45,
+          avgGrams: 40,
+          dailyGrams: 40,
+          ci: 1.3,
+          stageKey: 'duck_starter',
+          labelFr: 'Caneton démarrage (0-3 sem. / J1–J21)',
+          labelAr: 'فراخ بط بداية (0-3 أسابيع / 1-21 يوم)',
+          labelEn: 'Duckling starter (0-3 wks)',
+          notesFr: 'Miettes démarrage',
+          notesAr: 'حبيبات بداية'
         };
       }
-      // 2. بط مسكوفي نامي: من 5 إلى 10 أسابيع -> 100 إلى 140 غرام
-      if (days <= 70) {
+      if (days <= 49) {
         return {
-          minGrams: 100,
-          maxGrams: 140,
-          avgGrams: 120,
-          dailyGrams: 120,
-          stageKey: 'duck_grower',
-          labelAr: 'بط مسكوفي نامي (5-10 أسابيع)',
-          labelFr: 'Canards Barbarie Croissance (5-10 sem.)',
-          labelEn: 'Muscovy Grower Ducks (5-10 wks)'
-        };
-      }
-      // 3. بط مسكوفي بالغ (> 10 أسابيع / > 70 يوماً)
-      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكور') || stg.includes('تسمين') || stg.includes('engraiss') || brd.includes('mâle') || brd.includes('male') || brd.includes('ذكور');
-      if (isMale) {
-        // بط مسكوفي بالغ (ذكور): تسمين / ذكور مخصبة -> 180 إلى 220 غرام
-        return {
-          minGrams: 180,
-          maxGrams: 220,
-          avgGrams: 200,
-          dailyGrams: 200,
-          stageKey: 'duck_adult_male',
-          labelAr: 'بط مسكوفي بالغ (ذكور - تسمين / مخصبة)',
-          labelFr: 'Canard Barbarie Adulte Mâle (Finition / Reprod.)',
-          labelEn: 'Adult Muscovy Drake (Male / Fattening)'
-        };
-      } else {
-        // بط مسكوفي بالغ (إناث): بياض / أمهات -> 130 إلى 160 غرام
-        return {
-          minGrams: 130,
-          maxGrams: 160,
-          avgGrams: 145,
-          dailyGrams: 145,
-          stageKey: 'duck_adult_female',
-          labelAr: 'بط مسكوفي بالغ (إناث - بياض / أمهات)',
-          labelFr: 'Canard Barbarie Adulte Femelle (Ponte / Mères)',
-          labelEn: 'Adult Muscovy Duck (Female / Laying)'
-        };
-      }
-    }
-
-    if (isPintade) {
-      if (days <= 28) {
-        return {
-          minGrams: 18,
-          maxGrams: 35,
-          avgGrams: 26.5,
-          dailyGrams: 26.5,
-          stageKey: 'pintade_chick',
-          labelAr: 'كتاكيت دجاج الوادي (1-4 أسابيع)',
-          labelFr: 'Pintadeaux Démarrage (1-4 sem.)',
-          labelEn: 'Guinea Keets (1-4 wks)'
+          minGrams: 80,
+          maxGrams: 100,
+          avgGrams: 90,
+          dailyGrams: 90,
+          ci: 3.0,
+          stageKey: 'duck_grower_1',
+          labelFr: 'Caneton croissance 1 (4-7 sem. / 1-2 mois)',
+          labelAr: 'بط نمو مرحلة 1 (4-7 أسابيع / 1-2 شهر)',
+          labelEn: 'Duckling grower 1 (4-7 wks)',
+          notesFr: 'Croissance osseuse rapide',
+          notesAr: 'نمو عظمي سريع'
         };
       }
       if (days <= 84) {
         return {
-          minGrams: 50,
-          maxGrams: 75,
-          avgGrams: 62.5,
-          dailyGrams: 62.5,
+          minGrams: 125,
+          maxGrams: 155,
+          avgGrams: 140,
+          dailyGrams: 140,
+          ci: 4.7,
+          stageKey: 'duck_grower_2',
+          labelFr: 'Jeune canard croissance 2 (8-12 sem. / 2-3 mois)',
+          labelAr: 'بط يافع نمو مرحلة 2 (8-12 أسبوعاً / 2-3 أشهر)',
+          labelEn: 'Young duck grower 2 (8-12 wks)',
+          notesFr: 'Pic d\'appétit / plumage',
+          notesAr: 'ذروة الشهية واكتمال الريش'
+        };
+      }
+      if (days <= 112) {
+        return {
+          minGrams: 155,
+          maxGrams: 185,
+          avgGrams: 170,
+          dailyGrams: 170,
+          ci: 5.7,
+          stageKey: 'duck_finishing',
+          labelFr: 'Canard en finition (13-16 sem. / ~3-4 mois)',
+          labelAr: 'بط مرحلة تسمين نهائي (13-16 أسبوعاً / 3-4 أشهر)',
+          labelEn: 'Duck finishing (13-16 wks)',
+          notesFr: 'Prise de gras et masse',
+          notesAr: 'اكتساب الوزن واللحم'
+        };
+      }
+      
+      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكر') || brd.includes('mâle') || brd.includes('male');
+      const isFemale = stg.includes('femelle') || stg.includes('female') || stg.includes('أنثى') || stg.includes('canne') || brd.includes('canne');
+      if (isMale) {
+        return {
+          minGrams: 160,
+          maxGrams: 180,
+          avgGrams: 170,
+          dailyGrams: 170,
+          ci: 5.7,
+          stageKey: 'duck_adult_male',
+          labelFr: 'Canard adulte mâle (> 4-5 mois)',
+          labelAr: 'ذكر بط بالغ - فحل (> 4-5 أشهر)',
+          labelEn: 'Adult Drake (> 4-5 mos)',
+          notesFr: 'Pèse souvent le double',
+          notesAr: 'يزن غالباً ضعف الأنثى'
+        };
+      }
+      if (isFemale) {
+        return {
+          minGrams: 120,
+          maxGrams: 140,
+          avgGrams: 130,
+          dailyGrams: 130,
+          ci: 4.3,
+          stageKey: 'duck_adult_female',
+          labelFr: 'Canne adulte femelle (> 4-5 mois)',
+          labelAr: 'أنثى بط بالغة - بياضة (> 4-5 أشهر)',
+          labelEn: 'Adult Female Duck (> 4-5 mos)',
+          notesFr: 'Plus légère que le mâle (ponte)',
+          notesAr: 'أخف وزناً من الذكر (إنتاج بيض)'
+        };
+      }
+      return {
+        minGrams: 135,
+        maxGrams: 165,
+        avgGrams: 150,
+        dailyGrams: 150,
+        ci: 5.0,
+        stageKey: 'duck_adult_mixed',
+        labelFr: 'Canard adulte mixte (> 4-5 mois)',
+        labelAr: 'بط بالغ متوسط مختلط (> 4-5 أشهر)',
+        labelEn: 'Adult mixed flock (> 4-5 mos)',
+        notesFr: 'Si mâles et femelles mélangés',
+        notesAr: 'في حالة خلط الذكور والإناث معاً'
+      };
+    }
+
+    if (sp === 'pintade' || sp.includes('guinea')) {
+      if (days <= 28) {
+        return {
+          minGrams: 20, maxGrams: 32, avgGrams: 26.5, dailyGrams: 26.5, ci: 0.9,
+          stageKey: 'pintade_chick',
+          labelFr: 'Pintadeaux démarrage (0-4 sem.)',
+          labelAr: 'كتاكيت دجاج الوادي (0-4 أسابيع)',
+          labelEn: 'Guinea Keets (0-4 wks)'
+        };
+      }
+      if (days <= 84) {
+        return {
+          minGrams: 50, maxGrams: 75, avgGrams: 62.5, dailyGrams: 62.5, ci: 2.1,
           stageKey: 'pintade_grower',
+          labelFr: 'Pintades croissance (5-12 sem.)',
           labelAr: 'دجاج الوادي نامي (5-12 أسبوعاً)',
-          labelFr: 'Pintades Croissance (5-12 sem.)',
           labelEn: 'Growing Guinea Fowls (5-12 wks)'
         };
       }
       return {
-        minGrams: 95,
-        maxGrams: 120,
-        avgGrams: 107.5,
-        dailyGrams: 107.5,
+        minGrams: 95, maxGrams: 120, avgGrams: 107.5, dailyGrams: 107.5, ci: 3.6,
         stageKey: 'pintade_adult',
+        labelFr: 'Pintades adultes (> 12 sem.)',
         labelAr: 'دجاج الوادي بالغ (> 12 أسبوعاً)',
-        labelFr: 'Pintades Adultes (> 12 sem.)',
         labelEn: 'Adult Guinea Fowls (> 12 wks)'
       };
     }
 
-    // Default: Chickens (الدجاج بمراحله الأربعة)
-    // 1. كتاكيت دجاج (فلالس): من 1 إلى 4 أسابيع -> 15 إلى 35 غرام
+    if (sp === 'autre' || sp === 'dinde' || sp.includes('turkey')) {
+      if (days <= 28) {
+        return { minGrams: 25, maxGrams: 45, avgGrams: 35, dailyGrams: 35, ci: 1.2, stageKey: 'other_start', labelFr: 'Démarrage (0-4 sem.)', labelAr: 'بداية (0-4 أسابيع)', labelEn: 'Starter (0-4 wks)' };
+      }
+      if (days <= 84) {
+        return { minGrams: 60, maxGrams: 90, avgGrams: 75, dailyGrams: 75, ci: 2.5, stageKey: 'other_grow', labelFr: 'Croissance (5-12 sem.)', labelAr: 'نمو (5-12 أسبوعاً)', labelEn: 'Grower (5-12 wks)' };
+      }
+      return { minGrams: 100, maxGrams: 140, avgGrams: 120, dailyGrams: 120, ci: 4.0, stageKey: 'other_adult', labelFr: 'Adulte (> 12 sem.)', labelAr: 'بالغ (> 12 أسبوعاً)', labelEn: 'Adult (> 12 wks)' };
+    }
+
+    // POULE & POULET / GALLINACÉS (Table officielle de l'éleveur)
     if (days <= 28) {
       return {
-        minGrams: 15,
+        minGrams: 25,
         maxGrams: 35,
-        avgGrams: 25,
-        dailyGrams: 25,
-        stageKey: 'chicken_chick',
-        labelAr: 'كتاكيت دجاج / فلالس (1-4 أسابيع)',
-        labelFr: 'Poussins Démarrage (1-4 sem.)',
-        labelEn: 'Chicks / Starter (1-4 wks)'
+        avgGrams: 30,
+        dailyGrams: 30,
+        ci: 1.0,
+        stageKey: 'chicken_starter',
+        labelFr: 'Poussin démarrage (0-4 sem. / J1–J28)',
+        labelAr: 'كتكوت بداية / فلالس (0-4 أسابيع / 1-28 يوم)',
+        labelEn: 'Chick starter (0-4 wks)',
+        notesFr: 'Miettes / démarrage (protéines 20-22%)',
+        notesAr: 'علف بادي 20-22% بروتين'
       };
     }
-    // 2. دجاج نامي (صغير/فرارج): من 5 إلى 12 أسبوعاً -> 45 إلى 70 غرام
-    if (days <= 84) {
+    if (days <= 70) {
       return {
-        minGrams: 45,
+        minGrams: 50,
         maxGrams: 70,
-        avgGrams: 57.5,
-        dailyGrams: 57.5,
+        avgGrams: 60,
+        dailyGrams: 60,
+        ci: 2.0,
         stageKey: 'chicken_grower',
-        labelAr: 'دجاج نامي - صغير/فرارج (5-12 أسبوعاً)',
-        labelFr: 'Poulets Nami / Croissance (5-12 sem.)',
-        labelEn: 'Growing Chickens (5-12 wks)'
+        labelFr: 'Poulet croissance (5-10 sem. / J29–J70)',
+        labelAr: 'دجاج نمو (5-10 أسابيع / 29-70 يوم)',
+        labelEn: 'Growing chicken (5-10 wks)',
+        notesFr: 'Croissance soutenue',
+        notesAr: 'نمو هيكلي سريع وترييش'
       };
     }
-    // 3. دجاج مقبل على البيض (بشاير): من 13 إلى 18 أسبوعاً -> 75 إلى 90 غرام
-    if (days <= 126) {
+    if (days <= 112) {
       return {
-        minGrams: 75,
+        minGrams: 70,
         maxGrams: 90,
-        avgGrams: 82.5,
-        dailyGrams: 82.5,
-        stageKey: 'chicken_prelay',
-        labelAr: 'دجاج مقبل على البيض - بشاير (13-18 أسبوعاً)',
-        labelFr: 'Poulettes Pré-Ponte / Bchayer (13-18 sem.)',
-        labelEn: 'Pre-Layer Pullets (13-18 wks)'
+        avgGrams: 80,
+        dailyGrams: 80,
+        ci: 2.7,
+        stageKey: 'chicken_young',
+        labelFr: 'Jeune poulet / Poulette (11-16 sem. / ~3-4 mois)',
+        labelAr: 'فرروج صغير / فرخة شابة (11-16 أسبوعاً / 3-4 أشهر)',
+        labelEn: 'Young chicken / Pullet (11-16 wks)',
+        notesFr: 'Transition vers ponte / engraissement',
+        notesAr: 'مرحلة البلوغ الأولي والتحضير'
       };
     }
-    // 4. دجاج بياض بالغ (كبير): من عمر 19 أسبوعاً فما فوق -> 110 إلى 125 غرام
+    if (days <= 154) {
+      return {
+        minGrams: 85,
+        maxGrams: 105,
+        avgGrams: 95,
+        dailyGrams: 95,
+        ci: 3.2,
+        stageKey: 'chicken_prelay',
+        labelFr: 'Poulette pré-ponte / Finition (17-22 sem. / ~4-5 mois)',
+        labelAr: 'بشاير مقبلة على البيض / تسمين (17-22 أسبوعاً / 4-5 أشهر)',
+        labelEn: 'Pre-layer / Finisher (17-22 wks)',
+        notesFr: 'Aliment pré-ponte riche en calcium',
+        notesAr: 'علف غني بالكالسيوم والبروتين'
+      };
+    }
+
+    const isRooster = stg.includes('coq') || stg.includes('rooster') || stg.includes('سردوك') || stg.includes('فحل') || brd.includes('coq');
+    if (isRooster) {
+      return {
+        minGrams: 120,
+        maxGrams: 140,
+        avgGrams: 130,
+        dailyGrams: 130,
+        ci: 4.3,
+        stageKey: 'chicken_rooster',
+        labelFr: 'Coq adulte (Reproducteur / > 23 sem.)',
+        labelAr: 'سردوك بالغ - فحل مخصب (> 23 أسبوعاً)',
+        labelEn: 'Adult rooster (> 23 wks)',
+        notesFr: 'Maintien de condition reproducteur',
+        notesAr: 'فحول مخصبة للتلقيح'
+      };
+    }
+
     return {
       minGrams: 110,
-      maxGrams: 125,
-      avgGrams: 117.5,
-      dailyGrams: 117.5,
+      maxGrams: 120,
+      avgGrams: 115,
+      dailyGrams: 115,
+      ci: 3.8,
       stageKey: 'chicken_adult_layer',
-      labelAr: 'دجاج بياض بالغ - كبير (19 أسبوعاً فما فوق)',
-      labelFr: 'Poules Pondeuses / Adultes (> 19 sem.)',
-      labelEn: 'Adult Layers (> 19 wks)'
+      labelFr: 'Poule pondeuse adulte (À partir de 23 sem. / > 5 mois)',
+      labelAr: 'دجاجة بياضة بالغة (من 23 أسبوعاً فما فوق / > 5 أشهر)',
+      labelEn: 'Adult layer hen (From 23 wks / > 5 mos)',
+      notesFr: 'Plein pic de ponte (bouchon ponte)',
+      notesAr: 'إنتاج البيض اليومي المستمر'
     };
   },
 
   calculateCumulativeFeedKg(species = 'poulet', ageDays = 30, stage = '', breed = '', startAgeDays = 0) {
-    const calcFromZero = (d) => {
-      const days = Math.max(0, Math.round(d));
-      if (days === 0) return 0;
-      const sp = (species || '').toLowerCase();
-      const isDuck = sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck');
-      const isPintade = sp === 'pintade' || sp.includes('guinea');
+    const totalDays = Math.max(0, Math.round(Number(ageDays) || 0));
+    const startDays = Math.max(0, Math.round(Number(startAgeDays) || 0));
+    if (totalDays <= startDays) return 0;
 
-      if (isDuck) {
-        if (days <= 28) return (days * 0.045);
-        if (days <= 70) return 1.260 + ((days - 28) * 0.120);
-        const stg = (stage || '').toLowerCase();
-        const brd = (breed || '').toLowerCase();
-        const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكور') || stg.includes('تسمين') || brd.includes('mâle') || brd.includes('male');
-        const adultDailyKg = isMale ? 0.200 : 0.145;
-        return 6.300 + ((days - 70) * adultDailyKg);
-      }
-
-      if (isPintade) {
-        if (days <= 28) return (days * 0.0265);
-        if (days <= 84) return 0.742 + ((days - 28) * 0.0625);
-        return 4.242 + ((days - 84) * 0.1075);
-      }
-
-      // Chickens (Table agronomique par palier d'âge):
-      // Palier 1: 1 à 4 semaines (28 jours) @ 25g/j (15-35g) = 0.700 kg
-      if (days <= 28) {
-        return (days * 0.025);
-      }
-      // Palier 2: 5 à 12 semaines (56 jours) @ 57.5g/j (45-70g) = 3.220 kg (cumul à 84j = 3.920 kg)
-      if (days <= 84) {
-        return 0.700 + ((days - 28) * 0.0575);
-      }
-      // Palier 3: 13 à 18 semaines (42 jours) @ 82.5g/j (75-90g) = 3.465 kg (cumul à 126j = 7.385 kg)
-      if (days <= 126) {
-        return 3.920 + ((days - 84) * 0.0825);
-      }
-      // Palier 4: 19+ semaines (adulte / pondeuse) @ 117.5g/j (110-125g) = 0.1175 kg/j
-      return 7.385 + ((days - 126) * 0.1175);
-    };
-
-    const totalDays = Math.max(1, Math.round(ageDays));
-    const startDays = Math.max(0, Math.round(startAgeDays || 0));
-
-    let rawKg = 0;
-    if (startDays > 0 && totalDays > startDays) {
-      rawKg = Math.max(0, calcFromZero(totalDays) - calcFromZero(startDays));
-    } else {
-      rawKg = calcFromZero(totalDays);
+    let totalGrams = 0;
+    for (let d = startDays + 1; d <= totalDays; d++) {
+      totalGrams += this.getDailyGramsForAge(species, d, stage, breed);
     }
-
-    const scalingRatio = (typeof this.getFeedScalingRatio === 'function') ? this.getFeedScalingRatio() : 1.0;
-    return rawKg * scalingRatio;
+    return parseFloat((totalGrams / 1000).toFixed(3));
   },
 
   getAverageFeedPricePerKg() {
@@ -2470,14 +2848,6 @@ const app = {
     appState.feedStockKg = (appState.feedTypes || []).reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
     appState.feedStockDate = date;
 
-    // Mettre à jour la moyenne mobile de consommation journalière
-    const recent = appState.feedDistributions.slice(0, 14);
-    if (recent.length > 0) {
-      const avgKg = recent.reduce((sum, d) => sum + (Number(d.totalKg || d.kg) || 0), 0) / recent.length;
-      appState.customDailyFeedKg = parseFloat(avgKg.toFixed(2));
-      appState.sicamCansCount = parseFloat((avgKg / 0.667).toFixed(1));
-    }
-
     this.saveState();
     this.closeModal('modalFeedDistribution');
     this.renderAll();
@@ -3144,12 +3514,12 @@ const app = {
     if (!animal) return;
 
     const idInput = document.getElementById('editAnimalId');
+    const speciesSelect = document.getElementById('editAnimalSpecies');
     const nameInput = document.getElementById('editAnimalName');
     const breedInput = document.getElementById('editAnimalBreed');
     const qtyInput = document.getElementById('editAnimalQuantity');
     const birthDateInput = document.getElementById('editAnimalBirthDate');
     const arrivalAgeInput = document.getElementById('editAnimalArrivalAgeDays');
-    const stageInput = document.getElementById('editAnimalStage');
     const costInput = document.getElementById('editAnimalCostPerHead');
     const notesInput = document.getElementById('editAnimalNotes');
 
@@ -3159,9 +3529,31 @@ const app = {
     if (qtyInput) qtyInput.value = animal.currentQuantity || animal.initialQuantity || 1;
     if (birthDateInput) birthDateInput.value = animal.birthDate || this.getTodayStr();
     if (arrivalAgeInput) arrivalAgeInput.value = (animal.arrivalAgeDays !== undefined) ? animal.arrivalAgeDays : 0;
-    if (stageInput) stageInput.value = animal.stage || 'Croissance';
     if (costInput) costInput.value = (Number(animal.costPerHead) || 0).toString();
     if (notesInput) notesInput.value = animal.notes || '';
+
+    const sp = animal.species || 'poulet';
+    if (speciesSelect) {
+      speciesSelect.value = sp;
+      this.handleAnimalSpeciesChange(sp, 'editAnimal');
+    }
+
+    // Pré-sélectionner le statut le plus proche
+    const stagePresetSelect = document.getElementById('editAnimalStageSelect');
+    if (stagePresetSelect) {
+      const ageDays = Number(animal.arrivalAgeDays) || 0;
+      if (sp === 'canard') {
+        if (ageDays <= 21) stagePresetSelect.value = 'caneton_demarrage';
+        else if (ageDays <= 112) stagePresetSelect.value = 'canard_croissance';
+        else stagePresetSelect.value = 'canard_adulte';
+      } else if (sp === 'poulet') {
+        if (ageDays <= 28) stagePresetSelect.value = 'poussin';
+        else if (ageDays <= 154) stagePresetSelect.value = 'croissance';
+        else stagePresetSelect.value = 'pondeuse';
+      }
+      this.handleAnimalStagePresetChange(stagePresetSelect.value, 'editAnimal');
+      if (arrivalAgeInput) arrivalAgeInput.value = ageDays; // Restaurer l'âge exact de l'animal
+    }
 
     this.openModal('modalEditAnimal');
   },
@@ -3172,17 +3564,19 @@ const app = {
     const animal = (appState.animals || []).find(a => a.id === id);
     if (!animal) return;
 
+    const species = document.getElementById('editAnimalSpecies')?.value || animal.species || 'poulet';
     const name = document.getElementById('editAnimalName').value.trim();
     const breed = document.getElementById('editAnimalBreed').value.trim() || '-';
     const quantity = parseInt(document.getElementById('editAnimalQuantity').value, 10);
     const birthDate = document.getElementById('editAnimalBirthDate')?.value;
     const arrivalAgeVal = document.getElementById('editAnimalArrivalAgeDays')?.value;
     const arrivalAgeDays = (arrivalAgeVal === '' || isNaN(parseInt(arrivalAgeVal, 10))) ? 0 : Math.max(0, parseInt(arrivalAgeVal, 10));
-    const stage = document.getElementById('editAnimalStage')?.value;
+    const stage = document.getElementById('editAnimalStage')?.value || animal.stage || 'Croissance';
     const costVal = document.getElementById('editAnimalCostPerHead').value;
     const costPerHead = (costVal === '' || isNaN(parseFloat(costVal))) ? 0 : Math.max(0, parseFloat(costVal));
     const notes = document.getElementById('editAnimalNotes').value.trim();
 
+    animal.species = species;
     animal.name = name || animal.name;
     animal.breed = breed;
     if (birthDate) animal.birthDate = birthDate;
@@ -3224,6 +3618,166 @@ const app = {
     return maxId + 1;
   },
 
+  // Gère le changement de l'espèce (1ère sélection)
+  handleAnimalSpeciesChange(speciesVal = 'poulet', formPrefix = 'animal') {
+    const stageSelect = document.getElementById(`${formPrefix}StageSelect`);
+    if (!stageSelect) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const sp = (speciesVal || 'poulet').toLowerCase();
+
+    let options = [];
+    if (sp === 'canard' || sp === 'canard_barbarie') {
+      options = [
+        {
+          key: 'caneton_demarrage',
+          days: 0,
+          label: isAr ? '🐣 فراخ بط بداية (0 إلى 3 أسابيع / 1-21 يوم) [~40 غ/يوم]' : (isEn ? '🐣 Duckling starter (0 to 3 wks) [~40g/d]' : '🐣 Caneton démarrage (0 à 3 semaines / J1–J21) [~40g/j, Ci 1.3]')
+        },
+        {
+          key: 'canard_croissance',
+          days: 22,
+          label: isAr ? '🦆 بط نمو وتسمين (1 إلى 4 أشهر / 22-112 يوم) [~90-140 غ/يوم]' : (isEn ? '🦆 Growing / Finishing Duck (1 to 4 mos) [~90-140g/d]' : '🦆 Canard jeune / Croissance (1 à 4 mois / J22–J112) [~90-140g/j, Ci 3.0-4.7]')
+        },
+        {
+          key: 'canard_adulte',
+          days: 120,
+          label: isAr ? '🦆 بط بالغ (فوق 4-5 أشهر / أكثر من 113 يوم) [~150 غ/يوم]' : (isEn ? '🦆 Adult Duck (> 4-5 mos) [~150g/d]' : '🦆 Canard adulte (> 4-5 mois / J113+) [~150g/j, Ci 5.0]')
+        }
+      ];
+    } else if (sp === 'pintade') {
+      options = [
+        {
+          key: 'pintadeau',
+          days: 0,
+          label: isAr ? '🐣 كتاكيت دجاج الوادي (0 إلى 4 أسابيع)' : (isEn ? '🐣 Guinea Keets (0 to 4 wks)' : '🐣 Pintadeau démarrage (0 à 4 semaines) [~26g/j]')
+        },
+        {
+          key: 'pintade_croissance',
+          days: 30,
+          label: isAr ? '🪶 دجاج الوادي نامي (1 إلى 3 أشهر)' : (isEn ? '🪶 Growing Guinea (1 to 3 mos)' : '🪶 Pintade jeune (1 à 3 mois) [~62g/j]')
+        },
+        {
+          key: 'pintade_adulte',
+          days: 90,
+          label: isAr ? '🪶 دجاج الوادي بالغ (> 3 أشهر)' : (isEn ? '🪶 Adult Guinea (> 3 mos)' : '🪶 Pintade adulte (> 3 mois) [~107g/j]')
+        }
+      ];
+    } else if (sp === 'autre') {
+      options = [
+        {
+          key: 'autre_demarrage',
+          days: 0,
+          label: isAr ? '🐣 مرحلة البداية (0 إلى 4 أسابيع)' : (isEn ? '🐣 Starter (0 to 4 wks)' : '🐣 Démarrage (0 à 4 semaines)')
+        },
+        {
+          key: 'autre_croissance',
+          days: 30,
+          label: isAr ? '🐥 مرحلة النمو (1 إلى 6 أشهر)' : (isEn ? '🐥 Growing (1 to 6 mos)' : '🐥 Jeune / Croissance (1 à 6 mois)')
+        },
+        {
+          key: 'autre_adulte',
+          days: 180,
+          label: isAr ? '🦃 طيور بالغة (> 6 أشهر)' : (isEn ? '🦃 Adult (> 6 mos)' : '🦃 Adulte (> 6 mois)')
+        }
+      ];
+    } else {
+      // Default: Poule / Poulet (Gallinacés)
+      options = [
+        {
+          key: 'poussin',
+          days: 0,
+          label: isAr ? '🐣 كتاكيت / فلالس بداية (0 - 28 يوماً / ~شهر) [~30 غ/يوم]' : (isEn ? '🐣 Chick starter (0 to 28 days) [~30g/d]' : '🐣 Poussin démarrage (0j - 28j / ~1 mois) [~30g/j, Ci 1.0]')
+        },
+        {
+          key: 'croissance',
+          days: 30,
+          label: isAr ? '🐥 دجاج نامي / فرارج (1 شهر - 6 أشهر) [~60-80 غ/يوم]' : (isEn ? '🐥 Young chicken (1 to 6 mos) [~60-80g/d]' : '🐥 Poulet jeune / Croissance (1 mois - 6 mois) [~60-80g/j, Ci 2.0-2.7]')
+        },
+        {
+          key: 'pondeuse',
+          days: 180,
+          label: isAr ? '🐓 دجاجة بياضة بالغة (> 6 أشهر / أكثر من 155 يوم) [~115 غ/يوم]' : (isEn ? '🐓 Adult Layer Hen (> 6 mos) [~115g/d]' : '🐓 Poule pondeuse adulte (> 6 mois / > 155j) [~115g/j, Ci 3.8]')
+        },
+        {
+          key: 'coq',
+          days: 180,
+          label: isAr ? '🐓 سردوك بالغ / فحل مخصب (> 6 أشهر) [~130 غ/يوم]' : (isEn ? '🐓 Adult Rooster (> 6 mos) [~130g/d]' : '🐓 Coq adulte (Reproducteur / > 6 mois) [~130g/j, Ci 4.3]')
+        }
+      ];
+    }
+
+    stageSelect.innerHTML = options.map(opt => `<option value="${opt.key}" data-days="${opt.days}">${opt.label}</option>`).join('');
+    this.handleAnimalStagePresetChange(options[0].key, formPrefix);
+  },
+
+  // Gère le choix du statut (2ème sélection) et pré-remplit l'âge de départ
+  handleAnimalStagePresetChange(presetKey, formPrefix = 'animal') {
+    const arrivalAgeInput = document.getElementById(`${formPrefix}ArrivalAgeDays`);
+    const hiddenStage = document.getElementById(`${formPrefix}Stage`);
+    const bannerText = document.getElementById(`${formPrefix}PortionBannerText`);
+
+    let defaultDays = 0;
+    let stageName = 'Croissance';
+    let portionInfo = '🌾 Portion : ~30 g / j (Ci = 1.0)';
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    if (presetKey === 'poussin') {
+      defaultDays = 0;
+      stageName = 'Démarrage';
+      portionInfo = isAr ? '🌾 حصة البداية : ~30 غ / يوم (المعامل 1.0) • حساب يومي مستمر حسب العمر' : (isEn ? '🌾 Starter portion: ~30 g / day (Ci 1.0)' : '🌾 Portion démarrage : ~30 g / j (Coefficient Ci = 1.0) • Calcul continu jour par jour');
+    } else if (presetKey === 'croissance') {
+      defaultDays = 30;
+      stageName = 'Croissance';
+      portionInfo = isAr ? '🌾 حصة النمو : ~60 إلى 80 غ / يوم (المعامل 2.0 إلى 2.7)' : (isEn ? '🌾 Grower portion: ~60 to 80 g / day (Ci 2.0 - 2.7)' : '🌾 Portion croissance : ~60 à 80 g / j (Coefficient Ci = 2.0 à 2.7)');
+    } else if (presetKey === 'pondeuse') {
+      defaultDays = 180;
+      stageName = 'Ponte';
+      portionInfo = isAr ? '🌾 حصة البياض البالغ : ~115 غ / يوم (المعامل 3.8) • ذروة إنتاج البيض' : (isEn ? '🌾 Adult layer portion: ~115 g / day (Ci 3.8)' : '🌾 Portion pondeuse adulte : ~115 g / j (Coefficient Ci = 3.8) • Pic de ponte');
+    } else if (presetKey === 'coq') {
+      defaultDays = 180;
+      stageName = 'Adulte';
+      portionInfo = isAr ? '🌾 حصة الفحل البالغ : ~130 غ / يوم (المعامل 4.3)' : (isEn ? '🌾 Rooster portion: ~130 g / day (Ci 4.3)' : '🌾 Portion coq adulte : ~130 g / j (Coefficient Ci = 4.3)');
+    } else if (presetKey === 'caneton_demarrage') {
+      defaultDays = 0;
+      stageName = 'Démarrage';
+      portionInfo = isAr ? '🌾 حصة فراخ البط : ~40 غ / يوم (المعامل 1.3)' : (isEn ? '🌾 Duckling portion: ~40 g / day (Ci 1.3)' : '🌾 Portion caneton démarrage : ~40 g / j (Coefficient Ci = 1.3)');
+    } else if (presetKey === 'canard_croissance') {
+      defaultDays = 22;
+      stageName = 'Croissance';
+      portionInfo = isAr ? '🌾 حصة نمو وتسمين البط : ~90 إلى 140 غ / يوم (المعامل 3.0 إلى 4.7)' : (isEn ? '🌾 Duck grower portion: ~90 to 140 g / day (Ci 3.0 - 4.7)' : '🌾 Portion croissance / finition canard : ~90 à 140 g / j (Ci 3.0 à 4.7)');
+    } else if (presetKey === 'canard_adulte') {
+      defaultDays = 120;
+      stageName = 'Adulte';
+      portionInfo = isAr ? '🌾 حصة البط البالغ : ~150 غ / يوم (المعامل 5.0)' : (isEn ? '🌾 Adult duck portion: ~150 g / day (Ci 5.0)' : '🌾 Portion canard adulte : ~150 g / j (Coefficient Ci = 5.0)');
+    } else if (presetKey.includes('demarrage') || presetKey === 'pintadeau') {
+      defaultDays = 0;
+      stageName = 'Démarrage';
+      portionInfo = '🌾 Portion démarrage';
+    } else if (presetKey.includes('croissance')) {
+      defaultDays = 30;
+      stageName = 'Croissance';
+      portionInfo = '🌾 Portion croissance';
+    } else {
+      defaultDays = 120;
+      stageName = 'Adulte';
+      portionInfo = '🌾 Portion adulte';
+    }
+
+    if (arrivalAgeInput) {
+      arrivalAgeInput.value = defaultDays;
+    }
+    if (hiddenStage) {
+      hiddenStage.value = stageName;
+    }
+    if (bannerText) {
+      bannerText.innerHTML = portionInfo;
+    }
+  },
+
   handleSaveAnimal(e) {
     e.preventDefault();
     const species = document.getElementById('animalSpecies').value;
@@ -3239,7 +3793,7 @@ const app = {
     const parsedCost = parseFloat(rawCost);
     const costPerHead = (rawCost === '' || isNaN(parsedCost)) ? 0 : Math.max(0, parsedCost);
 
-    const stage = document.getElementById('animalStage').value || 'Adulte';
+    const stage = document.getElementById('animalStage')?.value || 'Croissance';
     const notes = document.getElementById('animalNotes').value.trim();
 
     if (!quantity || !birthDate) {
@@ -3276,6 +3830,156 @@ const app = {
     this.showToast(this.t('toast_lot_saved', { name }));
     document.getElementById('formAddAnimal').reset();
     document.getElementById('animalCostPerHead').value = '0';
+  },
+
+  // ==========================================
+  // FEED PORTIONS & COEFFICIENTS MODAL & SIMULATOR
+  // ==========================================
+  openFeedPortionsModal(species = 'poulet') {
+    this._currentPortionsTab = species || 'poulet';
+    this.openModal('modalFeedPortionsTable');
+    this.switchPortionsTab(this._currentPortionsTab);
+  },
+
+  switchPortionsTab(species = 'poulet') {
+    this._currentPortionsTab = species;
+    
+    const btnPoulet = document.getElementById('btnPortionsTabPoulet');
+    const btnCanard = document.getElementById('btnPortionsTabCanard');
+    const btnPintade = document.getElementById('btnPortionsTabPintade');
+    
+    [btnPoulet, btnCanard, btnPintade].forEach(b => {
+      if (b) {
+        b.className = 'btn btn-sm btn-outline';
+        b.style.fontWeight = '700';
+        b.style.borderRadius = 'var(--radius-pill)';
+      }
+    });
+
+    if (species === 'canard' && btnCanard) {
+      btnCanard.className = 'btn btn-sm btn-primary';
+    } else if (species === 'pintade' && btnPintade) {
+      btnPintade.className = 'btn btn-sm btn-primary';
+    } else if (btnPoulet) {
+      btnPoulet.className = 'btn btn-sm btn-primary';
+    }
+
+    const simSelect = document.getElementById('simSpeciesSelect');
+    if (simSelect) simSelect.value = species;
+
+    this.renderFeedPortionsTable(species);
+    this.updatePortionSimulation();
+  },
+
+  renderFeedPortionsTable(species = 'poulet') {
+    const container = document.getElementById('portionsTableContainer');
+    if (!container) return;
+
+    const tableData = FEED_PORTION_TABLES[species] || FEED_PORTION_TABLES.poulet;
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    const colCat = this.t('portion_col_category') || 'Catégorie';
+    const colAge = this.t('portion_col_age') || 'Âge';
+    const colDaily = this.t('portion_col_daily') || 'Consommation moy. / jour';
+    const colCi = this.t('portion_col_ci') || 'Coefficient (Ci)';
+    const colNotes = this.t('portion_col_notes') || 'Notes d\'élevage';
+
+    let rowsHtml = '';
+    tableData.stages.forEach(st => {
+      const name = isAr ? st.nameAr : (isEn ? st.nameEn : st.nameFr);
+      const age = isAr ? st.ageAr : (isEn ? st.ageEn : st.ageFr);
+      const notes = isAr ? st.notesAr : (isEn ? (st.notesEn || st.notesFr) : st.notesFr);
+
+      rowsHtml += `
+        <tr>
+          <td style="font-weight: 700; color: var(--text-primary); white-space: nowrap;">
+            ${name}
+          </td>
+          <td style="color: var(--text-secondary); white-space: nowrap;">
+            ${age}
+          </td>
+          <td style="font-weight: 800; color: var(--accent-amber); white-space: nowrap;">
+            ~${st.dailyGrams} g
+          </td>
+          <td style="white-space: nowrap;">
+            <span class="portion-ci-pill">Ci = ${st.ci.toFixed(1)}</span>
+          </td>
+          <td style="font-size: 0.76rem; color: var(--text-muted);">
+            ${notes}
+          </td>
+        </tr>
+      `;
+    });
+
+    container.innerHTML = `
+      <div class="portions-table-wrapper">
+        <table class="portions-table">
+          <thead>
+            <tr>
+              <th>${colCat}</th>
+              <th>${colAge}</th>
+              <th>${colDaily}</th>
+              <th>${colCi}</th>
+              <th>${colNotes}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+  },
+
+  updatePortionSimulation() {
+    const species = document.getElementById('simSpeciesSelect')?.value || 'poulet';
+    const ageDays = Math.max(1, parseInt(document.getElementById('simAgeDaysInput')?.value, 10) || 45);
+    const acqCost = Math.max(0, parseFloat(document.getElementById('simAcqCostInput')?.value) || 0);
+    const feedPriceKg = Math.max(0.1, parseFloat(document.getElementById('simFeedPriceInput')?.value) || 1.0);
+
+    const feedData = this.getAgronomicFeedData(species, ageDays);
+    const cumulFeedKg = this.calculateCumulativeFeedKg(species, ageDays, '', '', 0);
+    const cumulFeedCost = cumulFeedKg * feedPriceKg;
+    const totalCostPerHead = acqCost + cumulFeedCost;
+    
+    // Marge nette conseillée (+40%)
+    const minMarginFloor = (species === 'poussin' || (species === 'poulet' && ageDays <= 28)) ? 1.500 : ((species === 'canard') ? 6.000 : 3.500);
+    const recommendedSellPrice = Math.max(totalCostPerHead > 0 ? (totalCostPerHead / 0.60) : (cumulFeedCost * 1.5 + minMarginFloor), totalCostPerHead + minMarginFloor);
+
+    const grid = document.getElementById('simResultsGrid');
+    if (!grid) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const stageLabel = isAr ? feedData.labelAr : (isEn ? feedData.labelEn : feedData.labelFr);
+
+    grid.innerHTML = `
+      <div class="sim-kpi-card">
+        <span class="sim-lbl">${isAr ? 'المرحلة والطور' : (isEn ? 'Stage & Category' : 'Catégorie zootechnique')}</span>
+        <span class="sim-val text-cyan" style="font-size: 0.82rem;">${stageLabel.split('(')[0]}</span>
+      </div>
+      <div class="sim-kpi-card">
+        <span class="sim-lbl">${isAr ? 'حصة اليوم' : (isEn ? 'Daily portion' : 'Portion du jour')}</span>
+        <span class="sim-val text-amber">${feedData.dailyGrams} g/j <small style="font-size:0.7rem; font-weight:700;">(Ci ${feedData.ci})</small></span>
+      </div>
+      <div class="sim-kpi-card">
+        <span class="sim-lbl">${isAr ? 'المجموع المستهلك' : (isEn ? 'Total feed eaten' : 'Aliment cumulé')}</span>
+        <span class="sim-val text-amber">~${cumulFeedKg.toFixed(2)} kg</span>
+      </div>
+      <div class="sim-kpi-card">
+        <span class="sim-lbl">${isAr ? 'تكلفة العلف المستهلك' : (isEn ? 'Cumul feed cost' : 'Coût d\'aliment')}</span>
+        <span class="sim-val text-amber">${this.formatMoney(cumulFeedCost)}</span>
+      </div>
+      <div class="sim-kpi-card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08);">
+        <span class="sim-lbl">${isAr ? 'تكلفة الطائر الإجمالية' : (isEn ? 'Total cost per bird' : 'Coût de revient / tête')}</span>
+        <span class="sim-val text-amber" style="font-size: 1.05rem;">${this.formatMoney(totalCostPerHead)}</span>
+      </div>
+      <div class="sim-kpi-card" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08);">
+        <span class="sim-lbl">${isAr ? 'سعر البيع المقترح (+40%)' : (isEn ? 'Rec. sale price (+40%)' : 'Prix conseillé (+40%)')}</span>
+        <span class="sim-val text-emerald" style="font-size: 1.05rem;">${this.formatMoney(recommendedSellPrice)}</span>
+      </div>
+    `;
   },
 
   // Toggle & gestion du menu mobile (3 lignes dans la barre haute)
