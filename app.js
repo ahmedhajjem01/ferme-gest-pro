@@ -4057,18 +4057,124 @@ const app = {
       title.placeholder = '';
     }
 
-    const feedStockGroup = document.getElementById('expenseFeedStockGroup');
-    const addToFeedCheck = document.getElementById('expenseAddToFeedStock');
-    if (feedStockGroup) {
-      if (cat === 'nourriture') {
-        feedStockGroup.style.display = 'block';
-        if (addToFeedCheck) addToFeedCheck.checked = true;
-        this.populateExpenseFeedTypes();
-        this.toggleExpenseFeedOptions();
-      } else {
-        feedStockGroup.style.display = 'none';
-        if (addToFeedCheck) addToFeedCheck.checked = false;
+    const feedPurchaseBlock = document.getElementById('expenseFeedPurchaseBlock');
+    const standardRow = document.getElementById('expenseStandardRow');
+    const expQty = document.getElementById('expenseQuantity');
+    const expPrice = document.getElementById('expenseUnitPrice');
+
+    if (cat === 'nourriture') {
+      if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'block';
+      if (standardRow) standardRow.style.display = 'none';
+      if (expQty) expQty.removeAttribute('required');
+      if (expPrice) expPrice.removeAttribute('required');
+
+      this.populateExpenseFeedTypes();
+      this.setFeedPurchaseMode(appState.currentFeedPurchaseMode || 'sac');
+    } else {
+      if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'none';
+      if (standardRow) standardRow.style.display = 'flex';
+      if (expQty) expQty.setAttribute('required', 'required');
+      if (expPrice) expPrice.setAttribute('required', 'required');
+      this.calcExpenseTotal();
+    }
+  },
+
+  setFeedPurchaseMode(mode) {
+    appState.currentFeedPurchaseMode = mode;
+
+    const btnSac = document.getElementById('btnFeedModeSac');
+    const btnKg = document.getElementById('btnFeedModeKg');
+    const btnBoite = document.getElementById('btnFeedModeBoite');
+
+    if (btnSac) btnSac.classList.toggle('active-feed-mode-btn', mode === 'sac');
+    if (btnKg) btnKg.classList.toggle('active-feed-mode-btn', mode === 'kg');
+    if (btnBoite) btnBoite.classList.toggle('active-feed-mode-btn', mode === 'boite');
+
+    const subSac = document.getElementById('subformFeedSac');
+    const subKg = document.getElementById('subformFeedKg');
+    const subBoite = document.getElementById('subformFeedBoite');
+
+    if (subSac) subSac.style.display = (mode === 'sac') ? 'block' : 'none';
+    if (subKg) subKg.style.display = (mode === 'kg') ? 'block' : 'none';
+    if (subBoite) subBoite.style.display = (mode === 'boite') ? 'block' : 'none';
+
+    this.calcFeedPurchaseFields();
+  },
+
+  setFeedBagWeightQuick(w) {
+    const input = document.getElementById('feedBagWeight');
+    if (input) {
+      input.value = w;
+      this.calcFeedPurchaseFields();
+    }
+  },
+
+  setFeedBoiteCountQuick(c) {
+    const input = document.getElementById('feedBoiteCount');
+    if (input) {
+      input.value = c;
+      this.calcFeedPurchaseFields();
+    }
+  },
+
+  calcFeedPurchaseFields() {
+    const mode = appState.currentFeedPurchaseMode || 'sac';
+    let total = 0;
+    let addedKg = 0;
+    let unitPrice = 0;
+    let quantity = 0;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+
+    if (mode === 'sac') {
+      const bagCount = parseFloat(document.getElementById('feedBagCount')?.value) || 0;
+      const bagWeight = parseFloat(document.getElementById('feedBagWeight')?.value) || 50;
+      const bagPrice = parseFloat(document.getElementById('feedBagPrice')?.value) || 0;
+
+      total = bagCount * bagPrice;
+      addedKg = bagCount * bagWeight;
+      quantity = bagCount;
+      unitPrice = bagPrice;
+    } else if (mode === 'kg') {
+      const kgCount = parseFloat(document.getElementById('feedKgCount')?.value) || 0;
+      const kgPrice = parseFloat(document.getElementById('feedKgPrice')?.value) || 0;
+
+      total = kgCount * kgPrice;
+      addedKg = kgCount;
+      quantity = kgCount;
+      unitPrice = kgPrice;
+    } else if (mode === 'boite') {
+      const boiteCount = parseFloat(document.getElementById('feedBoiteCount')?.value) || 0;
+      const boiteTotalPrice = parseFloat(document.getElementById('feedBoiteTotalPrice')?.value) || 0;
+
+      total = boiteTotalPrice;
+      addedKg = Number((boiteCount * 0.667).toFixed(2));
+      quantity = boiteCount;
+      unitPrice = boiteCount > 0 ? (total / boiteCount) : 0;
+    }
+
+    const expQty = document.getElementById('expenseQuantity');
+    const expPrice = document.getElementById('expenseUnitPrice');
+    const expTot = document.getElementById('expenseTotalCalculated');
+
+    if (expQty) expQty.value = quantity;
+    if (expPrice) expPrice.value = unitPrice.toFixed(3);
+    if (expTot) expTot.value = total.toFixed(3);
+
+    const recapTotal = document.getElementById('feedPurchaseRecapTotal');
+    const recapKg = document.getElementById('feedPurchaseRecapKg');
+
+    if (recapTotal) recapTotal.textContent = this.formatMoney(total);
+    if (recapKg) {
+      let extraNote = '';
+      if (mode === 'boite') {
+        extraNote = isAr ? ' (حكك سيكام)' : ' (boîtes Sicam)';
+      } else if (mode === 'sac') {
+        extraNote = isAr ? ' (أكياس)' : ' (sacs)';
       }
+      recapKg.textContent = `${addedKg.toFixed(1)} ${unitKg}${extraNote}`;
     }
   },
 
@@ -4099,11 +4205,11 @@ const app = {
 
   toggleExpenseFeedOptions() {
     const chk = document.getElementById('expenseAddToFeedStock');
-    const wrapper = document.getElementById('expenseFeedOptionsWrapper');
-    if (wrapper) {
-      wrapper.style.display = (chk && chk.checked) ? 'block' : 'none';
+    const grp = document.getElementById('expenseFeedTypeSelectGroup');
+    if (grp) {
+      grp.style.display = (chk && chk.checked) ? 'block' : 'none';
     }
-    this.updateExpenseFeedPreview();
+    this.calcFeedPurchaseFields();
   },
 
   onExpenseFeedTypeSelectChange() {
@@ -4120,7 +4226,7 @@ const app = {
         titleInput.value = `${prefix} ${this.getFeedDisplayName(ft)}`;
       }
     }
-    this.updateExpenseFeedPreview();
+    this.calcFeedPurchaseFields();
   },
 
   onExpenseTitleInput() {
@@ -4138,84 +4244,90 @@ const app = {
         select.value = match.id;
       }
     }
-    this.updateExpenseFeedPreview();
-  },
-
-  updateExpenseFeedPreview() {
-    const previewEl = document.getElementById('expenseFeedCalcPreview');
-    const chk = document.getElementById('expenseAddToFeedStock');
-    if (!previewEl) return;
-    if (!chk || !chk.checked) {
-      previewEl.textContent = '';
-      return;
-    }
-
-    const qty = parseFloat(document.getElementById('expenseQuantity')?.value) || 0;
-    const unit = document.getElementById('expenseFeedUnit')?.value || 'kg';
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
-    const unitKg = isAr ? 'كغ' : 'kg';
-
-    let addedKg = qty;
-    let detailStr = '';
-    if (unit === 'sac50') {
-      addedKg = qty * 50;
-      detailStr = isAr ? ` (${qty} أكياس × 50 كغ)` : ` (${qty} sacs × 50 kg)`;
-    } else if (unit === 'sac25') {
-      addedKg = qty * 25;
-      detailStr = isAr ? ` (${qty} أكياس × 25 كغ)` : ` (${qty} sacs × 25 kg)`;
-    }
-
-    if (addedKg > 0) {
-      const text = isAr
-        ? `➡️ الكمية التي ستضاف للمخزون: ${addedKg.toFixed(1)} ${unitKg}${detailStr}`
-        : (isEn
-            ? `➡️ Stock to be added: ${addedKg.toFixed(1)} ${unitKg}${detailStr}`
-            : `➡️ Stock qui sera crédité : ${addedKg.toFixed(1)} ${unitKg} en réserve${detailStr}`);
-      previewEl.textContent = text;
-    } else {
-      previewEl.textContent = '';
-    }
+    this.calcFeedPurchaseFields();
   },
 
   handleSaveExpense(e) {
     e.preventDefault();
     const category = document.getElementById('expenseCategory').value;
     const date = document.getElementById('expenseDate').value;
-    const title = document.getElementById('expenseTitle').value.trim();
-    const quantity = parseFloat(document.getElementById('expenseQuantity').value) || 1;
-    const unitPrice = parseFloat(document.getElementById('expenseUnitPrice').value) || 0;
-    const total = parseFloat(document.getElementById('expenseTotalCalculated').value) || (quantity * unitPrice);
+    const titleInput = document.getElementById('expenseTitle');
+    let title = titleInput?.value.trim();
     const linkedLotId = document.getElementById('expenseAnimalLot').value;
 
-    if (!title || !date) {
-      alert('Veuillez remplir l\'intitulé et la date.');
+    if (!date) {
+      alert('Veuillez renseigner la date.');
       return;
     }
 
-    const addToStock = document.getElementById('expenseAddToFeedStock')?.checked;
+    let quantity = 1;
+    let unitPrice = 0;
+    let total = 0;
+    let addedKg = 0;
     let feedStockAddedKg = 0;
     let feedTypeId = null;
 
-    if (category === 'nourriture' && addToStock) {
-      const unit = document.getElementById('expenseFeedUnit')?.value || 'kg';
-      let addedKg = quantity;
-      if (unit === 'sac50') addedKg = quantity * 50;
-      else if (unit === 'sac25') addedKg = quantity * 25;
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
 
-      if (addedKg > 0) {
+    if (category === 'nourriture') {
+      const mode = appState.currentFeedPurchaseMode || 'sac';
+      const addToStock = document.getElementById('expenseAddToFeedStock')?.checked;
+
+      if (mode === 'sac') {
+        const bagCount = parseFloat(document.getElementById('feedBagCount')?.value) || 1;
+        const bagWeight = parseFloat(document.getElementById('feedBagWeight')?.value) || 50;
+        const bagPrice = parseFloat(document.getElementById('feedBagPrice')?.value) || 0;
+
+        quantity = bagCount;
+        unitPrice = bagPrice;
+        total = bagCount * bagPrice;
+        addedKg = bagCount * bagWeight;
+
+        if (!title) {
+          const sacWord = isAr ? 'أكياس' : (isEn ? 'Bags' : 'Sacs');
+          title = `${bagCount} ${sacWord} (${bagWeight}kg)`;
+        }
+      } else if (mode === 'kg') {
+        const kgCount = parseFloat(document.getElementById('feedKgCount')?.value) || 1;
+        const kgPrice = parseFloat(document.getElementById('feedKgPrice')?.value) || 0;
+
+        quantity = kgCount;
+        unitPrice = kgPrice;
+        total = kgCount * kgPrice;
+        addedKg = kgCount;
+
+        if (!title) {
+          const kgWord = isAr ? 'كغ' : 'kg';
+          title = `${kgCount} ${kgWord}`;
+        }
+      } else if (mode === 'boite') {
+        const boiteCount = parseFloat(document.getElementById('feedBoiteCount')?.value) || 1;
+        const boiteTotalPrice = parseFloat(document.getElementById('feedBoiteTotalPrice')?.value) || 0;
+
+        quantity = boiteCount;
+        total = boiteTotalPrice;
+        unitPrice = boiteCount > 0 ? (total / boiteCount) : 0;
+        addedKg = Number((boiteCount * 0.667).toFixed(2));
+
+        if (!title) {
+          const boiteWord = isAr ? 'حكك طماطم' : (isEn ? 'Tomato cans' : 'Boîtes tomate (Sicam)');
+          title = `${boiteCount} ${boiteWord}`;
+        }
+      }
+
+      if (addToStock && addedKg > 0) {
         appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
         const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
         let targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
 
         if (!targetFeed || selectedFeedId === '__new__') {
-          // Check if a feed with matching name exists
           const cleanName = title.trim();
           targetFeed = (appState.feedTypes || []).find(f => f.name.toLowerCase().trim() === cleanName.toLowerCase().trim());
           if (!targetFeed) {
             targetFeed = {
               id: 'feed-' + Date.now().toString(36),
-              name: cleanName || (appState.lang === 'ar' ? 'علف جديد' : 'Nouvel aliment'),
+              name: cleanName || (isAr ? 'علف جديد' : 'Nouvel aliment'),
               stockKg: 0,
               pricePerKg: (total / (addedKg || 1)) || 1.2
             };
@@ -4235,13 +4347,22 @@ const app = {
         feedStockAddedKg = addedKg;
         feedTypeId = targetFeed.id;
       }
+    } else {
+      quantity = parseFloat(document.getElementById('expenseQuantity')?.value) || 1;
+      unitPrice = parseFloat(document.getElementById('expenseUnitPrice')?.value) || 0;
+      total = parseFloat(document.getElementById('expenseTotalCalculated')?.value) || (quantity * unitPrice);
+
+      if (!title) {
+        alert('Veuillez renseigner l\'intitulé de la dépense.');
+        return;
+      }
     }
 
     const newExp = {
       id: 'exp-' + Date.now().toString(36),
       date,
       category,
-      title,
+      title: title || 'Dépense',
       quantity,
       unitPrice,
       total,
@@ -4255,7 +4376,6 @@ const app = {
     this.closeModal('modalAddExpense');
     this.renderAll();
 
-    const isAr = appState.lang === 'ar';
     let toastMsg = this.t('toast_expense_saved', { amount: this.formatMoney(total) });
     if (feedStockAddedKg > 0) {
       toastMsg += isAr 
@@ -4269,10 +4389,7 @@ const app = {
     const expPrice = document.getElementById('expenseUnitPrice');
     if (expQty) { expQty.value = ''; expQty.placeholder = ''; }
     if (expPrice) { expPrice.value = ''; expPrice.placeholder = ''; }
-    const unitSelect = document.getElementById('expenseFeedUnit');
-    if (unitSelect) unitSelect.value = 'kg';
     this.calcExpenseTotal();
-    this.updateExpenseFeedPreview();
   },
 
   deleteExpense(expId) {
