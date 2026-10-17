@@ -723,7 +723,6 @@ const app = {
     this.updateMobileMenuControls();
     this.applyTranslations();
     this.renderAll();
-    this.runSimulator();
     this.calcHatchPreview();
 
     // Reschedule daily 17h egg notification in the selected language
@@ -800,7 +799,7 @@ const app = {
     this.updateCurrencySymbols();
     this.applyTranslations();
     this.renderAll();
-    this.runSimulator();
+    document.querySelectorAll('.simulator-box, #simulatorBox').forEach(el => el.remove());
 
     // Schedule 17h daily egg collection notification in active language
     if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
@@ -1185,11 +1184,17 @@ const app = {
         const nextId = this.getNextAnimalId();
         const animalNameInput = document.getElementById('animalName');
         if (animalNameInput) {
-          animalNameInput.placeholder = `Par défaut : ${nextId}`;
+          animalNameInput.placeholder = `Par défaut : ${nextId} (Optionnel)`;
         }
         const costInput = document.getElementById('animalCostPerHead');
-        if (costInput && (!costInput.value || costInput.value === '20')) {
-          costInput.value = '0';
+        if (costInput) {
+          costInput.value = '';
+          costInput.placeholder = '0.00';
+        }
+        const qtyInput = document.getElementById('animalQuantity');
+        if (qtyInput) {
+          qtyInput.value = '';
+          qtyInput.placeholder = '0';
         }
         const birthDateInput = document.getElementById('animalBirthDate');
         if (birthDateInput && !birthDateInput.value) {
@@ -3478,33 +3483,20 @@ const app = {
           <small class="text-muted">${animal.notes || defaultNotes}</small>
         </div>
 
-        <!-- Actions Rapides Immédiates (-1 Mort / +1 Achat) -->
-        <div class="animal-quick-counter-row" style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:var(--bg-card); padding:0.5rem 0.75rem; border-radius:var(--radius-md); border:1px solid var(--border-subtle); margin-top:0.4rem;">
-          <span style="font-size:0.75rem; font-weight:700; color:var(--text-secondary);">${this.t('card_immediate_action')}</span>
-          <div style="display:flex; gap:0.4rem;">
-            <button class="btn btn-sm btn-danger" style="padding:0.25rem 0.65rem; font-size:0.78rem; font-weight:800;" title="Déclarer 1 mort" onclick="app.quickMortality('${animal.id}', 1)">
-              ${this.t('btn_mortality_one')}
-            </button>
-            <button class="btn btn-sm btn-primary" style="padding:0.25rem 0.65rem; font-size:0.78rem; font-weight:800;" title="Déclarer 1 achat / naissance" onclick="app.quickAddAnimal('${animal.id}', 1)">
-              ${this.t('btn_add_one')}
-            </button>
-          </div>
-        </div>
-
-        <div class="animal-card-actions">
-          <button class="btn btn-sm btn-outline flex-1" onclick="app.recordMortalityPrompt('${animal.id}')" title="Déclarer plusieurs pertes">
+        <div class="animal-card-actions" style="margin-top: 0.65rem;">
+          <button type="button" class="btn btn-sm btn-outline flex-1" onclick="app.openMortalityModal('${animal.id}')" title="Déclarer plusieurs pertes">
             ${this.t('btn_mortalities_custom')}
           </button>
-          <button class="btn btn-sm btn-outline flex-1" onclick="app.recordPurchasePrompt('${animal.id}')" title="Acheter et ajouter à ce lot">
+          <button type="button" class="btn btn-sm btn-outline flex-1" onclick="app.openPurchaseModal('${animal.id}')" title="Acheter et ajouter à ce lot">
             ${this.t('btn_purchases_custom')}
           </button>
-          <button class="btn btn-sm btn-emerald flex-1" onclick="app.quickSellFromLot('${animal.id}')">
+          <button type="button" class="btn btn-sm btn-emerald flex-1" onclick="app.quickSellFromLot('${animal.id}')">
             ${this.t('btn_sell_lot')}
           </button>
-          <button class="btn btn-sm btn-secondary" title="Modifier le lot ou le coût" onclick="app.openEditAnimalModal('${animal.id}')" style="display:inline-flex; align-items:center; gap:0.25rem;">
+          <button type="button" class="btn btn-sm btn-secondary" title="Modifier le lot ou le coût" onclick="app.openEditAnimalModal('${animal.id}')" style="display:inline-flex; align-items:center; gap:0.25rem;">
             ✏️
           </button>
-          <button class="btn btn-sm btn-danger-outline" title="Supprimer le lot" onclick="app.deleteAnimal('${animal.id}')">
+          <button type="button" class="btn btn-sm btn-danger-outline" title="Supprimer le lot" onclick="app.openDeleteAnimalModal('${animal.id}')">
             🗑️
           </button>
         </div>
@@ -3794,7 +3786,8 @@ const app = {
     }
 
     if (arrivalAgeInput) {
-      arrivalAgeInput.value = defaultDays;
+      arrivalAgeInput.value = '';
+      arrivalAgeInput.placeholder = defaultDays.toString();
     }
     if (hiddenStage) {
       hiddenStage.value = stageName;
@@ -3855,7 +3848,10 @@ const app = {
     this.renderAll();
     this.showToast(this.t('toast_lot_saved', { name }));
     document.getElementById('formAddAnimal').reset();
-    document.getElementById('animalCostPerHead').value = '0';
+    const costHead = document.getElementById('animalCostPerHead');
+    if (costHead) { costHead.value = ''; costHead.placeholder = '0.00'; }
+    const arrAge = document.getElementById('animalArrivalAgeDays');
+    if (arrAge) { arrAge.value = ''; arrAge.placeholder = '0'; }
   },
 
   // ==========================================
@@ -4062,73 +4058,176 @@ const app = {
     }
   },
 
-  recordMortalityPrompt(lotId) {
+  // --- Modales Dédiées : Suppression, Pertes, Achat (100% Mobile & PWA sans prompt/confirm) ---
+  openDeleteAnimalModal(lotId) {
     const lot = appState.animals.find(a => a.id === lotId);
     if (!lot) return;
+    const targetIdEl = document.getElementById('deleteAnimalTargetId');
+    const targetNameEl = document.getElementById('deleteAnimalTargetName');
+    const targetInfoEl = document.getElementById('deleteAnimalTargetInfo');
+    if (targetIdEl) targetIdEl.value = lot.id;
+    if (targetNameEl) targetNameEl.textContent = `${lot.name} (${lot.breed || 'Lot'})`;
+    if (targetInfoEl) {
+      const isAr = appState.lang === 'ar';
+      targetInfoEl.textContent = isAr 
+        ? `العدد الحالي: ${lot.currentQuantity} طائر | العمر: ${lot.stage || ''}`
+        : `Effectif actuel : ${lot.currentQuantity} têtes | Stade : ${lot.stage || ''}`;
+    }
+    this.openModal('modalDeleteAnimalConfirm');
+  },
 
-    const countStr = prompt(`Signaler mortalité pour ${lot.name} (Effectif actuel: ${lot.currentQuantity})\nCombien de pertes à enregistrer ?`, "1");
-    if (countStr === null) return;
-    const count = parseInt(countStr, 10);
+  executeDeleteAnimal() {
+    const targetIdEl = document.getElementById('deleteAnimalTargetId');
+    const lotId = targetIdEl ? targetIdEl.value : null;
+    if (!lotId) {
+      this.closeModal('modalDeleteAnimalConfirm');
+      return;
+    }
+    if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+      appAuth.addDeletedId(lotId);
+    }
+    appState.animals = appState.animals.filter(a => a.id !== lotId);
+    this.saveState();
+    this.closeModal('modalDeleteAnimalConfirm');
+    this.renderAll();
+    this.showToast(this.t('toast_lot_deleted') || 'Lot supprimé avec succès.');
+  },
+
+  deleteAnimal(lotId) {
+    this.openDeleteAnimalModal(lotId);
+  },
+
+  openMortalityModal(lotId) {
+    const lot = appState.animals.find(a => a.id === lotId);
+    if (!lot) return;
+    const idEl = document.getElementById('mortalityLotId');
+    const nameEl = document.getElementById('mortalityLotName');
+    const breedEl = document.getElementById('mortalityLotBreed');
+    const countInput = document.getElementById('mortalityCountInput');
+    const flockEl = document.getElementById('mortalityCurrentFlock');
+    if (idEl) idEl.value = lot.id;
+    if (nameEl) nameEl.textContent = lot.name;
+    if (breedEl) breedEl.textContent = `${lot.breed || 'Lot'} &bull; ${lot.stage || ''}`;
+    if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? 'طائر' : 'sujets'}`;
+    if (countInput) {
+      countInput.value = '';
+      countInput.placeholder = '0';
+      countInput.max = lot.currentQuantity;
+    }
+    this.openModal('modalRecordMortality');
+  },
+
+  stepMortalityInput(delta) {
+    const input = document.getElementById('mortalityCountInput');
+    if (!input) return;
+    let val = parseInt(input.value, 10) || 0;
+    val = Math.max(1, val + delta);
+    const max = parseInt(input.max, 10);
+    if (!isNaN(max) && max > 0 && val > max) val = max;
+    input.value = val;
+  },
+
+  setMortalityCount(val) {
+    const input = document.getElementById('mortalityCountInput');
+    if (!input) return;
+    const max = parseInt(input.max, 10);
+    if (!isNaN(max) && max > 0 && val > max) val = max;
+    input.value = Math.max(1, val);
+  },
+
+  submitMortalityModal(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const idEl = document.getElementById('mortalityLotId');
+    const countInput = document.getElementById('mortalityCountInput');
+    if (!idEl || !countInput) return;
+    const lot = appState.animals.find(a => a.id === idEl.value);
+    if (!lot) return;
+    const count = parseInt(countInput.value, 10);
     if (isNaN(count) || count <= 0) {
-      alert('Veuillez entrer un nombre positif valide.');
+      this.showToast('Veuillez entrer un nombre positif valide', 'error');
       return;
     }
     if (count > lot.currentQuantity) {
-      alert(`Impossible d'enregistrer plus de pertes (${count}) que l'effectif actuel (${lot.currentQuantity}) !`);
-      return;
-    }
-
-    lot.currentQuantity -= count;
-    lot.mortality = (lot.mortality || 0) + count;
-    this.saveState();
-    this.renderAll();
-    this.showToast(this.t('toast_mortality_recorded', { n: count, name: lot.name }), 'error');
-  },
-
-  // Action Rapide Immédiate : Déclarer 1 Mort (Le count fait -1 immédiatement)
-  quickMortality(lotId, count = 1) {
-    const lot = appState.animals.find(a => a.id === lotId);
-    if (!lot) return;
-    if (lot.currentQuantity < count) {
-      this.showToast(`Impossible : effectif actuel (${lot.currentQuantity}) inférieur à ${count}`, 'error');
+      this.showToast(`Impossible : ${count} dépasse l'effectif (${lot.currentQuantity})`, 'error');
       return;
     }
     lot.currentQuantity -= count;
     lot.mortality = (lot.mortality || 0) + count;
     this.saveState();
+    this.closeModal('modalRecordMortality');
     this.renderAll();
-    this.showToast(this.t('toast_quick_mortality', { n: count, name: lot.name, rem: lot.currentQuantity }), 'error');
+    this.showToast(this.t('toast_mortality_recorded', { n: count, name: lot.name }) || `${count} pertes enregistrées`, 'error');
   },
 
-  // Action Rapide Immédiate : Déclarer 1 Achat / Naissance (Le count fait +1 immédiatement)
-  quickAddAnimal(lotId, count = 1) {
-    const lot = appState.animals.find(a => a.id === lotId);
-    if (!lot) return;
-    lot.currentQuantity += count;
-    lot.initialQuantity += count;
-    this.saveState();
-    this.renderAll();
-    this.showToast(this.t('toast_quick_add', { n: count, name: lot.name, tot: lot.currentQuantity }));
+  recordMortalityPrompt(lotId) {
+    this.openMortalityModal(lotId);
   },
 
-  // Saisie Achat de Groupe (+X sujets achetés)
-  recordPurchasePrompt(lotId) {
+  openPurchaseModal(lotId) {
     const lot = appState.animals.find(a => a.id === lotId);
     if (!lot) return;
-    const countStr = prompt(`Achat de nouveaux animaux pour ${lot.name}\nCombien de sujets achetés à ajouter ?`, "10");
-    if (countStr === null) return;
-    const count = parseInt(countStr, 10);
-    if (isNaN(count) || count <= 0) return;
-    const priceStr = prompt(`Prix d'achat unitaire (${CURRENCY_SYMBOLS[appState.currency] || '€'}) :`, (lot.costPerHead || 1.20).toString());
-    const unitPrice = parseFloat(priceStr) || 0;
+    const idEl = document.getElementById('purchaseLotId');
+    const nameEl = document.getElementById('purchaseLotName');
+    const breedEl = document.getElementById('purchaseLotBreed');
+    const flockEl = document.getElementById('purchaseCurrentFlock');
+    const countInput = document.getElementById('purchaseCountInput');
+    const priceInput = document.getElementById('purchaseUnitPriceInput');
+    if (idEl) idEl.value = lot.id;
+    if (nameEl) nameEl.textContent = lot.name;
+    if (breedEl) breedEl.textContent = `${lot.breed || 'Lot'} &bull; ${lot.stage || ''}`;
+    if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? 'طائر' : 'sujets'}`;
+    if (countInput) {
+      countInput.value = '';
+      countInput.placeholder = '0';
+    }
+    if (priceInput) {
+      priceInput.value = '';
+      priceInput.placeholder = (Number(lot.costPerHead) || 0).toFixed(2);
+    }
+    this.calcPurchaseModalTotal();
+    this.openModal('modalRecordPurchase');
+  },
 
+  setPurchaseCount(val) {
+    const input = document.getElementById('purchaseCountInput');
+    if (!input) return;
+    input.value = Math.max(1, val);
+    this.calcPurchaseModalTotal();
+  },
+
+  calcPurchaseModalTotal() {
+    const countInput = document.getElementById('purchaseCountInput');
+    const priceInput = document.getElementById('purchaseUnitPriceInput');
+    const displayEl = document.getElementById('purchaseTotalCostDisplay');
+    const count = Math.max(0, parseInt(countInput?.value, 10) || 0);
+    const unitPrice = Math.max(0, parseFloat(priceInput?.value) || 0);
+    const total = count * unitPrice;
+    if (displayEl) {
+      displayEl.textContent = this.formatMoney(total);
+    }
+  },
+
+  submitPurchaseModal(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const idEl = document.getElementById('purchaseLotId');
+    const countInput = document.getElementById('purchaseCountInput');
+    const priceInput = document.getElementById('purchaseUnitPriceInput');
+    if (!idEl || !countInput) return;
+    const lot = appState.animals.find(a => a.id === idEl.value);
+    if (!lot) return;
+    const count = parseInt(countInput.value, 10);
+    if (isNaN(count) || count <= 0) {
+      this.showToast('Veuillez entrer une quantité positive', 'error');
+      return;
+    }
+    const unitPrice = Math.max(0, parseFloat(priceInput?.value) || 0);
     lot.currentQuantity += count;
     lot.initialQuantity += count;
-
     if (unitPrice > 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
       appState.expenses.unshift({
         id: 'exp-' + Date.now().toString(36),
-        date: '2026-10-12',
+        date: todayStr,
         category: 'nourriture',
         title: `Achat de ${count} sujets (${lot.breed} - ${lot.name})`,
         quantity: count,
@@ -4137,31 +4236,21 @@ const app = {
         linkedLotId: lot.id
       });
     }
-
     this.saveState();
+    this.closeModal('modalRecordPurchase');
     this.renderAll();
-    this.showToast(this.t('toast_purchases_recorded', { n: count, breed: lot.breed, tot: lot.currentQuantity }));
+    this.showToast(this.t('toast_purchases_recorded', { n: count, breed: lot.breed, tot: lot.currentQuantity }) || `+${count} sujets ajoutés`);
   },
 
-
+  recordPurchasePrompt(lotId) {
+    this.openPurchaseModal(lotId);
+  },
 
   quickSellFromLot(lotId) {
     this.openModal('modalAddSale');
     const select = document.getElementById('saleLotLinked');
     if (select) select.value = lotId;
     this.handleSaleLotSelection(lotId);
-  },
-
-  deleteAnimal(lotId) {
-    if (confirm('Voulez-vous vraiment supprimer ce lot d\'animaux ?')) {
-      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-        appAuth.addDeletedId(lotId);
-      }
-      appState.animals = appState.animals.filter(a => a.id !== lotId);
-      this.saveState();
-      this.renderAll();
-      this.showToast('Lot supprimé avec succès.');
-    }
   },
 
   // ==========================================
@@ -4379,8 +4468,10 @@ const app = {
     this.renderAll();
     this.showToast(this.t('toast_expense_saved', { amount: this.formatMoney(total) }));
     document.getElementById('formAddExpense').reset();
-    document.getElementById('expenseQuantity').value = 1;
-    document.getElementById('expenseUnitPrice').value = 15;
+    const expQty = document.getElementById('expenseQuantity');
+    const expPrice = document.getElementById('expenseUnitPrice');
+    if (expQty) { expQty.value = ''; expQty.placeholder = '0'; }
+    if (expPrice) { expPrice.value = ''; expPrice.placeholder = '0.00'; }
     this.calcExpenseTotal();
   },
 
@@ -4851,24 +4942,30 @@ const app = {
     if (type === 'oeufs') {
       typeSelect.value = 'oeufs';
       formatSelect.value = 'hara';
-      descInput.value = 'Vente œufs frais de ferme (par HARA de 4 œufs)';
-      qtyInput.value = 5; // 5 Haras = 20 eggs
-      priceInput.value = isTND ? 1.800 : 0.80;
+      descInput.value = 'Vente œufs frais de ferme';
+      qtyInput.value = '';
+      qtyInput.placeholder = '0';
+      priceInput.value = '';
+      priceInput.placeholder = (isTND ? 1.800 : 0.80).toFixed(isTND ? 3 : 2);
     } else if (type === 'poussin') {
       typeSelect.value = 'poussin';
       formatSelect.value = 'unite';
-      descInput.value = 'Vente poussins démarrés (âge 21 jours)';
-      qtyInput.value = 50;
-      priceInput.value = isTND ? 3.500 : 1.70;
-      if (ageInput) ageInput.value = 21;
+      descInput.value = 'Vente poussins démarrés';
+      qtyInput.value = '';
+      qtyInput.placeholder = '0';
+      priceInput.value = '';
+      priceInput.placeholder = (isTND ? 3.500 : 1.70).toFixed(isTND ? 3 : 2);
+      if (ageInput) { ageInput.value = ''; ageInput.placeholder = 'Ex: 21 (Optionnel)'; }
       if (ageUnit) ageUnit.value = 'jours';
     } else if (type === 'poulet') {
       typeSelect.value = 'poulet';
       formatSelect.value = 'unite';
-      descInput.value = 'Vente poulets fermiers (âge 2 mois)';
-      qtyInput.value = 20;
-      priceInput.value = isTND ? 18.000 : 8.50;
-      if (ageInput) ageInput.value = 2;
+      descInput.value = 'Vente poulets fermiers';
+      qtyInput.value = '';
+      qtyInput.placeholder = '0';
+      priceInput.value = '';
+      priceInput.placeholder = (isTND ? 18.000 : 8.50).toFixed(isTND ? 3 : 2);
+      if (ageInput) { ageInput.value = ''; ageInput.placeholder = 'Ex: 2 (Optionnel)'; }
       if (ageUnit) ageUnit.value = 'mois';
     }
 
@@ -4895,13 +4992,11 @@ const app = {
       if (format && !['hara', 'plateau', 'oeuf-unite'].includes(format.value)) {
         format.value = 'hara';
       }
-      if (format.value === 'hara') {
-        price.value = isTND ? 1.800 : 0.80;
-      } else if (format.value === 'plateau') {
-        price.value = isTND ? 13.500 : 5.50;
-      } else {
-        price.value = isTND ? 0.450 : 0.20;
-      }
+      let suggestedPrice = 1.800;
+      if (format.value === 'hara') suggestedPrice = isTND ? 1.800 : 0.80;
+      else if (format.value === 'plateau') suggestedPrice = isTND ? 13.500 : 5.50;
+      else suggestedPrice = isTND ? 0.450 : 0.20;
+      if (price) price.placeholder = suggestedPrice.toFixed(isTND ? 3 : 2);
     } else if (type === 'poussin') {
       if (eggBox) eggBox.classList.add('hidden');
       if (ageRow) ageRow.classList.remove('hidden');
@@ -4912,17 +5007,16 @@ const app = {
       // Options d'âge pour Poussin : Jours ou Semaines
       if (ageUnit) {
         ageUnit.innerHTML = `
-          <option value="jours">${this.t('opt_age_days') || 'Jours (ex: 1j, 21j...)'}</option>
-          <option value="semaines">${this.t('opt_age_weeks') || 'Semaines (ex: 2 sem...)'}</option>
+          <option value="jours">${this.t('opt_age_days') || 'Jours'}</option>
+          <option value="semaines">${this.t('opt_age_weeks') || 'Semaines'}</option>
         `;
         ageUnit.value = 'jours';
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Ex: 21 (jours)';
-        if (!ageInput.value) ageInput.value = '21';
+        ageInput.placeholder = 'Ex: 21 (Optionnel)';
       }
-      price.value = isTND ? 3.500 : 1.70;
+      if (price) price.placeholder = (isTND ? 3.500 : 1.70).toFixed(isTND ? 3 : 2);
 
     } else if (type === 'poulet') {
       if (eggBox) eggBox.classList.add('hidden');
@@ -4934,16 +5028,16 @@ const app = {
       // Options d'âge pour Poulet : Mois ou Adulte (> 6 mois)
       if (ageUnit) {
         ageUnit.innerHTML = `
-          <option value="mois">${this.t('opt_age_months') || 'Mois (ex: 1 à 6 mois)'}</option>
-          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois) [Par défaut si vide]'}</option>
+          <option value="mois">${this.t('opt_age_months') || 'Mois'}</option>
+          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois)'}</option>
         `;
         ageUnit.value = 'mois';
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Âge en mois (ex: 2) ou vide pour Adulte';
+        ageInput.placeholder = 'Ex: 2 (Optionnel)';
       }
-      price.value = isTND ? 18.000 : 8.50;
+      if (price) price.placeholder = (isTND ? 18.000 : 8.50).toFixed(isTND ? 3 : 2);
 
     } else if (type === 'pintade') {
       if (eggBox) eggBox.classList.add('hidden');
@@ -4955,17 +5049,16 @@ const app = {
 
       if (ageUnit) {
         ageUnit.innerHTML = `
-          <option value="mois">${this.t('opt_age_months') || 'Mois (ex: 1 à 6 mois)'}</option>
-          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois) [Par défaut si vide]'}</option>
+          <option value="mois">${this.t('opt_age_months') || 'Mois'}</option>
+          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois)'}</option>
         `;
         ageUnit.value = 'mois';
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Âge en mois (ex: 4) ou vide pour Adulte';
-        if (!ageInput.value) ageInput.value = '4';
+        ageInput.placeholder = 'Ex: 4 (Optionnel)';
       }
-      price.value = isTND ? 24.000 : 12.00;
+      if (price) price.placeholder = (isTND ? 24.000 : 12.00).toFixed(isTND ? 3 : 2);
     } else if (type === 'canard') {
       if (eggBox) eggBox.classList.add('hidden');
       if (ageRow) ageRow.classList.remove('hidden');
@@ -4976,17 +5069,16 @@ const app = {
 
       if (ageUnit) {
         ageUnit.innerHTML = `
-          <option value="mois">${this.t('opt_age_months') || 'Mois (ex: 1 à 6 mois)'}</option>
-          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois) [Par défaut si vide]'}</option>
+          <option value="mois">${this.t('opt_age_months') || 'Mois'}</option>
+          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois)'}</option>
         `;
         ageUnit.value = 'mois';
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Âge en mois (ex: 3) ou vide pour Adulte';
-        if (!ageInput.value) ageInput.value = '3';
+        ageInput.placeholder = 'Ex: 3 (Optionnel)';
       }
-      price.value = isTND ? 32.000 : 16.00;
+      if (price) price.placeholder = (isTND ? 32.000 : 16.00).toFixed(isTND ? 3 : 2);
     }
 
     this.calcSaleTotal();
@@ -4998,14 +5090,12 @@ const app = {
     const price = document.getElementById('saleUnitPrice');
     const isTND = appState.currency === 'TND';
 
-    if (type === 'oeufs') {
-      if (format === 'hara') {
-        price.value = isTND ? 1.800 : 0.80;
-      } else if (format === 'plateau') {
-        price.value = isTND ? 13.500 : 5.50;
-      } else if (format === 'oeuf-unite' || format === 'unite') {
-        price.value = isTND ? 0.450 : 0.20;
-      }
+    if (type === 'oeufs' && price) {
+      let suggested = 0.45;
+      if (format === 'hara') suggested = isTND ? 1.800 : 0.80;
+      else if (format === 'plateau') suggested = isTND ? 13.500 : 5.50;
+      else suggested = isTND ? 0.450 : 0.20;
+      price.placeholder = suggested.toFixed(isTND ? 3 : 2);
     }
     this.calcSaleTotal();
   },

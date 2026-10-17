@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=30">
+  <link rel="stylesheet" href="styles.css?v=35">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -1164,14 +1164,13 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="animalQuantity" data-i18n="lbl_initial_qty">Nombre de Têtes (Effectif Initial)</label>
-              <input type="number" id="animalQuantity" class="input-field" min="1" value="50" required>
+              <input type="number" id="animalQuantity" class="input-field" min="1" placeholder="Ex: 50" required>
             </div>
             <div class="form-group flex-1">
               <label for="animalCostPerHead">
-                <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) 
-                <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit / éclos)</small>
+                <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>)
               </label>
-              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" value="0" min="0" placeholder="0 (si gratuit / éclosion)">
+              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" min="0" placeholder="0.00">
             </div>
           </div>
 
@@ -1181,10 +1180,10 @@
               <input type="date" id="animalBirthDate" class="input-field" required>
             </div>
             <div class="form-group flex-1">
-              <label for="animalArrivalAgeDays">
-                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.78rem;">(auto selon statut ou personnalisé)</small>
+              <label for="animalArrivalAgeDays" data-i18n="lbl_arrival_age">
+                Âge à l'achat (jours)
               </label>
-              <input type="number" id="animalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 (si poussin 1j) ou 30 (si 1 mois)">
+              <input type="number" id="animalArrivalAgeDays" class="input-field" min="0" placeholder="0">
             </div>
           </div>
 
@@ -1195,15 +1194,15 @@
             </div>
             <div class="form-group flex-1">
               <label for="animalName"><span data-i18n="lbl_identifier">Identifiant / N° de Lot</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="text" id="animalName" class="input-field" placeholder="Laisser vide pour ID auto (ex: 1, 2, 3...)">
+              <input type="text" id="animalName" class="input-field" placeholder="Par défaut : 1 (Optionnel)">
             </div>
           </div>
 
           <input type="hidden" id="animalStage" value="Démarrage">
 
           <div class="form-group">
-            <label for="animalNotes" data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</label>
-            <textarea id="animalNotes" class="input-field" rows="2" placeholder="Ex: Bâtiment A, vaccination faite..."></textarea>
+            <label for="animalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+            <textarea id="animalNotes" class="input-field" rows="2" placeholder="Ex: Bâtiment A, vaccination... (Optionnel)"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -1255,12 +1254,12 @@
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="editAnimalBreed"><span data-i18n="lbl_breed_variety">Race / Variété</span></label>
-              <input type="text" id="editAnimalBreed" class="input-field">
+              <label for="editAnimalBreed"><span data-i18n="lbl_breed_variety">Race / Variété</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+              <input type="text" id="editAnimalBreed" class="input-field" placeholder="Ex: Sasso, Beldi... (Optionnel)">
             </div>
             <div class="form-group flex-1">
               <label for="editAnimalQuantity"><span data-i18n="card_current_count">Effectif Actuel (Vivants)</span></label>
-              <input type="number" id="editAnimalQuantity" class="input-field" min="1" required>
+              <input type="number" id="editAnimalQuantity" class="input-field" min="1" placeholder="0" required>
             </div>
           </div>
 
@@ -1272,9 +1271,9 @@
             </div>
             <div class="form-group flex-1">
               <label for="editAnimalArrivalAgeDays">
-                Âge à l'achat (jours) <small style="color: var(--text-muted); font-size: 0.76rem;">(ex: 0 si poussin / 30 si 1 mois)</small>
+                Âge à l'achat (jours)
               </label>
-              <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0" value="0" placeholder="0 si poussin / 30 si 1 mois">
+              <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0" placeholder="0">
             </div>
           </div>
 
@@ -1282,26 +1281,147 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="editAnimalCostPerHead">
-                <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>) <small style="color: var(--text-muted); font-size: 0.78rem;">(0 si gratuit)</small>
+                <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>)
               </label>
-              <input type="number" id="editAnimalCostPerHead" class="input-field" step="0.05" min="0" value="0" placeholder="0 si gratuit">
+              <input type="number" id="editAnimalCostPerHead" class="input-field" step="0.05" min="0" placeholder="0.00">
             </div>
           </div>
-          <small class="text-muted" style="font-size: 0.75rem; margin-top: -0.4rem; display: block;">
-            Indiquez 0 si les sujets sont nés à la ferme, issus de votre couveuse ou reçus gratuitement.
-          </small>
 
           <input type="hidden" id="editAnimalStage" value="Adulte">
 
           <div class="form-group">
-            <label for="editAnimalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span></label>
-            <textarea id="editAnimalNotes" class="input-field" rows="2"></textarea>
+            <label for="editAnimalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+            <textarea id="editAnimalNotes" class="input-field" rows="2" placeholder="Notes (Optionnel)"></textarea>
           </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="app.closeModal('modalEditAnimal')" data-i18n="btn_cancel">Annuler</button>
           <button type="submit" class="btn btn-primary" style="font-weight: 700;" data-i18n="btn_save_edit">Enregistrer les modifications</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Confirmation Suppression Lot Animal -->
+  <div id="modalDeleteAnimalConfirm" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 style="color: var(--accent-rose); display: flex; align-items: center; gap: 0.4rem;">
+          <span>🗑️</span>
+          <span data-i18n="modal_delete_animal_title">Supprimer le Lot d'Animaux</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalDeleteAnimalConfirm')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="deleteAnimalTargetId">
+        <p style="font-size: 0.92rem; color: var(--text-main); margin-bottom: 0.85rem;" data-i18n="modal_delete_animal_msg">
+          Voulez-vous vraiment supprimer définitivement ce lot d'animaux ? Cette action est irréversible.
+        </p>
+        <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1.5px solid rgba(239, 68, 68, 0.35);">
+          <strong id="deleteAnimalTargetName" style="color: var(--accent-rose); font-size: 1.05rem; display: block;"></strong>
+          <span id="deleteAnimalTargetInfo" style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-top: 0.2rem;"></span>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn btn-outline flex-1" onclick="app.closeModal('modalDeleteAnimalConfirm')" data-i18n="btn_cancel">Annuler</button>
+        <button type="button" class="btn btn-danger flex-1" style="font-weight: 800;" onclick="app.executeDeleteAnimal()" data-i18n="modal_delete_confirm_btn">🗑️ Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Déclarer des Pertes / Mortalité -->
+  <div id="modalRecordMortality" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3 style="color: var(--accent-rose); display: flex; align-items: center; gap: 0.4rem;">
+          <span>💀</span>
+          <span data-i18n="modal_mortality_title">Déclarer des Pertes / Mortalité</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalRecordMortality')">&times;</button>
+      </div>
+      <form onsubmit="app.submitMortalityModal(event)">
+        <div class="modal-body">
+          <input type="hidden" id="mortalityLotId">
+          <div style="background: var(--bg-card); padding: 0.65rem 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong id="mortalityLotName" style="font-size: 0.95rem; display: block;"></strong>
+              <small id="mortalityLotBreed" class="text-muted" style="font-size: 0.78rem;"></small>
+            </div>
+            <span class="badge-pill text-cyan" id="mortalityCurrentFlock">50 sujets</span>
+          </div>
+
+          <div class="form-group">
+            <label for="mortalityCountInput" style="font-weight: 700; font-size: 0.85rem;" data-i18n="modal_mortality_count_lbl">Nombre de pertes à déclarer :</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.35rem;">
+              <button type="button" class="btn btn-secondary" onclick="app.stepMortalityInput(-1)" style="font-size: 1.2rem; width: 44px; height: 44px; font-weight: 900; padding: 0;">-</button>
+              <input type="number" id="mortalityCountInput" class="input-field" min="1" placeholder="0" style="text-align: center; font-size: 1.35rem; font-weight: 800; color: var(--accent-rose); height: 44px;" required>
+              <button type="button" class="btn btn-secondary" onclick="app.stepMortalityInput(1)" style="font-size: 1.2rem; width: 44px; height: 44px; font-weight: 900; padding: 0;">+</button>
+            </div>
+            <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn-quick-tag highlight" onclick="app.setMortalityCount(1)">+1 perte</button>
+              <button type="button" class="btn-quick-tag" onclick="app.setMortalityCount(2)">+2</button>
+              <button type="button" class="btn-quick-tag" onclick="app.setMortalityCount(5)">+5</button>
+              <button type="button" class="btn-quick-tag" onclick="app.setMortalityCount(10)">+10</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-outline flex-1" onclick="app.closeModal('modalRecordMortality')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-danger flex-1" style="font-weight: 800;" data-i18n="modal_mortality_submit_btn">💀 Valider les Pertes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Achat / Ajout d'Animaux au Lot -->
+  <div id="modalRecordPurchase" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 style="color: var(--accent-emerald); display: flex; align-items: center; gap: 0.4rem;">
+          <span>📦</span>
+          <span data-i18n="modal_purchase_title">Achat / Ajout d'Animaux au Lot</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalRecordPurchase')">&times;</button>
+      </div>
+      <form onsubmit="app.submitPurchaseModal(event)">
+        <div class="modal-body">
+          <input type="hidden" id="purchaseLotId">
+          <div style="background: var(--bg-card); padding: 0.65rem 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong id="purchaseLotName" style="font-size: 0.95rem; display: block;"></strong>
+              <small id="purchaseLotBreed" class="text-muted" style="font-size: 0.78rem;"></small>
+            </div>
+            <span class="badge-pill text-emerald" id="purchaseCurrentFlock">50 sujets</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="purchaseCountInput" style="font-weight: 700; font-size: 0.85rem;" data-i18n="modal_purchase_qty_lbl">Nombre de sujets achetés :</label>
+              <input type="number" id="purchaseCountInput" class="input-field" min="1" placeholder="0" required oninput="app.calcPurchaseModalTotal()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="purchaseUnitPriceInput" style="font-weight: 700; font-size: 0.85rem;" data-i18n="modal_purchase_price_lbl">Prix unitaire (DT) :</label>
+              <input type="number" id="purchaseUnitPriceInput" class="input-field" min="0" step="0.05" placeholder="0.00" oninput="app.calcPurchaseModalTotal()">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.4rem; margin-top: 0.2rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+            <button type="button" class="btn-quick-tag highlight" onclick="app.setPurchaseCount(5)">+5</button>
+            <button type="button" class="btn-quick-tag highlight" onclick="app.setPurchaseCount(10)">+10</button>
+            <button type="button" class="btn-quick-tag" onclick="app.setPurchaseCount(25)">+25</button>
+            <button type="button" class="btn-quick-tag" onclick="app.setPurchaseCount(50)">+50</button>
+            <button type="button" class="btn-quick-tag" onclick="app.setPurchaseCount(100)">+100</button>
+          </div>
+
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.6rem 0.85rem; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Dépense totale enregistrée :</span>
+            <strong style="color: var(--accent-emerald); font-size: 1.1rem;" id="purchaseTotalCostDisplay">0,000 DT</strong>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-outline flex-1" onclick="app.closeModal('modalRecordPurchase')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-primary flex-1" style="font-weight: 800;" data-i18n="modal_purchase_submit_btn">➕ Enregistrer l'Ajout</button>
         </div>
       </form>
     </div>
@@ -1347,20 +1467,20 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="expenseQuantity" data-i18n="lbl_qty">Quantité (kg, sacs, mois, etc.)</label>
-              <input type="number" id="expenseQuantity" class="input-field" step="0.1" value="1" min="0.1" required oninput="app.calcExpenseTotal()">
+              <input type="number" id="expenseQuantity" class="input-field" step="0.1" min="0.1" placeholder="0" required oninput="app.calcExpenseTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="expenseUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="expenseUnitPrice" class="input-field" step="0.01" value="15" min="0" required oninput="app.calcExpenseTotal()">
+              <input type="number" id="expenseUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.00" required oninput="app.calcExpenseTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="expenseTotalCalculated"><span data-i18n="lbl_total_calculated">Total</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="expenseTotalCalculated" class="input-field bold" readonly value="15.00">
+              <input type="number" id="expenseTotalCalculated" class="input-field bold" readonly placeholder="0.00">
             </div>
           </div>
 
           <div class="form-group">
-            <label for="expenseAnimalLot" data-i18n="lbl_link_lot">Affecter à un lot spécifique (pour calcul marge précis)</label>
+            <label for="expenseAnimalLot"><span data-i18n="lbl_link_lot">Affecter à un lot</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
             <select id="expenseAnimalLot" class="input-field">
               <option value="general" data-i18n="opt_general_farm">Frais Généraux de l'Exploitation</option>
               <!-- Populated by JS -->
@@ -1419,19 +1539,18 @@
 
           <!-- Choix du Lot d'Origine -->
           <div class="form-group">
-            <label for="saleLotLinked" data-i18n="lbl_sale_deduct_flock">Déduire du Cheptel / Lot d'origine</label>
+            <label for="saleLotLinked"><span data-i18n="lbl_sale_deduct_flock">Déduire du Cheptel / Lot d'origine</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
             <select id="saleLotLinked" class="input-field">
               <option value="none" data-i18n="opt_no_lot">Aucun lot spécifique (Production courante)</option>
               <!-- Populated by JS -->
             </select>
-            <small class="helper-text" data-i18n="sale_deduct_helper">Si vous choisissez un lot, l'effectif sera automatiquement déduit et la marge nette calculée précisément.</small>
           </div>
 
           <!-- Dynamic Age Selection Row (for Poussins & Poulets) -->
           <div id="saleAgeRow" class="form-row hidden">
             <div class="form-group flex-1">
-              <label for="saleAgeValue" data-i18n="lbl_sale_age">Âge des Volailles</label>
-              <input type="number" id="saleAgeValue" class="input-field" min="1" placeholder="Ex: 21 (ou laisser vide pour Adulte)" oninput="app.calcSaleTotal()">
+              <label for="saleAgeValue"><span data-i18n="lbl_sale_age">Âge des Volailles</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+              <input type="number" id="saleAgeValue" class="input-field" min="1" placeholder="Ex: 21 (Optionnel)" oninput="app.calcSaleTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="saleAgeUnit" data-i18n="lbl_age_unit">Unité d'Âge</label>
@@ -1439,7 +1558,7 @@
                 <option value="jours" data-i18n="opt_age_days">Jours (ex: 1j, 21 jours)</option>
                 <option value="semaines" data-i18n="opt_age_weeks">Semaines (ex: 2 sem...)</option>
                 <option value="mois" data-i18n="opt_age_months">Mois (1 à 6 mois)</option>
-                <option value="adulte" data-i18n="opt_age_adult">Adulte (> 6 mois) [Par défaut si vide]</option>
+                <option value="adulte" data-i18n="opt_age_adult">Adulte (> 6 mois)</option>
               </select>
             </div>
           </div>
@@ -1448,16 +1567,16 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="saleQuantity"><span data-i18n="table_col_qty">Quantité Vendue</span> <span id="saleQtyUnitLabel">(Haras / Plateaux)</span></label>
-              <input type="number" id="saleQuantity" class="input-field" step="1" value="5" min="1" required oninput="app.calcSaleTotal()">
+              <input type="number" id="saleQuantity" class="input-field" step="1" min="1" placeholder="0" required oninput="app.calcSaleTotal()">
               <small id="saleQtyWarning" style="color: #ef4444; font-size: 0.76rem; font-weight: 700; display: none; margin-top: 0.35rem; line-height: 1.3;"></small>
             </div>
             <div class="form-group flex-1">
               <label for="saleUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="saleUnitPrice" class="input-field" step="0.01" value="1.80" min="0" required oninput="app.calcSaleTotal()">
+              <input type="number" id="saleUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.00" required oninput="app.calcSaleTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="saleTotalCalculated"><span data-i18n="lbl_total_calculated">Montant Total</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="saleTotalCalculated" class="input-field bold text-emerald" readonly value="9.00">
+              <input type="number" id="saleTotalCalculated" class="input-field bold text-emerald" readonly placeholder="0.00">
             </div>
           </div>
 
@@ -1540,7 +1659,6 @@
               <option value="machine" data-i18n="opt_method_machine">🤖 Machine d'Incubation (Couveuse Artificielle Électrique)</option>
               <option value="poule" data-i18n="opt_method_hen">🐔 Poule qui Couve (Incubation Naturelle)</option>
             </select>
-            <small class="helper-text" data-i18n="incubation_method_helper">Cycle standard pour poule : 21 jours (+/- 2 jours). Une alerte automatique vous demandera les poussins sortis entre J19 et J23.</small>
           </div>
 
           <div class="form-row">
@@ -1557,8 +1675,8 @@
               </select>
             </div>
             <div class="form-group flex-1">
-              <label for="batchBreed" data-i18n="lbl_breed">Race des Sujets</label>
-              <input type="text" id="batchBreed" class="input-field" placeholder="Ex: Sasso XL, Cou Nu, Brahma, Fermière" required>
+              <label for="batchBreed"><span data-i18n="lbl_breed">Race des Sujets</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+              <input type="text" id="batchBreed" class="input-field" placeholder="Ex: Sasso XL, Cou Nu... (Optionnel)">
             </div>
           </div>
 
@@ -1569,7 +1687,7 @@
             </div>
             <div class="form-group flex-1">
               <label for="batchEggsCount" data-i18n="lbl_eggs_count">Nombre d'Œufs Mis à Couver</label>
-              <input type="number" id="batchEggsCount" class="input-field" min="1" value="12" required>
+              <input type="number" id="batchEggsCount" class="input-field" min="1" placeholder="0" required>
             </div>
           </div>
 
@@ -1585,8 +1703,8 @@
           </div>
 
           <div class="form-group">
-            <label for="batchNotes" data-i18n="lbl_batch_notes">Notes (ex: Poule qui couve dans le nid #2...)</label>
-            <textarea id="batchNotes" class="input-field" rows="2" placeholder="Notes sur la poule ou emplacement de la couveuse..."></textarea>
+            <label for="batchNotes"><span data-i18n="lbl_batch_notes">Notes</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
+            <textarea id="batchNotes" class="input-field" rows="2" placeholder="Notes (Optionnel)"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -1616,8 +1734,7 @@
 
           <div class="form-group mt-3">
             <label for="hatchLiveCount" style="font-size: 0.95rem; font-weight: 700;" data-i18n="lbl_live_chicks_count">Combien de poussins sont sortis vivants de l'œuf ?</label>
-            <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" value="8" required>
-            <small class="helper-text" data-i18n="hatch_prompt_helper">👉 Ce nombre s'ajoutera <strong>automatiquement</strong> au nombre total d'animaux et à vos poulets !</small>
+            <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" placeholder="0" required>
           </div>
 
           <div class="form-group">
@@ -1713,7 +1830,7 @@
             <label for="sellEggUnitPrice" class="form-label">
               <span data-i18n="sell_eggs_price_lbl">Prix unitaire</span> (<span class="currency-label">DT</span>)
             </label>
-            <input type="number" id="sellEggUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.45" value="0.45" oninput="app.calcSellEggTotal()">
+            <input type="number" id="sellEggUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.00" oninput="app.calcSellEggTotal()">
           </div>
 
           <div style="background: var(--bg-surface); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
@@ -1955,11 +2072,11 @@
           <div class="form-row" style="margin-bottom: 0.85rem;">
             <div class="form-group flex-1">
               <label for="newFeedTypeStockKg" class="form-label" style="font-weight: 700;" data-i18n="lbl_feed_stock_purchased">Stock acheté (kg) *</label>
-              <input type="number" id="newFeedTypeStockKg" class="input-field" step="0.5" min="0" value="50" placeholder="50" required>
+              <input type="number" id="newFeedTypeStockKg" class="input-field" step="0.5" min="0" placeholder="0" required>
             </div>
             <div class="form-group flex-1">
               <label for="newFeedTypePriceKg" class="form-label" style="font-weight: 700;">Prix au kg (<span class="currency-label">DT</span>/kg)</label>
-              <input type="number" id="newFeedTypePriceKg" class="input-field" step="0.01" min="0" value="1.20" placeholder="1.20" required>
+              <input type="number" id="newFeedTypePriceKg" class="input-field" step="0.01" min="0" placeholder="0.00" required>
             </div>
           </div>
 
@@ -2062,15 +2179,15 @@
             </div>
             <div class="form-group flex-1">
               <label for="simAgeDaysInput" style="font-size: 0.76rem; font-weight: 700;">Âge réel (jours) :</label>
-              <input type="number" id="simAgeDaysInput" class="input-field" value="45" min="1" max="730" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
+              <input type="number" id="simAgeDaysInput" class="input-field" placeholder="0" min="1" max="730" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
             </div>
             <div class="form-group flex-1">
               <label for="simAcqCostInput" style="font-size: 0.76rem; font-weight: 700;">Prix d'achat unitaire (DT) :</label>
-              <input type="number" id="simAcqCostInput" class="input-field" value="1.20" step="0.1" min="0" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
+              <input type="number" id="simAcqCostInput" class="input-field" placeholder="0.00" step="0.1" min="0" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
             </div>
             <div class="form-group flex-1">
               <label for="simFeedPriceInput" style="font-size: 0.76rem; font-weight: 700;">Prix moyen aliment (DT/kg) :</label>
-              <input type="number" id="simFeedPriceInput" class="input-field" value="1.00" step="0.05" min="0.1" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
+              <input type="number" id="simFeedPriceInput" class="input-field" placeholder="0.00" step="0.05" min="0.1" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
             </div>
           </div>
 
@@ -2256,8 +2373,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=30"></script>
-  <script src="translations.js?v=30"></script>
-  <script src="app.js?v=30"></script>
+  <script src="supabase-client.js?v=36"></script>
+  <script src="translations.js?v=36"></script>
+  <script src="app.js?v=36"></script>
 </body>
 </html>
