@@ -910,9 +910,10 @@ const app = {
       this.populateLotDropdowns();
 
       if (modalId === 'modalAddAnimal') {
+        const nextId = this.getNextAnimalId();
         const animalNameInput = document.getElementById('animalName');
         if (animalNameInput) {
-          animalNameInput.value = '';
+          animalNameInput.value = nextId;
           animalNameInput.placeholder = '';
         }
         const costInput = document.getElementById('animalCostPerHead');
@@ -3347,19 +3348,22 @@ const app = {
     }
   },
 
-  // Calcule automatiquement le prochain identifiant (ex: 1, 2, 3...)
+  // Calcule automatiquement le prochain identifiant (commence à 1, puis 2, 3...)
   getNextAnimalId() {
     let maxId = 0;
     (appState.animals || []).forEach(a => {
-      const fullText = `${a.name || ''} ${a.id || ''}`;
-      const matches = fullText.match(/\d+/g);
-      if (matches) {
-        matches.forEach(m => {
-          const val = parseInt(m, 10);
-          if (!isNaN(val) && val > maxId && val < 100000) {
-            maxId = val;
+      if (a && a.name !== undefined && a.name !== null) {
+        const str = a.name.toString().trim();
+        const directNum = parseInt(str, 10);
+        if (!isNaN(directNum) && directNum > maxId && directNum < 100000) {
+          maxId = directNum;
+        } else {
+          const m = str.match(/\d+/);
+          if (m) {
+            const num = parseInt(m[0], 10);
+            if (!isNaN(num) && num > maxId && num < 100000) maxId = num;
           }
-        });
+        }
       }
     });
     return maxId + 1;
