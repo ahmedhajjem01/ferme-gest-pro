@@ -910,20 +910,35 @@ const app = {
       this.populateLotDropdowns();
 
       if (modalId === 'modalAddAnimal') {
-        const nextId = this.getNextAnimalId();
         const animalNameInput = document.getElementById('animalName');
         if (animalNameInput) {
-          animalNameInput.placeholder = `Par défaut : ${nextId} (Optionnel)`;
+          animalNameInput.value = '';
+          animalNameInput.placeholder = '';
         }
         const costInput = document.getElementById('animalCostPerHead');
         if (costInput) {
           costInput.value = '';
-          costInput.placeholder = '0.00';
+          costInput.placeholder = '';
         }
         const qtyInput = document.getElementById('animalQuantity');
         if (qtyInput) {
           qtyInput.value = '';
-          qtyInput.placeholder = '0';
+          qtyInput.placeholder = '';
+        }
+        const breedInput = document.getElementById('animalBreed');
+        if (breedInput) {
+          breedInput.value = '';
+          breedInput.placeholder = '';
+        }
+        const notesInput = document.getElementById('animalNotes');
+        if (notesInput) {
+          notesInput.value = '';
+          notesInput.placeholder = '';
+        }
+        const ageInput = document.getElementById('animalArrivalAgeDays');
+        if (ageInput) {
+          ageInput.value = '';
+          ageInput.placeholder = '';
         }
         const birthDateInput = document.getElementById('animalBirthDate');
         if (birthDateInput && !birthDateInput.value) {
@@ -2272,7 +2287,7 @@ const app = {
 
     const nameInput = document.getElementById('newFeedTypeName');
     if (nameInput) {
-      nameInput.placeholder = isAr ? 'مثال: ذرة مرحية، نخالة، بياض...' : (isEn ? 'Ex: Cracked corn, Wheat bran...' : 'Ex: Maïs concassé, Son de blé, Tournesol...');
+      nameInput.placeholder = '';
     }
   },
 
@@ -3477,7 +3492,7 @@ const app = {
 
     if (arrivalAgeInput) {
       arrivalAgeInput.value = '';
-      arrivalAgeInput.placeholder = defaultDays.toString();
+      arrivalAgeInput.placeholder = '';
     }
     if (hiddenStage) {
       hiddenStage.value = stageName;
@@ -3539,9 +3554,9 @@ const app = {
     this.showToast(this.t('toast_lot_saved', { name }));
     document.getElementById('formAddAnimal').reset();
     const costHead = document.getElementById('animalCostPerHead');
-    if (costHead) { costHead.value = ''; costHead.placeholder = '0.00'; }
+    if (costHead) { costHead.value = ''; costHead.placeholder = ''; }
     const arrAge = document.getElementById('animalArrivalAgeDays');
-    if (arrAge) { arrAge.value = ''; arrAge.placeholder = '0'; }
+    if (arrAge) { arrAge.value = ''; arrAge.placeholder = ''; }
   },
 
   // Toggle & gestion du menu mobile (3 lignes dans la barre haute)
@@ -3651,7 +3666,7 @@ const app = {
     if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? 'طائر' : 'sujets'}`;
     if (countInput) {
       countInput.value = '';
-      countInput.placeholder = '0';
+      countInput.placeholder = '';
       countInput.max = lot.currentQuantity;
     }
     this.openModal('modalRecordMortality');
@@ -3718,11 +3733,11 @@ const app = {
     if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? 'طائر' : 'sujets'}`;
     if (countInput) {
       countInput.value = '';
-      countInput.placeholder = '0';
+      countInput.placeholder = '';
     }
     if (priceInput) {
       priceInput.value = '';
-      priceInput.placeholder = (Number(lot.costPerHead) || 0).toFixed(2);
+      priceInput.placeholder = '';
     }
     this.calcPurchaseModalTotal();
     this.openModal('modalRecordPurchase');
@@ -3958,21 +3973,7 @@ const app = {
     }
 
     if (title) {
-      const isAr = appState.lang === 'ar';
-      const isEn = appState.lang === 'en';
-      if (cat === 'nourriture') {
-        title.placeholder = isAr ? 'مثال: 5 أكياس علف بداية، قمح...' : (isEn ? 'e.g. 5 bags starter feed, wheat...' : 'Ex: 5 sacs d\'aliment Démarrage, Blé...');
-      } else if (cat === 'veterinaire') {
-        title.placeholder = isAr ? 'مثال: تلقيح نيوكاسل، فيتامينات...' : (isEn ? 'e.g. Newcastle vaccine, vitamins...' : 'Ex: Vaccin Newcastle, Vitamines...');
-      } else if (cat === 'electricite') {
-        title.placeholder = isAr ? 'فاتورة الكهرباء (STEG)' : (isEn ? 'Electricity bill (STEG)' : 'Facture Électricité (STEG)');
-      } else if (cat === 'eau') {
-        title.placeholder = isAr ? 'فاتورة المياه (SONEDE)' : (isEn ? 'Water bill (SONEDE)' : 'Facture Eau (SONEDE)');
-      } else if (cat === 'salaire') {
-        title.placeholder = isAr ? 'أجر عامل فلاحي' : (isEn ? 'Farm worker wages' : 'Salaire Ouvrier Agricole');
-      } else {
-        title.placeholder = isAr ? 'مصاريف صيانة، نشارة...' : (isEn ? 'Maintenance, bedding shavings...' : 'Entretien, copeaux de litière...');
-      }
+      title.placeholder = '';
     }
   },
 
@@ -4010,8 +4011,8 @@ const app = {
     document.getElementById('formAddExpense').reset();
     const expQty = document.getElementById('expenseQuantity');
     const expPrice = document.getElementById('expenseUnitPrice');
-    if (expQty) { expQty.value = ''; expQty.placeholder = '0'; }
-    if (expPrice) { expPrice.value = ''; expPrice.placeholder = '0.00'; }
+    if (expQty) { expQty.value = ''; expQty.placeholder = ''; }
+    if (expPrice) { expPrice.value = ''; expPrice.placeholder = ''; }
     this.calcExpenseTotal();
   },
 
@@ -4416,20 +4417,11 @@ const app = {
 
     if (ageUnit === 'adulte') {
       ageInput.value = '';
-      ageInput.placeholder = 'Automatiquement Adulte (> 6 mois)';
+      ageInput.placeholder = '';
       ageInput.disabled = true;
     } else {
       ageInput.disabled = false;
-      if (ageUnit === 'jours') {
-        ageInput.placeholder = 'Ex: 21 (jours)';
-        if (!ageInput.value) ageInput.value = '21';
-      } else if (ageUnit === 'semaines') {
-        ageInput.placeholder = 'Ex: 3 (semaines)';
-        if (!ageInput.value) ageInput.value = '3';
-      } else if (ageUnit === 'mois') {
-        ageInput.placeholder = 'Ex: 2 (entre 1 et 6 mois)';
-        if (!ageInput.value) ageInput.value = '2';
-      }
+      ageInput.placeholder = '';
     }
     this.calcSaleTotal();
   },
@@ -4477,35 +4469,33 @@ const app = {
     const ageInput = document.getElementById('saleAgeValue');
     const ageUnit = document.getElementById('saleAgeUnit');
 
-    const isTND = appState.currency === 'TND';
-
     if (type === 'oeufs') {
       typeSelect.value = 'oeufs';
       formatSelect.value = 'hara';
       descInput.value = 'Vente œufs frais de ferme';
       qtyInput.value = '';
-      qtyInput.placeholder = '0';
+      qtyInput.placeholder = '';
       priceInput.value = '';
-      priceInput.placeholder = (isTND ? 1.800 : 0.80).toFixed(isTND ? 3 : 2);
+      priceInput.placeholder = '';
     } else if (type === 'poussin') {
       typeSelect.value = 'poussin';
       formatSelect.value = 'unite';
       descInput.value = 'Vente poussins démarrés';
       qtyInput.value = '';
-      qtyInput.placeholder = '0';
+      qtyInput.placeholder = '';
       priceInput.value = '';
-      priceInput.placeholder = (isTND ? 3.500 : 1.70).toFixed(isTND ? 3 : 2);
-      if (ageInput) { ageInput.value = ''; ageInput.placeholder = 'Ex: 21 (Optionnel)'; }
+      priceInput.placeholder = '';
+      if (ageInput) { ageInput.value = ''; ageInput.placeholder = ''; }
       if (ageUnit) ageUnit.value = 'jours';
     } else if (type === 'poulet') {
       typeSelect.value = 'poulet';
       formatSelect.value = 'unite';
       descInput.value = 'Vente poulets fermiers';
       qtyInput.value = '';
-      qtyInput.placeholder = '0';
+      qtyInput.placeholder = '';
       priceInput.value = '';
-      priceInput.placeholder = (isTND ? 18.000 : 8.50).toFixed(isTND ? 3 : 2);
-      if (ageInput) { ageInput.value = ''; ageInput.placeholder = 'Ex: 2 (Optionnel)'; }
+      priceInput.placeholder = '';
+      if (ageInput) { ageInput.value = ''; ageInput.placeholder = ''; }
       if (ageUnit) ageUnit.value = 'mois';
     }
 
@@ -4535,8 +4525,7 @@ const app = {
       let suggestedPrice = 1.800;
       if (format.value === 'hara') suggestedPrice = isTND ? 1.800 : 0.80;
       else if (format.value === 'plateau') suggestedPrice = isTND ? 13.500 : 5.50;
-      else suggestedPrice = isTND ? 0.450 : 0.20;
-      if (price) price.placeholder = suggestedPrice.toFixed(isTND ? 3 : 2);
+      if (price) price.placeholder = '';
     } else if (type === 'poussin') {
       if (eggBox) eggBox.classList.add('hidden');
       if (ageRow) ageRow.classList.remove('hidden');
@@ -4554,9 +4543,9 @@ const app = {
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Ex: 21 (Optionnel)';
+        ageInput.placeholder = '';
       }
-      if (price) price.placeholder = (isTND ? 3.500 : 1.70).toFixed(isTND ? 3 : 2);
+      if (price) price.placeholder = '';
 
     } else if (type === 'poulet') {
       if (eggBox) eggBox.classList.add('hidden');
@@ -4575,9 +4564,9 @@ const app = {
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Ex: 2 (Optionnel)';
+        ageInput.placeholder = '';
       }
-      if (price) price.placeholder = (isTND ? 18.000 : 8.50).toFixed(isTND ? 3 : 2);
+      if (price) price.placeholder = '';
 
     } else if (type === 'pintade') {
       if (eggBox) eggBox.classList.add('hidden');
@@ -4596,9 +4585,9 @@ const app = {
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Ex: 4 (Optionnel)';
+        ageInput.placeholder = '';
       }
-      if (price) price.placeholder = (isTND ? 24.000 : 12.00).toFixed(isTND ? 3 : 2);
+      if (price) price.placeholder = '';
     } else if (type === 'canard') {
       if (eggBox) eggBox.classList.add('hidden');
       if (ageRow) ageRow.classList.remove('hidden');
@@ -4616,9 +4605,9 @@ const app = {
       }
       if (ageInput) {
         ageInput.disabled = false;
-        ageInput.placeholder = 'Ex: 3 (Optionnel)';
+        ageInput.placeholder = '';
       }
-      if (price) price.placeholder = (isTND ? 32.000 : 16.00).toFixed(isTND ? 3 : 2);
+      if (price) price.placeholder = '';
     }
 
     this.calcSaleTotal();
@@ -4628,14 +4617,9 @@ const app = {
     const type = document.getElementById('saleProductType').value;
     const format = document.getElementById('saleUnitFormat').value;
     const price = document.getElementById('saleUnitPrice');
-    const isTND = appState.currency === 'TND';
 
     if (type === 'oeufs' && price) {
-      let suggested = 0.45;
-      if (format === 'hara') suggested = isTND ? 1.800 : 0.80;
-      else if (format === 'plateau') suggested = isTND ? 13.500 : 5.50;
-      else suggested = isTND ? 0.450 : 0.20;
-      price.placeholder = suggested.toFixed(isTND ? 3 : 2);
+      price.placeholder = '';
     }
     this.calcSaleTotal();
   },

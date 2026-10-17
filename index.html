@@ -1145,14 +1145,14 @@
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="animalQuantity" data-i18n="lbl_initial_qty">Nombre de Têtes (Effectif Initial)</label>
-              <input type="number" id="animalQuantity" class="input-field" min="1" placeholder="Ex: 50" required>
+              <label for="animalQuantity" data-i18n="lbl_initial_qty">Nombre de Têtes</label>
+              <input type="number" id="animalQuantity" class="input-field" min="1" required>
             </div>
             <div class="form-group flex-1">
               <label for="animalCostPerHead">
                 <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>)
               </label>
-              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" min="0" placeholder="0.00">
+              <input type="number" id="animalCostPerHead" class="input-field" step="0.1" min="0">
             </div>
           </div>
 
@@ -1165,18 +1165,18 @@
               <label for="animalArrivalAgeDays" data-i18n="lbl_arrival_age">
                 Âge à l'achat (jours)
               </label>
-              <input type="number" id="animalArrivalAgeDays" class="input-field" min="0" placeholder="0">
+              <input type="number" id="animalArrivalAgeDays" class="input-field" min="0">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="animalBreed"><span data-i18n="lbl_breed">Race / Variété</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="text" id="animalBreed" class="input-field" placeholder="Ex: Sasso, Beldi... (Optionnel)">
+              <input type="text" id="animalBreed" class="input-field">
             </div>
             <div class="form-group flex-1">
               <label for="animalName"><span data-i18n="lbl_identifier">Identifiant / N° de Lot</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="text" id="animalName" class="input-field" placeholder="Par défaut : 1 (Optionnel)">
+              <input type="text" id="animalName" class="input-field">
             </div>
           </div>
 
@@ -1184,7 +1184,7 @@
 
           <div class="form-group">
             <label for="animalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-            <textarea id="animalNotes" class="input-field" rows="2" placeholder="Ex: Bâtiment A, vaccination... (Optionnel)"></textarea>
+            <textarea id="animalNotes" class="input-field" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -1237,11 +1237,11 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="editAnimalBreed"><span data-i18n="lbl_breed_variety">Race / Variété</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="text" id="editAnimalBreed" class="input-field" placeholder="Ex: Sasso, Beldi... (Optionnel)">
+              <input type="text" id="editAnimalBreed" class="input-field">
             </div>
             <div class="form-group flex-1">
               <label for="editAnimalQuantity"><span data-i18n="card_current_count">Effectif Actuel (Vivants)</span></label>
-              <input type="number" id="editAnimalQuantity" class="input-field" min="1" placeholder="0" required>
+              <input type="number" id="editAnimalQuantity" class="input-field" min="1" required>
             </div>
           </div>
 
@@ -1252,10 +1252,10 @@
               <input type="date" id="editAnimalBirthDate" class="input-field" required>
             </div>
             <div class="form-group flex-1">
-              <label for="editAnimalArrivalAgeDays">
+              <label for="editAnimalArrivalAgeDays" data-i18n="lbl_arrival_age">
                 Âge à l'achat (jours)
               </label>
-              <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0" placeholder="0">
+              <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0">
             </div>
           </div>
 
@@ -1265,7 +1265,7 @@
               <label for="editAnimalCostPerHead">
                 <span data-i18n="lbl_unit_purchase_cost">Prix d'Achat unitaire</span> (<span class="currency-label">DT</span>)
               </label>
-              <input type="number" id="editAnimalCostPerHead" class="input-field" step="0.05" min="0" placeholder="0.00">
+              <input type="number" id="editAnimalCostPerHead" class="input-field" step="0.05" min="0">
             </div>
           </div>
 
@@ -1273,7 +1273,7 @@
 
           <div class="form-group">
             <label for="editAnimalNotes"><span data-i18n="lbl_animal_notes">Notes / Bâtiment d'élevage</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-            <textarea id="editAnimalNotes" class="input-field" rows="2" placeholder="Notes (Optionnel)"></textarea>
+            <textarea id="editAnimalNotes" class="input-field" rows="2"></textarea>
           </div>
         </div>
 
@@ -1337,7 +1337,7 @@
             <label for="mortalityCountInput" style="font-weight: 700; font-size: 0.85rem;" data-i18n="modal_mortality_count_lbl">Nombre de pertes à déclarer :</label>
             <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.35rem;">
               <button type="button" class="btn btn-secondary" onclick="app.stepMortalityInput(-1)" style="font-size: 1.2rem; width: 44px; height: 44px; font-weight: 900; padding: 0;">-</button>
-              <input type="number" id="mortalityCountInput" class="input-field" min="1" placeholder="0" style="text-align: center; font-size: 1.35rem; font-weight: 800; color: var(--accent-rose); height: 44px;" required>
+              <input type="number" id="mortalityCountInput" class="input-field" min="1" style="text-align: center; font-size: 1.35rem; font-weight: 800; color: var(--accent-rose); height: 44px;" required>
               <button type="button" class="btn btn-secondary" onclick="app.stepMortalityInput(1)" style="font-size: 1.2rem; width: 44px; height: 44px; font-weight: 900; padding: 0;">+</button>
             </div>
             <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap;">
@@ -1380,11 +1380,11 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="purchaseCountInput" style="font-weight: 700; font-size: 0.85rem;" data-i18n="modal_purchase_qty_lbl">Nombre de sujets achetés :</label>
-              <input type="number" id="purchaseCountInput" class="input-field" min="1" placeholder="0" required oninput="app.calcPurchaseModalTotal()">
+              <input type="number" id="purchaseCountInput" class="input-field" min="1" required oninput="app.calcPurchaseModalTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="purchaseUnitPriceInput" style="font-weight: 700; font-size: 0.85rem;" data-i18n="modal_purchase_price_lbl">Prix unitaire (DT) :</label>
-              <input type="number" id="purchaseUnitPriceInput" class="input-field" min="0" step="0.05" placeholder="0.00" oninput="app.calcPurchaseModalTotal()">
+              <input type="number" id="purchaseUnitPriceInput" class="input-field" min="0" step="0.05" oninput="app.calcPurchaseModalTotal()">
             </div>
           </div>
 
@@ -1438,7 +1438,7 @@
 
           <div class="form-group">
             <label for="expenseTitle" data-i18n="lbl_expense_title">Description / Intitulé de la Dépense</label>
-            <input type="text" id="expenseTitle" class="input-field" placeholder="Ex: 5 sacs d'aliment Démarrage, Vaccin Gumboro..." data-i18n-placeholder="expense_title_placeholder" required>
+            <input type="text" id="expenseTitle" class="input-field" required>
           </div>
 
           <!-- Feed Warehouse Stock Notice Banner -->
@@ -1449,15 +1449,15 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="expenseQuantity" data-i18n="lbl_qty">Quantité (kg, sacs, mois, etc.)</label>
-              <input type="number" id="expenseQuantity" class="input-field" step="0.1" min="0.1" placeholder="0" required oninput="app.calcExpenseTotal()">
+              <input type="number" id="expenseQuantity" class="input-field" step="0.1" min="0.1" required oninput="app.calcExpenseTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="expenseUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="expenseUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.00" required oninput="app.calcExpenseTotal()">
+              <input type="number" id="expenseUnitPrice" class="input-field" step="0.01" min="0" required oninput="app.calcExpenseTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="expenseTotalCalculated"><span data-i18n="lbl_total_calculated">Total</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="expenseTotalCalculated" class="input-field bold" readonly placeholder="0.00">
+              <input type="number" id="expenseTotalCalculated" class="input-field bold" readonly>
             </div>
           </div>
 
@@ -1506,7 +1506,7 @@
           <div class="form-row">
             <div class="form-group flex-2">
               <label for="saleDescription" data-i18n="lbl_sale_client">Description / Client</label>
-              <input type="text" id="saleDescription" class="input-field" placeholder="Ex: Marché local, Voisin, Épicerie..." data-i18n-placeholder="sale_description_placeholder" required>
+              <input type="text" id="saleDescription" class="input-field" required>
             </div>
             <div class="form-group flex-1">
               <label for="saleUnitFormat" data-i18n="lbl_sale_format">Format de Vente</label>
@@ -1532,7 +1532,7 @@
           <div id="saleAgeRow" class="form-row hidden">
             <div class="form-group flex-1">
               <label for="saleAgeValue"><span data-i18n="lbl_sale_age">Âge des Volailles</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="number" id="saleAgeValue" class="input-field" min="1" placeholder="Ex: 21 (Optionnel)" oninput="app.calcSaleTotal()">
+              <input type="number" id="saleAgeValue" class="input-field" min="1" oninput="app.calcSaleTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="saleAgeUnit" data-i18n="lbl_age_unit">Unité d'Âge</label>
@@ -1549,16 +1549,16 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="saleQuantity"><span data-i18n="table_col_qty">Quantité Vendue</span> <span id="saleQtyUnitLabel">(Haras / Plateaux)</span></label>
-              <input type="number" id="saleQuantity" class="input-field" step="1" min="1" placeholder="0" required oninput="app.calcSaleTotal()">
+              <input type="number" id="saleQuantity" class="input-field" step="1" min="1" required oninput="app.calcSaleTotal()">
               <small id="saleQtyWarning" style="color: #ef4444; font-size: 0.76rem; font-weight: 700; display: none; margin-top: 0.35rem; line-height: 1.3;"></small>
             </div>
             <div class="form-group flex-1">
               <label for="saleUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="saleUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.00" required oninput="app.calcSaleTotal()">
+              <input type="number" id="saleUnitPrice" class="input-field" step="0.01" min="0" required oninput="app.calcSaleTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="saleTotalCalculated"><span data-i18n="lbl_total_calculated">Montant Total</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="saleTotalCalculated" class="input-field bold text-emerald" readonly placeholder="0.00">
+              <input type="number" id="saleTotalCalculated" class="input-field bold text-emerald" readonly>
             </div>
           </div>
 
@@ -1658,18 +1658,18 @@
             </div>
             <div class="form-group flex-1">
               <label for="batchBreed"><span data-i18n="lbl_breed">Race des Sujets</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-              <input type="text" id="batchBreed" class="input-field" placeholder="Ex: Sasso XL, Cou Nu... (Optionnel)">
+              <input type="text" id="batchBreed" class="input-field">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="batchName" data-i18n="lbl_clutch_name">Numéro / Nom de la Couvée</label>
-              <input type="text" id="batchName" class="input-field" placeholder="Ex: Couvée Poule Rousse #01" required>
+              <input type="text" id="batchName" class="input-field" required>
             </div>
             <div class="form-group flex-1">
               <label for="batchEggsCount" data-i18n="lbl_eggs_count">Nombre d'Œufs Mis à Couver</label>
-              <input type="number" id="batchEggsCount" class="input-field" min="1" placeholder="0" required>
+              <input type="number" id="batchEggsCount" class="input-field" min="1" required>
             </div>
           </div>
 
@@ -1686,7 +1686,7 @@
 
           <div class="form-group">
             <label for="batchNotes"><span data-i18n="lbl_batch_notes">Notes</span> <small style="color: var(--text-muted); font-size: 0.8rem;">(Optionnel)</small></label>
-            <textarea id="batchNotes" class="input-field" rows="2" placeholder="Notes (Optionnel)"></textarea>
+            <textarea id="batchNotes" class="input-field" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -1716,7 +1716,7 @@
 
           <div class="form-group mt-3">
             <label for="hatchLiveCount" style="font-size: 0.95rem; font-weight: 700;" data-i18n="lbl_live_chicks_count">Combien de poussins sont sortis vivants de l'œuf ?</label>
-            <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" placeholder="0" required>
+            <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" required>
           </div>
 
           <div class="form-group">
@@ -1756,7 +1756,7 @@
               Nombre d'œufs récoltés aujourd'hui
             </label>
             <div style="position: relative;">
-              <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" placeholder="Ex: 80" required oninput="app.updateDailyEggPreview()" style="font-size: 1.45rem; font-weight: 800; padding: 0.75rem 1rem; color: var(--primary); letter-spacing: 0.05em;">
+              <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" required oninput="app.updateDailyEggPreview()" style="font-size: 1.45rem; font-weight: 800; padding: 0.75rem 1rem; color: var(--primary); letter-spacing: 0.05em;">
               <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);" data-i18n="unit_eggs">🥚 Œufs</span>
             </div>
           </div>
@@ -1798,7 +1798,7 @@
           <div class="form-group" style="margin-bottom: 1rem;">
             <label for="sellEggQty" class="form-label" data-i18n="sell_eggs_qty_lbl" style="font-weight: 700;">Quantité à vendre</label>
             <div style="display: flex; gap: 0.5rem;">
-              <input type="number" id="sellEggQty" class="input-field" min="1" placeholder="Ex: 60" required oninput="app.calcSellEggTotal()" style="font-size: 1.25rem; font-weight: 800; color: var(--primary);">
+              <input type="number" id="sellEggQty" class="input-field" min="1" required oninput="app.calcSellEggTotal()" style="font-size: 1.25rem; font-weight: 800; color: var(--primary);">
               <select id="sellEggFormat" class="input-field" style="width: 145px;" onchange="app.handleSellEggFormatChange()">
                 <option value="oeuf-unite" selected>À l'unité</option>
                 <option value="hara">Par HARA (4)</option>
@@ -1812,7 +1812,7 @@
             <label for="sellEggUnitPrice" class="form-label">
               <span data-i18n="sell_eggs_price_lbl">Prix unitaire</span> (<span class="currency-label">DT</span>)
             </label>
-            <input type="number" id="sellEggUnitPrice" class="input-field" step="0.01" min="0" placeholder="0.00" oninput="app.calcSellEggTotal()">
+            <input type="number" id="sellEggUnitPrice" class="input-field" step="0.01" min="0" oninput="app.calcSellEggTotal()">
           </div>
 
           <div style="background: var(--bg-surface); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
@@ -1842,7 +1842,7 @@
           </p>
           <div class="form-group" style="margin-bottom: 1.25rem;">
             <label for="consumeEggQty" class="form-label" data-i18n="consume_eggs_qty_lbl">Nombre d'œufs à déduire</label>
-            <input type="number" id="consumeEggQty" class="input-field" min="1" placeholder="Ex: 10" required style="font-size: 1.25rem; font-weight: 800;">
+            <input type="number" id="consumeEggQty" class="input-field" min="1" required style="font-size: 1.25rem; font-weight: 800;">
           </div>
           <button type="submit" class="btn btn-primary btn-full" style="font-weight: 700; padding: 0.75rem;">
             <span data-i18n="consume_eggs_btn_submit">Déduire du Stock</span>
@@ -1928,7 +1928,7 @@
                 <span class="badge-pill text-amber" style="font-size: 0.72rem;">Mesurette locale</span>
               </label>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="number" id="feedSicamCansInput" class="input-field" step="0.5" min="0" placeholder="ex: 2 ou 3" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-amber);" oninput="app.calcSicamToKg()">
+                <input type="number" id="feedSicamCansInput" class="input-field" step="0.5" min="0" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-amber);" oninput="app.calcSicamToKg()">
                 <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;">boîtes / j</span>
               </div>
               <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
@@ -1942,7 +1942,7 @@
                 ⚖️ Poids total équivalent distribué par jour (kg/j)
               </label>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="number" id="feedCustomKgInput" class="input-field" step="0.1" min="0.1" placeholder="ex: 1.5 ou 2.0" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.calcKgToSicam()">
+                <input type="number" id="feedCustomKgInput" class="input-field" step="0.1" min="0.1" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.calcKgToSicam()">
                 <strong style="font-size: 1.1rem; color: var(--accent-emerald);">kg / jour</strong>
               </div>
               <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
@@ -2048,17 +2048,17 @@
 
           <div class="form-group" style="margin-bottom: 0.85rem;">
             <label for="newFeedTypeName" class="form-label" style="font-weight: 700;" data-i18n="lbl_feed_name">Nom de l'aliment *</label>
-            <input type="text" id="newFeedTypeName" class="input-field" placeholder="Ex: Maïs concassé, Son de blé, Tournesol..." required>
+            <input type="text" id="newFeedTypeName" class="input-field" required>
           </div>
 
           <div class="form-row" style="margin-bottom: 0.85rem;">
             <div class="form-group flex-1">
               <label for="newFeedTypeStockKg" class="form-label" style="font-weight: 700;" data-i18n="lbl_feed_stock_purchased">Stock acheté (kg) *</label>
-              <input type="number" id="newFeedTypeStockKg" class="input-field" step="0.5" min="0" placeholder="0" required>
+              <input type="number" id="newFeedTypeStockKg" class="input-field" step="0.5" min="0" required>
             </div>
             <div class="form-group flex-1">
               <label for="newFeedTypePriceKg" class="form-label" style="font-weight: 700;">Prix au kg (<span class="currency-label">DT</span>/kg)</label>
-              <input type="number" id="newFeedTypePriceKg" class="input-field" step="0.01" min="0" placeholder="0.00" required>
+              <input type="number" id="newFeedTypePriceKg" class="input-field" step="0.01" min="0" required>
             </div>
           </div>
 
@@ -2271,8 +2271,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=40"></script>
-  <script src="translations.js?v=40"></script>
-  <script src="app.js?v=40"></script>
+  <script src="supabase-client.js?v=42"></script>
+  <script src="translations.js?v=42"></script>
+  <script src="app.js?v=42"></script>
 </body>
 </html>
