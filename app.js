@@ -949,6 +949,52 @@ const app = {
         this.handleAnimalSpeciesChange(sp, 'animal');
       }
 
+      if (modalId === 'modalDailyEggs') {
+        const input = document.getElementById('dailyEggCount');
+        if (input) {
+          input.value = '';
+          input.placeholder = '';
+          input.removeAttribute('placeholder');
+        }
+      }
+
+      if (modalId === 'modalSellEggStock') {
+        const qtyInput = document.getElementById('sellEggQty');
+        if (qtyInput) {
+          qtyInput.value = '';
+          qtyInput.placeholder = '';
+          qtyInput.removeAttribute('placeholder');
+        }
+        const priceInput = document.getElementById('sellEggUnitPrice');
+        if (priceInput) {
+          priceInput.value = '';
+          priceInput.placeholder = '';
+          priceInput.removeAttribute('placeholder');
+        }
+      }
+
+      if (modalId === 'modalConsumeEggStock') {
+        const input = document.getElementById('consumeEggQty');
+        if (input) {
+          input.value = '';
+          input.placeholder = '';
+          input.removeAttribute('placeholder');
+        }
+      }
+
+      if (modalId === 'modalAddBatch') {
+        const batchEggsInput = document.getElementById('batchEggsCount');
+        if (batchEggsInput) {
+          batchEggsInput.value = '';
+          batchEggsInput.placeholder = '';
+          batchEggsInput.removeAttribute('placeholder');
+        }
+        const breed = document.getElementById('batchBreed');
+        if (breed) { breed.value = ''; breed.placeholder = ''; breed.removeAttribute('placeholder'); }
+        const name = document.getElementById('batchName');
+        if (name) { name.value = ''; name.placeholder = ''; name.removeAttribute('placeholder'); }
+      }
+
       if (modalId === 'modalAdjustFeedStock') {
         this.renderFeedStockAdjustModal();
       }
@@ -1024,6 +1070,8 @@ const app = {
     const input = document.getElementById('dailyEggCount');
     if (input) {
       input.value = '';
+      input.placeholder = '';
+      input.removeAttribute('placeholder');
       setTimeout(() => input.focus(), 150);
     }
     this.updateDailyEggPreview();
@@ -1093,14 +1141,20 @@ const app = {
 
     const qtyInput = document.getElementById('sellEggQty');
     if (qtyInput) {
-      qtyInput.value = Math.min(stock, 30);
+      qtyInput.value = '';
+      qtyInput.placeholder = '';
+      qtyInput.removeAttribute('placeholder');
       qtyInput.max = stock;
     }
     const formatSel = document.getElementById('sellEggFormat');
     if (formatSel) formatSel.value = 'oeuf-unite';
 
     const priceInput = document.getElementById('sellEggUnitPrice');
-    if (priceInput) priceInput.value = appState.currency === 'TND' ? '0.450' : '0.25';
+    if (priceInput) {
+      priceInput.value = '';
+      priceInput.placeholder = '';
+      priceInput.removeAttribute('placeholder');
+    }
 
     this.calcSellEggTotal();
   },
@@ -1204,12 +1258,10 @@ const app = {
     this.switchTab('incubator');
     this.openModal('modalAddIncubator');
     const batchEggsInput = document.getElementById('batchEggsCount');
-    if (batchEggsInput && stock > 0) {
-      batchEggsInput.value = Math.min(stock, 60);
-    }
-    const notesInput = document.getElementById('batchNotes');
-    if (notesInput && !notesInput.value && stock > 0) {
-      notesInput.value = `Prélevé du stock d'œufs de la ferme (Stock initial: ${stock})`;
+    if (batchEggsInput) {
+      batchEggsInput.value = '';
+      batchEggsInput.placeholder = '';
+      batchEggsInput.removeAttribute('placeholder');
     }
   },
 
@@ -1222,7 +1274,9 @@ const app = {
     this.openModal('modalConsumeEggStock');
     const input = document.getElementById('consumeEggQty');
     if (input) {
-      input.value = Math.min(stock, 5);
+      input.value = '';
+      input.placeholder = '';
+      input.removeAttribute('placeholder');
       input.max = stock;
     }
   },
