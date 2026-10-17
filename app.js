@@ -3434,22 +3434,13 @@ const app = {
             <span class="lbl">${this.t('card_survival_rate')}</span>
             <span class="val text-cyan">${(100 - mortalityRate).toFixed(1)}% (${animal.mortality} ${lossesWord})</span>
           </div>
-          <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Cliquer pour modifier le lot ou le coût initial">
+          <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Cliquer pour modifier le lot ou le coût">
             <span class="lbl">${this.t('card_cost_head')} ✏️</span>
             <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
-            <span style="font-size:0.67rem; color:var(--text-muted); display:block; margin-top:1px;">
-              ${appState.lang === 'ar' ? `(إجمالي الدفعة: ${this.formatMoney(totalInvested)})` : (appState.lang === 'en' ? `(Total flock: ${this.formatMoney(totalInvested)})` : `(Total lot: ${this.formatMoney(totalInvested)})`)}
-            </span>
-            <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:2px;">
-              ${Number(animal.costPerHead) > 0 
-                ? (appState.lang === 'ar' ? `🏷️ شراء: ${this.formatMoney(animal.costPerHead)}` : `🏷️ Achat: ${this.formatMoney(animal.costPerHead)}`) 
-                : (appState.lang === 'ar' ? '🎁 شراء: 0 د.ت (مجاني)' : '🎁 Achat: 0 DT (Gratuit)')}
+            <div style="font-size: 0.74rem; font-weight: 700; margin-top: 3px; color: var(--text-secondary);">
+              <span>${this.t('card_total_cost') || (appState.lang === 'ar' ? 'التكلفة الإجمالية:' : 'Coût Total :')}</span>
+              <strong style="color: var(--accent-amber); font-weight: 800; display: inline-block; margin-inline-start: 3px;">${this.formatMoney(totalInvested)}</strong>
             </div>
-            ${cumulFeedCost > 0 ? `
-              <div style="font-size:0.68rem; color:var(--text-secondary); margin-top:1px; font-weight:600;">
-                🌾 +${this.formatMoney(feedPerSubject)} ${appState.lang === 'ar' ? 'مستهلك' : 'mangé'} (~${cumulFeedKg.toFixed(2)} ${appState.lang === 'ar' ? 'كغ' : 'kg'})
-              </div>
-            ` : ''}
           </div>
         </div>
 
@@ -5231,20 +5222,13 @@ const app = {
       const costEgg = eggFeedCost / totalEggsCounted;
       if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(costEgg);
       if (eggMarginEl) {
-        if (totalEggsSold > 0 && totalEggsRevenue > 0) {
-          const avgSale = totalEggsRevenue / totalEggsSold;
-          const margin = Math.round(((avgSale - costEgg) / avgSale) * 100);
-          eggMarginEl.textContent = this.t('unit_cost_real_margin', { m: margin >= 0 ? '+' + margin : margin });
-          eggMarginEl.className = margin >= 0 ? 'text-emerald' : 'text-rose';
-        } else {
-          eggMarginEl.textContent = this.t('unit_cost_based_on', { qty: `${totalEggsCounted} ${isAr ? 'بيضة' : (isEn ? 'eggs' : 'œufs')}` });
-          eggMarginEl.className = 'text-muted';
-        }
+        eggMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(eggFeedCost)} (${totalEggsCounted} ${isAr ? 'بيضة' : (isEn ? 'eggs' : 'œufs')})`;
+        eggMarginEl.className = 'text-muted';
       }
     } else {
       if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(0);
       if (eggMarginEl) {
-        eggMarginEl.textContent = this.t('unit_cost_zero_hint');
+        eggMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(0)} (${this.t('unit_cost_zero_hint')})`;
         eggMarginEl.className = 'text-muted';
       }
     }
@@ -5274,20 +5258,13 @@ const app = {
       const costChicken = totalChickenCost / totalChickensCount;
       if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(costChicken);
       if (chickenMarginEl) {
-        if (chickensSold > 0 && chickenRevenue > 0) {
-          const avgSale = chickenRevenue / chickensSold;
-          const margin = Math.round(((avgSale - costChicken) / avgSale) * 100);
-          chickenMarginEl.textContent = this.t('unit_cost_real_margin', { m: margin >= 0 ? '+' + margin : margin });
-          chickenMarginEl.className = margin >= 0 ? 'text-emerald' : 'text-rose';
-        } else {
-          chickenMarginEl.textContent = this.t('unit_cost_based_on', { qty: `${totalChickensCount} ${isAr ? 'طائر' : (isEn ? 'birds' : 'sujets')}` });
-          chickenMarginEl.className = 'text-muted';
-        }
+        chickenMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(totalChickenCost)} (${totalChickensCount} ${isAr ? 'طائر' : (isEn ? 'birds' : 'sujets')})`;
+        chickenMarginEl.className = 'text-muted';
       }
     } else {
       if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(0);
       if (chickenMarginEl) {
-        chickenMarginEl.textContent = this.t('unit_cost_zero_hint');
+        chickenMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(0)} (${this.t('unit_cost_zero_hint')})`;
         chickenMarginEl.className = 'text-muted';
       }
     }
@@ -5317,20 +5294,13 @@ const app = {
       const costChick = totalChickCost / totalChicksCount;
       if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(costChick);
       if (chicksMarginEl) {
-        if (chicksSold > 0 && chickRevenue > 0) {
-          const avgSale = chickRevenue / chicksSold;
-          const margin = Math.round(((avgSale - costChick) / avgSale) * 100);
-          chicksMarginEl.textContent = this.t('unit_cost_real_margin', { m: margin >= 0 ? '+' + margin : margin });
-          chicksMarginEl.className = margin >= 0 ? 'text-emerald' : 'text-rose';
-        } else {
-          chicksMarginEl.textContent = this.t('unit_cost_based_on', { qty: `${totalChicksCount} ${isAr ? 'كتكوت' : (isEn ? 'chicks' : 'poussins')}` });
-          chicksMarginEl.className = 'text-muted';
-        }
+        chicksMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(totalChickCost)} (${totalChicksCount} ${isAr ? 'كتكوت' : (isEn ? 'chicks' : 'poussins')})`;
+        chicksMarginEl.className = 'text-muted';
       }
     } else {
       if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(0);
       if (chicksMarginEl) {
-        chicksMarginEl.textContent = this.t('unit_cost_zero_hint');
+        chicksMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(0)} (${this.t('unit_cost_zero_hint')})`;
         chicksMarginEl.className = 'text-muted';
       }
     }
