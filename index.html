@@ -20,12 +20,25 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
-  <link rel="stylesheet" href="styles.css?v=21">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="stylesheet" href="styles.css?v=30">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        console.log('SW controller changed -> reloading for fresh code');
+        window.location.reload();
+      });
+      navigator.serviceWorker.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'SW_UPDATED') {
+          console.log('SW update message -> reloading for fresh code');
+          window.location.reload();
+        }
+      });
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?t=' + Date.now()).then(function(reg) {
           reg.update();
         }).catch(function(err) {
           console.log('SW registration error:', err);
@@ -61,6 +74,15 @@
           </select>
         </div>
 
+
+        <!-- Force Fresh Reload Button -->
+        <button id="hardRefreshBtn" class="icon-btn" title="Rafraîchir & Purger le cache (Code à jour)" aria-label="Rafraîchir l'application" onclick="app.forceHardReload()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
 
         <!-- Theme Toggle -->
         <button id="themeToggleBtn" class="icon-btn" title="Basculer Mode Clair / Sombre" aria-label="Basculer thème">
@@ -2234,8 +2256,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=21"></script>
-  <script src="translations.js?v=21"></script>
-  <script src="app.js?v=21"></script>
+  <script src="supabase-client.js?v=30"></script>
+  <script src="translations.js?v=30"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>

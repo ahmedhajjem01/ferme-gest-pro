@@ -909,6 +909,10 @@ const app = {
         appState.expenses = rawExpenses.filter(e => e.linkedLotId !== 'lot-b-01' && e.linkedLotId !== 'lot-o-01');
 
         appState.incubatorBatches = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches : [];
+        if (!appState.animals || appState.animals.length === 0) {
+          appState.customDailyFeedKg = null;
+          appState.sicamCansCount = null;
+        }
         this.saveState();
       } else {
         // Nouveau projet vierge pour le nouvel utilisateur (tout commence à zéro)
@@ -945,6 +949,26 @@ const app = {
     if (langSelect) langSelect.value = appState.lang;
 
     this.updateThemeIcons();
+  },
+
+  forceHardReload() {
+    try {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(r => r.unregister());
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          keys.forEach(k => caches.delete(k));
+        });
+      }
+    } catch (e) {
+      console.warn('Cache clear error:', e);
+    }
+    setTimeout(() => {
+      window.location.reload(true);
+    }, 200);
   },
 
   // Event Listeners setup
