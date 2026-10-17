@@ -1650,9 +1650,9 @@ const app = {
           dailyGrams: 40,
           ci: 1.3,
           stageKey: 'duck_starter',
-          labelFr: 'Caneton démarrage (0-3 sem. / J1–J21)',
-          labelAr: 'فراخ بط بداية (0-3 أسابيع / 1-21 يوم)',
-          labelEn: 'Duckling starter (0-3 wks)',
+          labelFr: 'Caneton démarrage',
+          labelAr: 'فراخ بط بداية',
+          labelEn: 'Duckling starter',
           notesFr: 'Miettes démarrage',
           notesAr: 'حبيبات بداية'
         };
@@ -1665,9 +1665,9 @@ const app = {
           dailyGrams: 90,
           ci: 3.0,
           stageKey: 'duck_grower_1',
-          labelFr: 'Caneton croissance 1 (4-7 sem. / 1-2 mois)',
-          labelAr: 'بط نمو مرحلة 1 (4-7 أسابيع / 1-2 شهر)',
-          labelEn: 'Duckling grower 1 (4-7 wks)',
+          labelFr: 'Caneton croissance',
+          labelAr: 'بط نمو',
+          labelEn: 'Duckling grower',
           notesFr: 'Croissance osseuse rapide',
           notesAr: 'نمو عظمي سريع'
         };
@@ -1680,9 +1680,9 @@ const app = {
           dailyGrams: 140,
           ci: 4.7,
           stageKey: 'duck_grower_2',
-          labelFr: 'Jeune canard croissance 2 (8-12 sem. / 2-3 mois)',
-          labelAr: 'بط يافع نمو مرحلة 2 (8-12 أسبوعاً / 2-3 أشهر)',
-          labelEn: 'Young duck grower 2 (8-12 wks)',
+          labelFr: 'Jeune canard croissance',
+          labelAr: 'بط نمو',
+          labelEn: 'Young duck grower',
           notesFr: 'Pic d\'appétit / plumage',
           notesAr: 'ذروة الشهية واكتمال الريش'
         };
@@ -1695,9 +1695,9 @@ const app = {
           dailyGrams: 170,
           ci: 5.7,
           stageKey: 'duck_finishing',
-          labelFr: 'Canard en finition (13-16 sem. / ~3-4 mois)',
-          labelAr: 'بط مرحلة تسمين نهائي (13-16 أسبوعاً / 3-4 أشهر)',
-          labelEn: 'Duck finishing (13-16 wks)',
+          labelFr: 'Canard en finition',
+          labelAr: 'بط مرحلة تسمين نهائي',
+          labelEn: 'Duck finishing',
           notesFr: 'Prise de gras et masse',
           notesAr: 'اكتساب الوزن واللحم'
         };
@@ -1713,9 +1713,9 @@ const app = {
           dailyGrams: 170,
           ci: 5.7,
           stageKey: 'duck_adult_male',
-          labelFr: 'Canard adulte mâle (> 4-5 mois)',
-          labelAr: 'ذكر بط بالغ - فحل (> 4-5 أشهر)',
-          labelEn: 'Adult Drake (> 4-5 mos)',
+          labelFr: 'Canard adulte mâle',
+          labelAr: 'ذكر بط بالغ',
+          labelEn: 'Adult Drake',
           notesFr: 'Pèse souvent le double',
           notesAr: 'يزن غالباً ضعف الأنثى'
         };
@@ -1728,9 +1728,9 @@ const app = {
           dailyGrams: 130,
           ci: 4.3,
           stageKey: 'duck_adult_female',
-          labelFr: 'Canne adulte femelle (> 4-5 mois)',
-          labelAr: 'أنثى بط بالغة - بياضة (> 4-5 أشهر)',
-          labelEn: 'Adult Female Duck (> 4-5 mos)',
+          labelFr: 'Canne adulte femelle',
+          labelAr: 'أنثى بط بالغة',
+          labelEn: 'Adult Female Duck',
           notesFr: 'Plus légère que le mâle (ponte)',
           notesAr: 'أخف وزناً من الذكر (إنتاج بيض)'
         };
@@ -1742,9 +1742,9 @@ const app = {
         dailyGrams: 150,
         ci: 5.0,
         stageKey: 'duck_adult_mixed',
-        labelFr: 'Canard adulte mixte (> 4-5 mois)',
-        labelAr: 'بط بالغ متوسط مختلط (> 4-5 أشهر)',
-        labelEn: 'Adult mixed flock (> 4-5 mos)',
+        labelFr: 'Canard adulte',
+        labelAr: 'بط بالغ',
+        labelEn: 'Adult duck',
         notesFr: 'Si mâles et femelles mélangés',
         notesAr: 'في حالة خلط الذكور والإناث معاً'
       };
@@ -1755,37 +1755,37 @@ const app = {
         return {
           minGrams: 20, maxGrams: 32, avgGrams: 26.5, dailyGrams: 26.5, ci: 0.9,
           stageKey: 'pintade_chick',
-          labelFr: 'Pintadeaux démarrage (0-4 sem.)',
-          labelAr: 'كتاكيت دجاج الوادي (0-4 أسابيع)',
-          labelEn: 'Guinea Keets (0-4 wks)'
+          labelFr: 'Pintadeaux démarrage',
+          labelAr: 'كتاكيت دجاج الوادي',
+          labelEn: 'Guinea Keets'
         };
       }
       if (days <= 84) {
         return {
           minGrams: 50, maxGrams: 75, avgGrams: 62.5, dailyGrams: 62.5, ci: 2.1,
           stageKey: 'pintade_grower',
-          labelFr: 'Pintades croissance (5-12 sem.)',
-          labelAr: 'دجاج الوادي نامي (5-12 أسبوعاً)',
-          labelEn: 'Growing Guinea Fowls (5-12 wks)'
+          labelFr: 'Pintades croissance',
+          labelAr: 'دجاج الوادي نمو',
+          labelEn: 'Growing Guinea'
         };
       }
       return {
         minGrams: 95, maxGrams: 120, avgGrams: 107.5, dailyGrams: 107.5, ci: 3.6,
         stageKey: 'pintade_adult',
-        labelFr: 'Pintades adultes (> 12 sem.)',
-        labelAr: 'دجاج الوادي بالغ (> 12 أسبوعاً)',
-        labelEn: 'Adult Guinea Fowls (> 12 wks)'
+        labelFr: 'Pintades adultes',
+        labelAr: 'دجاج الوادي بالغ',
+        labelEn: 'Adult Guinea'
       };
     }
 
     if (sp === 'autre' || sp === 'dinde' || sp.includes('turkey')) {
       if (days <= 28) {
-        return { minGrams: 25, maxGrams: 45, avgGrams: 35, dailyGrams: 35, ci: 1.2, stageKey: 'other_start', labelFr: 'Démarrage (0-4 sem.)', labelAr: 'بداية (0-4 أسابيع)', labelEn: 'Starter (0-4 wks)' };
+        return { minGrams: 25, maxGrams: 45, avgGrams: 35, dailyGrams: 35, ci: 1.2, stageKey: 'other_start', labelFr: 'Démarrage', labelAr: 'بداية', labelEn: 'Starter' };
       }
       if (days <= 84) {
-        return { minGrams: 60, maxGrams: 90, avgGrams: 75, dailyGrams: 75, ci: 2.5, stageKey: 'other_grow', labelFr: 'Croissance (5-12 sem.)', labelAr: 'نمو (5-12 أسبوعاً)', labelEn: 'Grower (5-12 wks)' };
+        return { minGrams: 60, maxGrams: 90, avgGrams: 75, dailyGrams: 75, ci: 2.5, stageKey: 'other_grow', labelFr: 'Croissance', labelAr: 'نمو', labelEn: 'Grower' };
       }
-      return { minGrams: 100, maxGrams: 140, avgGrams: 120, dailyGrams: 120, ci: 4.0, stageKey: 'other_adult', labelFr: 'Adulte (> 12 sem.)', labelAr: 'بالغ (> 12 أسبوعاً)', labelEn: 'Adult (> 12 wks)' };
+      return { minGrams: 100, maxGrams: 140, avgGrams: 120, dailyGrams: 120, ci: 4.0, stageKey: 'other_adult', labelFr: 'Adulte', labelAr: 'بالغ', labelEn: 'Adult' };
     }
 
     // POULE & POULET / GALLINACÉS (Table officielle de l'éleveur)
@@ -1797,9 +1797,9 @@ const app = {
         dailyGrams: 30,
         ci: 1.0,
         stageKey: 'chicken_starter',
-        labelFr: 'Poussin démarrage (0-4 sem. / J1–J28)',
-        labelAr: 'كتكوت بداية / فلالس (0-4 أسابيع / 1-28 يوم)',
-        labelEn: 'Chick starter (0-4 wks)',
+        labelFr: 'Poussin démarrage',
+        labelAr: 'كتكوت بداية',
+        labelEn: 'Chick starter',
         notesFr: 'Miettes / démarrage (protéines 20-22%)',
         notesAr: 'علف بادي 20-22% بروتين'
       };
@@ -1812,9 +1812,9 @@ const app = {
         dailyGrams: 60,
         ci: 2.0,
         stageKey: 'chicken_grower',
-        labelFr: 'Poulet croissance (5-10 sem. / J29–J70)',
-        labelAr: 'دجاج نمو (5-10 أسابيع / 29-70 يوم)',
-        labelEn: 'Growing chicken (5-10 wks)',
+        labelFr: 'Poulet croissance',
+        labelAr: 'دجاج نمو',
+        labelEn: 'Growing chicken',
         notesFr: 'Croissance soutenue',
         notesAr: 'نمو هيكلي سريع وترييش'
       };
@@ -1827,9 +1827,9 @@ const app = {
         dailyGrams: 80,
         ci: 2.7,
         stageKey: 'chicken_young',
-        labelFr: 'Jeune poulet / Poulette (11-16 sem. / ~3-4 mois)',
-        labelAr: 'فرروج صغير / فرخة شابة (11-16 أسبوعاً / 3-4 أشهر)',
-        labelEn: 'Young chicken / Pullet (11-16 wks)',
+        labelFr: 'Poulet croissance',
+        labelAr: 'دجاج نمو',
+        labelEn: 'Young chicken',
         notesFr: 'Transition vers ponte / engraissement',
         notesAr: 'مرحلة البلوغ الأولي والتحضير'
       };
@@ -1842,9 +1842,9 @@ const app = {
         dailyGrams: 95,
         ci: 3.2,
         stageKey: 'chicken_prelay',
-        labelFr: 'Poulette pré-ponte / Finition (17-22 sem. / ~4-5 mois)',
-        labelAr: 'بشاير مقبلة على البيض / تسمين (17-22 أسبوعاً / 4-5 أشهر)',
-        labelEn: 'Pre-layer / Finisher (17-22 wks)',
+        labelFr: 'Poulette finition',
+        labelAr: 'بشاير مقبلة على البيض',
+        labelEn: 'Pre-layer',
         notesFr: 'Aliment pré-ponte riche en calcium',
         notesAr: 'علف غني بالكالسيوم والبروتين'
       };
@@ -1859,9 +1859,9 @@ const app = {
         dailyGrams: 130,
         ci: 4.3,
         stageKey: 'chicken_rooster',
-        labelFr: 'Coq adulte (Reproducteur / > 23 sem.)',
-        labelAr: 'سردوك بالغ - فحل مخصب (> 23 أسبوعاً)',
-        labelEn: 'Adult rooster (> 23 wks)',
+        labelFr: 'Coq adulte',
+        labelAr: 'سردوك بالغ',
+        labelEn: 'Adult rooster',
         notesFr: 'Maintien de condition reproducteur',
         notesAr: 'فحول مخصبة للتلقيح'
       };
@@ -1874,9 +1874,9 @@ const app = {
       dailyGrams: 115,
       ci: 3.8,
       stageKey: 'chicken_adult_layer',
-      labelFr: 'Poule pondeuse adulte (À partir de 23 sem. / > 5 mois)',
-      labelAr: 'دجاجة بياضة بالغة (من 23 أسبوعاً فما فوق / > 5 أشهر)',
-      labelEn: 'Adult layer hen (From 23 wks / > 5 mos)',
+      labelFr: 'Poule pondeuse',
+      labelAr: 'دجاجة بياضة',
+      labelEn: 'Laying hen',
       notesFr: 'Plein pic de ponte (bouchon ponte)',
       notesAr: 'إنتاج البيض اليومي المستمر'
     };
@@ -3164,16 +3164,6 @@ const app = {
           <span class="stage-badge ${stageBadgeClass}">${this.translateStage(animal.stage)}</span>
         </div>
 
-        <!-- Agronomic Feed & Consumption Header Bar -->
-        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.45rem 0.75rem; margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; font-size: 0.76rem;">
-          <span style="color: var(--accent-amber); font-weight: 700;">
-            🌾 ${feedData.avgGrams} g / j (${feedData.minGrams} - ${feedData.maxGrams} g)
-          </span>
-          <span style="color: var(--text-secondary);">
-            ${this.t('feed_cumul_label') || 'Cumul mangé'}: <strong class="text-amber">~${cumulFeedKg.toFixed(2)} kg</strong> (~${this.formatMoney(cumulFeedCost)})
-          </span>
-        </div>
-
         <div class="animal-stats-grid">
           <div class="animal-stat-col">
             <span class="lbl">${this.t('card_age_real')}</span>
@@ -3375,17 +3365,17 @@ const app = {
         {
           key: 'caneton_demarrage',
           days: 0,
-          label: isAr ? '🐣 فراخ بط بداية (0 إلى 3 أسابيع)' : (isEn ? '🐣 Duckling starter (0 to 3 wks)' : '🐣 Caneton démarrage (0 à 3 semaines)')
+          label: isAr ? '🐣 فراخ بط بداية' : (isEn ? '🐣 Duckling starter' : '🐣 Caneton démarrage')
         },
         {
           key: 'canard_croissance',
           days: 22,
-          label: isAr ? '🦆 بط نمو وتسمين (1 إلى 4 أشهر)' : (isEn ? '🦆 Growing / Finishing Duck (1 to 4 mos)' : '🦆 Canard jeune / Croissance (1 à 4 mois)')
+          label: isAr ? '🦆 بط نمو' : (isEn ? '🦆 Growing duck' : '🦆 Canard croissance')
         },
         {
           key: 'canard_adulte',
           days: 120,
-          label: isAr ? '🦆 بط بالغ (> 4-5 أشهر)' : (isEn ? '🦆 Adult Duck (> 4-5 mos)' : '🦆 Canard adulte (> 4-5 mois)')
+          label: isAr ? '🦆 بط بالغ' : (isEn ? '🦆 Adult duck' : '🦆 Canard adulte')
         }
       ];
     } else if (sp === 'pintade') {
@@ -3393,17 +3383,17 @@ const app = {
         {
           key: 'pintadeau',
           days: 0,
-          label: isAr ? '🐣 كتاكيت دجاج الوادي (0 إلى 4 أسابيع)' : (isEn ? '🐣 Guinea Keets (0 to 4 wks)' : '🐣 Pintadeau démarrage (0 à 4 semaines)')
+          label: isAr ? '🐣 كتاكيت دجاج الوادي' : (isEn ? '🐣 Guinea keets' : '🐣 Pintadeau démarrage')
         },
         {
           key: 'pintade_croissance',
           days: 30,
-          label: isAr ? '🪶 دجاج الوادي نامي (1 إلى 3 أشهر)' : (isEn ? '🪶 Growing Guinea (1 to 3 mos)' : '🪶 Pintade jeune (1 à 3 mois)')
+          label: isAr ? '🪶 دجاج الوادي نمو' : (isEn ? '🪶 Growing guinea' : '🪶 Pintade croissance')
         },
         {
           key: 'pintade_adulte',
           days: 90,
-          label: isAr ? '🪶 دجاج الوادي بالغ (> 3 أشهر)' : (isEn ? '🪶 Adult Guinea (> 3 mos)' : '🪶 Pintade adulte (> 3 mois)')
+          label: isAr ? '🪶 دجاج الوادي بالغ' : (isEn ? '🪶 Adult guinea' : '🪶 Pintade adulte')
         }
       ];
     } else if (sp === 'autre') {
@@ -3411,17 +3401,17 @@ const app = {
         {
           key: 'autre_demarrage',
           days: 0,
-          label: isAr ? '🐣 مرحلة البداية (0 إلى 4 أسابيع)' : (isEn ? '🐣 Starter (0 to 4 wks)' : '🐣 Démarrage (0 à 4 semaines)')
+          label: isAr ? '🐣 مرحلة البداية' : (isEn ? '🐣 Starter' : '🐣 Démarrage')
         },
         {
           key: 'autre_croissance',
           days: 30,
-          label: isAr ? '🐥 مرحلة النمو (1 إلى 6 أشهر)' : (isEn ? '🐥 Growing (1 to 6 mos)' : '🐥 Jeune / Croissance (1 à 6 mois)')
+          label: isAr ? '🐥 مرحلة النمو' : (isEn ? '🐥 Growing' : '🐥 Croissance')
         },
         {
           key: 'autre_adulte',
           days: 180,
-          label: isAr ? '🦃 طيور بالغة (> 6 أشهر)' : (isEn ? '🦃 Adult (> 6 mos)' : '🦃 Adulte (> 6 mois)')
+          label: isAr ? '🦃 طيور بالغة' : (isEn ? '🦃 Adult' : '🦃 Adulte')
         }
       ];
     } else {
@@ -3430,22 +3420,22 @@ const app = {
         {
           key: 'poussin',
           days: 0,
-          label: isAr ? '🐣 كتاكيت / فلالس بداية (0 - 28 يوماً / ~شهر)' : (isEn ? '🐣 Chick starter (0 to 28 days)' : '🐣 Poussin démarrage (0j - 28j / ~1 mois)')
+          label: isAr ? '🐣 كتاكيت / فلالس بداية' : (isEn ? '🐣 Chick starter' : '🐣 Poussin démarrage')
         },
         {
           key: 'croissance',
           days: 30,
-          label: isAr ? '🐥 دجاج نامي / فرارج (1 شهر - 6 أشهر)' : (isEn ? '🐥 Young chicken (1 to 6 mos)' : '🐥 Poulet jeune / Croissance (1 mois - 6 mois)')
+          label: isAr ? '🐥 دجاج نمو / فرارج' : (isEn ? '🐥 Growing chicken' : '🐥 Poulet croissance')
         },
         {
           key: 'pondeuse',
           days: 180,
-          label: isAr ? '🐓 دجاجة بياضة بالغة (> 6 أشهر)' : (isEn ? '🐓 Adult Layer Hen (> 6 mos)' : '🐓 Poule pondeuse adulte (> 6 mois)')
+          label: isAr ? '🐓 دجاجة بياضة' : (isEn ? '🐓 Laying hen' : '🐓 Poule pondeuse')
         },
         {
           key: 'coq',
           days: 180,
-          label: isAr ? '🐓 سردوك بالغ / فحل مخصب (> 6 أشهر)' : (isEn ? '🐓 Adult Rooster (> 6 mos)' : '🐓 Coq adulte (Reproducteur / > 6 mois)')
+          label: isAr ? '🐓 سردوك بالغ' : (isEn ? '🐓 Adult rooster' : '🐓 Coq adulte')
         }
       ];
     }
