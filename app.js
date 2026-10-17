@@ -2655,7 +2655,28 @@ const app = {
     const lblPriceText = isAr ? `سعر الكيلوغرام (${currSym}/${unitKg})` : (isEn ? `Price per kg (${currSym}/${unitKg})` : `Prix au kg (${currSym}/kg)`);
     const valStockText = isAr ? 'قيمة المخزون :' : (isEn ? 'Stock value:' : 'Valeur du stock :');
 
-    let html = '';
+    const uncredited = (appState.expenses || []).filter(e => e.category === 'nourriture' && !e.feedStockAddedKg);
+    let bannerHtml = '';
+    if (uncredited.length > 0) {
+      const alertTitle = isAr
+        ? `💡 لديك ${uncredited.length} مشتريات أعلاف مسجلة لم تضاف بعد للمخزون الاحتياطي.`
+        : (isEn
+            ? `💡 You have ${uncredited.length} recorded feed purchase(s) not yet added to reserve stock.`
+            : `💡 Vous avez ${uncredited.length} achat(s) d'aliments enregistré(s) non encore ajouté(s) au stock réserve.`);
+      const btnText = isAr ? '📥 إضافة الكل للمخزون' : (isEn ? '📥 Add all to stock' : '📥 Mettre en stock');
+      bannerHtml = `
+        <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 600;">
+            ${alertTitle}
+          </div>
+          <button type="button" class="btn btn-xs btn-emerald" style="font-weight: 700; padding: 4px 10px;" onclick="app.quickImportFoodExpensesToStock()">
+            ${btnText}
+          </button>
+        </div>
+      `;
+    }
+
+    let html = bannerHtml;
     appState.feedTypes.forEach(ft => {
       const stockKg = Number(ft.stockKg) || 0;
       const priceKg = Number(ft.pricePerKg) || 1.0;
@@ -3960,10 +3981,19 @@ const app = {
       const lotName = this.getLotNameById(exp.linkedLotId);
       const displayTitle = this.getTranslatedExpenseTitle(exp.title);
 
+      let feedStockTag = '';
+      if (exp.category === 'nourriture') {
+        if (exp.feedStockAddedKg > 0) {
+          feedStockTag = `<div style="margin-top: 3px;"><span class="badge" style="background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">📦 +${Number(exp.feedStockAddedKg).toFixed(1)} kg en réserve</span></div>`;
+        } else {
+          feedStockTag = `<div style="margin-top: 3px;"><button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-emerald); border-color: rgba(16, 185, 129, 0.4); font-size: 0.68rem; padding: 1px 6px;" onclick="app.addExistingExpenseToFeedStock('${exp.id}')" title="Ajouter cette quantité dans le stock d'aliment en réserve">📦 ${this.t('btn_add_to_feed_stock') || 'Mettre en stock'}</button></div>`;
+        }
+      }
+
       tr.innerHTML = `
         <td>${this.formatDateFR(exp.date)}</td>
         <td>${catBadge}</td>
-        <td><strong>${displayTitle}</strong></td>
+        <td><strong>${displayTitle}</strong>${feedStockTag}</td>
         <td>
           <button type="button" class="badge-pill btn-subtle" onclick="app.reassignExpenseLot('${exp.id}')" title="Cliquer pour changer le lot affecté" style="cursor:pointer; border:1px solid var(--border-color); background:var(--bg-card); padding:3px 8px; font-size:0.75rem;">
             ${lotName} ✏️
@@ -4021,9 +4051,130 @@ const app = {
   },
 
   handleExpenseCatChange() {
+    const cat = document.getElementById('expenseCategory')?.value;
     const title = document.getElementById('expenseTitle');
     if (title) {
       title.placeholder = '';
+    }
+
+    const feedStockGroup = document.getElementById('expenseFeedStockGroup');
+    const addToFeedCheck = document.getElementById('expenseAddToFeedStock');
+    if (feedStockGroup) {
+      if (cat === 'nourriture') {
+        feedStockGroup.style.display = 'block';
+        if (addToFeedCheck) addToFeedCheck.checked = true;
+        this.populateExpenseFeedTypes();
+        this.toggleExpenseFeedOptions();
+      } else {
+        feedStockGroup.style.display = 'none';
+        if (addToFeedCheck) addToFeedCheck.checked = false;
+      }
+    }
+  },
+
+  populateExpenseFeedTypes() {
+    const select = document.getElementById('expenseFeedTypeSelect');
+    if (!select) return;
+
+    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const stockLabel = isAr ? 'المخزون' : 'Stock';
+
+    let html = '';
+    (appState.feedTypes || []).forEach(ft => {
+      const stock = Number(ft.stockKg) || 0;
+      const name = this.getFeedDisplayName(ft);
+      html += `<option value="${ft.id}">🌾 ${name} (${stockLabel}: ${stock.toFixed(1)} ${unitKg})</option>`;
+    });
+
+    const newLabel = isAr
+      ? '➕ إنشاء علف جديد حسب اسم المصروف'
+      : (isEn ? '➕ Create new feed type from title' : '➕ Créer un nouvel aliment selon l\'intitulé');
+    html += `<option value="__new__">${newLabel}</option>`;
+
+    select.innerHTML = html;
+  },
+
+  toggleExpenseFeedOptions() {
+    const chk = document.getElementById('expenseAddToFeedStock');
+    const wrapper = document.getElementById('expenseFeedOptionsWrapper');
+    if (wrapper) {
+      wrapper.style.display = (chk && chk.checked) ? 'block' : 'none';
+    }
+    this.updateExpenseFeedPreview();
+  },
+
+  onExpenseFeedTypeSelectChange() {
+    const select = document.getElementById('expenseFeedTypeSelect');
+    const titleInput = document.getElementById('expenseTitle');
+    if (!select || !titleInput) return;
+
+    if (select.value !== '__new__') {
+      const ft = (appState.feedTypes || []).find(f => f.id === select.value);
+      if (ft && (!titleInput.value || titleInput.value.trim() === '')) {
+        const isAr = appState.lang === 'ar';
+        const isEn = appState.lang === 'en';
+        const prefix = isAr ? 'شراء علف' : (isEn ? 'Feed purchase' : 'Achat');
+        titleInput.value = `${prefix} ${this.getFeedDisplayName(ft)}`;
+      }
+    }
+    this.updateExpenseFeedPreview();
+  },
+
+  onExpenseTitleInput() {
+    const titleInput = document.getElementById('expenseTitle');
+    const select = document.getElementById('expenseFeedTypeSelect');
+    if (!titleInput || !select) return;
+
+    const val = titleInput.value.trim().toLowerCase();
+    if (val.length >= 2) {
+      const match = (appState.feedTypes || []).find(ft => {
+        const name = (ft.name || '').toLowerCase();
+        return val.includes(name) || name.includes(val);
+      });
+      if (match && select.value !== match.id) {
+        select.value = match.id;
+      }
+    }
+    this.updateExpenseFeedPreview();
+  },
+
+  updateExpenseFeedPreview() {
+    const previewEl = document.getElementById('expenseFeedCalcPreview');
+    const chk = document.getElementById('expenseAddToFeedStock');
+    if (!previewEl) return;
+    if (!chk || !chk.checked) {
+      previewEl.textContent = '';
+      return;
+    }
+
+    const qty = parseFloat(document.getElementById('expenseQuantity')?.value) || 0;
+    const unit = document.getElementById('expenseFeedUnit')?.value || 'kg';
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+
+    let addedKg = qty;
+    let detailStr = '';
+    if (unit === 'sac50') {
+      addedKg = qty * 50;
+      detailStr = isAr ? ` (${qty} أكياس × 50 كغ)` : ` (${qty} sacs × 50 kg)`;
+    } else if (unit === 'sac25') {
+      addedKg = qty * 25;
+      detailStr = isAr ? ` (${qty} أكياس × 25 كغ)` : ` (${qty} sacs × 25 kg)`;
+    }
+
+    if (addedKg > 0) {
+      const text = isAr
+        ? `➡️ الكمية التي ستضاف للمخزون: ${addedKg.toFixed(1)} ${unitKg}${detailStr}`
+        : (isEn
+            ? `➡️ Stock to be added: ${addedKg.toFixed(1)} ${unitKg}${detailStr}`
+            : `➡️ Stock qui sera crédité : ${addedKg.toFixed(1)} ${unitKg} en réserve${detailStr}`);
+      previewEl.textContent = text;
+    } else {
+      previewEl.textContent = '';
     }
   },
 
@@ -4042,6 +4193,50 @@ const app = {
       return;
     }
 
+    const addToStock = document.getElementById('expenseAddToFeedStock')?.checked;
+    let feedStockAddedKg = 0;
+    let feedTypeId = null;
+
+    if (category === 'nourriture' && addToStock) {
+      const unit = document.getElementById('expenseFeedUnit')?.value || 'kg';
+      let addedKg = quantity;
+      if (unit === 'sac50') addedKg = quantity * 50;
+      else if (unit === 'sac25') addedKg = quantity * 25;
+
+      if (addedKg > 0) {
+        appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+        const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
+        let targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
+
+        if (!targetFeed || selectedFeedId === '__new__') {
+          // Check if a feed with matching name exists
+          const cleanName = title.trim();
+          targetFeed = (appState.feedTypes || []).find(f => f.name.toLowerCase().trim() === cleanName.toLowerCase().trim());
+          if (!targetFeed) {
+            targetFeed = {
+              id: 'feed-' + Date.now().toString(36),
+              name: cleanName || (appState.lang === 'ar' ? 'علف جديد' : 'Nouvel aliment'),
+              stockKg: 0,
+              pricePerKg: (total / (addedKg || 1)) || 1.2
+            };
+            appState.feedTypes.push(targetFeed);
+          }
+        }
+
+        targetFeed.stockKg = Math.max(0, (Number(targetFeed.stockKg) || 0) + addedKg);
+        if (total > 0 && addedKg > 0) {
+          targetFeed.pricePerKg = Math.max(0.1, total / addedKg);
+        }
+
+        appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+        appState.feedStockDate = this.getTodayStr();
+        appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
+
+        feedStockAddedKg = addedKg;
+        feedTypeId = targetFeed.id;
+      }
+    }
+
     const newExp = {
       id: 'exp-' + Date.now().toString(36),
       date,
@@ -4050,24 +4245,46 @@ const app = {
       quantity,
       unitPrice,
       total,
-      linkedLotId
+      linkedLotId,
+      feedStockAddedKg,
+      feedTypeId
     };
 
     appState.expenses.unshift(newExp);
     this.saveState();
     this.closeModal('modalAddExpense');
     this.renderAll();
-    this.showToast(this.t('toast_expense_saved', { amount: this.formatMoney(total) }));
+
+    const isAr = appState.lang === 'ar';
+    let toastMsg = this.t('toast_expense_saved', { amount: this.formatMoney(total) });
+    if (feedStockAddedKg > 0) {
+      toastMsg += isAr 
+        ? ` (+${feedStockAddedKg.toFixed(1)} كغ في مخزون الأعلاف)` 
+        : ` (+${feedStockAddedKg.toFixed(1)} kg ajoutés au stock)`;
+    }
+    this.showToast(toastMsg);
+
     document.getElementById('formAddExpense').reset();
     const expQty = document.getElementById('expenseQuantity');
     const expPrice = document.getElementById('expenseUnitPrice');
     if (expQty) { expQty.value = ''; expQty.placeholder = ''; }
     if (expPrice) { expPrice.value = ''; expPrice.placeholder = ''; }
+    const unitSelect = document.getElementById('expenseFeedUnit');
+    if (unitSelect) unitSelect.value = 'kg';
     this.calcExpenseTotal();
+    this.updateExpenseFeedPreview();
   },
 
   deleteExpense(expId) {
     if (confirm('Confirmer la suppression de cette dépense ?')) {
+      const exp = (appState.expenses || []).find(e => e.id === expId);
+      if (exp && exp.feedStockAddedKg && exp.feedTypeId) {
+        const ft = (appState.feedTypes || []).find(f => f.id === exp.feedTypeId);
+        if (ft) {
+          ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) - Number(exp.feedStockAddedKg));
+          appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+        }
+      }
       if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
         appAuth.addDeletedId(expId);
       }
@@ -4076,6 +4293,134 @@ const app = {
       this.renderAll();
       this.showToast(this.t('toast_expense_deleted'));
     }
+  },
+
+  addExistingExpenseToFeedStock(expId) {
+    const exp = (appState.expenses || []).find(e => e.id === expId);
+    if (!exp) return;
+
+    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+    const isAr = appState.lang === 'ar';
+    const unitKg = isAr ? 'كغ' : 'kg';
+
+    let defaultKg = Number(exp.quantity) || 1;
+    const titleLower = (exp.title || '').toLowerCase();
+    if (titleLower.includes('50kg') || (titleLower.includes('sac') && !titleLower.includes('25kg'))) {
+      defaultKg = defaultKg * 50;
+    } else if (titleLower.includes('25kg')) {
+      defaultKg = defaultKg * 25;
+    }
+
+    const promptMsg = isAr
+      ? `كم كيلوغرام من العلف تريد إضافته للمخزون الاحتياطي للمصروف "${exp.title}" ؟`
+      : `Combien de kilos d'aliments ajouter au stock réserve pour la dépense "${exp.title}" ?`;
+
+    const inputKgStr = prompt(promptMsg, defaultKg.toString());
+    if (inputKgStr === null) return;
+    const addedKg = parseFloat(inputKgStr) || 0;
+    if (addedKg <= 0) return;
+
+    // Match or ask which feed
+    let ft = appState.feedTypes.find(f => {
+      const fn = (f.name || '').toLowerCase();
+      return titleLower.includes(fn) || fn.includes(titleLower);
+    });
+
+    if (!ft) {
+      if (titleLower.includes('blé') || titleLower.includes('ble') || titleLower.includes('قمح')) {
+        ft = appState.feedTypes.find(f => f.id === 'feed-ble');
+      } else if (titleLower.includes('bouchon') || titleLower.includes('ponte') || titleLower.includes('بوشون')) {
+        ft = appState.feedTypes.find(f => f.id === 'feed-bouchon');
+      }
+    }
+
+    if (!ft) {
+      ft = {
+        id: 'feed-' + Date.now().toString(36),
+        name: exp.title.replace(/\(\d+.*?\)/g, '').trim() || (isAr ? 'علف جديد' : 'Nouvel aliment'),
+        stockKg: 0,
+        pricePerKg: (Number(exp.total) / (addedKg || 1)) || 1.2
+      };
+      appState.feedTypes.push(ft);
+    }
+
+    ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) + addedKg);
+    if (exp.total > 0 && addedKg > 0) {
+      ft.pricePerKg = Number(exp.total) / addedKg;
+    }
+    exp.feedStockAddedKg = addedKg;
+    exp.feedTypeId = ft.id;
+
+    appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+    appState.feedStockDate = this.getTodayStr();
+    appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
+
+    this.saveState();
+    this.renderAll();
+    this.showToast(`✅ +${addedKg.toFixed(1)} ${unitKg} ajoutés au stock (${this.getFeedDisplayName(ft)}) !`);
+  },
+
+  quickImportFoodExpensesToStock() {
+    const uncredited = (appState.expenses || []).filter(e => e.category === 'nourriture' && !e.feedStockAddedKg);
+    if (uncredited.length === 0) {
+      this.showToast('Tous les achats d\'aliments sont déjà comptabilisés dans le stock !');
+      return;
+    }
+
+    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+    let totalAdded = 0;
+
+    uncredited.forEach(exp => {
+      const titleLower = (exp.title || '').toLowerCase();
+      let addedKg = Number(exp.quantity) || 0;
+      if (titleLower.includes('50kg') || (titleLower.includes('sac') && !titleLower.includes('25kg'))) {
+        addedKg = addedKg * 50;
+      } else if (titleLower.includes('25kg')) {
+        addedKg = addedKg * 25;
+      }
+
+      let ft = appState.feedTypes.find(f => {
+        const fn = (f.name || '').toLowerCase();
+        return titleLower.includes(fn) || fn.includes(titleLower);
+      });
+
+      if (!ft) {
+        if (titleLower.includes('blé') || titleLower.includes('ble') || titleLower.includes('قمح')) {
+          ft = appState.feedTypes.find(f => f.id === 'feed-ble');
+        } else if (titleLower.includes('bouchon') || titleLower.includes('ponte') || titleLower.includes('بوشون')) {
+          ft = appState.feedTypes.find(f => f.id === 'feed-bouchon');
+        }
+      }
+
+      if (!ft) {
+        ft = {
+          id: 'feed-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+          name: exp.title.replace(/\(\d+.*?\)/g, '').trim() || 'Aliment',
+          stockKg: 0,
+          pricePerKg: (Number(exp.total) / (addedKg || 1)) || 1.2
+        };
+        appState.feedTypes.push(ft);
+      }
+
+      ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) + addedKg);
+      if (exp.total > 0 && addedKg > 0) {
+        ft.pricePerKg = Number(exp.total) / addedKg;
+      }
+      exp.feedStockAddedKg = addedKg;
+      exp.feedTypeId = ft.id;
+      totalAdded += addedKg;
+    });
+
+    appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+    appState.feedStockDate = this.getTodayStr();
+    appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
+
+    this.saveState();
+    this.renderAll();
+    if (document.getElementById('modalAdjustFeedStock') && !document.getElementById('modalAdjustFeedStock').classList.contains('hidden')) {
+      this.renderFeedStockAdjustModal();
+    }
+    this.showToast(`✅ +${totalAdded.toFixed(1)} kg ajoutés avec succès dans vos stocks d'aliments en réserve !`);
   },
 
   // ==========================================
