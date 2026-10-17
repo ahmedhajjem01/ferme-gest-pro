@@ -528,6 +528,7 @@ const app = {
     this.updateCurrencySymbols();
     this.applyTranslations();
     this.renderAll();
+    document.querySelectorAll('#animalPortionBanner, [id*="PortionBanner"]').forEach(el => el.remove());
 
     // Schedule 17h daily egg collection notification in active language
     if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
@@ -3374,17 +3375,17 @@ const app = {
         {
           key: 'caneton_demarrage',
           days: 0,
-          label: isAr ? '🐣 فراخ بط بداية (0 إلى 3 أسابيع / 1-21 يوم) [~40 غ/يوم]' : (isEn ? '🐣 Duckling starter (0 to 3 wks) [~40g/d]' : '🐣 Caneton démarrage (0 à 3 semaines / J1–J21) [~40g/j, Ci 1.3]')
+          label: isAr ? '🐣 فراخ بط بداية (0 إلى 3 أسابيع)' : (isEn ? '🐣 Duckling starter (0 to 3 wks)' : '🐣 Caneton démarrage (0 à 3 semaines)')
         },
         {
           key: 'canard_croissance',
           days: 22,
-          label: isAr ? '🦆 بط نمو وتسمين (1 إلى 4 أشهر / 22-112 يوم) [~90-140 غ/يوم]' : (isEn ? '🦆 Growing / Finishing Duck (1 to 4 mos) [~90-140g/d]' : '🦆 Canard jeune / Croissance (1 à 4 mois / J22–J112) [~90-140g/j, Ci 3.0-4.7]')
+          label: isAr ? '🦆 بط نمو وتسمين (1 إلى 4 أشهر)' : (isEn ? '🦆 Growing / Finishing Duck (1 to 4 mos)' : '🦆 Canard jeune / Croissance (1 à 4 mois)')
         },
         {
           key: 'canard_adulte',
           days: 120,
-          label: isAr ? '🦆 بط بالغ (فوق 4-5 أشهر / أكثر من 113 يوم) [~150 غ/يوم]' : (isEn ? '🦆 Adult Duck (> 4-5 mos) [~150g/d]' : '🦆 Canard adulte (> 4-5 mois / J113+) [~150g/j, Ci 5.0]')
+          label: isAr ? '🦆 بط بالغ (> 4-5 أشهر)' : (isEn ? '🦆 Adult Duck (> 4-5 mos)' : '🦆 Canard adulte (> 4-5 mois)')
         }
       ];
     } else if (sp === 'pintade') {
@@ -3392,17 +3393,17 @@ const app = {
         {
           key: 'pintadeau',
           days: 0,
-          label: isAr ? '🐣 كتاكيت دجاج الوادي (0 إلى 4 أسابيع)' : (isEn ? '🐣 Guinea Keets (0 to 4 wks)' : '🐣 Pintadeau démarrage (0 à 4 semaines) [~26g/j]')
+          label: isAr ? '🐣 كتاكيت دجاج الوادي (0 إلى 4 أسابيع)' : (isEn ? '🐣 Guinea Keets (0 to 4 wks)' : '🐣 Pintadeau démarrage (0 à 4 semaines)')
         },
         {
           key: 'pintade_croissance',
           days: 30,
-          label: isAr ? '🪶 دجاج الوادي نامي (1 إلى 3 أشهر)' : (isEn ? '🪶 Growing Guinea (1 to 3 mos)' : '🪶 Pintade jeune (1 à 3 mois) [~62g/j]')
+          label: isAr ? '🪶 دجاج الوادي نامي (1 إلى 3 أشهر)' : (isEn ? '🪶 Growing Guinea (1 to 3 mos)' : '🪶 Pintade jeune (1 à 3 mois)')
         },
         {
           key: 'pintade_adulte',
           days: 90,
-          label: isAr ? '🪶 دجاج الوادي بالغ (> 3 أشهر)' : (isEn ? '🪶 Adult Guinea (> 3 mos)' : '🪶 Pintade adulte (> 3 mois) [~107g/j]')
+          label: isAr ? '🪶 دجاج الوادي بالغ (> 3 أشهر)' : (isEn ? '🪶 Adult Guinea (> 3 mos)' : '🪶 Pintade adulte (> 3 mois)')
         }
       ];
     } else if (sp === 'autre') {
@@ -3429,22 +3430,22 @@ const app = {
         {
           key: 'poussin',
           days: 0,
-          label: isAr ? '🐣 كتاكيت / فلالس بداية (0 - 28 يوماً / ~شهر) [~30 غ/يوم]' : (isEn ? '🐣 Chick starter (0 to 28 days) [~30g/d]' : '🐣 Poussin démarrage (0j - 28j / ~1 mois) [~30g/j, Ci 1.0]')
+          label: isAr ? '🐣 كتاكيت / فلالس بداية (0 - 28 يوماً / ~شهر)' : (isEn ? '🐣 Chick starter (0 to 28 days)' : '🐣 Poussin démarrage (0j - 28j / ~1 mois)')
         },
         {
           key: 'croissance',
           days: 30,
-          label: isAr ? '🐥 دجاج نامي / فرارج (1 شهر - 6 أشهر) [~60-80 غ/يوم]' : (isEn ? '🐥 Young chicken (1 to 6 mos) [~60-80g/d]' : '🐥 Poulet jeune / Croissance (1 mois - 6 mois) [~60-80g/j, Ci 2.0-2.7]')
+          label: isAr ? '🐥 دجاج نامي / فرارج (1 شهر - 6 أشهر)' : (isEn ? '🐥 Young chicken (1 to 6 mos)' : '🐥 Poulet jeune / Croissance (1 mois - 6 mois)')
         },
         {
           key: 'pondeuse',
           days: 180,
-          label: isAr ? '🐓 دجاجة بياضة بالغة (> 6 أشهر / أكثر من 155 يوم) [~115 غ/يوم]' : (isEn ? '🐓 Adult Layer Hen (> 6 mos) [~115g/d]' : '🐓 Poule pondeuse adulte (> 6 mois / > 155j) [~115g/j, Ci 3.8]')
+          label: isAr ? '🐓 دجاجة بياضة بالغة (> 6 أشهر)' : (isEn ? '🐓 Adult Layer Hen (> 6 mos)' : '🐓 Poule pondeuse adulte (> 6 mois)')
         },
         {
           key: 'coq',
           days: 180,
-          label: isAr ? '🐓 سردوك بالغ / فحل مخصب (> 6 أشهر) [~130 غ/يوم]' : (isEn ? '🐓 Adult Rooster (> 6 mos) [~130g/d]' : '🐓 Coq adulte (Reproducteur / > 6 mois) [~130g/j, Ci 4.3]')
+          label: isAr ? '🐓 سردوك بالغ / فحل مخصب (> 6 أشهر)' : (isEn ? '🐓 Adult Rooster (> 6 mos)' : '🐓 Coq adulte (Reproducteur / > 6 mois)')
         }
       ];
     }
@@ -3457,55 +3458,31 @@ const app = {
   handleAnimalStagePresetChange(presetKey, formPrefix = 'animal') {
     const arrivalAgeInput = document.getElementById(`${formPrefix}ArrivalAgeDays`);
     const hiddenStage = document.getElementById(`${formPrefix}Stage`);
-    const bannerText = document.getElementById(`${formPrefix}PortionBannerText`);
 
     let defaultDays = 0;
     let stageName = 'Croissance';
-    let portionInfo = '🌾 Portion : ~30 g / j (Ci = 1.0)';
 
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
-
-    if (presetKey === 'poussin') {
+    if (presetKey === 'poussin' || presetKey === 'caneton_demarrage' || (presetKey && presetKey.includes('demarrage')) || presetKey === 'pintadeau') {
       defaultDays = 0;
       stageName = 'Démarrage';
-      portionInfo = isAr ? '🌾 حصة البداية : ~30 غ / يوم (المعامل 1.0) • حساب يومي مستمر حسب العمر' : (isEn ? '🌾 Starter portion: ~30 g / day (Ci 1.0)' : '🌾 Portion démarrage : ~30 g / j (Coefficient Ci = 1.0) • Calcul continu jour par jour');
-    } else if (presetKey === 'croissance') {
+    } else if (presetKey === 'croissance' || (presetKey && presetKey.includes('croissance'))) {
       defaultDays = 30;
       stageName = 'Croissance';
-      portionInfo = isAr ? '🌾 حصة النمو : ~60 إلى 80 غ / يوم (المعامل 2.0 إلى 2.7)' : (isEn ? '🌾 Grower portion: ~60 to 80 g / day (Ci 2.0 - 2.7)' : '🌾 Portion croissance : ~60 à 80 g / j (Coefficient Ci = 2.0 à 2.7)');
-    } else if (presetKey === 'pondeuse') {
-      defaultDays = 180;
-      stageName = 'Ponte';
-      portionInfo = isAr ? '🌾 حصة البياض البالغ : ~115 غ / يوم (المعامل 3.8) • ذروة إنتاج البيض' : (isEn ? '🌾 Adult layer portion: ~115 g / day (Ci 3.8)' : '🌾 Portion pondeuse adulte : ~115 g / j (Coefficient Ci = 3.8) • Pic de ponte');
-    } else if (presetKey === 'coq') {
-      defaultDays = 180;
-      stageName = 'Adulte';
-      portionInfo = isAr ? '🌾 حصة الفحل البالغ : ~130 غ / يوم (المعامل 4.3)' : (isEn ? '🌾 Rooster portion: ~130 g / day (Ci 4.3)' : '🌾 Portion coq adulte : ~130 g / j (Coefficient Ci = 4.3)');
-    } else if (presetKey === 'caneton_demarrage') {
-      defaultDays = 0;
-      stageName = 'Démarrage';
-      portionInfo = isAr ? '🌾 حصة فراخ البط : ~40 غ / يوم (المعامل 1.3)' : (isEn ? '🌾 Duckling portion: ~40 g / day (Ci 1.3)' : '🌾 Portion caneton démarrage : ~40 g / j (Coefficient Ci = 1.3)');
     } else if (presetKey === 'canard_croissance') {
       defaultDays = 22;
       stageName = 'Croissance';
-      portionInfo = isAr ? '🌾 حصة نمو وتسمين البط : ~90 إلى 140 غ / يوم (المعامل 3.0 إلى 4.7)' : (isEn ? '🌾 Duck grower portion: ~90 to 140 g / day (Ci 3.0 - 4.7)' : '🌾 Portion croissance / finition canard : ~90 à 140 g / j (Ci 3.0 à 4.7)');
+    } else if (presetKey === 'pondeuse') {
+      defaultDays = 180;
+      stageName = 'Ponte';
+    } else if (presetKey === 'coq') {
+      defaultDays = 180;
+      stageName = 'Adulte';
     } else if (presetKey === 'canard_adulte') {
       defaultDays = 120;
       stageName = 'Adulte';
-      portionInfo = isAr ? '🌾 حصة البط البالغ : ~150 غ / يوم (المعامل 5.0)' : (isEn ? '🌾 Adult duck portion: ~150 g / day (Ci 5.0)' : '🌾 Portion canard adulte : ~150 g / j (Coefficient Ci = 5.0)');
-    } else if (presetKey.includes('demarrage') || presetKey === 'pintadeau') {
-      defaultDays = 0;
-      stageName = 'Démarrage';
-      portionInfo = '🌾 Portion démarrage';
-    } else if (presetKey.includes('croissance')) {
-      defaultDays = 30;
-      stageName = 'Croissance';
-      portionInfo = '🌾 Portion croissance';
     } else {
       defaultDays = 120;
       stageName = 'Adulte';
-      portionInfo = '🌾 Portion adulte';
     }
 
     if (arrivalAgeInput) {
@@ -3515,9 +3492,9 @@ const app = {
     if (hiddenStage) {
       hiddenStage.value = stageName;
     }
-    if (bannerText) {
-      bannerText.innerHTML = portionInfo;
-    }
+
+    const banner = document.getElementById(`${formPrefix}PortionBanner`);
+    if (banner) banner.remove();
   },
 
   handleSaveAnimal(e) {
