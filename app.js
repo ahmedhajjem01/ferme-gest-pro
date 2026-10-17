@@ -475,7 +475,7 @@ const app = {
       if (val && val !== key) {
         if (el.tagName === 'INPUT' && (el.type === 'button' || el.type === 'submit')) {
           el.value = val;
-        } else if (val.includes('<') || el.hasAttribute('data-i18n-html') || el.id === 'expenseFeedNotice') {
+        } else if (val.includes('<') || el.hasAttribute('data-i18n-html')) {
           el.innerHTML = val;
         } else if (el.children.length === 0) {
           el.textContent = val;
@@ -4021,15 +4021,7 @@ const app = {
   },
 
   handleExpenseCatChange() {
-    const cat = document.getElementById('expenseCategory').value;
     const title = document.getElementById('expenseTitle');
-    const feedNotice = document.getElementById('expenseFeedNotice');
-    if (feedNotice) {
-      feedNotice.style.display = (cat === 'nourriture') ? 'block' : 'none';
-      const noticeHtml = this.t('expense_feed_notice');
-      if (noticeHtml) feedNotice.innerHTML = noticeHtml;
-    }
-
     if (title) {
       title.placeholder = '';
     }
