@@ -3230,11 +3230,6 @@ const app = {
       const costPerCurrentHead = animal.currentQuantity > 0 ? (totalInvested / animal.currentQuantity).toFixed(2) : '0';
       const feedPerSubject = cumulFeedCost.toFixed(2);
 
-      // Calcul du Prix de Vente Conseillé avec +40% de Marge Nette Garantie
-      const costHeadNum = parseFloat(costPerCurrentHead) || cumulFeedCost;
-      const minMarginFloor = (animal.species === 'poussin') ? 1.500 : ((animal.species === 'canard' || animal.species === 'canard_barbarie') ? 6.000 : 3.500);
-      const recommendedSellPrice = Math.max(costHeadNum > 0 ? (costHeadNum / 0.60) : (cumulFeedCost * 1.5 + minMarginFloor), costHeadNum + minMarginFloor);
-
       const avatarIcon = this.getSpeciesIcon(animal.species);
       const stageBadgeClass = this.getStageBadgeClass(animal.stage);
       const lossesWord = appState.lang === 'ar' ? 'خسائر' : (appState.lang === 'en' ? 'losses' : 'pertes');
@@ -3276,12 +3271,6 @@ const app = {
               <strong style="color: var(--accent-amber); font-weight: 800; display: inline-block; margin-inline-start: 3px;">${this.formatMoney(totalInvested)}</strong>
             </div>
           </div>
-        </div>
-
-        <!-- Recommended Selling Price with +40% Profit -->
-        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 0.45rem 0.75rem; margin-top: 0.45rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.76rem;">
-          <span style="color: var(--text-secondary); font-weight: 600;">🎯 Prix conseillé (+40% marge) :</span>
-          <strong style="color: var(--accent-emerald); font-size: 0.95rem;">${this.formatMoney(recommendedSellPrice)} / sujet</strong>
         </div>
 
         <div class="animal-notes-bar" style="margin-top: 0.5rem;">
@@ -4701,7 +4690,6 @@ const app = {
     const netProfitEl = document.getElementById('smartNetProfit');
     const marginPctEl = document.getElementById('smartMarginPct');
     const calcNoteEl = document.getElementById('smartCalcNote');
-    const recPriceValEl = document.getElementById('smartRecPriceVal');
 
     const rawAge = parseFloat(document.getElementById('saleAgeValue')?.value);
     const ageUnit = document.getElementById('saleAgeUnit')?.value || 'jours';
@@ -4750,17 +4738,6 @@ const app = {
     const netProfit = total - (totalFeedCost + totalAcqCost);
     const marginPct = total > 0 ? ((netProfit / total) * 100).toFixed(1) : 0;
 
-    // CALCUL DU PRIX DE VENTE CONSEILLÉ POUR GAGNER BEAUCOUP D'ARGENT (+40% marge nette garantie)
-    const minProfitMargin = (prodType === 'poussin') ? 1.500 : ((prodType === 'canard') ? 8.000 : 4.500);
-    const targetRecPrice = Math.max(costPricePerHead > 0 ? (costPricePerHead / 0.60) : (feedCostPerHead * 1.5 + minProfitMargin), costPricePerHead + minProfitMargin);
-    this._lastRecommendedPrice = targetRecPrice;
-
-    // Affichage dans le modal
-    if (recPriceValEl) {
-      const perUnitLabel = lang === 'ar' ? 'طائر (+40% صافي)' : (lang === 'en' ? 'head (+40% net)' : 'sujet (+40% net)');
-      recPriceValEl.textContent = `${this.formatMoney(targetRecPrice)} / ${perUnitLabel}`;
-    }
-
     if (stageBadge) {
       const stageName = lang === 'ar' ? feedData.labelAr : (lang === 'en' ? feedData.labelEn : feedData.labelFr);
       const daySuffix = lang === 'ar' ? 'ي' : (lang === 'en' ? 'd' : 'j');
@@ -4787,26 +4764,12 @@ const app = {
 
     if (calcNoteEl) {
       if (lang === 'ar') {
-        calcNoteEl.textContent = `💡 الجدول العلمي: معدل الاستهلاك اليومي ${feedData.avgGrams} غ/يوم (${feedData.minGrams}-${feedData.maxGrams}غ). التراكمي: ${cumulFeedKg.toFixed(2)} كغ/طائر (~${this.formatMoney(feedCostPerHead)} علف). السعر المقترح يضمن لك ربحاً صافياً ممتازاً.`;
+        calcNoteEl.textContent = `💡 الجدول العلمي: معدل الاستهلاك اليومي ${feedData.avgGrams} غ/يوم (${feedData.minGrams}-${feedData.maxGrams}غ). التراكمي: ${cumulFeedKg.toFixed(2)} كغ/طائر (~${this.formatMoney(feedCostPerHead)} علف).`;
       } else if (lang === 'en') {
-        calcNoteEl.textContent = `💡 Scientific table: ${feedData.avgGrams} g/day (${feedData.minGrams}-${feedData.maxGrams}g). Cumulative: ${cumulFeedKg.toFixed(2)} kg/head (~${this.formatMoney(feedCostPerHead)} feed). Recommended price guarantees high profit.`;
+        calcNoteEl.textContent = `💡 Agronomic rate: ${feedData.avgGrams} g/day (${feedData.minGrams}-${feedData.maxGrams}g). Cumulative: ${cumulFeedKg.toFixed(2)} kg/head (~${this.formatMoney(feedCostPerHead)} feed).`;
       } else {
-        calcNoteEl.textContent = `💡 Table agronomique : ${feedData.avgGrams} g/j (${feedData.minGrams}-${feedData.maxGrams}g). Cumul mangé : ${cumulFeedKg.toFixed(2)} kg/sujet (~${this.formatMoney(feedCostPerHead)} aliment). Le prix conseillé assure un gain garanti.`;
+        calcNoteEl.textContent = `💡 Table agronomique : ${feedData.avgGrams} g/j (${feedData.minGrams}-${feedData.maxGrams}g). Cumul mangé : ${cumulFeedKg.toFixed(2)} kg/sujet (~${this.formatMoney(feedCostPerHead)} aliment).`;
       }
-    }
-  },
-
-  applySmartRecommendedPrice() {
-    if (!this._lastRecommendedPrice || this._lastRecommendedPrice <= 0) return;
-    const priceInput = document.getElementById('saleUnitPrice');
-    if (priceInput) {
-      const decimals = appState.currency === 'TND' ? 3 : 2;
-      priceInput.value = this._lastRecommendedPrice.toFixed(decimals);
-      this.calcSaleTotal();
-      const msg = appState.lang === 'ar'
-        ? `🎯 تم تطبيق السعر المقترح الممتاز: ${this.formatMoney(this._lastRecommendedPrice)} للرأس!`
-        : `🎯 Prix conseillé optimal appliqué : ${this.formatMoney(this._lastRecommendedPrice)} / sujet !`;
-      this.showToast(msg);
     }
   },
 
