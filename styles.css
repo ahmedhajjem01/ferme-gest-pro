@@ -1289,21 +1289,6 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   margin: 0.1rem 0;
 }
 
-/* Simulator completely removed from the entire application */
-.simulator-box,
-#simulatorBox,
-[data-simulator],
-.sim-results-bar,
-.simulator-grid,
-.simulator-header {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
 /* Incubator & Hatching Modules */
 .incubator-guide-card {
   background-color: var(--bg-surface);

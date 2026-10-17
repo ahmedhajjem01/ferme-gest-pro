@@ -2123,7 +2123,7 @@
     </div>
   </div>
 
-  <!-- Modal: Barème des Portions & Coefficients d'Alimentation et Simulateur de Coût Réel -->
+  <!-- Modal: Barème des Portions & Coefficients d'Alimentation -->
   <div id="modalFeedPortionsTable" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 860px; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
@@ -2132,7 +2132,7 @@
             <span>🌾</span> <span data-i18n="modal_feed_portions_title">Barème des Portions & Coefficients d'Alimentation</span>
           </h3>
           <p class="modal-desc" style="font-size: 0.8rem; margin: 0.2rem 0 0 0; color: var(--text-secondary);" data-i18n="modal_feed_portions_sub">
-            Tables zootechniques officielles (Poule & Canard). Estimation automatique du coût / sujet en temps réel.
+            Tables zootechniques officielles (Poule, Canard & Pintade).
           </p>
         </div>
         <button class="modal-close" onclick="app.closeModal('modalFeedPortionsTable')">&times;</button>
@@ -2153,48 +2153,8 @@
         </div>
 
         <!-- Tableau des Portions Dynamique -->
-        <div id="portionsTableContainer" style="margin-bottom: 1.25rem;">
+        <div id="portionsTableContainer" style="margin-bottom: 0.5rem;">
           <!-- Injecté par app.renderFeedPortionsTable() -->
-        </div>
-
-        <!-- Simulateur Intelligent de Coût / Sujet selon l'Âge Réel -->
-        <div style="background: var(--bg-card); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-lg); padding: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.6rem;">
-            <div style="font-weight: 800; font-size: 0.95rem; color: var(--accent-emerald); display: flex; align-items: center; gap: 0.4rem;">
-              <span>🧮</span> <span data-i18n="sim_title">Simulateur Intelligent de Coût / Sujet selon l'Âge Réel</span>
-            </div>
-            <span style="font-size: 0.74rem; background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 700;">
-              ✨ Calcul jour par jour
-            </span>
-          </div>
-
-          <div class="form-row" style="margin-bottom: 0.75rem;">
-            <div class="form-group flex-1">
-              <label for="simSpeciesSelect" style="font-size: 0.76rem; font-weight: 700;">Espèce :</label>
-              <select id="simSpeciesSelect" class="input-field" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" onchange="app.updatePortionSimulation()">
-                <option value="poulet">🐔 Poule / Poulet</option>
-                <option value="canard">🦆 Canard</option>
-                <option value="pintade">🪶 Pintade</option>
-              </select>
-            </div>
-            <div class="form-group flex-1">
-              <label for="simAgeDaysInput" style="font-size: 0.76rem; font-weight: 700;">Âge réel (jours) :</label>
-              <input type="number" id="simAgeDaysInput" class="input-field" placeholder="0" min="1" max="730" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
-            </div>
-            <div class="form-group flex-1">
-              <label for="simAcqCostInput" style="font-size: 0.76rem; font-weight: 700;">Prix d'achat unitaire (DT) :</label>
-              <input type="number" id="simAcqCostInput" class="input-field" placeholder="0.00" step="0.1" min="0" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
-            </div>
-            <div class="form-group flex-1">
-              <label for="simFeedPriceInput" style="font-size: 0.76rem; font-weight: 700;">Prix moyen aliment (DT/kg) :</label>
-              <input type="number" id="simFeedPriceInput" class="input-field" placeholder="0.00" step="0.05" min="0.1" style="padding: 0.35rem 0.6rem; font-size: 0.82rem;" oninput="app.updatePortionSimulation()">
-            </div>
-          </div>
-
-          <!-- Simulation Output Cards Grid -->
-          <div id="simResultsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.6rem;">
-            <!-- Rempli par app.updatePortionSimulation() -->
-          </div>
         </div>
       </div>
 
@@ -2373,8 +2333,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=36"></script>
-  <script src="translations.js?v=36"></script>
-  <script src="app.js?v=36"></script>
+  <script src="supabase-client.js?v=37"></script>
+  <script src="translations.js?v=37"></script>
+  <script src="app.js?v=37"></script>
 </body>
 </html>

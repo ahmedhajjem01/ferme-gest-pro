@@ -799,7 +799,6 @@ const app = {
     this.updateCurrencySymbols();
     this.applyTranslations();
     this.renderAll();
-    document.querySelectorAll('.simulator-box, #simulatorBox').forEach(el => el.remove());
 
     // Schedule 17h daily egg collection notification in active language
     if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
@@ -1206,7 +1205,6 @@ const app = {
 
       if (modalId === 'modalFeedPortionsTable') {
         this.renderFeedPortionsTable(this._currentPortionsTab || 'poulet');
-        this.updatePortionSimulation();
       }
 
       if (modalId === 'modalAdjustFeedStock') {
@@ -3855,7 +3853,7 @@ const app = {
   },
 
   // ==========================================
-  // FEED PORTIONS & COEFFICIENTS MODAL & SIMULATOR
+  // FEED PORTIONS & COEFFICIENTS MODAL
   // ==========================================
   openFeedPortionsModal(species = 'poulet') {
     this._currentPortionsTab = species || 'poulet';
@@ -3886,11 +3884,7 @@ const app = {
       btnPoulet.className = 'btn btn-sm btn-primary';
     }
 
-    const simSelect = document.getElementById('simSpeciesSelect');
-    if (simSelect) simSelect.value = species;
-
     this.renderFeedPortionsTable(species);
-    this.updatePortionSimulation();
   },
 
   renderFeedPortionsTable(species = 'poulet') {
@@ -3950,56 +3944,6 @@ const app = {
             ${rowsHtml}
           </tbody>
         </table>
-      </div>
-    `;
-  },
-
-  updatePortionSimulation() {
-    const species = document.getElementById('simSpeciesSelect')?.value || 'poulet';
-    const ageDays = Math.max(1, parseInt(document.getElementById('simAgeDaysInput')?.value, 10) || 45);
-    const acqCost = Math.max(0, parseFloat(document.getElementById('simAcqCostInput')?.value) || 0);
-    const feedPriceKg = Math.max(0.1, parseFloat(document.getElementById('simFeedPriceInput')?.value) || 1.0);
-
-    const feedData = this.getAgronomicFeedData(species, ageDays);
-    const cumulFeedKg = this.calculateCumulativeFeedKg(species, ageDays, '', '', 0);
-    const cumulFeedCost = cumulFeedKg * feedPriceKg;
-    const totalCostPerHead = acqCost + cumulFeedCost;
-    
-    // Marge nette conseillée (+40%)
-    const minMarginFloor = (species === 'poussin' || (species === 'poulet' && ageDays <= 28)) ? 1.500 : ((species === 'canard') ? 6.000 : 3.500);
-    const recommendedSellPrice = Math.max(totalCostPerHead > 0 ? (totalCostPerHead / 0.60) : (cumulFeedCost * 1.5 + minMarginFloor), totalCostPerHead + minMarginFloor);
-
-    const grid = document.getElementById('simResultsGrid');
-    if (!grid) return;
-
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
-    const stageLabel = isAr ? feedData.labelAr : (isEn ? feedData.labelEn : feedData.labelFr);
-
-    grid.innerHTML = `
-      <div class="sim-kpi-card">
-        <span class="sim-lbl">${isAr ? 'المرحلة والطور' : (isEn ? 'Stage & Category' : 'Catégorie zootechnique')}</span>
-        <span class="sim-val text-cyan" style="font-size: 0.82rem;">${stageLabel.split('(')[0]}</span>
-      </div>
-      <div class="sim-kpi-card">
-        <span class="sim-lbl">${isAr ? 'حصة اليوم' : (isEn ? 'Daily portion' : 'Portion du jour')}</span>
-        <span class="sim-val text-amber">${feedData.dailyGrams} g/j <small style="font-size:0.7rem; font-weight:700;">(Ci ${feedData.ci})</small></span>
-      </div>
-      <div class="sim-kpi-card">
-        <span class="sim-lbl">${isAr ? 'المجموع المستهلك' : (isEn ? 'Total feed eaten' : 'Aliment cumulé')}</span>
-        <span class="sim-val text-amber">~${cumulFeedKg.toFixed(2)} kg</span>
-      </div>
-      <div class="sim-kpi-card">
-        <span class="sim-lbl">${isAr ? 'تكلفة العلف المستهلك' : (isEn ? 'Cumul feed cost' : 'Coût d\'aliment')}</span>
-        <span class="sim-val text-amber">${this.formatMoney(cumulFeedCost)}</span>
-      </div>
-      <div class="sim-kpi-card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08);">
-        <span class="sim-lbl">${isAr ? 'تكلفة الطائر الإجمالية' : (isEn ? 'Total cost per bird' : 'Coût de revient / tête')}</span>
-        <span class="sim-val text-amber" style="font-size: 1.05rem;">${this.formatMoney(totalCostPerHead)}</span>
-      </div>
-      <div class="sim-kpi-card" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08);">
-        <span class="sim-lbl">${isAr ? 'سعر البيع المقترح (+40%)' : (isEn ? 'Rec. sale price (+40%)' : 'Prix conseillé (+40%)')}</span>
-        <span class="sim-val text-emerald" style="font-size: 1.05rem;">${this.formatMoney(recommendedSellPrice)}</span>
       </div>
     `;
   },
@@ -5419,9 +5363,6 @@ const app = {
       }
     }
   },
-
-  handleSimTypeChange() {},
-  runSimulator() {},
 
   // ==========================================
   // INCUBATOR & HATCHING MODULE

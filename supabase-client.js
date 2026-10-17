@@ -804,7 +804,6 @@
       if (window.app) {
         if (app.updateCurrencySymbols) app.updateCurrencySymbols();
         if (app.renderAll) app.renderAll();
-        if (app.runSimulator) app.runSimulator();
       }
     },
 
