@@ -1619,9 +1619,6 @@ const app = {
       sideProgress.style.width = `${positivePercent}%`;
     }
 
-    // Incubation Highlight Bar
-    this.renderDashboardIncubationBanner();
-
     // Alerts for critical farm events
     this.renderDashboardAlerts();
 
@@ -1630,41 +1627,6 @@ const app = {
 
     // Recent Transactions
     this.renderRecentTransactions();
-  },
-
-  renderDashboardIncubationBanner() {
-    const title = document.getElementById('incubationBannerTitle');
-    const sub = document.getElementById('incubationBannerSub');
-    if (!title || !sub) return;
-
-    const activeBatches = appState.incubatorBatches.filter(b => b.status !== 'hatched');
-    if (activeBatches.length === 0) {
-      title.textContent = this.t('incubation_banner_default_title');
-      sub.textContent = this.t('incubation_banner_default_sub');
-      return;
-    }
-
-    // Find closest batch to hatch
-    const now = this.getTodayDate();
-    let closest = activeBatches[0];
-    let minDays = 999;
-
-    activeBatches.forEach(b => {
-      const hatch = new Date(b.hatchDate);
-      const diffDays = Math.ceil((hatch - now) / (1000 * 60 * 60 * 24));
-      if (diffDays < minDays) {
-        minDays = diffDays;
-        closest = b;
-      }
-    });
-
-    if (minDays <= 0) {
-      title.textContent = this.t('hatch_ongoing_title', { name: closest.name });
-      sub.textContent = this.t('hatch_ongoing_sub', { count: closest.eggsCount, breed: closest.breed });
-    } else {
-      title.textContent = this.t('incubation_progress_title', { name: closest.name, count: closest.eggsCount });
-      sub.textContent = this.t('incubation_progress_sub', { days: minDays, date: this.formatDateFR(closest.hatchDate), temp: closest.temp });
-    }
   },
 
   renderDashboardAlerts() {
@@ -5235,133 +5197,147 @@ const app = {
   },
 
   updateUnitCostCards() {
-    // 1. Cost per Egg
-    const layingLots = appState.animals.filter(a => a.species === 'pondeuse').map(a => a.id);
-    const eggFeedCost = appState.expenses
-      .filter(e => layingLots.includes(e.linkedLotId))
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    // 1. Cost per Egg (Coût de revient par Œuf)
+    const layingLots = (appState.animals || []).filter(a => a.species === 'pondeuse');
+    const layingLotIds = layingLots.map(a => a.id);
+    const eggFeedCost = (appState.expenses || [])
+      .filter(e => layingLotIds.includes(e.linkedLotId))
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-    const totalEggsSold = appState.sales
+
+    const totalEggsCollected = (appState.eggCollections || [])
+      .reduce((sum, c) => sum + (Number(c.quantity) || 0), 0);
+    const currentEggStock = Number(appState.eggStock) || 0;
+    const totalEggsSold = (appState.sales || [])
       .filter(s => s.productType === 'oeufs')
       .reduce((sum, s) => {
         let factor = 1;
         if (s.format === 'plateau') factor = 30;
         else if (s.format === 'hara') factor = 4;
-        return sum + (s.quantity * factor);
+        return sum + ((Number(s.quantity) || 0) * factor);
       }, 0);
+    const totalEggsRevenue = (appState.sales || [])
+      .filter(s => s.productType === 'oeufs')
+      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
-    const costEgg = totalEggsSold > 0 ? (eggFeedCost / totalEggsSold).toFixed(2) : '0.12';
+    const totalEggsCounted = Math.max(totalEggsCollected, totalEggsSold, currentEggStock);
+
     const eggPriceEl = document.getElementById('costPerEgg');
     const eggMarginEl = document.getElementById('marginPerEgg');
-    if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(costEgg);
-    if (eggMarginEl) eggMarginEl.textContent = this.t('unit_egg_margin');
 
-    // 2. Cost per Chicken (1-6 mois)
-    const chickenLots = appState.animals.filter(a => a.species === 'poulet').map(a => a.id);
-    const chickenFeedCost = appState.expenses
-      .filter(e => chickenLots.includes(e.linkedLotId))
+    if (eggFeedCost > 0 && totalEggsCounted > 0) {
+      const costEgg = eggFeedCost / totalEggsCounted;
+      if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(costEgg);
+      if (eggMarginEl) {
+        if (totalEggsSold > 0 && totalEggsRevenue > 0) {
+          const avgSale = totalEggsRevenue / totalEggsSold;
+          const margin = Math.round(((avgSale - costEgg) / avgSale) * 100);
+          eggMarginEl.textContent = this.t('unit_cost_real_margin', { m: margin >= 0 ? '+' + margin : margin });
+          eggMarginEl.className = margin >= 0 ? 'text-emerald' : 'text-rose';
+        } else {
+          eggMarginEl.textContent = this.t('unit_cost_based_on', { qty: `${totalEggsCounted} ${isAr ? 'بيضة' : (isEn ? 'eggs' : 'œufs')}` });
+          eggMarginEl.className = 'text-muted';
+        }
+      }
+    } else {
+      if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(0);
+      if (eggMarginEl) {
+        eggMarginEl.textContent = this.t('unit_cost_zero_hint');
+        eggMarginEl.className = 'text-muted';
+      }
+    }
+
+    // 2. Cost per Chicken (Coût de revient par Poulet 1-6 mois / chair)
+    const chickenLots = (appState.animals || []).filter(a => a.species === 'poulet' || a.species === 'poulet-croissance');
+    const chickenLotIds = chickenLots.map(a => a.id);
+    const chickenPurchaseCost = chickenLots.reduce((sum, a) => sum + (Number(a.purchaseCost) || 0), 0);
+    const chickenDirectExpenses = (appState.expenses || [])
+      .filter(e => chickenLotIds.includes(e.linkedLotId))
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-    const chickensSold = appState.sales
-      .filter(s => s.productType === 'poulet' || s.productType === 'poulet-croissance')
-      .reduce((sum, s) => sum + s.quantity, 0);
+    const totalChickenCost = chickenPurchaseCost + chickenDirectExpenses;
 
-    const costChicken = chickensSold > 0 ? (chickenFeedCost / chickensSold).toFixed(2) : '3.80';
+    const livingChickens = chickenLots.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+    const chickensSold = (appState.sales || [])
+      .filter(s => s.productType === 'poulet' || s.productType === 'poulet-croissance')
+      .reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
+    const chickenRevenue = (appState.sales || [])
+      .filter(s => s.productType === 'poulet' || s.productType === 'poulet-croissance')
+      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+    const totalChickensCount = livingChickens + chickensSold;
+
     const chickenPriceEl = document.getElementById('costPerChicken');
     const chickenMarginEl = document.getElementById('marginPerChicken');
-    if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(costChicken);
-    if (chickenMarginEl) chickenMarginEl.textContent = this.t('unit_chicken_margin');
 
-    // 3. Cost per Chick (Poussins Démarrage)
-    const chickLots = appState.animals.filter(a => a.species === 'poussin').map(a => a.id);
-    const chickFeedCost = appState.expenses
-      .filter(e => chickLots.includes(e.linkedLotId))
+    if (totalChickenCost > 0 && totalChickensCount > 0) {
+      const costChicken = totalChickenCost / totalChickensCount;
+      if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(costChicken);
+      if (chickenMarginEl) {
+        if (chickensSold > 0 && chickenRevenue > 0) {
+          const avgSale = chickenRevenue / chickensSold;
+          const margin = Math.round(((avgSale - costChicken) / avgSale) * 100);
+          chickenMarginEl.textContent = this.t('unit_cost_real_margin', { m: margin >= 0 ? '+' + margin : margin });
+          chickenMarginEl.className = margin >= 0 ? 'text-emerald' : 'text-rose';
+        } else {
+          chickenMarginEl.textContent = this.t('unit_cost_based_on', { qty: `${totalChickensCount} ${isAr ? 'طائر' : (isEn ? 'birds' : 'sujets')}` });
+          chickenMarginEl.className = 'text-muted';
+        }
+      }
+    } else {
+      if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(0);
+      if (chickenMarginEl) {
+        chickenMarginEl.textContent = this.t('unit_cost_zero_hint');
+        chickenMarginEl.className = 'text-muted';
+      }
+    }
+
+    // 3. Cost per Chick (Coût de revient par Poussin)
+    const chickLots = (appState.animals || []).filter(a => a.species === 'poussin');
+    const chickLotIds = chickLots.map(a => a.id);
+    const chickPurchaseCost = chickLots.reduce((sum, a) => sum + (Number(a.purchaseCost) || 0), 0);
+    const chickDirectExpenses = (appState.expenses || [])
+      .filter(e => chickLotIds.includes(e.linkedLotId))
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-    const chicksSold = appState.sales
-      .filter(s => s.productType === 'poussin' || s.productType === 'poussin-1j' || s.productType === 'poussin-demarre')
-      .reduce((sum, s) => sum + s.quantity, 0);
+    const totalChickCost = chickPurchaseCost + chickDirectExpenses;
 
-    const costChicks = chicksSold > 0 ? (chickFeedCost / chicksSold).toFixed(2) : '0.85';
+    const livingChicks = chickLots.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+    const chicksSold = (appState.sales || [])
+      .filter(s => s.productType === 'poussin' || s.productType === 'poussin-1j' || s.productType === 'poussin-demarre')
+      .reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
+    const chickRevenue = (appState.sales || [])
+      .filter(s => s.productType === 'poussin' || s.productType === 'poussin-1j' || s.productType === 'poussin-demarre')
+      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+    const totalChicksCount = livingChicks + chicksSold;
+
     const chicksPriceEl = document.getElementById('costPerChicks');
     const chicksMarginEl = document.getElementById('marginPerChicks');
-    if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(costChicks);
-    if (chicksMarginEl) chicksMarginEl.textContent = this.t('unit_chicks_margin');
-  },
 
-  handleSimTypeChange() {
-    const type = document.getElementById('simType')?.value;
-    const saleInput = document.getElementById('simSalePrice');
-    const costInput = document.getElementById('simUnitCost');
-    const qtyInput = document.getElementById('simQuantity');
-    const isTND = appState.currency === 'TND';
-
-    if (!saleInput || !costInput) return;
-
-    if (type === 'poulet-croissance' || type === 'poulet') {
-      if (qtyInput) qtyInput.value = 100;
-      saleInput.value = isTND ? 18.000 : 8.50;
-      costInput.value = isTND ? 10.500 : 4.80;
-    } else if (type === 'poulet-adulte') {
-      if (qtyInput) qtyInput.value = 50;
-      saleInput.value = isTND ? 25.000 : 12.00;
-      costInput.value = isTND ? 14.000 : 6.50;
-    } else if (type === 'pintade') {
-      if (qtyInput) qtyInput.value = 50;
-      saleInput.value = isTND ? 24.000 : 12.00;
-      costInput.value = isTND ? 13.500 : 6.50;
-    } else if (type === 'canard') {
-      if (qtyInput) qtyInput.value = 30;
-      saleInput.value = isTND ? 32.000 : 16.00;
-      costInput.value = isTND ? 16.500 : 8.00;
-    } else if (type === 'poussin-1j') {
-      if (qtyInput) qtyInput.value = 200;
-      saleInput.value = isTND ? 2.200 : 1.10;
-      costInput.value = isTND ? 0.900 : 0.45;
-    } else if (type === 'poussin-demarre' || type === 'poussin') {
-      if (qtyInput) qtyInput.value = 150;
-      saleInput.value = isTND ? 3.800 : 1.90;
-      costInput.value = isTND ? 1.800 : 0.90;
-    } else if (type === 'oeuf-plateau' || type === 'oeuf') {
-      if (qtyInput) qtyInput.value = 50;
-      saleInput.value = isTND ? 13.500 : 5.00;
-      costInput.value = isTND ? 7.200 : 2.75;
-    } else if (type === 'oeuf-hara') {
-      if (qtyInput) qtyInput.value = 100;
-      saleInput.value = isTND ? 1.800 : 0.75;
-      costInput.value = isTND ? 0.950 : 0.35;
-    } else if (type === 'oeuf-unite') {
-      if (qtyInput) qtyInput.value = 300;
-      saleInput.value = isTND ? 0.450 : 0.20;
-      costInput.value = isTND ? 0.240 : 0.10;
-    }
-    this.runSimulator();
-  },
-
-  // Interactive Live Simulator
-  runSimulator() {
-    const q = parseFloat(document.getElementById('simQuantity')?.value) || 0;
-    const saleP = parseFloat(document.getElementById('simSalePrice')?.value) || 0;
-    const costP = parseFloat(document.getElementById('simUnitCost')?.value) || 0;
-
-    const totalRev = q * saleP;
-    const totalCost = q * costP;
-    const netProfit = totalRev - totalCost;
-    const marginPct = totalRev > 0 ? ((netProfit / totalRev) * 100).toFixed(1) : 0;
-
-    const revEl = document.getElementById('simTotalRev');
-    const costEl = document.getElementById('simTotalCost');
-    const profitEl = document.getElementById('simNetProfit');
-    const marginEl = document.getElementById('simMarginPct');
-
-    if (revEl) revEl.textContent = this.formatMoney(totalRev);
-    if (costEl) costEl.textContent = this.formatMoney(totalCost);
-    if (profitEl) {
-      profitEl.textContent = (netProfit >= 0 ? '+' : '') + this.formatMoney(netProfit);
-      profitEl.className = `sim-res-val bold ${netProfit >= 0 ? 'text-emerald' : 'text-rose'}`;
-    }
-    if (marginEl) {
-      marginEl.textContent = `${marginPct}%`;
-      marginEl.style.color = marginPct >= 0 ? 'var(--primary)' : 'var(--accent-rose)';
+    if (totalChickCost > 0 && totalChicksCount > 0) {
+      const costChick = totalChickCost / totalChicksCount;
+      if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(costChick);
+      if (chicksMarginEl) {
+        if (chicksSold > 0 && chickRevenue > 0) {
+          const avgSale = chickRevenue / chicksSold;
+          const margin = Math.round(((avgSale - costChick) / avgSale) * 100);
+          chicksMarginEl.textContent = this.t('unit_cost_real_margin', { m: margin >= 0 ? '+' + margin : margin });
+          chicksMarginEl.className = margin >= 0 ? 'text-emerald' : 'text-rose';
+        } else {
+          chicksMarginEl.textContent = this.t('unit_cost_based_on', { qty: `${totalChicksCount} ${isAr ? 'كتكوت' : (isEn ? 'chicks' : 'poussins')}` });
+          chicksMarginEl.className = 'text-muted';
+        }
+      }
+    } else {
+      if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(0);
+      if (chicksMarginEl) {
+        chicksMarginEl.textContent = this.t('unit_cost_zero_hint');
+        chicksMarginEl.className = 'text-muted';
+      }
     }
   },
+
+  handleSimTypeChange() {},
+  runSimulator() {},
 
   // ==========================================
   // INCUBATOR & HATCHING MODULE
