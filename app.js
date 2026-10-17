@@ -1318,7 +1318,9 @@ const app = {
       let html = `<option value="general" ${defaultGeneralSelected}>${this.t('opt_general_farm')}</option>`;
       appState.animals.forEach((a, idx) => {
         const isSelected = (appState.animals.length === 1) ? 'selected' : '';
-        html += `<option value="${a.id}" ${isSelected}>[${getSpeciesLabel(a.species)}] ${a.name} (${a.breed})</option>`;
+        const displayName = this.getAnimalDisplayName(a);
+        const lotPrefix = (a.name && a.name.toString().trim() !== '') ? (lang === 'ar' ? `دفعة #${a.name} - ` : `Lot #${a.name} - `) : '';
+        html += `<option value="${a.id}" ${isSelected}>${lotPrefix}${displayName}</option>`;
       });
       expenseLotSelect.innerHTML = html;
     }
@@ -1327,7 +1329,9 @@ const app = {
       let html = `<option value="none">${this.t('opt_no_lot')}</option>`;
       const remWord = lang === 'ar' ? 'المتبقي' : (lang === 'en' ? 'Remaining' : 'Restant');
       appState.animals.forEach(a => {
-        html += `<option value="${a.id}">[${getSpeciesLabel(a.species)}] ${a.name} (${remWord}: ${a.currentQuantity})</option>`;
+        const displayName = this.getAnimalDisplayName(a);
+        const lotPrefix = (a.name && a.name.toString().trim() !== '') ? (lang === 'ar' ? `دفعة #${a.name} - ` : `Lot #${a.name} - `) : '';
+        html += `<option value="${a.id}">${lotPrefix}${displayName} (${remWord}: ${a.currentQuantity})</option>`;
       });
       saleLotSelect.innerHTML = html;
     }
@@ -3106,7 +3110,8 @@ const app = {
         const notes = (a.notes || '').toLowerCase();
         const species = (a.species || '').toLowerCase();
         const id = (a.id || '').toLowerCase();
-        return name.includes(searchQuery) || breed.includes(searchQuery) || notes.includes(searchQuery) || species.includes(searchQuery) || id.includes(searchQuery);
+        const displayName = this.getAnimalDisplayName(a).toLowerCase();
+        return name.includes(searchQuery) || breed.includes(searchQuery) || notes.includes(searchQuery) || species.includes(searchQuery) || id.includes(searchQuery) || displayName.includes(searchQuery);
       });
     }
 
@@ -3143,7 +3148,7 @@ const app = {
       if (sortMode === 'age_desc') return ageB - ageA;
       if (sortMode === 'qty_desc') return qtyB - qtyA;
       if (sortMode === 'qty_asc') return qtyA - qtyB;
-      if (sortMode === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      if (sortMode === 'name_asc') return (this.getAnimalDisplayName(a)).localeCompare(this.getAnimalDisplayName(b));
       return 0;
     });
 
@@ -3236,6 +3241,24 @@ const app = {
       const defaultNotes = appState.lang === 'ar' ? 'لا توجد ملاحظات' : (appState.lang === 'en' ? 'No specific notes' : 'Aucune note particulière');
       const agronomicStageLabel = appState.lang === 'ar' ? feedData.labelAr : (appState.lang === 'en' ? feedData.labelEn : feedData.labelFr);
 
+      const cardTitle = this.getAnimalDisplayName(animal);
+      const breed = (animal.breed || '').toString().trim();
+      const hasBreed = breed !== '' && breed !== '-';
+      const speciesLabel = this.translateSpecies(animal.species);
+      const lotIdentifierLabel = (animal.name && animal.name.toString().trim() !== '')
+        ? (appState.lang === 'ar' ? `دفعة #${animal.name}` : `Lot #${animal.name}`)
+        : '';
+
+      const subtitleItems = [];
+      if (hasBreed) {
+        subtitleItems.push(speciesLabel);
+      }
+      if (lotIdentifierLabel) {
+        subtitleItems.push(lotIdentifierLabel);
+      }
+      subtitleItems.push(`<span class="text-muted">${agronomicStageLabel}</span>`);
+      const cardSubtitle = subtitleItems.join(' &bull; ');
+
       const card = document.createElement('div');
       card.className = 'animal-card';
       card.innerHTML = `
@@ -3243,8 +3266,8 @@ const app = {
           <div class="animal-title-group">
             <div class="animal-avatar">${avatarIcon}</div>
             <div>
-              <h3 class="animal-name">${animal.name}</h3>
-              <p class="animal-breed">${animal.breed} &bull; <span class="text-muted">${agronomicStageLabel}</span></p>
+              <h3 class="animal-name">${cardTitle}</h3>
+              <p class="animal-breed">${cardSubtitle}</p>
             </div>
           </div>
           <span class="stage-badge ${stageBadgeClass}">${this.translateStage(animal.stage)}</span>
@@ -3337,7 +3360,7 @@ const app = {
 
     if (idInput) idInput.value = animal.id;
     if (nameInput) nameInput.value = animal.name || '';
-    if (breedInput) breedInput.value = animal.breed || '';
+    if (breedInput) breedInput.value = (animal.breed && animal.breed !== '-') ? animal.breed : '';
     if (qtyInput) qtyInput.value = animal.currentQuantity || animal.initialQuantity || 1;
     if (birthDateInput) birthDateInput.value = animal.birthDate || this.getTodayStr();
     if (arrivalAgeInput) arrivalAgeInput.value = (animal.arrivalAgeDays !== undefined) ? animal.arrivalAgeDays : 0;
@@ -3405,7 +3428,8 @@ const app = {
     this.renderAll();
 
     const isAr = appState.lang === 'ar';
-    this.showToast(isAr ? `تم تحديث "${animal.name}" بنجاح` : `Lot "${animal.name}" mis à jour avec succès !`);
+    const displayName = this.getAnimalDisplayName(animal);
+    this.showToast(isAr ? `تم تحديث "${displayName}" بنجاح` : `Lot "${displayName}" mis à jour avec succès !`);
 
     if (window.appAuth && appAuth.pushData) {
       appAuth.pushData();
@@ -3619,7 +3643,7 @@ const app = {
     this.saveState();
     this.closeModal('modalAddAnimal');
     this.renderAll();
-    this.showToast(this.t('toast_lot_saved', { name }));
+    this.showToast(this.t('toast_lot_saved', { name: this.getAnimalDisplayName(newAnimal) }));
     document.getElementById('formAddAnimal').reset();
     const costHead = document.getElementById('animalCostPerHead');
     if (costHead) { costHead.value = ''; costHead.placeholder = ''; }
@@ -3689,12 +3713,14 @@ const app = {
     const targetNameEl = document.getElementById('deleteAnimalTargetName');
     const targetInfoEl = document.getElementById('deleteAnimalTargetInfo');
     if (targetIdEl) targetIdEl.value = lot.id;
-    if (targetNameEl) targetNameEl.textContent = `${lot.name} (${lot.breed || 'Lot'})`;
+    const displayName = this.getAnimalDisplayName(lot);
+    const lotNum = (lot.name && lot.name.toString().trim() !== '') ? (appState.lang === 'ar' ? `دفعة #${lot.name}` : `Lot #${lot.name}`) : '';
+    if (targetNameEl) targetNameEl.textContent = lotNum ? `${displayName} (${lotNum})` : displayName;
     if (targetInfoEl) {
       const isAr = appState.lang === 'ar';
       targetInfoEl.textContent = isAr 
-        ? `العدد الحالي: ${lot.currentQuantity} طائر | العمر: ${lot.stage || ''}`
-        : `Effectif actuel : ${lot.currentQuantity} têtes | Stade : ${lot.stage || ''}`;
+        ? `العدد الحالي: ${lot.currentQuantity} طائر | العمر: ${this.translateStage(lot.stage)}`
+        : `Effectif actuel : ${lot.currentQuantity} têtes | Stade : ${this.translateStage(lot.stage)}`;
     }
     this.openModal('modalDeleteAnimalConfirm');
   },
@@ -3729,8 +3755,13 @@ const app = {
     const countInput = document.getElementById('mortalityCountInput');
     const flockEl = document.getElementById('mortalityCurrentFlock');
     if (idEl) idEl.value = lot.id;
-    if (nameEl) nameEl.textContent = lot.name;
-    if (breedEl) breedEl.textContent = `${lot.breed || 'Lot'} &bull; ${lot.stage || ''}`;
+    const displayName = this.getAnimalDisplayName(lot);
+    if (nameEl) nameEl.textContent = displayName;
+    if (breedEl) {
+      const lotNum = (lot.name && lot.name.toString().trim() !== '') ? (appState.lang === 'ar' ? `دفعة #${lot.name}` : `Lot #${lot.name}`) : '';
+      const stageStr = this.translateStage(lot.stage);
+      breedEl.textContent = lotNum ? `${lotNum} • ${stageStr}` : stageStr;
+    }
     if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? 'طائر' : 'sujets'}`;
     if (countInput) {
       countInput.value = '';
@@ -3779,7 +3810,8 @@ const app = {
     this.saveState();
     this.closeModal('modalRecordMortality');
     this.renderAll();
-    this.showToast(this.t('toast_mortality_recorded', { n: count, name: lot.name }) || `${count} pertes enregistrées`, 'error');
+    const displayName = this.getAnimalDisplayName(lot);
+    this.showToast(this.t('toast_mortality_recorded', { n: count, name: displayName }) || `${count} pertes enregistrées`, 'error');
   },
 
   recordMortalityPrompt(lotId) {
@@ -3796,8 +3828,13 @@ const app = {
     const countInput = document.getElementById('purchaseCountInput');
     const priceInput = document.getElementById('purchaseUnitPriceInput');
     if (idEl) idEl.value = lot.id;
-    if (nameEl) nameEl.textContent = lot.name;
-    if (breedEl) breedEl.textContent = `${lot.breed || 'Lot'} &bull; ${lot.stage || ''}`;
+    const displayName = this.getAnimalDisplayName(lot);
+    if (nameEl) nameEl.textContent = displayName;
+    if (breedEl) {
+      const lotNum = (lot.name && lot.name.toString().trim() !== '') ? (appState.lang === 'ar' ? `دفعة #${lot.name}` : `Lot #${lot.name}`) : '';
+      const stageStr = this.translateStage(lot.stage);
+      breedEl.textContent = lotNum ? `${lotNum} • ${stageStr}` : stageStr;
+    }
     if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? 'طائر' : 'sujets'}`;
     if (countInput) {
       countInput.value = '';
@@ -3852,7 +3889,7 @@ const app = {
         id: 'exp-' + Date.now().toString(36),
         date: todayStr,
         category: 'nourriture',
-        title: `Achat de ${count} sujets (${lot.breed} - ${lot.name})`,
+        title: `Achat de ${count} sujets (${this.getAnimalDisplayName(lot)}${lot.name ? ' - Lot #' + lot.name : ''})`,
         quantity: count,
         unitPrice: unitPrice,
         total: count * unitPrice,
@@ -3862,7 +3899,8 @@ const app = {
     this.saveState();
     this.closeModal('modalRecordPurchase');
     this.renderAll();
-    this.showToast(this.t('toast_purchases_recorded', { n: count, breed: lot.breed, tot: lot.currentQuantity }) || `+${count} sujets ajoutés`);
+    const displayName = this.getAnimalDisplayName(lot);
+    this.showToast(this.t('toast_purchases_recorded', { n: count, breed: displayName, tot: lot.currentQuantity }) || `+${count} sujets ajoutés`);
   },
 
   recordPurchasePrompt(lotId) {
@@ -5971,13 +6009,15 @@ const app = {
 
       const translatedStage = this.translateStage(flock.stage);
       const stageClass = this.getStageBadgeClass(flock.stage);
-      const translatedLotName = this.getTranslatedLotName(flock.name);
+      const displayName = this.getAnimalDisplayName(flock);
+      const lotNum = (flock.name && flock.name.toString().trim() !== '') ? (lang === 'ar' ? `دفعة #${flock.name}` : `Lot #${flock.name}`) : '';
       const translatedBreed = this.getTranslatedBreed(flock.breed);
+      const breedDisplay = (translatedBreed && translatedBreed !== '-') ? translatedBreed : '<span class="text-muted">-</span>';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${translatedLotName}</strong></td>
-        <td>${translatedBreed}</td>
+        <td><strong>${displayName}</strong> ${lotNum ? `<small class="text-muted" style="display:block; font-size: 0.74rem;">${lotNum}</small>` : ''}</td>
+        <td>${breedDisplay}</td>
         <td>${this.formatDateFR(flock.birthDate)}</td>
         <td><span class="badge-tag text-emerald" dir="auto">${ageDisplay}</span></td>
         <td><span class="stage-badge ${stageClass}">${translatedStage}</span></td>
@@ -6684,6 +6724,57 @@ const app = {
     }
   },
 
+  translateSpecies(species) {
+    if (!species) return 'Poulet';
+    const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
+    const lang = isArabic ? 'ar' : (appState.lang || 'fr');
+    const sp = species.toString().toLowerCase().trim();
+
+    if (lang === 'ar') {
+      if (sp === 'poulet') return 'دجاج';
+      if (sp === 'pondeuse') return 'دجاج بياض';
+      if (sp === 'poussin') return 'كتكوت';
+      if (sp === 'adulte') return 'دجاج بالغ';
+      if (sp === 'pintade') return 'دجاج الوادي';
+      if (sp === 'canard' || sp === 'canard_barbarie') return 'بط';
+      if (sp === 'caille') return 'سمان';
+      return 'دواجن';
+    }
+
+    if (lang === 'en') {
+      if (sp === 'poulet') return 'Chicken';
+      if (sp === 'pondeuse') return 'Laying hen';
+      if (sp === 'poussin') return 'Chick';
+      if (sp === 'adulte') return 'Adult poultry';
+      if (sp === 'pintade') return 'Guinea fowl';
+      if (sp === 'canard' || sp === 'canard_barbarie') return 'Duck';
+      if (sp === 'caille') return 'Quail';
+      return 'Poultry';
+    }
+
+    // French
+    if (sp === 'poulet') return 'Poulet';
+    if (sp === 'pondeuse') return 'Poule pondeuse';
+    if (sp === 'poussin') return 'Poussin';
+    if (sp === 'adulte') return 'Coq / Poule adulte';
+    if (sp === 'pintade') return 'Pintade';
+    if (sp === 'canard' || sp === 'canard_barbarie') return 'Canard';
+    if (sp === 'caille') return 'Caille';
+    return 'Volaille';
+  },
+
+  getAnimalDisplayName(animal) {
+    if (!animal) return '';
+    const breed = (animal.breed || '').toString().trim();
+    const hasBreed = breed !== '' && breed !== '-';
+    if (hasBreed) {
+      return breed;
+    }
+    const speciesLabel = this.translateSpecies(animal.species);
+    const stageLabel = this.translateStage(animal.stage);
+    return stageLabel ? `${speciesLabel} (${stageLabel})` : speciesLabel;
+  },
+
   translateStage(stage) {
     if (!stage) return '';
     const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
@@ -6787,7 +6878,10 @@ const app = {
       return this.t('opt_general_farm') || 'Exploitation Générale';
     }
     const lot = appState.animals.find(a => a.id === lotId);
-    return lot ? this.getTranslatedLotName(lot.name) : (this.t('opt_general_farm') || 'Exploitation Générale');
+    if (!lot) return this.t('opt_general_farm') || 'Exploitation Générale';
+    const displayName = this.getAnimalDisplayName(lot);
+    const lotNum = (lot.name && lot.name.toString().trim() !== '') ? (appState.lang === 'ar' ? `دفعة #${lot.name}` : `Lot #${lot.name}`) : '';
+    return lotNum ? `${displayName} (${lotNum})` : displayName;
   }
 };
 
