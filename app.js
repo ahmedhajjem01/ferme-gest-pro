@@ -7138,13 +7138,25 @@ const app = {
 window.app = app;
 window.appState = appState;
 
-// Safe in-app replacement for native browser alert (empêche les boîtes d'alerte Google/navigateur)
+// Safe in-app replacement for native browser alert / confirm / prompt (100% sans popup navigateur Chrome)
 window.alert = function(msg) {
   if (window.app && typeof window.app.showToast === 'function') {
     window.app.showToast(msg, 'warning');
   } else {
     console.warn('[InAppAlert]', msg);
   }
+};
+window.confirm = function(msg) {
+  if (window.app && typeof window.app.confirmDialog === 'function') {
+    window.app.confirmDialog({ message: msg });
+  }
+  return false;
+};
+window.prompt = function(msg, defaultVal) {
+  if (window.app && typeof window.app.promptDialog === 'function') {
+    window.app.promptDialog({ message: msg, defaultValue: defaultVal });
+  }
+  return null;
 };
 
 // Initialize Application on DOM Ready or immediately if DOM is already ready
