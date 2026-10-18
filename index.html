@@ -48,9 +48,15 @@
     };
 
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        console.log('Nouveau Service Worker actif, rafraîchissement automatique...');
+        window.location.reload();
+      });
+
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js').then(function(reg) {
-          console.log('ServiceWorker registered cleanly.');
+        navigator.serviceWorker.register('./sw.js?v=67').then(function(reg) {
+          reg.update();
+          console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
           console.log('SW registration error:', err);
         });
