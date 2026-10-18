@@ -3159,21 +3159,35 @@ const app = {
     let feedStockRemaining = feedStockRemainingKg * unitFeedVal;
 
     const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+    const feedPurchasesExist = (appState.expenses || []).some(e => e.category === 'nourriture' && Number(e.total) > 0);
+    const feedStockDeclared = (Number(appState.feedStockKg) > 0) || (Array.isArray(appState.feedTypes) && appState.feedTypes.some(ft => Number(ft.stockKg) > 0));
+    const customRationDeclared = Boolean(appState.customDailyFeedKg && Number(appState.customDailyFeedKg) > 0);
 
-    // Détermination de l'état : Aucune donnée saisie au début
-    const hasData = (totalLivingAnimals > 0) || (feedStockRemainingKg > 0.05) || (totalPurchasedFeedCost > 0) || hasDistributions;
+    // Activité d'aliment réelle déclarée par l'éleveur (stricte : aucun chiffre simulé de tête !)
+    const hasRealFeedData = feedPurchasesExist || feedDistributionsExist || feedStockDeclared || customRationDeclared;
 
-    // Calcul des valeurs avec garantie stricte de 0 si aucun animal ou aucune donnée
+    // Détermination de l'état : seulement si des données réelles d'aliment existent
+    const hasData = hasRealFeedData && (totalLivingAnimals > 0);
+
+    // Calcul des valeurs avec garantie stricte de 0 si aucune dépense ou aliment signalé
     let totalFarmDailyKg = 0;
     let totalFarmDailyCost = 0;
 
-    if (totalLivingAnimals > 0) {
-      const isCustom = appState.feedRationMode !== 'industrial' && appState.customDailyFeedKg > 0;
-      totalFarmDailyKg = isCustom ? appState.customDailyFeedKg : (totalFarmDailyGrams / 1000);
+    if (hasRealFeedData && totalLivingAnimals > 0) {
+      if (customRationDeclared) {
+        totalFarmDailyKg = Number(appState.customDailyFeedKg) || 0;
+      } else if (hasDistributions) {
+        // Moyenne des distributions réelles effectuées
+        const recentDist = (appState.feedDistributions || []).slice(-7);
+        const sumKg = recentDist.reduce((s, d) => s + (Number(d.quantityKg) || 0), 0);
+        totalFarmDailyKg = recentDist.length > 0 ? (sumKg / recentDist.length) : (totalFarmDailyGrams / 1000);
+      } else if (feedPurchasesExist || feedStockDeclared) {
+        totalFarmDailyKg = totalFarmDailyGrams / 1000;
+      }
       totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
     }
 
-    if (!hasData) {
+    if (!hasRealFeedData) {
       totalFarmDailyKg = 0;
       totalFarmDailyCost = 0;
       feedStockRemainingKg = 0;
@@ -3199,10 +3213,7 @@ const app = {
 
     // Remplissage des métriques de la vue complète
     if (todayKgEl) {
-      const cansText = (totalLivingAnimals > 0 && appState.sicamCansCount !== undefined && appState.sicamCansCount !== null)
-        ? (isAr ? ` (~${appState.sicamCansCount} علبة سيكام)` : ` (~${appState.sicamCansCount} boîtes Sicam)`)
-        : '';
-      todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKgDay}${cansText}`;
+      todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKgDay}`;
     }
     if (todayCostEl) {
       todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)}${unitCostDay}`;
@@ -3210,7 +3221,7 @@ const app = {
     if (stockKgEl) {
       stockKgEl.textContent = feedStockRemainingKg > 0
         ? `${feedStockRemainingKg.toFixed(1)} ${unitKg} (${this.formatMoney(feedStockRemaining)})`
-        : (isAr ? '0.0 كغ بالمخزن' : (isEn ? '0.0 kg in stock' : '0.0 kg en stock'));
+        : (isAr ? '0.0 كغ بالمخزن (0,000 د.ت)' : (isEn ? '0.0 kg in stock (0,000 DT)' : '0.0 kg en réserve (0,000 DT)'));
     }
 
     // Basculement visuel entre mode Diminué et mode Complet
