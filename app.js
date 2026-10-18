@@ -2224,14 +2224,8 @@ const app = {
       return sumPrices / appState.feedTypes.length;
     }
 
-    const cur = appState.currency || 'TND';
-    if (cur === 'EUR') return 0.50;
-    if (cur === 'USD') return 0.55;
-    if (cur === 'DZD') return 85.0;
-    if (cur === 'MAD') return 5.50;
-    if (cur === 'FCFA') return 350.0;
-    // Standard TND (Tunisia: sac 50kg = ~74 DT -> 1.480 DT/kg)
-    return 1.480;
+    // Aucun prix inventé : 0 si l'éleveur n'a saisi aucune dépense ni type d'aliment
+    return 0;
   },
 
   getAvailableFeedStockKg() {
@@ -3436,33 +3430,29 @@ const app = {
         ? ((animal.mortality / animal.initialQuantity) * 100).toFixed(1) 
         : 0;
 
-      // Agronomic table profile (progressive feeding & deduction of pre-acquisition feed)
-      const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
-      const cumulFeedKg = this.calculateCumulativeFeedKg(animal.species, ageDays, animal.stage, animal.breed, arrivalAgeDays);
-      const cumulFeedCost = cumulFeedKg * feedPriceKg;
-
-      // 1. Dépenses directement affectées à ce lot
-      const directLotExpenses = appState.expenses
+      // 1. Dépenses réelles directement affectées à ce lot
+      const directLotExpenses = (appState.expenses || [])
         .filter(e => e.linkedLotId === animal.id)
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-      // 2. Coût d'aliment réellement consommé à ce jour (selon la table zootechnique biologique)
-      // Note agronomique essentielle : Un poussin de 44j a mangé 1.62 kg (~2.40 DT).
-      // Les factures globales de sacs en avance (ex: 360 DT) constituent du stock d'inventaire en réserve
-      // et ne doivent JAMAIS être imputées immédiatement dans l'estomac d'un poussin qui ne peut physiquement pas les avoir avalés !
-      const lotBiologicalFeedCost = (Number(animal.currentQuantity) || 0) * cumulFeedCost;
-
-      // 3. Répartition des autres frais généraux réels (véto, santé, litière) par tête
+      // 2. Dépenses réelles générales de la ferme réparties équitablement par sujet vivant
+      const totalGeneralExpenses = (appState.expenses || [])
+        .filter(e => !e.linkedLotId || e.linkedLotId === 'general')
+        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
       const headShare = totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0;
-      const allocatedVet = generalVetExpenses * headShare;
+      const allocatedGeneral = totalGeneralExpenses * headShare;
 
-      // Total des dépenses engagées pour ce lot à ce jour
-      const totalLotExpenses = directLotExpenses + lotBiologicalFeedCost + allocatedVet;
-      const totalAcquisition = animal.initialQuantity * (Number(animal.costPerHead) || 0);
+      // 3. Prix d'achat réel saisi par l'éleveur (0 si éclos ou gratuit)
+      const acquisitionCostPerHead = Number(animal.costPerHead) || 0;
+      const totalAcquisition = (Number(animal.currentQuantity) || 0) * acquisitionCostPerHead;
+
+      // Total des dépenses réelles engagées pour ce lot (strictement basé sur les saisies réelles de l'utilisateur)
+      const totalLotExpenses = directLotExpenses + allocatedGeneral;
       const totalInvested = totalAcquisition + totalLotExpenses;
       
-      const costPerCurrentHead = animal.currentQuantity > 0 ? (totalInvested / animal.currentQuantity).toFixed(2) : '0';
-      const feedPerSubject = cumulFeedCost.toFixed(2);
+      const costPerCurrentHead = (animal.currentQuantity > 0 && totalInvested > 0)
+        ? (totalInvested / animal.currentQuantity)
+        : 0;
 
       const avatarIcon = this.getSpeciesIcon(animal.species);
       const stageBadgeClass = this.getStageBadgeClass(animal.stage);
@@ -4985,14 +4975,13 @@ const app = {
 
     // Coût d'acquisition du sujet (0 DT si gratuit ou éclosion)
     const acqCostPerHead = linkedLot ? (Number(linkedLot.costPerHead) || 0) : 0;
-    const totalAcqCost = q * acqCostPerHead;
-
-    // Frais généraux & soins par tête
-    const vetBufferPerHead = (prodType === 'poussin') ? 0.150 : 0.350;
-    const costPricePerHead = acqCostPerHead + feedCostPerHead + vetBufferPerHead;
+    const directExpenses = linkedLot ? (appState.expenses || []).filter(e => e.linkedLotId === linkedLot.id).reduce((s, e) => s + (Number(e.total) || 0), 0) : 0;
+    const lotQty = linkedLot ? (Number(linkedLot.currentQuantity) || 1) : 1;
+    const realCostPerHead = acqCostPerHead + (directExpenses / lotQty);
+    const totalCostPrice = q * realCostPerHead;
 
     // Bénéfice net projeté
-    const netProfit = total - (totalFeedCost + totalAcqCost);
+    const netProfit = total - totalCostPrice;
     const marginPct = total > 0 ? ((netProfit / total) * 100).toFixed(1) : 0;
 
     if (stageBadge) {
