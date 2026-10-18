@@ -3607,7 +3607,23 @@ const app = {
         else stagePresetSelect.value = 'pondeuse';
       }
       this.handleAnimalStagePresetChange(stagePresetSelect.value, 'editAnimal');
-      if (arrivalAgeInput) arrivalAgeInput.value = ageDays; // Restaurer l'âge exact de l'animal
+      const editAgeVal = document.getElementById('editAnimalArrivalAgeValue');
+      const editAgeUnit = document.getElementById('editAnimalArrivalAgeUnit');
+      if (editAgeVal && editAgeUnit) {
+        if (ageDays >= 365) {
+          editAgeUnit.value = 'ans';
+          const yrs = (ageDays / 365).toFixed(1);
+          editAgeVal.value = yrs.endsWith('.0') ? parseInt(yrs, 10) : yrs;
+        } else if (ageDays >= 30) {
+          editAgeUnit.value = 'mois';
+          const mos = (ageDays / 30.5).toFixed(1);
+          editAgeVal.value = mos.endsWith('.0') ? parseInt(mos, 10) : mos;
+        } else {
+          editAgeUnit.value = 'jours';
+          editAgeVal.value = ageDays > 0 ? ageDays : '';
+        }
+      }
+      this.updateArrivalAgePreview('editAnimal');
     }
 
     this.openModal('modalEditAnimal');
@@ -3685,6 +3701,80 @@ const app = {
       }
     });
     return maxId + 1;
+  },
+
+  // Met à jour en direct le calcul de l'âge d'arrivée (jours / mois / années)
+  updateArrivalAgePreview(formPrefix = 'animal') {
+    const valInput = document.getElementById(`${formPrefix}ArrivalAgeValue`);
+    const unitSelect = document.getElementById(`${formPrefix}ArrivalAgeUnit`);
+    const hiddenDays = document.getElementById(`${formPrefix}ArrivalAgeDays`);
+    const hintEl = document.getElementById(`${formPrefix}ArrivalAgeHint`);
+    const stagePresetSelect = document.getElementById(`${formPrefix}StageSelect`);
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    let presetDefaultDays = 0;
+    if (stagePresetSelect) {
+      const opt = stagePresetSelect.options[stagePresetSelect.selectedIndex];
+      if (opt && opt.getAttribute('data-days') !== null) {
+        presetDefaultDays = parseInt(opt.getAttribute('data-days'), 10) || 0;
+      }
+    }
+
+    const rawVal = valInput ? valInput.value.trim() : '';
+    const unit = unitSelect ? unitSelect.value : 'mois';
+
+    let totalDays = 0;
+    let isCalculated = false;
+
+    if (rawVal !== '' && !isNaN(parseFloat(rawVal))) {
+      const num = Math.max(0, parseFloat(rawVal));
+      if (unit === 'ans') {
+        totalDays = Math.round(num * 365);
+      } else if (unit === 'mois') {
+        totalDays = Math.round(num * 30.5);
+      } else {
+        totalDays = Math.round(num);
+      }
+      isCalculated = true;
+    } else {
+      totalDays = presetDefaultDays;
+    }
+
+    if (hiddenDays) {
+      hiddenDays.value = totalDays;
+    }
+
+    if (hintEl) {
+      if (isCalculated) {
+        const inMonths = (totalDays / 30.5).toFixed(1);
+        const inYears = (totalDays / 365).toFixed(1);
+        if (totalDays >= 365) {
+          hintEl.textContent = isAr 
+            ? `💡 محسوب: ${totalDays} يوم (~${inMonths} شهر / ~${inYears} سنة)` 
+            : (isEn ? `💡 Calculated: ${totalDays} days (~${inMonths} mos / ~${inYears} yrs)` : `💡 Calculé : ${totalDays} jours (~${inMonths} mois / ~${inYears} an)`);
+        } else if (totalDays >= 30) {
+          hintEl.textContent = isAr 
+            ? `💡 محسوب: ${totalDays} يوم (~${inMonths} شهر)` 
+            : (isEn ? `💡 Calculated: ${totalDays} days (~${inMonths} mos)` : `💡 Calculé : ${totalDays} jours (~${inMonths} mois)`);
+        } else {
+          hintEl.textContent = isAr 
+            ? `💡 محسوب: ${totalDays} يوم` 
+            : (isEn ? `💡 Calculated: ${totalDays} days` : `💡 Calculé : ${totalDays} jours`);
+        }
+        hintEl.style.color = 'var(--accent-emerald)';
+      } else {
+        if (totalDays > 0) {
+          const m = Math.round(totalDays / 30);
+          hintEl.textContent = isAr 
+            ? `✨ تقدير ذكي تلقائي: ${totalDays} يوم (~${m} أشهر)` 
+            : (isEn ? `✨ Smart auto-estimate: ${totalDays} days (~${m} mos)` : `✨ Estimation intelligente par défaut : ${totalDays} j (~${m} mois)`);
+        } else {
+          hintEl.textContent = isAr ? '✨ البداية: 0 يوم' : (isEn ? '✨ Starter: 0 days' : '✨ Âge de départ : 0 jour');
+        }
+        hintEl.style.color = 'var(--text-muted)';
+      }
+    }
   },
 
   // Gère le changement de l'espèce (1ère sélection)
@@ -3828,6 +3918,19 @@ const app = {
       hiddenStage.value = stageName;
     }
 
+    const valInput = document.getElementById(`${formPrefix}ArrivalAgeValue`);
+    const unitSelect = document.getElementById(`${formPrefix}ArrivalAgeUnit`);
+    if (valInput && valInput.value === '') {
+      if (defaultDays >= 365) {
+        if (unitSelect) unitSelect.value = 'ans';
+      } else if (defaultDays >= 30) {
+        if (unitSelect) unitSelect.value = 'mois';
+      } else {
+        if (unitSelect) unitSelect.value = 'jours';
+      }
+    }
+    this.updateArrivalAgePreview(formPrefix);
+
     const banner = document.getElementById(`${formPrefix}PortionBanner`);
     if (banner) banner.remove();
   },
@@ -3839,20 +3942,9 @@ const app = {
     const nameInput = document.getElementById('animalName').value.trim();
     const quantity = parseInt(document.getElementById('animalQuantity').value, 10);
     const birthDate = document.getElementById('animalBirthDate').value;
-    const arrivalAgeVal = document.getElementById('animalArrivalAgeDays')?.value;
 
-    // Estimation intelligente de l'âge à l'achat si non renseigné (ex: 210j pour coq adulte, 180j pour poule pondeuse)
-    const stagePresetSelect = document.getElementById('animalStageSelect');
-    let presetDefaultDays = 0;
-    if (stagePresetSelect) {
-      const opt = stagePresetSelect.options[stagePresetSelect.selectedIndex];
-      if (opt && opt.getAttribute('data-days') !== null) {
-        presetDefaultDays = parseInt(opt.getAttribute('data-days'), 10) || 0;
-      }
-    }
-    const arrivalAgeDays = (arrivalAgeVal !== '' && !isNaN(parseInt(arrivalAgeVal, 10))) 
-      ? Math.max(0, parseInt(arrivalAgeVal, 10)) 
-      : presetDefaultDays;
+    this.updateArrivalAgePreview('animal');
+    const arrivalAgeDays = parseInt(document.getElementById('animalArrivalAgeDays')?.value, 10) || 0;
     
     // Accepte explicitement 0 pour les animaux gratuits / éclos
     const rawCost = document.getElementById('animalCostPerHead').value;

@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=63">
+  <link rel="stylesheet" href="styles.css?v=64">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -1173,10 +1173,19 @@
               <input type="date" id="animalBirthDate" class="input-field" required>
             </div>
             <div class="form-group flex-1">
-              <label for="animalArrivalAgeDays" data-i18n="lbl_arrival_age">
-                Âge à l'achat (jours)
+              <label for="animalArrivalAgeValue" data-i18n="lbl_arrival_age">
+                Âge à l'achat
               </label>
-              <input type="number" id="animalArrivalAgeDays" class="input-field" min="0">
+              <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <input type="number" id="animalArrivalAgeValue" class="input-field" step="0.1" min="0" style="flex: 1.2;" placeholder="0" oninput="app.updateArrivalAgePreview('animal')">
+                <select id="animalArrivalAgeUnit" class="input-field" style="flex: 1; padding: 0.5rem 0.4rem; font-weight: 700;" onchange="app.updateArrivalAgePreview('animal')">
+                  <option value="mois" data-i18n="opt_unit_months">Mois</option>
+                  <option value="jours" data-i18n="opt_unit_days">Jours</option>
+                  <option value="ans" data-i18n="opt_unit_years">Ans / Années</option>
+                </select>
+              </div>
+              <input type="hidden" id="animalArrivalAgeDays" value="0">
+              <small id="animalArrivalAgeHint" class="text-muted" style="display: block; font-size: 0.74rem; margin-top: 3px; font-weight: 600;"></small>
             </div>
           </div>
 
@@ -1263,10 +1272,19 @@
               <input type="date" id="editAnimalBirthDate" class="input-field" required>
             </div>
             <div class="form-group flex-1">
-              <label for="editAnimalArrivalAgeDays" data-i18n="lbl_arrival_age">
-                Âge à l'achat (jours)
+              <label for="editAnimalArrivalAgeValue" data-i18n="lbl_arrival_age">
+                Âge à l'achat
               </label>
-              <input type="number" id="editAnimalArrivalAgeDays" class="input-field" min="0">
+              <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <input type="number" id="editAnimalArrivalAgeValue" class="input-field" step="0.1" min="0" style="flex: 1.2;" placeholder="0" oninput="app.updateArrivalAgePreview('editAnimal')">
+                <select id="editAnimalArrivalAgeUnit" class="input-field" style="flex: 1; padding: 0.5rem 0.4rem; font-weight: 700;" onchange="app.updateArrivalAgePreview('editAnimal')">
+                  <option value="mois" data-i18n="opt_unit_months">Mois</option>
+                  <option value="jours" data-i18n="opt_unit_days">Jours</option>
+                  <option value="ans" data-i18n="opt_unit_years">Ans / Années</option>
+                </select>
+              </div>
+              <input type="hidden" id="editAnimalArrivalAgeDays" value="0">
+              <small id="editAnimalArrivalAgeHint" class="text-muted" style="display: block; font-size: 0.74rem; margin-top: 3px; font-weight: 600;"></small>
             </div>
           </div>
 
@@ -2418,8 +2436,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=63"></script>
-  <script src="translations.js?v=63"></script>
-  <script src="app.js?v=63"></script>
+  <script src="supabase-client.js?v=64"></script>
+  <script src="translations.js?v=64"></script>
+  <script src="app.js?v=64"></script>
 </body>
 </html>
