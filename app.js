@@ -3429,6 +3429,7 @@ const app = {
       const mortalityRate = animal.initialQuantity > 0 
         ? ((animal.mortality / animal.initialQuantity) * 100).toFixed(1) 
         : 0;
+      const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
 
       // 1. Dépenses réelles directement affectées à ce lot
       const directLotExpenses = (appState.expenses || [])
