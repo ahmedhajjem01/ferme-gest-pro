@@ -1701,7 +1701,7 @@ const app = {
             <span class="badge-pill">${b.method === 'poule' ? this.t('hatch_alert_method_hen') : this.t('hatch_alert_method_machine')}</span>
           </div>
           <div style="font-size:0.875rem;">
-            ${this.t('hatch_alert_text', { name: b.name, count: b.eggsCount, breed: b.breed })}
+            ${this.t('hatch_alert_text', { name: b.name, count: b.eggsCount, breed: (b.breed && b.breed !== '-') ? b.breed : (this.t('opt_egg_' + (b.eggSpecies || 'hen')) || 'volaille') })}
           </div>
           <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; margin-top:0.2rem;">
             <button class="btn btn-sm btn-amber bold" onclick="app.triggerHatchNotification('${b.id}')">
@@ -5716,8 +5716,8 @@ const app = {
           <div class="batch-icon-title">
             <span class="icon">🥚</span>
             <div>
-              <h3 class="batch-name">${batch.name}</h3>
-              <p class="batch-species">${batch.breed} &bull; ${batch.eggsCount} (${batch.eggSpecies.toUpperCase()})</p>
+              <h3 class="batch-name">${batch.name || 'Couvée'}</h3>
+              <p class="batch-species">${(batch.breed && batch.breed !== '-') ? batch.breed + ' &bull; ' : ''}${batch.eggsCount} (${(batch.eggSpecies || 'poule').toUpperCase()})</p>
             </div>
           </div>
           <span class="badge-pill">${daysElapsed >= totalDays ? '🐣 ' + (this.t('stage_header_hatch') || 'Éclosion') : 'J ' + daysElapsed + '/' + totalDays}</span>
@@ -5899,7 +5899,7 @@ const app = {
       window.MobileBridge.scheduleIncubatorNotification({
         id: newBatch.id + '-hatch',
         title: `🐣 Éclosion : ${newBatch.name}`,
-        body: `Les ${newBatch.eggsCount} œufs de ${newBatch.breed} arrivent à terme aujourd'hui !`,
+        body: `Les ${newBatch.eggsCount} œufs${(newBatch.breed && newBatch.breed !== '-') ? ' de ' + newBatch.breed : ''} arrivent à terme aujourd'hui !`,
         scheduleDate: newBatch.hatchDate + 'T08:00:00'
       });
     }
@@ -5916,7 +5916,8 @@ const app = {
     if (!batch) return;
 
     document.getElementById('hatchPromptBatchId').value = batch.id;
-    document.getElementById('hatchPromptBatchTitle').textContent = `${this.t('hatch_alert_title')} : ${batch.name} (${batch.breed})`;
+    const breedDisplay = (batch.breed && batch.breed !== '-') ? ` (${batch.breed})` : '';
+    document.getElementById('hatchPromptBatchTitle').textContent = `${this.t('hatch_alert_title')} : ${batch.name}${breedDisplay}`;
     const methodTxt = batch.method === 'poule' ? this.t('opt_method_hen') : this.t('opt_method_machine');
     document.getElementById('hatchPromptBatchDesc').textContent = `${this.t('lbl_eggs_count')}: ${batch.eggsCount} (${methodTxt}).`;
     
