@@ -5844,19 +5844,25 @@ const app = {
     const speciesSelect = document.getElementById('batchEggType');
     const eggSpecies = speciesSelect.value;
     const durationDays = parseInt(speciesSelect.options[speciesSelect.selectedIndex].getAttribute('data-days'), 10) || 21;
-    const breed = document.getElementById('batchBreed').value.trim();
-    const name = document.getElementById('batchName').value.trim();
-    const eggsCount = parseInt(document.getElementById('batchEggsCount').value, 10);
-    const startDate = document.getElementById('batchStartDate').value;
+    const breedInput = document.getElementById('batchBreed')?.value.trim();
+    const nameInput = document.getElementById('batchName')?.value.trim();
+    const eggsCount = parseInt(document.getElementById('batchEggsCount')?.value, 10);
+    const startDate = document.getElementById('batchStartDate')?.value;
     const temp = 37.7;
     const humidity = 48;
     const notes = document.getElementById('batchNotes')?.value.trim() || '';
 
-    if (!breed || !name || !eggsCount || !startDate) {
+    if (!eggsCount || eggsCount <= 0 || !startDate) {
       const isAr = appState.lang === 'ar';
-      this.showToast(isAr ? 'يرجى ملء جميع الحقول الإلزامية.' : 'Veuillez remplir les informations obligatoires.', 'warning');
+      this.showToast(isAr ? 'يرجى إدخال عدد البيض وتاريخ البداية.' : 'Veuillez renseigner le nombre d\'œufs et la date de début.', 'warning');
       return;
     }
+
+    // Race toujours optionnelle : '-' par défaut si non renseignée
+    const breed = breedInput || '-';
+    // Nom de couvée optionnel : auto-généré si vide
+    const autoBatchNum = (appState.incubatorBatches?.length || 0) + 1;
+    const name = nameInput || `Couvée #${autoBatchNum}`;
 
     const start = new Date(startDate);
     const hatch = new Date(start);
