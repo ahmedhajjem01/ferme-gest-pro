@@ -1578,16 +1578,16 @@ const app = {
   // RENDER MASTER
   // ==========================================
   renderAll() {
-    this.renderDashboard();
-    this.renderEggStock();
-    this.renderFarmFeedSummary();
-    this.renderAnimals();
-    this.renderExpenses();
-    this.renderSales();
-    this.renderSmartCalculations();
-    this.renderIncubator();
-    this.renderCalendar();
-    this.updateBadges();
+    try { this.renderDashboard(); } catch (e) { console.warn('renderDashboard error:', e); }
+    try { this.renderEggStock(); } catch (e) { console.warn('renderEggStock error:', e); }
+    try { this.renderFarmFeedSummary(); } catch (e) { console.warn('renderFarmFeedSummary error:', e); }
+    try { this.renderAnimals(); } catch (e) { console.warn('renderAnimals error:', e); }
+    try { this.renderExpenses(); } catch (e) { console.warn('renderExpenses error:', e); }
+    try { this.renderSales(); } catch (e) { console.warn('renderSales error:', e); }
+    try { this.renderSmartCalculations(); } catch (e) { console.warn('renderSmartCalculations error:', e); }
+    try { this.renderIncubator(); } catch (e) { console.warn('renderIncubator error:', e); }
+    try { this.renderCalendar(); } catch (e) { console.warn('renderCalendar error:', e); }
+    try { this.updateBadges(); } catch (e) { console.warn('updateBadges error:', e); }
   },
 
   updateBadges() {
@@ -3646,55 +3646,60 @@ const app = {
   },
 
   handleSaveEditAnimal(e) {
-    e.preventDefault();
-    const id = document.getElementById('editAnimalId').value;
-    const animal = (appState.animals || []).find(a => a.id === id);
-    if (!animal) return;
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      const id = document.getElementById('editAnimalId')?.value;
+      const animal = (appState.animals || []).find(a => a.id === id);
+      if (!animal) return;
 
-    const species = document.getElementById('editAnimalSpecies')?.value || animal.species || 'poulet';
-    const name = document.getElementById('editAnimalName').value.trim();
-    const breed = document.getElementById('editAnimalBreed').value.trim() || '-';
-    const quantity = parseInt(document.getElementById('editAnimalQuantity').value, 10);
-    const birthDate = document.getElementById('editAnimalBirthDate')?.value;
-    const arrivalAgeVal = document.getElementById('editAnimalArrivalAgeDays')?.value;
-    const editStagePresetSelect = document.getElementById('editAnimalStageSelect');
-    let editPresetDefaultDays = 0;
-    if (editStagePresetSelect) {
-      const opt = editStagePresetSelect.options[editStagePresetSelect.selectedIndex];
-      if (opt && opt.getAttribute('data-days') !== null) {
-        editPresetDefaultDays = parseInt(opt.getAttribute('data-days'), 10) || 0;
+      const species = document.getElementById('editAnimalSpecies')?.value || animal.species || 'poulet';
+      const name = (document.getElementById('editAnimalName')?.value || '').trim();
+      const breed = (document.getElementById('editAnimalBreed')?.value || '').trim() || '-';
+      const quantity = Math.max(1, parseInt(document.getElementById('editAnimalQuantity')?.value, 10) || animal.currentQuantity || 1);
+      const birthDate = document.getElementById('editAnimalBirthDate')?.value || animal.birthDate;
+      const arrivalAgeVal = document.getElementById('editAnimalArrivalAgeDays')?.value;
+      const editStagePresetSelect = document.getElementById('editAnimalStageSelect');
+      let editPresetDefaultDays = 0;
+      if (editStagePresetSelect) {
+        const opt = editStagePresetSelect.options[editStagePresetSelect.selectedIndex];
+        if (opt && opt.getAttribute('data-days') !== null) {
+          editPresetDefaultDays = parseInt(opt.getAttribute('data-days'), 10) || 0;
+        }
       }
-    }
-    const arrivalAgeDays = (arrivalAgeVal !== '' && !isNaN(parseInt(arrivalAgeVal, 10))) 
-      ? Math.max(0, parseInt(arrivalAgeVal, 10)) 
-      : (animal.arrivalAgeDays !== undefined && animal.arrivalAgeDays !== null && animal.arrivalAgeDays > 0 ? animal.arrivalAgeDays : editPresetDefaultDays);
-    const stage = document.getElementById('editAnimalStage')?.value || animal.stage || 'Croissance';
-    const costVal = document.getElementById('editAnimalCostPerHead').value;
-    const costPerHead = (costVal === '' || isNaN(parseFloat(costVal))) ? 0 : Math.max(0, parseFloat(costVal));
-    const notes = document.getElementById('editAnimalNotes').value.trim();
+      const arrivalAgeDays = (arrivalAgeVal !== '' && !isNaN(parseInt(arrivalAgeVal, 10))) 
+        ? Math.max(0, parseInt(arrivalAgeVal, 10)) 
+        : (animal.arrivalAgeDays !== undefined && animal.arrivalAgeDays !== null && animal.arrivalAgeDays > 0 ? animal.arrivalAgeDays : editPresetDefaultDays);
+      const stage = document.getElementById('editAnimalStage')?.value || animal.stage || 'Croissance';
+      const costVal = document.getElementById('editAnimalCostPerHead')?.value;
+      const costPerHead = (costVal === '' || isNaN(parseFloat(costVal))) ? 0 : Math.max(0, parseFloat(costVal));
+      const notes = (document.getElementById('editAnimalNotes')?.value || '').trim();
 
-    animal.species = species;
-    animal.name = name || animal.name;
-    animal.breed = breed;
-    if (birthDate) animal.birthDate = birthDate;
-    animal.arrivalAgeDays = arrivalAgeDays;
-    if (stage) animal.stage = stage;
-    if (!isNaN(quantity) && quantity > 0) {
-      animal.currentQuantity = quantity;
-    }
-    animal.costPerHead = costPerHead;
-    animal.notes = notes;
+      animal.species = species;
+      animal.name = name || animal.name;
+      animal.breed = breed;
+      if (birthDate) animal.birthDate = birthDate;
+      animal.arrivalAgeDays = arrivalAgeDays;
+      if (stage) animal.stage = stage;
+      if (!isNaN(quantity) && quantity > 0) {
+        animal.currentQuantity = quantity;
+      }
+      animal.costPerHead = costPerHead;
+      animal.notes = notes;
 
-    this.saveState();
-    this.closeModal('modalEditAnimal');
-    this.renderAll();
+      this.saveState();
+      this.closeModal('modalEditAnimal');
+      this.renderAll();
 
-    const isAr = appState.lang === 'ar';
-    const displayName = this.getAnimalDisplayName(animal);
-    this.showToast(isAr ? `تم تحديث "${displayName}" بنجاح` : `Lot "${displayName}" mis à jour avec succès !`);
+      const isAr = appState.lang === 'ar';
+      const displayName = this.getAnimalDisplayName(animal);
+      this.showToast(isAr ? `تم تحديث "${displayName}" بنجاح` : `Lot "${displayName}" mis à jour avec succès !`);
 
-    if (window.appAuth && appAuth.pushData) {
-      appAuth.pushData();
+      if (window.appAuth && appAuth.pushData) {
+        appAuth.pushData();
+      }
+    } catch (err) {
+      console.error('handleSaveEditAnimal failed:', err);
+      this.showToast('Erreur: ' + err.message, 'danger');
     }
   },
 
@@ -3952,62 +3957,66 @@ const app = {
   },
 
   handleSaveAnimal(e) {
-    e.preventDefault();
-    const species = document.getElementById('animalSpecies').value;
-    const breedInput = document.getElementById('animalBreed').value.trim();
-    const nameInput = document.getElementById('animalName').value.trim();
-    const quantity = parseInt(document.getElementById('animalQuantity').value, 10);
-    const birthDate = document.getElementById('animalBirthDate').value;
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      const species = document.getElementById('animalSpecies')?.value || 'poulet';
+      const breedInput = (document.getElementById('animalBreed')?.value || '').trim();
+      const nameInput = (document.getElementById('animalName')?.value || '').trim();
+      const rawQty = document.getElementById('animalQuantity')?.value;
+      const quantity = Math.max(1, parseInt(rawQty, 10) || 1);
+      const birthDate = document.getElementById('animalBirthDate')?.value || this.getTodayStr();
 
-    this.updateArrivalAgePreview('animal');
-    const arrivalAgeDays = parseInt(document.getElementById('animalArrivalAgeDays')?.value, 10) || 0;
-    
-    // Accepte explicitement 0 pour les animaux gratuits / éclos
-    const rawCost = document.getElementById('animalCostPerHead').value;
-    const parsedCost = parseFloat(rawCost);
-    const costPerHead = (rawCost === '' || isNaN(parsedCost)) ? 0 : Math.max(0, parsedCost);
+      this.updateArrivalAgePreview('animal');
+      const arrivalAgeDays = parseInt(document.getElementById('animalArrivalAgeDays')?.value, 10) || 0;
+      
+      // Accepte explicitement 0 pour les animaux gratuits / éclos
+      const rawCost = document.getElementById('animalCostPerHead')?.value || '';
+      const parsedCost = parseFloat(rawCost);
+      const costPerHead = (rawCost === '' || isNaN(parsedCost)) ? 0 : Math.max(0, parsedCost);
 
-    const stage = document.getElementById('animalStage')?.value || 'Croissance';
-    const notes = document.getElementById('animalNotes').value.trim();
+      const stage = document.getElementById('animalStage')?.value || 'Croissance';
+      const notes = (document.getElementById('animalNotes')?.value || '').trim();
 
-    if (!quantity || !birthDate) {
-      const isAr = appState.lang === 'ar';
-      this.showToast(isAr ? 'يرجى إدخال عدد الرؤوس والتاريخ.' : 'Veuillez renseigner le nombre de têtes et la date.', 'warning');
-      return;
+      // Race optionnelle: '-' par défaut si vide
+      const breed = breedInput || '-';
+
+      // Identifiant optionnel: auto-incrémentation (ex: 1, 2, 3...)
+      const autoId = this.getNextAnimalId();
+      const name = nameInput || `${autoId}`;
+
+      const newAnimal = {
+        id: 'lot-' + Date.now().toString(36),
+        species,
+        breed,
+        name,
+        initialQuantity: quantity,
+        currentQuantity: quantity,
+        mortality: 0,
+        birthDate,
+        arrivalAgeDays,
+        costPerHead,
+        stage,
+        notes
+      };
+
+      appState.animals.unshift(newAnimal);
+      this.saveState();
+      this.closeModal('modalAddAnimal');
+      this.renderAll();
+      this.showToast(this.t('toast_lot_saved', { name: this.getAnimalDisplayName(newAnimal) }));
+
+      const form = document.getElementById('formAddAnimal');
+      if (form) form.reset();
+      const costHead = document.getElementById('animalCostPerHead');
+      if (costHead) { costHead.value = ''; costHead.placeholder = ''; }
+      const arrAge = document.getElementById('animalArrivalAgeDays');
+      if (arrAge) { arrAge.value = ''; arrAge.placeholder = ''; }
+      const arrAgeVal = document.getElementById('animalArrivalAgeValue');
+      if (arrAgeVal) { arrAgeVal.value = ''; arrAgeVal.placeholder = ''; }
+    } catch (err) {
+      console.error('handleSaveAnimal failed:', err);
+      this.showToast('Erreur lors de l\'enregistrement du lot: ' + err.message, 'danger');
     }
-
-    // Race optionnelle: '-' par défaut si vide
-    const breed = breedInput || '-';
-
-    // Identifiant optionnel: auto-incrémentation (ex: 1, 2, 3...)
-    const autoId = this.getNextAnimalId();
-    const name = nameInput || `${autoId}`;
-
-    const newAnimal = {
-      id: 'lot-' + Date.now().toString(36),
-      species,
-      breed,
-      name,
-      initialQuantity: quantity,
-      currentQuantity: quantity,
-      mortality: 0,
-      birthDate,
-      arrivalAgeDays,
-      costPerHead,
-      stage,
-      notes
-    };
-
-    appState.animals.unshift(newAnimal);
-    this.saveState();
-    this.closeModal('modalAddAnimal');
-    this.renderAll();
-    this.showToast(this.t('toast_lot_saved', { name: this.getAnimalDisplayName(newAnimal) }));
-    document.getElementById('formAddAnimal').reset();
-    const costHead = document.getElementById('animalCostPerHead');
-    if (costHead) { costHead.value = ''; costHead.placeholder = ''; }
-    const arrAge = document.getElementById('animalArrivalAgeDays');
-    if (arrAge) { arrAge.value = ''; arrAge.placeholder = ''; }
   },
 
   // Toggle & gestion du menu mobile (3 lignes dans la barre haute)
@@ -4604,150 +4613,148 @@ const app = {
   },
 
   handleSaveExpense(e) {
-    e.preventDefault();
-    const category = document.getElementById('expenseCategory').value;
-    const date = document.getElementById('expenseDate').value;
-    const titleInput = document.getElementById('expenseTitle');
-    let title = titleInput?.value.trim();
-    const linkedLotId = document.getElementById('expenseAnimalLot').value;
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      const category = document.getElementById('expenseCategory')?.value || 'autre';
+      const date = document.getElementById('expenseDate')?.value || this.getTodayStr();
+      const titleInput = document.getElementById('expenseTitle');
+      let title = (titleInput?.value || '').trim();
+      const linkedLotId = document.getElementById('expenseAnimalLot')?.value || 'general';
 
-    if (!date) {
+      let quantity = 1;
+      let unitPrice = 0;
+      let total = 0;
+      let addedKg = 0;
+      let feedStockAddedKg = 0;
+      let feedTypeId = null;
+
       const isAr = appState.lang === 'ar';
-      this.showToast(isAr ? 'يرجى إدخال التاريخ.' : 'Veuillez renseigner la date.', 'warning');
-      return;
-    }
+      const isEn = appState.lang === 'en';
 
-    let quantity = 1;
-    let unitPrice = 0;
-    let total = 0;
-    let addedKg = 0;
-    let feedStockAddedKg = 0;
-    let feedTypeId = null;
+      if (category === 'nourriture') {
+        const mode = appState.currentFeedPurchaseMode || 'sac';
+        const addToStock = document.getElementById('expenseAddToFeedStock')?.checked;
 
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
+        if (mode === 'sac') {
+          const bagCount = parseFloat(document.getElementById('feedBagCount')?.value) || 1;
+          const bagWeight = parseFloat(document.getElementById('feedBagWeight')?.value) || 50;
+          const bagPrice = parseFloat(document.getElementById('feedBagPrice')?.value) || 0;
 
-    if (category === 'nourriture') {
-      const mode = appState.currentFeedPurchaseMode || 'sac';
-      const addToStock = document.getElementById('expenseAddToFeedStock')?.checked;
+          quantity = bagCount;
+          unitPrice = bagPrice;
+          total = bagCount * bagPrice;
+          addedKg = bagCount * bagWeight;
 
-      if (mode === 'sac') {
-        const bagCount = parseFloat(document.getElementById('feedBagCount')?.value) || 1;
-        const bagWeight = parseFloat(document.getElementById('feedBagWeight')?.value) || 50;
-        const bagPrice = parseFloat(document.getElementById('feedBagPrice')?.value) || 0;
+          if (!title) {
+            const sacWord = isAr ? 'أكياس' : (isEn ? 'Bags' : 'Sacs');
+            title = `${bagCount} ${sacWord} (${bagWeight}kg)`;
+          }
+        } else if (mode === 'kg') {
+          const kgCount = parseFloat(document.getElementById('feedKgCount')?.value) || 1;
+          const kgPrice = parseFloat(document.getElementById('feedKgPrice')?.value) || 0;
 
-        quantity = bagCount;
-        unitPrice = bagPrice;
-        total = bagCount * bagPrice;
-        addedKg = bagCount * bagWeight;
+          quantity = kgCount;
+          unitPrice = kgPrice;
+          total = kgCount * kgPrice;
+          addedKg = kgCount;
 
-        if (!title) {
-          const sacWord = isAr ? 'أكياس' : (isEn ? 'Bags' : 'Sacs');
-          title = `${bagCount} ${sacWord} (${bagWeight}kg)`;
-        }
-      } else if (mode === 'kg') {
-        const kgCount = parseFloat(document.getElementById('feedKgCount')?.value) || 1;
-        const kgPrice = parseFloat(document.getElementById('feedKgPrice')?.value) || 0;
+          if (!title) {
+            const kgWord = isAr ? 'كغ' : 'kg';
+            title = `${kgCount} ${kgWord}`;
+          }
+        } else if (mode === 'boite') {
+          const boiteCount = parseFloat(document.getElementById('feedBoiteCount')?.value) || 1;
+          const boiteTotalPrice = parseFloat(document.getElementById('feedBoiteTotalPrice')?.value) || 0;
 
-        quantity = kgCount;
-        unitPrice = kgPrice;
-        total = kgCount * kgPrice;
-        addedKg = kgCount;
+          quantity = boiteCount;
+          total = boiteTotalPrice;
+          unitPrice = boiteCount > 0 ? (total / boiteCount) : 0;
+          addedKg = Number((boiteCount * 0.667).toFixed(2));
 
-        if (!title) {
-          const kgWord = isAr ? 'كغ' : 'kg';
-          title = `${kgCount} ${kgWord}`;
-        }
-      } else if (mode === 'boite') {
-        const boiteCount = parseFloat(document.getElementById('feedBoiteCount')?.value) || 1;
-        const boiteTotalPrice = parseFloat(document.getElementById('feedBoiteTotalPrice')?.value) || 0;
-
-        quantity = boiteCount;
-        total = boiteTotalPrice;
-        unitPrice = boiteCount > 0 ? (total / boiteCount) : 0;
-        addedKg = Number((boiteCount * 0.667).toFixed(2));
-
-        if (!title) {
-          const boiteWord = isAr ? 'حكك طماطم' : (isEn ? 'Tomato cans' : 'Boîtes tomate (Sicam)');
-          title = `${boiteCount} ${boiteWord}`;
-        }
-      }
-
-      if (addToStock && addedKg > 0) {
-        appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
-        const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
-        let targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
-
-        if (!targetFeed || selectedFeedId === '__new__') {
-          const cleanName = title.trim();
-          targetFeed = (appState.feedTypes || []).find(f => f.name.toLowerCase().trim() === cleanName.toLowerCase().trim());
-          if (!targetFeed) {
-            targetFeed = {
-              id: 'feed-' + Date.now().toString(36),
-              name: cleanName || (isAr ? 'علف جديد' : 'Nouvel aliment'),
-              stockKg: 0,
-              pricePerKg: (total / (addedKg || 1)) || 1.2
-            };
-            appState.feedTypes.push(targetFeed);
+          if (!title) {
+            const boiteWord = isAr ? 'حكك طماطم' : (isEn ? 'Tomato cans' : 'Boîtes tomate (Sicam)');
+            title = `${boiteCount} ${boiteWord}`;
           }
         }
 
-        targetFeed.stockKg = Math.max(0, (Number(targetFeed.stockKg) || 0) + addedKg);
-        if (total > 0 && addedKg > 0) {
-          targetFeed.pricePerKg = Math.max(0.1, total / addedKg);
+        if (addToStock && addedKg > 0) {
+          appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+          const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
+          let targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
+
+          if (!targetFeed || selectedFeedId === '__new__') {
+            const cleanName = (title || '').trim();
+            targetFeed = (appState.feedTypes || []).find(f => f.name.toLowerCase().trim() === cleanName.toLowerCase().trim());
+            if (!targetFeed) {
+              targetFeed = {
+                id: 'feed-' + Date.now().toString(36),
+                name: cleanName || (isAr ? 'علف جديد' : 'Nouvel aliment'),
+                stockKg: 0,
+                pricePerKg: (total / (addedKg || 1)) || 1.2
+              };
+              appState.feedTypes.push(targetFeed);
+            }
+          }
+
+          targetFeed.stockKg = Math.max(0, (Number(targetFeed.stockKg) || 0) + addedKg);
+          if (total > 0 && addedKg > 0) {
+            targetFeed.pricePerKg = Math.max(0.1, total / addedKg);
+          }
+
+          appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+          appState.feedStockDate = this.getTodayStr();
+          appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
+
+          feedStockAddedKg = addedKg;
+          feedTypeId = targetFeed.id;
         }
+      } else {
+        quantity = parseFloat(document.getElementById('expenseQuantity')?.value) || 1;
+        unitPrice = parseFloat(document.getElementById('expenseUnitPrice')?.value) || 0;
+        total = parseFloat(document.getElementById('expenseTotalCalculated')?.value) || (quantity * unitPrice);
 
-        appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
-        appState.feedStockDate = this.getTodayStr();
-        appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
-
-        feedStockAddedKg = addedKg;
-        feedTypeId = targetFeed.id;
+        if (!title) {
+          title = isAr ? 'مصروف عام' : 'Dépense générale';
+        }
       }
-    } else {
-      quantity = parseFloat(document.getElementById('expenseQuantity')?.value) || 1;
-      unitPrice = parseFloat(document.getElementById('expenseUnitPrice')?.value) || 0;
-      total = parseFloat(document.getElementById('expenseTotalCalculated')?.value) || (quantity * unitPrice);
 
-      if (!title) {
-        const isAr = appState.lang === 'ar';
-        this.showToast(isAr ? 'يرجى إدخال بيان المصروف.' : 'Veuillez renseigner l\'intitulé de la dépense.', 'warning');
-        return;
+      const newExp = {
+        id: 'exp-' + Date.now().toString(36),
+        date,
+        category,
+        title: title || 'Dépense',
+        quantity,
+        unitPrice,
+        total,
+        linkedLotId,
+        feedStockAddedKg,
+        feedTypeId
+      };
+
+      appState.expenses.unshift(newExp);
+      this.saveState();
+      this.closeModal('modalAddExpense');
+      this.renderAll();
+
+      let toastMsg = this.t('toast_expense_saved', { amount: this.formatMoney(total) });
+      if (feedStockAddedKg > 0) {
+        toastMsg += isAr 
+          ? ` (+${feedStockAddedKg.toFixed(1)} كغ في مخزون الأعلاف)` 
+          : ` (+${feedStockAddedKg.toFixed(1)} kg ajoutés au stock)`;
       }
+      this.showToast(toastMsg);
+
+      const form = document.getElementById('formAddExpense');
+      if (form) form.reset();
+      const expQty = document.getElementById('expenseQuantity');
+      const expPrice = document.getElementById('expenseUnitPrice');
+      if (expQty) { expQty.value = ''; expQty.placeholder = ''; }
+      if (expPrice) { expPrice.value = ''; expPrice.placeholder = ''; }
+      this.calcExpenseTotal();
+    } catch (err) {
+      console.error('handleSaveExpense failed:', err);
+      this.showToast('Erreur lors de l\'enregistrement de la dépense: ' + err.message, 'danger');
     }
-
-    const newExp = {
-      id: 'exp-' + Date.now().toString(36),
-      date,
-      category,
-      title: title || 'Dépense',
-      quantity,
-      unitPrice,
-      total,
-      linkedLotId,
-      feedStockAddedKg,
-      feedTypeId
-    };
-
-    appState.expenses.unshift(newExp);
-    this.saveState();
-    this.closeModal('modalAddExpense');
-    this.renderAll();
-
-    let toastMsg = this.t('toast_expense_saved', { amount: this.formatMoney(total) });
-    if (feedStockAddedKg > 0) {
-      toastMsg += isAr 
-        ? ` (+${feedStockAddedKg.toFixed(1)} كغ في مخزون الأعلاف)` 
-        : ` (+${feedStockAddedKg.toFixed(1)} kg ajoutés au stock)`;
-    }
-    this.showToast(toastMsg);
-
-    document.getElementById('formAddExpense').reset();
-    const expQty = document.getElementById('expenseQuantity');
-    const expPrice = document.getElementById('expenseUnitPrice');
-    if (expQty) { expQty.value = ''; expQty.placeholder = ''; }
-    if (expPrice) { expPrice.value = ''; expPrice.placeholder = ''; }
-    this.calcExpenseTotal();
   },
 
   deleteExpense(expId) {
