@@ -2571,9 +2571,13 @@ const app = {
 
   renderFeedDistributionModal() {
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
-    this.renderSmartFeedPresets();
 
     const container = document.getElementById('feedDistribItemsContainer');
+    const presetsContainer = document.getElementById('feedSmartPresetsContainer');
+    const addAnotherWrapper = document.getElementById('feedDistribAddAnotherWrapper');
+    const totalsCard = document.getElementById('feedDistribTotalsCard');
+    const submitBtn = document.getElementById('feedDistribSubmitBtn');
+
     if (!container) return;
 
     const isAr = appState.lang === 'ar';
@@ -2583,8 +2587,52 @@ const app = {
     const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
     const sicamCansLabel = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
 
+    // Vérifier si des aliments ont été réellement déclarés ou enregistrés avec du stock
+    const declaredFeeds = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0);
+    const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+    const hasFoodExpenses = (appState.expenses || []).some(e => e.category === 'nourriture' && Number(e.total) > 0);
+    const hasCustomFeeds = (appState.feedTypes || []).some(ft => ft.id !== 'feed-ble' && ft.id !== 'feed-bouchon');
+
+    const hasAnyDeclaredFeed = declaredFeeds.length > 0 || hasDistributions || hasFoodExpenses || hasCustomFeeds || ((Number(appState.feedStockKg) || 0) > 0);
+
+    if (!hasAnyDeclaredFeed) {
+      // Première utilisation : aucun aliment déclaré ! N'affiche rien d'artificiel.
+      if (presetsContainer) presetsContainer.innerHTML = '';
+      if (addAnotherWrapper) addAnotherWrapper.style.display = 'none';
+      if (totalsCard) totalsCard.style.display = 'none';
+      if (submitBtn) submitBtn.style.display = 'none';
+
+      container.innerHTML = `
+        <div style="background: var(--bg-surface); border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 2rem 1.25rem; text-align: center; margin-bottom: 0.85rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.65rem;">🌾</div>
+          <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.45rem;">
+            ${isAr ? 'لم تسجل أي مخزون علف حتى الآن' : (isEn ? 'No feed stock recorded yet' : 'Aucun aliment déclaré en stock')}
+          </h4>
+          <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1.35rem; line-height: 1.5; max-width: 360px; margin-left: auto; margin-right: auto;">
+            ${isAr 
+              ? 'لبدء ضبط وتوزيع كميات العلف اليومية، سجل مخزون الأعلاف المتوفر لديك أولاً (أكياس، قمح، علف بياض...).' 
+              : (isEn ? 'To start distributing and tracking daily grammage, please declare the feed available in your farm first.' : 'Pour commencer à distribuer et contrôler vos grammages quotidiens, déclarez d\'abord les aliments disponibles dans votre ferme.')}
+          </p>
+          <button type="button" class="btn btn-emerald bold" style="padding: 0.75rem 1.4rem; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.45rem; margin: 0 auto; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); border-radius: var(--radius-pill); cursor: pointer;" onclick="app.closeModal('modalFeedDistribution'); app.openModal('modalAdjustFeedStock');">
+            <span>➕</span>
+            <span data-i18n="btn_add_your_feed_stock">${isAr ? 'إضافة مخزون العلف الخاص بك' : (isEn ? 'Add your feed stock' : 'Ajouter votre stock de nourriture')}</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    // Sinon, afficher normalement les aliments réels déclarés
+    this.renderSmartFeedPresets();
+    if (addAnotherWrapper) addAnotherWrapper.style.display = 'block';
+    if (totalsCard) totalsCard.style.display = 'flex';
+    if (submitBtn) submitBtn.style.display = 'block';
+
     let html = '';
-    appState.feedTypes.forEach((ft) => {
+    const feedsToDisplay = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0 || hasCustomFeeds || hasDistributions);
+    const activeFeeds = feedsToDisplay.length > 0 ? feedsToDisplay : appState.feedTypes;
+
+    activeFeeds.forEach((ft) => {
       const defaultKg = '0.00';
       const stockKg = Number(ft.stockKg) || 0;
       const displayName = this.getFeedDisplayName(ft);
