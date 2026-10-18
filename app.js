@@ -643,19 +643,7 @@ const app = {
 
         appState.incubatorBatches = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches : [];
 
-        // Mise à 0 automatique des données de démo selon la consigne de l'utilisateur
-        if (!parsed._zeroInitialized) {
-          appState.animals = [];
-          appState.expenses = [];
-          appState.sales = [];
-          appState.incubatorBatches = [];
-          appState.eggHarvests = [];
-          appState.eggStock = 0;
-          appState.feedDistributions = [];
-          appState._zeroInitialized = true;
-        } else {
-          appState._zeroInitialized = true;
-        }
+        appState._zeroInitialized = true;
 
         if (!appState.animals || appState.animals.length === 0) {
           appState.customDailyFeedKg = null;
@@ -957,10 +945,13 @@ const app = {
           notesInput.value = '';
           notesInput.placeholder = '';
         }
+        const ageValInput = document.getElementById('animalArrivalAgeValue');
+        if (ageValInput) {
+          ageValInput.value = '';
+        }
         const ageInput = document.getElementById('animalArrivalAgeDays');
         if (ageInput) {
           ageInput.value = '';
-          ageInput.placeholder = '';
         }
         const birthDateInput = document.getElementById('animalBirthDate');
         if (birthDateInput && !birthDateInput.value) {
@@ -968,6 +959,7 @@ const app = {
         }
         const sp = document.getElementById('animalSpecies')?.value || 'poulet';
         this.handleAnimalSpeciesChange(sp, 'animal');
+        this.updateArrivalAgePreview('animal');
       }
 
       if (modalId === 'modalDailyEggs') {
