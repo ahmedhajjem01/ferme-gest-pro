@@ -1150,8 +1150,8 @@ const app = {
       qtyInput.removeAttribute('placeholder');
       qtyInput.max = stock;
     }
-    const formatSel = document.getElementById('sellEggFormat');
-    if (formatSel) formatSel.value = 'oeuf-unite';
+
+    this.setStockEggFormat('oeuf-unite');
 
     const priceInput = document.getElementById('sellEggUnitPrice');
     if (priceInput) {
@@ -1161,6 +1161,21 @@ const app = {
     }
 
     this.calcSellEggTotal();
+  },
+
+  setStockEggFormat(format) {
+    const input = document.getElementById('sellEggFormat');
+    if (input) input.value = format;
+
+    const btnOeuf = document.getElementById('btnStockEggFormatOeuf');
+    const btnHara = document.getElementById('btnStockEggFormatHara');
+    const btnPlateau = document.getElementById('btnStockEggFormatPlateau');
+
+    if (btnOeuf) btnOeuf.classList.toggle('active-egg-format-btn', format === 'oeuf-unite');
+    if (btnHara) btnHara.classList.toggle('active-egg-format-btn', format === 'hara');
+    if (btnPlateau) btnPlateau.classList.toggle('active-egg-format-btn', format === 'plateau');
+
+    this.handleSellEggFormatChange();
   },
 
   handleSellEggFormatChange() {
@@ -5126,31 +5141,56 @@ const app = {
     this.calcSaleTotal();
   },
 
+  setSaleEggFormat(format) {
+    const input = document.getElementById('saleUnitFormat');
+    if (input) input.value = format;
+
+    const btnOeuf = document.getElementById('btnEggFormatOeuf');
+    const btnHara = document.getElementById('btnEggFormatHara');
+    const btnPlateau = document.getElementById('btnEggFormatPlateau');
+
+    if (btnOeuf) btnOeuf.classList.toggle('active-egg-format-btn', format === 'oeuf-unite');
+    if (btnHara) btnHara.classList.toggle('active-egg-format-btn', format === 'hara');
+    if (btnPlateau) btnPlateau.classList.toggle('active-egg-format-btn', format === 'plateau');
+
+    const unitLabel = document.getElementById('saleQtyUnitLabel');
+    if (unitLabel) {
+      if (format === 'hara') {
+        unitLabel.textContent = appState.lang === 'ar' ? '(حارات - 4 بيضات)' : '(Haras - 4 œufs)';
+      } else if (format === 'plateau') {
+        unitLabel.textContent = appState.lang === 'ar' ? '(أطباق - 30 بيضة)' : '(Plateaux - 30 œufs)';
+      } else {
+        unitLabel.textContent = appState.lang === 'ar' ? '(بالبيضة / حبات)' : '(Par œuf / Unités)';
+      }
+    }
+
+    this.handleFormatChange();
+  },
+
   // Egg Quick Buttons (HARA / Unités / Plateaux)
   quickAddEgg(qty, mode) {
-    const formatSelect = document.getElementById('saleUnitFormat');
     const qtyInput = document.getElementById('saleQuantity');
     const priceInput = document.getElementById('saleUnitPrice');
     const isTND = appState.currency === 'TND';
 
     if (mode === 'oeuf') {
-      if (formatSelect) formatSelect.value = 'oeuf-unite';
-      const cur = parseFloat(qtyInput.value) || 0;
-      if (qtyInput) qtyInput.value = (formatSelect.value === 'oeuf-unite' && cur < 20) ? cur + qty : qty;
+      this.setSaleEggFormat('oeuf-unite');
+      const cur = parseFloat(qtyInput?.value) || 0;
+      if (qtyInput) qtyInput.value = (cur < 20) ? cur + qty : qty;
       if (priceInput && (!priceInput.value || parseFloat(priceInput.value) > 2)) {
         priceInput.value = isTND ? 0.450 : 0.20;
       }
     } else if (mode === 'hara') {
-      if (formatSelect) formatSelect.value = 'hara';
+      this.setSaleEggFormat('hara');
       if (qtyInput) qtyInput.value = qty;
       if (priceInput) priceInput.value = isTND ? 1.800 : 0.80;
     } else if (mode === 'plateau') {
-      if (formatSelect) formatSelect.value = 'plateau';
+      this.setSaleEggFormat('plateau');
       if (qtyInput) qtyInput.value = qty;
       if (priceInput) priceInput.value = isTND ? 13.500 : 5.50;
     }
 
-    this.handleFormatChange();
+    this.calcSaleTotal();
   },
 
   quickResetEgg() {
@@ -5162,7 +5202,6 @@ const app = {
   prefillSale(type) {
     this.openModal('modalAddSale');
     const typeSelect = document.getElementById('saleProductType');
-    const formatSelect = document.getElementById('saleUnitFormat');
     const descInput = document.getElementById('saleDescription');
     const priceInput = document.getElementById('saleUnitPrice');
     const qtyInput = document.getElementById('saleQuantity');
@@ -5171,7 +5210,7 @@ const app = {
 
     if (type === 'oeufs') {
       typeSelect.value = 'oeufs';
-      formatSelect.value = 'hara';
+      this.setSaleEggFormat('hara');
       descInput.value = 'Vente œufs frais de ferme';
       qtyInput.value = '';
       qtyInput.placeholder = '';
@@ -5179,7 +5218,8 @@ const app = {
       priceInput.placeholder = '';
     } else if (type === 'poussin') {
       typeSelect.value = 'poussin';
-      formatSelect.value = 'unite';
+      const formatSelect = document.getElementById('saleUnitFormat');
+      if (formatSelect) formatSelect.value = 'unite';
       descInput.value = 'Vente poussins démarrés';
       qtyInput.value = '';
       qtyInput.placeholder = '';
@@ -5189,7 +5229,8 @@ const app = {
       if (ageUnit) ageUnit.value = 'jours';
     } else if (type === 'poulet') {
       typeSelect.value = 'poulet';
-      formatSelect.value = 'unite';
+      const formatSelect = document.getElementById('saleUnitFormat');
+      if (formatSelect) formatSelect.value = 'unite';
       descInput.value = 'Vente poulets fermiers';
       qtyInput.value = '';
       qtyInput.placeholder = '';
@@ -5206,28 +5247,26 @@ const app = {
     const type = document.getElementById('saleProductType').value;
     const format = document.getElementById('saleUnitFormat');
     const price = document.getElementById('saleUnitPrice');
-    const eggBox = document.getElementById('eggHelperBox');
     const ageRow = document.getElementById('saleAgeRow');
     const smartBox = document.getElementById('saleSmartCalcBox');
     const unitLabel = document.getElementById('saleQtyUnitLabel');
     const ageUnit = document.getElementById('saleAgeUnit');
     const ageInput = document.getElementById('saleAgeValue');
-    const isTND = appState.currency === 'TND';
+    const eggFormatGroup = document.getElementById('eggFormatButtonGroup');
 
     if (type === 'oeufs') {
-      if (eggBox) eggBox.classList.remove('hidden');
+      if (eggFormatGroup) eggFormatGroup.style.display = 'block';
       if (ageRow) ageRow.classList.add('hidden');
       if (smartBox) smartBox.classList.add('hidden');
       if (unitLabel) unitLabel.textContent = '(Haras / Plateaux)';
-      if (format && !['hara', 'plateau', 'oeuf-unite'].includes(format.value)) {
-        format.value = 'hara';
+      let curFmt = format ? format.value : 'hara';
+      if (!['hara', 'plateau', 'oeuf-unite'].includes(curFmt)) {
+        curFmt = 'hara';
       }
-      let suggestedPrice = 1.800;
-      if (format.value === 'hara') suggestedPrice = isTND ? 1.800 : 0.80;
-      else if (format.value === 'plateau') suggestedPrice = isTND ? 13.500 : 5.50;
+      this.setSaleEggFormat(curFmt);
       if (price) price.placeholder = '';
     } else if (type === 'poussin') {
-      if (eggBox) eggBox.classList.add('hidden');
+      if (eggFormatGroup) eggFormatGroup.style.display = 'none';
       if (ageRow) ageRow.classList.remove('hidden');
       if (smartBox) smartBox.classList.remove('hidden');
       if (unitLabel) unitLabel.textContent = '(Poussins / Sujets)';
@@ -5248,7 +5287,7 @@ const app = {
       if (price) price.placeholder = '';
 
     } else if (type === 'poulet') {
-      if (eggBox) eggBox.classList.add('hidden');
+      if (eggFormatGroup) eggFormatGroup.style.display = 'none';
       if (ageRow) ageRow.classList.remove('hidden');
       if (smartBox) smartBox.classList.remove('hidden');
       if (unitLabel) unitLabel.textContent = '(Poulets / Sujets)';
@@ -5269,7 +5308,7 @@ const app = {
       if (price) price.placeholder = '';
 
     } else if (type === 'pintade') {
-      if (eggBox) eggBox.classList.add('hidden');
+      if (eggFormatGroup) eggFormatGroup.style.display = 'none';
       if (ageRow) ageRow.classList.remove('hidden');
       if (smartBox) smartBox.classList.remove('hidden');
       const unitPintade = appState.lang === 'ar' ? '(دجاج الوادي / غرغر)' : (appState.lang === 'en' ? '(Guinea Fowls)' : '(Pintades / Sujets)');
@@ -5289,7 +5328,7 @@ const app = {
       }
       if (price) price.placeholder = '';
     } else if (type === 'canard') {
-      if (eggBox) eggBox.classList.add('hidden');
+      if (eggFormatGroup) eggFormatGroup.style.display = 'none';
       if (ageRow) ageRow.classList.remove('hidden');
       if (smartBox) smartBox.classList.remove('hidden');
       const unitCanard = appState.lang === 'ar' ? '(البط المسكوفي / بالرأس)' : (appState.lang === 'en' ? '(Muscovy Ducks)' : '(Canards de Barbarie / Sujets)');

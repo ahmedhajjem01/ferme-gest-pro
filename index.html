@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=35">
+  <link rel="stylesheet" href="styles.css?v=54">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -1688,18 +1688,29 @@
           </div>
 
           <div class="form-row">
-            <div class="form-group flex-2">
+            <div class="form-group flex-1">
               <label for="saleDescription" data-i18n="lbl_sale_client">Description / Client</label>
               <input type="text" id="saleDescription" class="input-field" required>
             </div>
-            <div class="form-group flex-1">
-              <label for="saleUnitFormat" data-i18n="lbl_sale_format">Format de Vente</label>
-              <select id="saleUnitFormat" class="input-field" onchange="app.handleFormatChange()">
-                <option value="hara" data-i18n="opt_fmt_hara">Par HARA - حارة (4 œufs)</option>
-                <option value="plateau" data-i18n="opt_fmt_tray">Plateau de 30 œufs</option>
-                <option value="oeuf-unite" data-i18n="opt_fmt_egg_unit">À l'unité (saisie libre du nombre d'œufs)</option>
-                <option value="unite" data-i18n="opt_fmt_unit">Par Poulet / Sujet (pièce - pas au kilo)</option>
-              </select>
+          </div>
+
+          <!-- Format de Vente pour les Œufs : 3 Boutons Exclusifs (1 seul choix) -->
+          <div id="eggFormatButtonGroup" class="form-group" style="margin-bottom: 0.95rem;">
+            <label style="font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+              <span data-i18n="lbl_sale_format">Format de Vente</span>
+              <small class="text-muted" style="font-size: 0.78rem;" data-i18n="hint_choose_single_format">(1 seul choix)</small>
+            </label>
+            <input type="hidden" id="saleUnitFormat" value="hara">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.45rem;">
+              <button type="button" id="btnEggFormatOeuf" class="btn btn-sm btn-egg-format" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 0.25rem; text-align: center; border-radius: var(--radius-md);" onclick="app.setSaleEggFormat('oeuf-unite')">
+                <span data-i18n="btn_fmt_egg">🥚 À l'unité</span>
+              </button>
+              <button type="button" id="btnEggFormatHara" class="btn btn-sm btn-egg-format active-egg-format-btn" style="font-size: 0.82rem; font-weight: 800; padding: 0.55rem 0.25rem; text-align: center; border-radius: var(--radius-md);" onclick="app.setSaleEggFormat('hara')">
+                <span data-i18n="btn_fmt_hara">🧺 Par HARA (4)</span>
+              </button>
+              <button type="button" id="btnEggFormatPlateau" class="btn btn-sm btn-egg-format" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 0.25rem; text-align: center; border-radius: var(--radius-md);" onclick="app.setSaleEggFormat('plateau')">
+                <span data-i18n="btn_fmt_plateau">📦 Plateau (30)</span>
+              </button>
             </div>
           </div>
 
@@ -1746,21 +1757,6 @@
             </div>
           </div>
 
-          <!-- Egg Helper Box (Hara / Unités / Plateaux) -->
-          <div id="eggHelperBox" class="egg-helper-box">
-            <div class="egg-helper-header">
-              <span class="egg-helper-title" data-i18n="egg_helper_title">🥚 Sélection Rapide & Calcul HARA (حارة = 4 œufs) :</span>
-            </div>
-            <div class="egg-quick-buttons-row">
-              <button type="button" class="btn-quick-tag" onclick="app.quickAddEgg(1, 'oeuf')" data-i18n="btn_egg_one">+1 Œuf</button>
-              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(1, 'hara')" data-i18n="btn_egg_1hara">1 HARA (4)</button>
-              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(2, 'hara')" data-i18n="btn_egg_2hara">2 HARAS (8)</button>
-              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(3, 'hara')" data-i18n="btn_egg_3hara">3 HARAS (12)</button>
-              <button type="button" class="btn-quick-tag highlight" onclick="app.quickAddEgg(5, 'hara')" data-i18n="btn_egg_5hara">5 HARAS (20)</button>
-              <button type="button" class="btn-quick-tag" onclick="app.quickAddEgg(1, 'plateau')" data-i18n="btn_egg_tray">1 Plateau (30)</button>
-              <button type="button" class="btn-quick-tag danger" onclick="app.quickResetEgg()" data-i18n="btn_egg_reset">Effacer</button>
-            </div>
-          </div>
 
           <!-- Poultry & Chicks Intelligent Feed & Profit Box (Placé au-dessous après avoir tout rempli) -->
           <div id="saleSmartCalcBox" class="sale-smart-calc-box hidden">
@@ -1968,16 +1964,28 @@
             <strong id="sellEggStockAvailable" style="color: var(--primary); font-size: 1.05rem;">0 œufs</strong>
           </div>
 
+          <div class="form-group" style="margin-bottom: 0.9rem;">
+            <label style="font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
+              <span data-i18n="lbl_sale_format">Format de Vente</span>
+              <small class="text-muted" style="font-size: 0.78rem;" data-i18n="hint_choose_single_format">(1 seul choix)</small>
+            </label>
+            <input type="hidden" id="sellEggFormat" value="oeuf-unite">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.45rem;">
+              <button type="button" id="btnStockEggFormatOeuf" class="btn btn-sm btn-egg-format active-egg-format-btn" style="font-size: 0.82rem; font-weight: 800; padding: 0.55rem 0.25rem; text-align: center; border-radius: var(--radius-md);" onclick="app.setStockEggFormat('oeuf-unite')">
+                <span data-i18n="btn_fmt_egg">🥚 À l'unité</span>
+              </button>
+              <button type="button" id="btnStockEggFormatHara" class="btn btn-sm btn-egg-format" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 0.25rem; text-align: center; border-radius: var(--radius-md);" onclick="app.setStockEggFormat('hara')">
+                <span data-i18n="btn_fmt_hara">🧺 Par HARA (4)</span>
+              </button>
+              <button type="button" id="btnStockEggFormatPlateau" class="btn btn-sm btn-egg-format" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 0.25rem; text-align: center; border-radius: var(--radius-md);" onclick="app.setStockEggFormat('plateau')">
+                <span data-i18n="btn_fmt_plateau">📦 Plateau (30)</span>
+              </button>
+            </div>
+          </div>
+
           <div class="form-group" style="margin-bottom: 1rem;">
             <label for="sellEggQty" class="form-label" data-i18n="sell_eggs_qty_lbl" style="font-weight: 700;">Quantité à vendre</label>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="number" id="sellEggQty" class="input-field" min="1" required oninput="app.calcSellEggTotal()" style="font-size: 1.25rem; font-weight: 800; color: var(--primary);">
-              <select id="sellEggFormat" class="input-field" style="width: 145px;" onchange="app.handleSellEggFormatChange()">
-                <option value="oeuf-unite" selected data-i18n="opt_fmt_egg_unit">À l'unité</option>
-                <option value="hara" data-i18n="opt_fmt_hara">Par HARA (4)</option>
-                <option value="plateau" data-i18n="opt_fmt_tray">Par Plateau (30)</option>
-              </select>
-            </div>
+            <input type="number" id="sellEggQty" class="input-field" min="1" required oninput="app.calcSellEggTotal()" style="font-size: 1.25rem; font-weight: 800; color: var(--primary);">
             <small id="sellEggEquivHint" class="text-muted" style="display:block; margin-top:0.25rem; font-size: 0.78rem;">0 œufs au total</small>
           </div>
 
@@ -2444,8 +2452,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=52"></script>
-  <script src="translations.js?v=52"></script>
-  <script src="app.js?v=52"></script>
+  <script src="supabase-client.js?v=54"></script>
+  <script src="translations.js?v=54"></script>
+  <script src="app.js?v=54"></script>
 </body>
 </html>

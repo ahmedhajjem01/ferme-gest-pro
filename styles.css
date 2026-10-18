@@ -3092,3 +3092,26 @@ label {
   background: rgba(16, 185, 129, 0.08) !important;
   transform: translateY(-1px);
 }
+
+/* Format de Vente des Œufs (3 Boutons Exclusifs) */
+.btn-egg-format {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  border: 1.5px solid var(--border-color) !important;
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.btn-egg-format:hover {
+  border-color: var(--accent-amber, #f59e0b) !important;
+  transform: translateY(-1px);
+}
+.active-egg-format-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #ffffff !important;
+  border-color: #d97706 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 3px 12px rgba(245, 158, 11, 0.45) !important;
+  transform: translateY(-1px);
+}
+
