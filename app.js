@@ -643,6 +643,7 @@ const app = {
           appState.customDailyFeedKg = null;
           appState.sicamCansCount = null;
         }
+        this.reconcileFeedTypesFromExpenses();
         this.saveState();
       } else {
         // Nouveau projet vierge pour le nouvel utilisateur (tout commence à zéro)
@@ -1152,17 +1153,25 @@ const app = {
 
     const select = document.getElementById('expenseFeedTypeSelect');
     if (select) {
-      const lower = feedName.toLowerCase();
-      let matched = false;
+      const family = this.detectFeedTypeFromText(feedName);
+      let matchedIndex = -1;
       for (let i = 0; i < select.options.length; i++) {
         const opt = select.options[i];
-        if (opt.value !== '__new__' && opt.textContent.toLowerCase().includes(lower)) {
-          select.selectedIndex = i;
-          matched = true;
-          break;
+        if (opt.value !== '__new__') {
+          const ft = (appState.feedTypes || []).find(f => f.id === opt.value);
+          if (ft && family && this.isFeedInFamily(ft, family)) {
+            matchedIndex = i;
+            break;
+          }
+          if (feedName && opt.textContent.toLowerCase().includes(feedName.toLowerCase())) {
+            matchedIndex = i;
+            break;
+          }
         }
       }
-      if (!matched) {
+      if (matchedIndex >= 0) {
+        select.selectedIndex = matchedIndex;
+      } else {
         select.value = '__new__';
       }
     }
@@ -2501,6 +2510,158 @@ const app = {
     return list;
   },
 
+  detectFeedTypeFromText(text) {
+    if (!text) return null;
+    const t = String(text).toLowerCase();
+    if (t.includes('bouchon') || t.includes('ponte') || t.includes('بوشون')) return 'bouchon';
+    if (t.includes('blé') || t.includes('ble') || t.includes('قمح')) return 'ble';
+    if (t.includes('maïs') || t.includes('mais') || t.includes('ذرة') || t.includes('ذرَة')) return 'mais';
+    if (t.includes('son') || t.includes('نخالة')) return 'son';
+    if (t.includes('démarrage') || t.includes('demarrage') || t.includes('بداية')) return 'demarrage';
+    if (t.includes('feverole') || t.includes('féverole') || t.includes('فول')) return 'feverole';
+    return null;
+  },
+
+  isFeedInFamily(ft, family) {
+    if (!ft || !family) return false;
+    const id = String(ft.id || '').toLowerCase();
+    const name = String(ft.name || '').toLowerCase();
+    if (family === 'bouchon') return id === 'feed-bouchon' || name.includes('bouchon') || name.includes('ponte') || name.includes('بوشون');
+    if (family === 'ble') return id === 'feed-ble' || name.includes('blé') || name.includes('ble') || name.includes('قمح');
+    if (family === 'mais') return id === 'feed-mais' || name.includes('maïs') || name.includes('mais') || name.includes('ذرة');
+    if (family === 'son') return id === 'feed-son' || name.includes('son') || name.includes('نخالة');
+    if (family === 'demarrage') return id === 'feed-demarrage' || name.includes('démarrage') || name.includes('demarrage') || name.includes('بداية');
+    if (family === 'feverole') return id === 'feed-feverole' || name.includes('feverole') || name.includes('féverole') || name.includes('فول');
+    return false;
+  },
+
+  createDefaultFeedForFamily(family, pricePerKg = 1.0) {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const numPrice = Math.max(0.1, Number(pricePerKg) || 1.0);
+    if (family === 'bouchon') {
+      return {
+        id: 'feed-bouchon',
+        name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'),
+        stockKg: 0,
+        pricePerKg: numPrice || 1.2
+      };
+    }
+    if (family === 'ble') {
+      return {
+        id: 'feed-ble',
+        name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'),
+        stockKg: 0,
+        pricePerKg: numPrice || 1.0
+      };
+    }
+    if (family === 'mais') {
+      return {
+        id: 'feed-mais',
+        name: isAr ? 'ذرة مرحية' : (isEn ? 'Cracked Corn' : 'Maïs concassé'),
+        stockKg: 0,
+        pricePerKg: numPrice || 1.1
+      };
+    }
+    if (family === 'son') {
+      return {
+        id: 'feed-son',
+        name: isAr ? 'نخالة القمح' : (isEn ? 'Wheat Bran' : 'Son de blé'),
+        stockKg: 0,
+        pricePerKg: numPrice || 0.8
+      };
+    }
+    if (family === 'demarrage') {
+      return {
+        id: 'feed-demarrage',
+        name: isAr ? 'علف بداية' : (isEn ? 'Starter Feed' : 'Aliment démarrage'),
+        stockKg: 0,
+        pricePerKg: numPrice || 1.4
+      };
+    }
+    return {
+      id: 'feed-' + Date.now().toString(36),
+      name: isAr ? 'علف جديد' : 'Nouvel aliment',
+      stockKg: 0,
+      pricePerKg: numPrice || 1.0
+    };
+  },
+
+  reconcileFeedTypesFromExpenses() {
+    if (!Array.isArray(appState.expenses)) return;
+    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+
+    const foodExpenses = appState.expenses.filter(e => e.category === 'nourriture');
+    if (foodExpenses.length === 0) return;
+
+    let bleFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, 'ble'));
+    let bouchonFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, 'bouchon'));
+
+    let changed = false;
+
+    // 1. Détecter si des dépenses de Bouchon ont été erronément créditées au Blé
+    const creditedBouchonExps = foodExpenses.filter(e => {
+      const family = this.detectFeedTypeFromText(e.title);
+      return family === 'bouchon' && (Number(e.feedStockAddedKg) || 0) > 0;
+    });
+
+    const totalBouchonAdded = creditedBouchonExps.reduce((s, e) => s + (Number(e.feedStockAddedKg) || 0), 0);
+    const totalBouchonCost = creditedBouchonExps.reduce((s, e) => s + (Number(e.total) || 0), 0);
+
+    if (totalBouchonAdded > 0) {
+      if (!bouchonFeed) {
+        bouchonFeed = this.createDefaultFeedForFamily('bouchon', totalBouchonCost / totalBouchonAdded);
+        appState.feedTypes.push(bouchonFeed);
+        changed = true;
+      }
+
+      // Si le stock de Bouchon est à 0 ou inférieur au total ajouté, et que le Blé a un surplus correspondant
+      if ((Number(bouchonFeed.stockKg) || 0) < totalBouchonAdded) {
+        const diffKg = totalBouchonAdded - (Number(bouchonFeed.stockKg) || 0);
+        // Si le Blé a ce surplus (ex: Blé affiché à 60kg au lieu de 50kg)
+        if (bleFeed && (Number(bleFeed.stockKg) || 0) >= diffKg) {
+          bleFeed.stockKg = Math.max(0, (Number(bleFeed.stockKg) || 0) - diffKg);
+          changed = true;
+        }
+        bouchonFeed.stockKg = Math.max(0, (Number(bouchonFeed.stockKg) || 0) + diffKg);
+        if (totalBouchonCost > 0 && totalBouchonAdded > 0) {
+          bouchonFeed.pricePerKg = Math.max(0.1, totalBouchonCost / totalBouchonAdded);
+        }
+        changed = true;
+      }
+
+      // Corriger les feedTypeId des dépenses Bouchon
+      creditedBouchonExps.forEach(e => {
+        if (e.feedTypeId !== bouchonFeed.id) {
+          e.feedTypeId = bouchonFeed.id;
+          changed = true;
+        }
+      });
+    }
+
+    // 2. Vérifier et corriger le prix au kg du Blé (rétablir 1.00 DT/kg pour 50 DT / 50 kg au lieu de 1.20 DT)
+    const creditedBleExps = foodExpenses.filter(e => {
+      const family = this.detectFeedTypeFromText(e.title);
+      return family === 'ble' && (Number(e.feedStockAddedKg) || 0) > 0;
+    });
+    const totalBleAdded = creditedBleExps.reduce((s, e) => s + (Number(e.feedStockAddedKg) || 0), 0);
+    const totalBleCost = creditedBleExps.reduce((s, e) => s + (Number(e.total) || 0), 0);
+
+    if (bleFeed && totalBleAdded > 0 && totalBleCost > 0) {
+      const realBlePrice = totalBleCost / totalBleAdded;
+      if (Math.abs(bleFeed.pricePerKg - realBlePrice) > 0.02) {
+        bleFeed.pricePerKg = realBlePrice;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+      appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
+      this.saveState();
+    }
+  },
+
   renderSmartFeedPresets() {
     const container = document.getElementById('feedSmartPresetsContainer');
     if (!container) return;
@@ -3079,6 +3240,7 @@ const app = {
   },
 
   renderFeedStockAdjustModal() {
+    this.reconcileFeedTypesFromExpenses();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
     const container = document.getElementById('feedStockTypesContainer');
     if (!container) return;
@@ -5007,14 +5169,28 @@ const app = {
     const select = document.getElementById('expenseFeedTypeSelect');
     if (!titleInput || !select) return;
 
-    const val = titleInput.value.trim().toLowerCase();
+    const val = titleInput.value.trim();
     if (val.length >= 2) {
-      const match = (appState.feedTypes || []).find(ft => {
-        const name = (ft.name || '').toLowerCase();
-        return val.includes(name) || name.includes(val);
-      });
-      if (match && select.value !== match.id) {
-        select.value = match.id;
+      const family = this.detectFeedTypeFromText(val);
+      let matchedIndex = -1;
+      for (let i = 0; i < select.options.length; i++) {
+        const opt = select.options[i];
+        if (opt.value !== '__new__') {
+          const ft = (appState.feedTypes || []).find(f => f.id === opt.value);
+          if (ft && family && this.isFeedInFamily(ft, family)) {
+            matchedIndex = i;
+            break;
+          }
+          if (opt.textContent.toLowerCase().includes(val.toLowerCase())) {
+            matchedIndex = i;
+            break;
+          }
+        }
+      }
+      if (matchedIndex >= 0) {
+        select.selectedIndex = matchedIndex;
+      } else if (family) {
+        select.value = '__new__';
       }
     }
     this.calcFeedPurchaseFields();
@@ -5088,9 +5264,21 @@ const app = {
         if (addToStock && addedKg > 0) {
           appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
           const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
-          let targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
+          const detectedFamily = this.detectFeedTypeFromText(title);
 
-          if (!targetFeed || selectedFeedId === '__new__') {
+          let targetFeed = null;
+          // Priorité absolue à la famille détectée dans l'intitulé (ex: Bouchon ne va JAMAIS dans Blé !)
+          if (detectedFamily) {
+            targetFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, detectedFamily));
+            if (!targetFeed) {
+              targetFeed = this.createDefaultFeedForFamily(detectedFamily, total / (addedKg || 1));
+              appState.feedTypes.push(targetFeed);
+            }
+          } else if (selectedFeedId && selectedFeedId !== '__new__') {
+            targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
+          }
+
+          if (!targetFeed) {
             const rawTitle = (title || '').trim();
             let feedCleanName = rawTitle.replace(/^(achat|شراء|buy|purchase|feed)\s*[:\-]?\s*/i, '').trim();
             if (!feedCleanName) feedCleanName = rawTitle || (isAr ? 'علف جديد' : 'Nouvel aliment');
@@ -5234,17 +5422,21 @@ const app = {
         if (addedKg <= 0) return;
 
         // Match or ask which feed
-        let ft = appState.feedTypes.find(f => {
-          const fn = (f.name || '').toLowerCase();
-          return titleLower.includes(fn) || fn.includes(titleLower);
-        });
+        const family = this.detectFeedTypeFromText(exp.title);
+        let ft = null;
+        if (family) {
+          ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, family));
+          if (!ft) {
+            ft = this.createDefaultFeedForFamily(family, (Number(exp.total) / (addedKg || 1)) || 1.0);
+            appState.feedTypes.push(ft);
+          }
+        }
 
         if (!ft) {
-          if (titleLower.includes('blé') || titleLower.includes('ble') || titleLower.includes('قمح')) {
-            ft = appState.feedTypes.find(f => f.id === 'feed-ble');
-          } else if (titleLower.includes('bouchon') || titleLower.includes('ponte') || titleLower.includes('بوشون')) {
-            ft = appState.feedTypes.find(f => f.id === 'feed-bouchon');
-          }
+          ft = appState.feedTypes.find(f => {
+            const fn = (f.name || '').toLowerCase();
+            return titleLower.includes(fn) || fn.includes(titleLower);
+          });
         }
 
         if (!ft) {
@@ -5294,17 +5486,21 @@ const app = {
         addedKg = addedKg * 25;
       }
 
-      let ft = appState.feedTypes.find(f => {
-        const fn = (f.name || '').toLowerCase();
-        return titleLower.includes(fn) || fn.includes(titleLower);
-      });
+      const family = this.detectFeedTypeFromText(exp.title);
+      let ft = null;
+      if (family) {
+        ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, family));
+        if (!ft) {
+          ft = this.createDefaultFeedForFamily(family, (Number(exp.total) / (addedKg || 1)) || 1.0);
+          appState.feedTypes.push(ft);
+        }
+      }
 
       if (!ft) {
-        if (titleLower.includes('blé') || titleLower.includes('ble') || titleLower.includes('قمح')) {
-          ft = appState.feedTypes.find(f => f.id === 'feed-ble');
-        } else if (titleLower.includes('bouchon') || titleLower.includes('ponte') || titleLower.includes('بوشون')) {
-          ft = appState.feedTypes.find(f => f.id === 'feed-bouchon');
-        }
+        ft = appState.feedTypes.find(f => {
+          const fn = (f.name || '').toLowerCase();
+          return titleLower.includes(fn) || fn.includes(titleLower);
+        });
       }
 
       if (!ft) {
