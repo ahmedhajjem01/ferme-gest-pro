@@ -1421,15 +1421,175 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   color: var(--accent-amber);
 }
 
-/* Calendar Section */
+/* Calendar Section & Month Navigation Bar */
 .calendar-nav-buttons {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.85rem;
+  justify-content: space-between;
+  gap: 0.65rem;
+  background: var(--bg-card);
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
+
+.cal-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 36px;
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  user-select: none;
+}
+
+.cal-nav-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.cal-nav-btn:active {
+  transform: translateY(0);
+}
+
+.cal-nav-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.cal-nav-arrow svg {
+  display: block;
+  stroke: currentColor;
+  transition: transform 0.15s ease;
+}
+
+#calPrevMonthBtn:hover .cal-nav-arrow svg {
+  transform: translateX(-2px);
+}
+
+#calNextMonthBtn:hover .cal-nav-arrow svg {
+  transform: translateX(2px);
+}
+
+.calendar-current-month-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 135px;
+  text-align: center;
+}
+
 .calendar-current-month {
-  font-size: 1rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.cal-today-badge {
+  font-size: 0.68rem;
   font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  cursor: pointer;
+  line-height: 1.2;
+  transition: all 0.2s ease;
+  display: inline-block;
+  user-select: none;
+}
+
+.cal-today-badge:hover {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  transform: scale(1.05);
+}
+
+.cal-today-badge.active-current-month {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* RTL Support for Month Navigation Chevrons */
+[dir="rtl"] #calPrevMonthBtn .cal-nav-arrow svg,
+[dir="rtl"] #calNextMonthBtn .cal-nav-arrow svg {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] #calPrevMonthBtn:hover .cal-nav-arrow svg {
+  transform: scaleX(-1) translateX(-2px);
+}
+
+[dir="rtl"] #calNextMonthBtn:hover .cal-nav-arrow svg {
+  transform: scaleX(-1) translateX(2px);
+}
+
+/* Responsive Month Selector for Mobile Screens (<= 640px) */
+@media (max-width: 640px) {
+  .calendar-nav-buttons {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 0.4rem 0.65rem !important;
+    margin-top: 0.35rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  .cal-nav-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    min-width: 38px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cal-nav-btn .cal-nav-btn-text {
+    display: none !important;
+  }
+
+  .cal-nav-btn .cal-nav-arrow {
+    margin: 0 !important;
+  }
+
+  .cal-nav-btn .cal-nav-arrow svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .calendar-current-month-wrapper {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .calendar-current-month {
+    font-size: 0.92rem !important;
+  }
 }
 .calendar-legends {
   display: flex;

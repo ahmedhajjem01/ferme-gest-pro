@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=68">
+  <link rel="stylesheet" href="styles.css?v=69">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -981,13 +981,22 @@
               </div>
 
               <!-- Contrôles du Mois directement attachés au Calendrier -->
-              <div class="calendar-nav-buttons" style="margin: 0; background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: inline-flex; align-items: center; gap: 0.5rem;">
-                <button class="btn btn-sm btn-outline" id="calPrevMonthBtn" onclick="app.prevMonth()" style="padding: 0.35rem 0.65rem; cursor: pointer;">
-                  <span class="cal-nav-arrow">&larr;</span> <span data-i18n="cal_prev_month">Mois Précédent</span>
+              <div class="calendar-nav-buttons" id="calendarNavButtons">
+                <button type="button" class="btn btn-sm btn-outline cal-nav-btn" id="calPrevMonthBtn" onclick="app.prevMonth()" data-i18n-title="cal_prev_month" title="Mois Précédent" aria-label="Mois Précédent">
+                  <span class="cal-nav-arrow" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  </span>
+                  <span class="cal-nav-btn-text" data-i18n="cal_prev_month">Mois Précédent</span>
                 </button>
-                <span class="calendar-current-month" id="calCurrentMonthLabel" style="font-weight: 800; font-size: 1rem; min-width: 130px; text-align: center; color: var(--text-main);">Octobre 2026</span>
-                <button class="btn btn-sm btn-outline" id="calNextMonthBtn" onclick="app.nextMonth()" style="padding: 0.35rem 0.65rem; cursor: pointer;">
-                  <span data-i18n="cal_next_month">Mois Suivant</span> <span class="cal-nav-arrow">&rarr;</span>
+                <div class="calendar-current-month-wrapper">
+                  <span class="calendar-current-month" id="calCurrentMonthLabel">Octobre 2026</span>
+                  <button type="button" class="cal-today-badge" id="calTodayJumpBtn" onclick="app.goToCurrentMonth()" data-i18n="cal_today_short" data-i18n-title="cal_today_tooltip" title="Revenir au mois en cours">Aujourd'hui</button>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline cal-nav-btn" id="calNextMonthBtn" onclick="app.nextMonth()" data-i18n-title="cal_next_month" title="Mois Suivant" aria-label="Mois Suivant">
+                  <span class="cal-nav-btn-text" data-i18n="cal_next_month">Mois Suivant</span>
+                  <span class="cal-nav-arrow" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </span>
                 </button>
               </div>
             </div>
@@ -2442,8 +2451,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=68"></script>
-  <script src="translations.js?v=68"></script>
-  <script src="app.js?v=68"></script>
+  <script src="supabase-client.js?v=69"></script>
+  <script src="translations.js?v=69"></script>
+  <script src="app.js?v=69"></script>
 </body>
 </html>

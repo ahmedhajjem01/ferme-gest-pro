@@ -300,6 +300,8 @@ const TRANSLATIONS = {
     // Calendar Elements
     cal_prev_month: "Mois Précédent",
     cal_next_month: "Mois Suivant",
+    cal_today_short: "Aujourd'hui",
+    cal_today_tooltip: "Revenir au mois en cours",
     cal_generations_tracker_title: "Suivi Dynamique de l'Âge des Générations",
     cal_generations_tracker_pill: "Calcul Automatique en Jours",
     cal_calendar_grid_title: "Éphéméride & Événements Agricoles",
@@ -875,6 +877,8 @@ const TRANSLATIONS = {
     // Calendar Elements
     cal_prev_month: "الشهر السابق",
     cal_next_month: "الشهر القادم",
+    cal_today_short: "اليوم",
+    cal_today_tooltip: "العودة إلى الشهر الحالي",
     cal_generations_tracker_title: "المتابعة الديناميكية لأعمار الأجيال",
     cal_generations_tracker_pill: "احتساب تلقائي بالأيام",
     cal_calendar_grid_title: "رزنامة الأحداث الفلاحية والمواعيد",
@@ -1449,6 +1453,8 @@ const TRANSLATIONS = {
     // Calendar Elements
     cal_prev_month: "Previous Month",
     cal_next_month: "Next Month",
+    cal_today_short: "Today",
+    cal_today_tooltip: "Jump to current month",
     cal_generations_tracker_title: "Dynamic Generation Age Tracker",
     cal_generations_tracker_pill: "Automatic Day Counter",
     cal_calendar_grid_title: "Agricultural Almanac & Events",

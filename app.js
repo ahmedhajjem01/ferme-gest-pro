@@ -6169,6 +6169,11 @@ const app = {
     this.renderCalendar();
   },
 
+  goToCurrentMonth() {
+    appState.calendarDate = new Date();
+    this.renderCalendar();
+  },
+
   toggleExpenseSort(field) {
     if (appState.expenseSortField === field) {
       appState.expenseSortOrder = appState.expenseSortOrder === 'desc' ? 'asc' : 'desc';
@@ -6452,6 +6457,18 @@ const app = {
       ? TRANSLATIONS[lang].cal_months
       : ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     label.textContent = `${monthNames[month]} ${year}`;
+
+    // Highlight or style Today button if viewing current month
+    const todayBtn = document.getElementById('calTodayJumpBtn');
+    if (todayBtn) {
+      const now = new Date();
+      const isCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
+      if (isCurrentMonth) {
+        todayBtn.classList.add('active-current-month');
+      } else {
+        todayBtn.classList.remove('active-current-month');
+      }
+    }
 
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
