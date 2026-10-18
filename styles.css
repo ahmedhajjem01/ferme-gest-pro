@@ -1045,6 +1045,14 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   box-shadow: var(--shadow-md);
   border-color: var(--primary);
 }
+.animal-card-closed {
+  background-color: rgba(30, 41, 59, 0.45);
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+}
+.animal-card-closed:hover {
+  border-color: rgba(148, 163, 184, 0.6);
+  transform: translateY(-2px);
+}
 .animal-card-header {
   display: flex;
   align-items: flex-start;

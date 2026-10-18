@@ -1480,7 +1480,8 @@ const app = {
     if (saleLotSelect) {
       let html = `<option value="none">${this.t('opt_no_lot')}</option>`;
       const remWord = lang === 'ar' ? 'المتبقي' : (lang === 'en' ? 'Remaining' : 'Restant');
-      appState.animals.forEach(a => {
+      const activeAnimals = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
+      activeAnimals.forEach(a => {
         const displayName = this.getAnimalDisplayName(a);
         const lotPrefix = (a.name && a.name.toString().trim() !== '') ? (lang === 'ar' ? `دفعة #${a.name} - ` : `Lot #${a.name} - `) : '';
         html += `<option value="${a.id}">${lotPrefix}${displayName} (${remWord}: ${a.currentQuantity})</option>`;
@@ -3563,6 +3564,12 @@ const app = {
   // ==========================================
   // ANIMALS (CHEPTEL & RACES) MODULE
   // ==========================================
+  setAnimalQtyFilter(val) {
+    const select = document.getElementById('animalQtyFilterSelect');
+    if (select) select.value = val;
+    this.handleAnimalFilterChange();
+  },
+
   renderAnimals(filter = null) {
     const grid = document.getElementById('animalsGrid');
     if (!grid) return;
@@ -3573,9 +3580,17 @@ const app = {
     }
     const activeSpecies = this.currentAnimalFilter || 'all';
 
-    // Filter count chips
-    const counts = { all: appState.animals.length, poulet: 0, pondeuse: 0, poussin: 0, adulte: 0, pintade: 0, canard: 0 };
-    appState.animals.forEach(a => {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    // Separate active lots from closed/sold-out lots
+    const activeAnimals = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
+    const closedAnimals = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) <= 0);
+    const closedCount = closedAnimals.length;
+
+    // Filter count chips: accurately reflect active batches on the farm
+    const counts = { all: activeAnimals.length, poulet: 0, pondeuse: 0, poussin: 0, adulte: 0, pintade: 0, canard: 0 };
+    activeAnimals.forEach(a => {
       if (counts[a.species] !== undefined) counts[a.species]++;
       else if (a.species === 'canard_barbarie') counts.canard++;
     });
@@ -3591,7 +3606,7 @@ const app = {
 
     const sortMode = document.getElementById('animalSortSelect')?.value || 'default';
     const ageFilter = document.getElementById('animalAgeFilterSelect')?.value || 'all';
-    const qtyFilter = document.getElementById('animalQtyFilterSelect')?.value || 'all';
+    const qtyFilter = document.getElementById('animalQtyFilterSelect')?.value || 'active';
     const searchQuery = (document.getElementById('animalSearchInput')?.value || '').trim().toLowerCase();
 
     // 1. Filtrer par espèce (chips)
@@ -3599,7 +3614,27 @@ const app = {
       ? appState.animals
       : appState.animals.filter(a => a.species === activeSpecies || (activeSpecies === 'canard' && a.species === 'canard_barbarie'));
 
-    // 2. Filtrer par recherche textuelle
+    // 2. Filtrer par effectif / statut (Défaut : uniquement les lots actifs > 0 !)
+    if (qtyFilter === 'active') {
+      filtered = filtered.filter(a => (Number(a.currentQuantity) || 0) > 0);
+    } else if (qtyFilter === 'closed') {
+      filtered = filtered.filter(a => (Number(a.currentQuantity) || 0) <= 0);
+    } else if (qtyFilter === 'large') {
+      filtered = filtered.filter(a => (Number(a.currentQuantity) || 0) > 50);
+    } else if (qtyFilter === 'medium') {
+      filtered = filtered.filter(a => {
+        const qty = Number(a.currentQuantity) || 0;
+        return qty >= 10 && qty <= 50;
+      });
+    } else if (qtyFilter === 'small') {
+      filtered = filtered.filter(a => {
+        const qty = Number(a.currentQuantity) || 0;
+        return qty > 0 && qty < 10;
+      });
+    }
+    // si qtyFilter === 'all', affiche tout (actifs et clôturés)
+
+    // 3. Filtrer par recherche textuelle
     if (searchQuery) {
       filtered = filtered.filter(a => {
         const name = (a.name || '').toLowerCase();
@@ -3612,24 +3647,13 @@ const app = {
       });
     }
 
-    // 3. Filtrer par tranche d'âge
+    // 4. Filtrer par tranche d'âge
     if (ageFilter !== 'all') {
       filtered = filtered.filter(a => {
         const days = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
         if (ageFilter === 'chick') return days < 30;
         if (ageFilter === 'growing') return days >= 30 && days <= 180;
         if (ageFilter === 'adult') return days > 180;
-        return true;
-      });
-    }
-
-    // 4. Filtrer par effectif / nombre
-    if (qtyFilter !== 'all') {
-      filtered = filtered.filter(a => {
-        const qty = Number(a.currentQuantity) || 0;
-        if (qtyFilter === 'large') return qty > 50;
-        if (qtyFilter === 'medium') return qty >= 10 && qty <= 50;
-        if (qtyFilter === 'small') return qty < 10;
         return true;
       });
     }
@@ -3649,6 +3673,35 @@ const app = {
       return 0;
     });
 
+    // Bandeau d'information sur les lots clôturés / vendus
+    if (qtyFilter === 'active' && closedCount > 0) {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'grid-column: 1 / -1; background: rgba(59, 130, 246, 0.08); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;';
+      banner.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--text-main);">
+          <span>📦</span>
+          <span><strong>${closedCount} ${isAr ? 'دفعة مباعة بالكامل / منتهية (0 طائر)' : 'lot(s) clôturé(s) / vendu(s) (0 tête)'}</strong> ${isAr ? 'تم إخفاؤها من القائمة النشطة لتفادي الازدحام مع الاحتفاظ بكامل السجلات.' : 'masqué(s) de la vue active (historique et bénéfices conservés).'}</span>
+        </div>
+        <button type="button" class="btn btn-xs btn-outline" onclick="app.setAnimalQtyFilter('closed')" style="font-weight: 700; padding: 4px 10px;">
+          👁️ ${isAr ? `عرض الدفعات المنتهية (${closedCount})` : `Afficher les lots clôturés (${closedCount})`}
+        </button>
+      `;
+      grid.appendChild(banner);
+    } else if (qtyFilter === 'closed') {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'grid-column: 1 / -1; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;';
+      banner.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--accent-emerald); font-weight: 700;">
+          <span>📦</span>
+          <span>${isAr ? 'عرض الدفعات المنتهية والمباعة (السجلات المالية والمداخيل والأرباح محفوظة بالكامل).' : 'Affichage des lots clôturés et vendus (historique financier, ventes et marges conservés).'}</span>
+        </div>
+        <button type="button" class="btn btn-xs btn-emerald" onclick="app.setAnimalQtyFilter('active')" style="font-weight: 700; padding: 4px 10px;">
+          🐔 ${isAr ? `العودة للدفعات النشطة (${activeAnimals.length})` : `Revenir aux lots actifs (${activeAnimals.length})`}
+        </button>
+      `;
+      grid.appendChild(banner);
+    }
+
     if (filtered.length === 0) {
       if (appState.animals.length === 0) {
         grid.innerHTML = `
@@ -3664,38 +3717,43 @@ const app = {
           </div>
         `;
       } else {
-        const noMatch = appState.lang === 'ar' ? 'لا توجد دفعات طيور مطابقة لمعايير البحث والفرز.' : (appState.lang === 'en' ? 'No animal batches found matching these filter and sort criteria.' : 'Aucun lot d\'animaux ne correspond à vos critères de recherche et filtrage.');
-        grid.innerHTML = `
-          <div class="panel-card" style="grid-column: 1/-1; text-align: center; padding: 2.5rem;">
-            <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.95rem;">${noMatch}</p>
-            <button class="btn btn-sm btn-outline" onclick="app.resetAnimalFilters()">
-              ${this.t('btn_reset_filters') || '🔄 Réinitialiser'}
-            </button>
-          </div>
+        const noMatch = isAr ? 'لا توجد دفعات طيور مطابقة لمعايير البحث والفرز.' : (isEn ? 'No animal batches found matching these filter and sort criteria.' : 'Aucun lot d\'animaux ne correspond à vos critères de recherche et filtrage.');
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'panel-card';
+        emptyDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 2.5rem;';
+        emptyDiv.innerHTML = `
+          <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.95rem;">${noMatch}</p>
+          <button class="btn btn-sm btn-outline" onclick="app.resetAnimalFilters()">
+            ${this.t('btn_reset_filters') || '🔄 Réinitialiser'}
+          </button>
         `;
+        grid.appendChild(emptyDiv);
       }
       return;
     }
 
-    // Total farm daily feed consumption in grams for biological expense weighting
-    const totalFarmDailyGrams = (appState.animals || []).reduce((sum, a) => {
+    // Répartition biologique de l'aliment général basée sur la consommation cumulée réelle
+    // Cela garantit que la vente d'un lot (ex: poulets) ne change JAMAIS le coût des autres races (ex: canards) !
+    const totalFarmCumulativeFeedGrams = (appState.animals || []).reduce((sum, a) => {
       const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
-      const feedData = this.getAgronomicFeedData(a.species, aAge, a.stage, a.breed);
-      return sum + ((Number(a.currentQuantity) || 0) * feedData.avgGrams);
+      const aStartAge = Number(a.arrivalAgeDays) || 0;
+      const cKg = this.calculateCumulativeFeedKg(a.species, aAge, a.stage, a.breed, aStartAge);
+      const heads = Math.max(Number(a.currentQuantity) || 0, Number(a.initialQuantity) || 1);
+      return sum + (heads * cKg * 1000);
     }, 0);
-    const totalLivingAnimals = (appState.animals || []).reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
 
-    const generalFeedExpenses = appState.expenses
+    const totalHistoricalAnimals = (appState.animals || []).reduce((sum, a) => sum + (Number(a.initialQuantity) || 1), 0);
+
+    const generalFeedExpenses = (appState.expenses || [])
       .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category === 'nourriture')
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-    const generalVetExpenses = appState.expenses
+    const generalOtherExpenses = (appState.expenses || [])
       .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category !== 'nourriture')
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-    const feedPriceKg = this.getAverageFeedPricePerKg();
-
     filtered.forEach(animal => {
+      const isClosed = (Number(animal.currentQuantity) || 0) <= 0;
       const daysSinceArrival = this.calculateAgeInDays(animal.birthDate);
       const arrivalAgeDays = Number(animal.arrivalAgeDays) || 0;
       const ageDays = daysSinceArrival + arrivalAgeDays;
@@ -3710,50 +3768,48 @@ const app = {
         .filter(e => e.linkedLotId === animal.id)
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-      // 2. Dépenses réelles générales de la ferme réparties équitablement et biologiquement :
-      // - L'aliment général est réparti selon l'appétit réel (un adulte de 120g/j absorbe 6x plus de dépense qu'un poussin de 20g/j)
-      // - Les autres charges générales (santé, eau, électricité) sont réparties équitablement par tête vivante
-      const generalFeedExpenses = (appState.expenses || [])
-        .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category === 'nourriture')
-        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+      // 2. Dépenses générales réparties de façon stable et équitable selon la consommation cumulée réelle
+      const cumulFeedKg = this.calculateCumulativeFeedKg(animal.species, ageDays, animal.stage, animal.breed, arrivalAgeDays);
+      const effectiveHeads = isClosed 
+        ? (Number(animal.initialQuantity) || 1)
+        : (Number(animal.currentQuantity) || 1);
+      const lotCumulGrams = effectiveHeads * cumulFeedKg * 1000;
 
-      const generalOtherExpenses = (appState.expenses || [])
-        .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category !== 'nourriture')
-        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-
-      const feedShare = totalFarmDailyGrams > 0 
-        ? (((Number(animal.currentQuantity) || 0) * feedData.avgGrams) / totalFarmDailyGrams) 
+      const feedShare = totalFarmCumulativeFeedGrams > 0 
+        ? (lotCumulGrams / totalFarmCumulativeFeedGrams) 
         : 0;
-      const headShare = totalLivingAnimals > 0 
-        ? ((Number(animal.currentQuantity) || 0) / totalLivingAnimals) 
+
+      const headShare = totalHistoricalAnimals > 0 
+        ? ((Number(animal.initialQuantity) || 1) / totalHistoricalAnimals) 
         : 0;
 
       const allocatedGeneral = (generalFeedExpenses * feedShare) + (generalOtherExpenses * headShare);
 
       // 3. Prix d'achat réel saisi par l'éleveur (0 si éclos ou gratuit)
       const acquisitionCostPerHead = Number(animal.costPerHead) || 0;
-      const totalAcquisition = (Number(animal.currentQuantity) || 0) * acquisitionCostPerHead;
+      const totalAcquisition = (Number(animal.initialQuantity) || effectiveHeads) * acquisitionCostPerHead;
+      const currentLivingAcquisition = (Number(animal.currentQuantity) || 0) * acquisitionCostPerHead;
 
-      // Total des dépenses réelles engagées pour ce lot (strictement basé sur les saisies réelles de l'utilisateur)
+      // Total des dépenses réelles engagées pour ce lot
       const totalLotExpenses = directLotExpenses + allocatedGeneral;
-      const totalInvested = totalAcquisition + totalLotExpenses;
+      const totalInvested = (isClosed ? totalAcquisition : currentLivingAcquisition) + totalLotExpenses;
       
-      const costPerCurrentHead = (animal.currentQuantity > 0 && totalInvested > 0)
+      const costPerCurrentHead = (!isClosed && animal.currentQuantity > 0 && totalInvested > 0)
         ? (totalInvested / animal.currentQuantity)
-        : 0;
+        : (totalInvested / (Number(animal.initialQuantity) || 1));
 
       const avatarIcon = this.getSpeciesIcon(animal.species);
       const stageBadgeClass = this.getStageBadgeClass(animal.stage);
-      const lossesWord = appState.lang === 'ar' ? 'خسائر' : (appState.lang === 'en' ? 'losses' : 'pertes');
-      const defaultNotes = appState.lang === 'ar' ? 'لا توجد ملاحظات' : (appState.lang === 'en' ? 'No specific notes' : 'Aucune note particulière');
-      const agronomicStageLabel = appState.lang === 'ar' ? feedData.labelAr : (appState.lang === 'en' ? feedData.labelEn : feedData.labelFr);
+      const lossesWord = isAr ? 'خسائر' : (isEn ? 'losses' : 'pertes');
+      const defaultNotes = isAr ? 'لا توجد ملاحظات' : (isEn ? 'No specific notes' : 'Aucune note particulière');
+      const agronomicStageLabel = isAr ? feedData.labelAr : (isEn ? feedData.labelEn : feedData.labelFr);
 
       const cardTitle = this.getAnimalDisplayName(animal);
       const breed = (animal.breed || '').toString().trim();
       const hasBreed = breed !== '' && breed !== '-';
       const speciesLabel = this.translateSpecies(animal.species);
       const lotIdentifierLabel = (animal.name && animal.name.toString().trim() !== '')
-        ? (appState.lang === 'ar' ? `دفعة #${animal.name}` : `Lot #${animal.name}`)
+        ? (isAr ? `دفعة #${animal.name}` : `Lot #${animal.name}`)
         : '';
 
       const subtitleItems = [];
@@ -3767,64 +3823,132 @@ const app = {
       const cardSubtitle = subtitleItems.join(' &bull; ');
 
       const card = document.createElement('div');
-      card.className = 'animal-card';
-      card.innerHTML = `
-        <div class="animal-card-header">
-          <div class="animal-title-group">
-            <div class="animal-avatar">${avatarIcon}</div>
-            <div>
-              <h3 class="animal-name">${cardTitle}</h3>
-              <p class="animal-breed">${cardSubtitle}</p>
+
+      if (isClosed) {
+        // Vue Lot Clôturé / Vendu
+        const lotSales = (appState.sales || []).filter(s => s.linkedLotId === animal.id);
+        const totalSoldQty = lotSales.reduce((s, x) => s + (Number(x.quantity) || 0), 0);
+        const totalRevenue = lotSales.reduce((s, x) => s + (Number(x.total) || 0), 0);
+        const netProfit = totalRevenue - totalInvested;
+        const marginPct = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
+
+        card.className = 'animal-card animal-card-closed';
+        card.innerHTML = `
+          <div class="animal-card-header">
+            <div class="animal-title-group">
+              <div class="animal-avatar">${avatarIcon}</div>
+              <div>
+                <h3 class="animal-name">${cardTitle}</h3>
+                <p class="animal-breed">${cardSubtitle}</p>
+              </div>
+            </div>
+            <span class="badge-pill" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted); font-size: 0.72rem; font-weight: 700;">
+              📦 ${isAr ? 'دفعة منتهية (مباعة 100%)' : 'Lot clôturé (100% Vendu)'}
+            </span>
+          </div>
+
+          <div class="animal-stats-grid">
+            <div class="animal-stat-col">
+              <span class="lbl">${isAr ? 'مدة التربية' : 'Durée d\'élevage'}</span>
+              <span class="val text-muted">${ageText}</span>
+            </div>
+            <div class="animal-stat-col">
+              <span class="lbl">${this.t('card_current_count')}</span>
+              <span class="val text-muted">0 / ${animal.initialQuantity}</span>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                ${totalSoldQty} ${isAr ? 'مباع' : 'vendus'} • ${animal.mortality || 0} ${lossesWord}
+              </div>
+            </div>
+            <div class="animal-stat-col">
+              <span class="lbl">${isAr ? 'مجموع المبيعات' : 'Recette totale'}</span>
+              <span class="val text-emerald bold">${this.formatMoney(totalRevenue)}</span>
+            </div>
+            <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Modifier le lot">
+              <span class="lbl">${isAr ? 'الربح الصافي المحقق' : 'Bénéfice réalisé'}</span>
+              <span class="val ${netProfit >= 0 ? 'text-emerald' : 'text-rose'} bold">
+                ${(netProfit >= 0 ? '+' : '') + this.formatMoney(netProfit)}
+              </span>
+              <div style="font-size: 0.72rem; font-weight: 700; margin-top: 3px; color: var(--text-secondary);">
+                <span>${this.t('card_total_cost') || (isAr ? 'التكلفة الإجمالية:' : 'Coût Total :')}</span>
+                <strong style="color: var(--accent-amber);">${this.formatMoney(totalInvested)}</strong> (${Number(marginPct) >= 0 ? '+' : ''}${marginPct}%)
+              </div>
             </div>
           </div>
-          <span class="stage-badge ${stageBadgeClass}">${this.translateStage(animal.stage)}</span>
-        </div>
 
-        <div class="animal-stats-grid">
-          <div class="animal-stat-col">
-            <span class="lbl">${this.t('card_age_real')}</span>
-            <span class="val text-emerald">${ageText}</span>
+          <div class="animal-notes-bar" style="margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <small class="text-muted">✅ ${isAr ? 'تم بيع هذه الدفعة بالكامل. جميع المعاملات المالية محفوظة.' : 'Lot entièrement vendu. Données financières et historiques conservées.'}</small>
           </div>
-          <div class="animal-stat-col">
-            <span class="lbl">${this.t('card_current_count')}</span>
-            <span class="val">${animal.currentQuantity} / ${animal.initialQuantity}</span>
+
+          <div class="animal-card-actions" style="margin-top: 0.65rem;">
+            <button type="button" class="btn btn-sm btn-secondary flex-1" title="Modifier le lot" onclick="app.openEditAnimalModal('${animal.id}')">
+              ✏️ ${isAr ? 'تعديل' : 'Modifier'}
+            </button>
+            <button type="button" class="btn btn-sm btn-danger-outline" title="Supprimer définitivement" onclick="app.openDeleteAnimalModal('${animal.id}')">
+              🗑️
+            </button>
           </div>
-          <div class="animal-stat-col">
-            <span class="lbl">${this.t('card_survival_rate')}</span>
-            <span class="val text-cyan">${(100 - mortalityRate).toFixed(1)}% (${animal.mortality} ${lossesWord})</span>
+        `;
+      } else {
+        // Vue Lot Actif standard
+        card.className = 'animal-card';
+        card.innerHTML = `
+          <div class="animal-card-header">
+            <div class="animal-title-group">
+              <div class="animal-avatar">${avatarIcon}</div>
+              <div>
+                <h3 class="animal-name">${cardTitle}</h3>
+                <p class="animal-breed">${cardSubtitle}</p>
+              </div>
+            </div>
+            <span class="stage-badge ${stageBadgeClass}">${this.translateStage(animal.stage)}</span>
           </div>
-          <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Cliquer pour modifier le lot ou le coût">
-            <span class="lbl">${this.t('card_cost_head')} ✏️</span>
-            <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
-            <div style="font-size: 0.74rem; font-weight: 700; margin-top: 3px; color: var(--text-secondary);">
-              <span>${this.t('card_total_cost') || (appState.lang === 'ar' ? 'التكلفة الإجمالية:' : 'Coût Total :')}</span>
-              <strong style="color: var(--accent-amber); font-weight: 800; display: inline-block; margin-inline-start: 3px;">${this.formatMoney(totalInvested)}</strong>
+
+          <div class="animal-stats-grid">
+            <div class="animal-stat-col">
+              <span class="lbl">${this.t('card_age_real')}</span>
+              <span class="val text-emerald">${ageText}</span>
+            </div>
+            <div class="animal-stat-col">
+              <span class="lbl">${this.t('card_current_count')}</span>
+              <span class="val">${animal.currentQuantity} / ${animal.initialQuantity}</span>
+            </div>
+            <div class="animal-stat-col">
+              <span class="lbl">${this.t('card_survival_rate')}</span>
+              <span class="val text-cyan">${(100 - mortalityRate).toFixed(1)}% (${animal.mortality} ${lossesWord})</span>
+            </div>
+            <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Cliquer pour modifier le lot ou le coût">
+              <span class="lbl">${this.t('card_cost_head')} ✏️</span>
+              <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
+              <div style="font-size: 0.74rem; font-weight: 700; margin-top: 3px; color: var(--text-secondary);">
+                <span>${this.t('card_total_cost') || (isAr ? 'التكلفة الإجمالية:' : 'Coût Total :')}</span>
+                <strong style="color: var(--accent-amber); font-weight: 800; display: inline-block; margin-inline-start: 3px;">${this.formatMoney(totalInvested)}</strong>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="animal-notes-bar" style="margin-top: 0.5rem;">
-          <small class="text-muted">${animal.notes || defaultNotes}</small>
-        </div>
+          <div class="animal-notes-bar" style="margin-top: 0.5rem;">
+            <small class="text-muted">${animal.notes || defaultNotes}</small>
+          </div>
 
-        <div class="animal-card-actions" style="margin-top: 0.65rem;">
-          <button type="button" class="btn btn-sm btn-outline flex-1" onclick="app.openMortalityModal('${animal.id}')" title="Déclarer plusieurs pertes">
-            ${this.t('btn_mortalities_custom')}
-          </button>
-          <button type="button" class="btn btn-sm btn-outline flex-1" onclick="app.openPurchaseModal('${animal.id}')" title="Acheter et ajouter à ce lot">
-            ${this.t('btn_purchases_custom')}
-          </button>
-          <button type="button" class="btn btn-sm btn-emerald flex-1" onclick="app.quickSellFromLot('${animal.id}')">
-            ${this.t('btn_sell_lot')}
-          </button>
-          <button type="button" class="btn btn-sm btn-secondary" title="Modifier le lot ou le coût" onclick="app.openEditAnimalModal('${animal.id}')" style="display:inline-flex; align-items:center; gap:0.25rem;">
-            ✏️
-          </button>
-          <button type="button" class="btn btn-sm btn-danger-outline" title="Supprimer le lot" onclick="app.openDeleteAnimalModal('${animal.id}')">
-            🗑️
-          </button>
-        </div>
-      `;
+          <div class="animal-card-actions" style="margin-top: 0.65rem;">
+            <button type="button" class="btn btn-sm btn-outline flex-1" onclick="app.openMortalityModal('${animal.id}')" title="Déclarer plusieurs pertes">
+              ${this.t('btn_mortalities_custom')}
+            </button>
+            <button type="button" class="btn btn-sm btn-outline flex-1" onclick="app.openPurchaseModal('${animal.id}')" title="Acheter et ajouter à ce lot">
+              ${this.t('btn_purchases_custom')}
+            </button>
+            <button type="button" class="btn btn-sm btn-emerald flex-1" onclick="app.quickSellFromLot('${animal.id}')">
+              ${this.t('btn_sell_lot')}
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" title="Modifier le lot ou le coût" onclick="app.openEditAnimalModal('${animal.id}')" style="display:inline-flex; align-items:center; gap:0.25rem;">
+              ✏️
+            </button>
+            <button type="button" class="btn btn-sm btn-danger-outline" title="Supprimer le lot" onclick="app.openDeleteAnimalModal('${animal.id}')">
+              🗑️
+            </button>
+          </div>
+        `;
+      }
       grid.appendChild(card);
     });
   },
@@ -3841,7 +3965,7 @@ const app = {
     if (searchInput) searchInput.value = '';
     if (sortSelect) sortSelect.value = 'default';
     if (ageSelect) ageSelect.value = 'all';
-    if (qtySelect) qtySelect.value = 'all';
+    if (qtySelect) qtySelect.value = 'active';
     this.currentAnimalFilter = 'all';
     document.querySelectorAll('[data-filter-animal]').forEach(c => {
       if (c.getAttribute('data-filter-animal') === 'all') c.classList.add('active');
@@ -4388,6 +4512,10 @@ const app = {
   openMortalityModal(lotId) {
     const lot = appState.animals.find(a => a.id === lotId);
     if (!lot) return;
+    if ((Number(lot.currentQuantity) || 0) <= 0) {
+      this.showToast(appState.lang === 'ar' ? 'هذه الدفعة منتهية، لا توجد طيور لتسجيل خسائر عليها.' : 'Ce lot est clôturé (0 tête restante).', 'warning');
+      return;
+    }
     const idEl = document.getElementById('mortalityLotId');
     const nameEl = document.getElementById('mortalityLotName');
     const breedEl = document.getElementById('mortalityLotBreed');
@@ -4547,6 +4675,11 @@ const app = {
   },
 
   quickSellFromLot(lotId) {
+    const lot = appState.animals.find(a => a.id === lotId);
+    if (!lot || (Number(lot.currentQuantity) || 0) <= 0) {
+      this.showToast(appState.lang === 'ar' ? 'هذه الدفعة مباعة بالكامل، لا توجد طيور متبقية للبيع.' : 'Ce lot est déjà entièrement vendu (0 sujet restant).', 'warning');
+      return;
+    }
     this.openModal('modalAddSale');
     const select = document.getElementById('saleLotLinked');
     if (select) select.value = lotId;

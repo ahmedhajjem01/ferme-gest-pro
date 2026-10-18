@@ -677,7 +677,9 @@
               <div style="display: inline-flex; align-items: center; gap: 0.35rem;">
                 <label for="animalQtyFilterSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_filter_qty">Effectif :</label>
                 <select id="animalQtyFilterSelect" class="input-field" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; width: auto; font-weight: 600; margin: 0;" onchange="app.handleAnimalFilterChange()">
-                  <option value="all" data-i18n="filter_qty_all">Tous effectifs</option>
+                  <option value="active" data-i18n="filter_qty_active" selected>Lots actifs uniquement</option>
+                  <option value="all" data-i18n="filter_qty_all">Tous effectifs (Actifs + Clôturés)</option>
+                  <option value="closed" data-i18n="filter_qty_closed">📦 Lots clôturés / vendus (0 tête)</option>
                   <option value="large" data-i18n="filter_qty_large">Grands lots (&gt; 50)</option>
                   <option value="medium" data-i18n="filter_qty_medium">Lots moyens (10 - 50)</option>
                   <option value="small" data-i18n="filter_qty_small">Petits lots (&lt; 10)</option>
@@ -2455,8 +2457,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=74"></script>
-  <script src="translations.js?v=74"></script>
-  <script src="app.js?v=74"></script>
+  <script src="supabase-client.js?v=75"></script>
+  <script src="translations.js?v=75"></script>
+  <script src="app.js?v=75"></script>
 </body>
 </html>
