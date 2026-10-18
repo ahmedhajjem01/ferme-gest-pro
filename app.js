@@ -3436,12 +3436,25 @@ const app = {
         .filter(e => e.linkedLotId === animal.id)
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-      // 2. Dépenses réelles générales de la ferme réparties équitablement par sujet vivant
-      const totalGeneralExpenses = (appState.expenses || [])
-        .filter(e => !e.linkedLotId || e.linkedLotId === 'general')
+      // 2. Dépenses réelles générales de la ferme réparties équitablement et biologiquement :
+      // - L'aliment général est réparti selon l'appétit réel (un adulte de 120g/j absorbe 6x plus de dépense qu'un poussin de 20g/j)
+      // - Les autres charges générales (santé, eau, électricité) sont réparties équitablement par tête vivante
+      const generalFeedExpenses = (appState.expenses || [])
+        .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category === 'nourriture')
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-      const headShare = totalLivingAnimals > 0 ? (Number(animal.currentQuantity) || 0) / totalLivingAnimals : 0;
-      const allocatedGeneral = totalGeneralExpenses * headShare;
+
+      const generalOtherExpenses = (appState.expenses || [])
+        .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category !== 'nourriture')
+        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+      const feedShare = totalFarmDailyGrams > 0 
+        ? (((Number(animal.currentQuantity) || 0) * feedData.avgGrams) / totalFarmDailyGrams) 
+        : 0;
+      const headShare = totalLivingAnimals > 0 
+        ? ((Number(animal.currentQuantity) || 0) / totalLivingAnimals) 
+        : 0;
+
+      const allocatedGeneral = (generalFeedExpenses * feedShare) + (generalOtherExpenses * headShare);
 
       // 3. Prix d'achat réel saisi par l'éleveur (0 si éclos ou gratuit)
       const acquisitionCostPerHead = Number(animal.costPerHead) || 0;
