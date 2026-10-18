@@ -5205,8 +5205,6 @@ const app = {
     const descInput = document.getElementById('saleDescription');
     const priceInput = document.getElementById('saleUnitPrice');
     const qtyInput = document.getElementById('saleQuantity');
-    const ageInput = document.getElementById('saleAgeValue');
-    const ageUnit = document.getElementById('saleAgeUnit');
 
     if (type === 'oeufs') {
       typeSelect.value = 'oeufs';
@@ -5220,13 +5218,11 @@ const app = {
       typeSelect.value = 'poussin';
       const formatSelect = document.getElementById('saleUnitFormat');
       if (formatSelect) formatSelect.value = 'unite';
-      descInput.value = 'Vente poussins démarrés';
+      descInput.value = 'Vente poussins';
       qtyInput.value = '';
       qtyInput.placeholder = '';
       priceInput.value = '';
       priceInput.placeholder = '';
-      if (ageInput) { ageInput.value = ''; ageInput.placeholder = ''; }
-      if (ageUnit) ageUnit.value = 'jours';
     } else if (type === 'poulet') {
       typeSelect.value = 'poulet';
       const formatSelect = document.getElementById('saleUnitFormat');
@@ -5236,8 +5232,6 @@ const app = {
       qtyInput.placeholder = '';
       priceInput.value = '';
       priceInput.placeholder = '';
-      if (ageInput) { ageInput.value = ''; ageInput.placeholder = ''; }
-      if (ageUnit) ageUnit.value = 'mois';
     }
 
     this.handleSaleTypeChange();
@@ -5247,108 +5241,38 @@ const app = {
     const type = document.getElementById('saleProductType').value;
     const format = document.getElementById('saleUnitFormat');
     const price = document.getElementById('saleUnitPrice');
-    const ageRow = document.getElementById('saleAgeRow');
-    const smartBox = document.getElementById('saleSmartCalcBox');
     const unitLabel = document.getElementById('saleQtyUnitLabel');
-    const ageUnit = document.getElementById('saleAgeUnit');
-    const ageInput = document.getElementById('saleAgeValue');
     const eggFormatGroup = document.getElementById('eggFormatButtonGroup');
 
     if (type === 'oeufs') {
       if (eggFormatGroup) eggFormatGroup.style.display = 'block';
-      if (ageRow) ageRow.classList.add('hidden');
-      if (smartBox) smartBox.classList.add('hidden');
-      if (unitLabel) unitLabel.textContent = '(Haras / Plateaux)';
       let curFmt = format ? format.value : 'hara';
       if (!['hara', 'plateau', 'oeuf-unite'].includes(curFmt)) {
         curFmt = 'hara';
       }
       this.setSaleEggFormat(curFmt);
-      if (price) price.placeholder = '';
-    } else if (type === 'poussin') {
+    } else {
       if (eggFormatGroup) eggFormatGroup.style.display = 'none';
-      if (ageRow) ageRow.classList.remove('hidden');
-      if (smartBox) smartBox.classList.remove('hidden');
-      if (unitLabel) unitLabel.textContent = '(Poussins / Sujets)';
       if (format) format.value = 'unite';
 
-      // Options d'âge pour Poussin : Jours ou Semaines
-      if (ageUnit) {
-        ageUnit.innerHTML = `
-          <option value="jours">${this.t('opt_age_days') || 'Jours'}</option>
-          <option value="semaines">${this.t('opt_age_weeks') || 'Semaines'}</option>
-        `;
-        ageUnit.value = 'jours';
+      if (type === 'poussin') {
+        const unitPoussin = appState.lang === 'ar' ? '(كتاكيت / بالرأس)' : (appState.lang === 'en' ? '(Chicks / Birds)' : '(Poussins / Sujets)');
+        if (unitLabel) unitLabel.textContent = unitPoussin;
+      } else if (type === 'poulet') {
+        const unitPoulet = appState.lang === 'ar' ? '(دجاج / بالرأس)' : (appState.lang === 'en' ? '(Chickens / Birds)' : '(Poulets / Sujets)');
+        if (unitLabel) unitLabel.textContent = unitPoulet;
+      } else if (type === 'pintade') {
+        const unitPintade = appState.lang === 'ar' ? '(دجاج الوادي / غرغر)' : (appState.lang === 'en' ? '(Guinea Fowls)' : '(Pintades / Sujets)');
+        if (unitLabel) unitLabel.textContent = unitPintade;
+      } else if (type === 'canard') {
+        const unitCanard = appState.lang === 'ar' ? '(بط مسكوفي / بالرأس)' : (appState.lang === 'en' ? '(Muscovy Ducks)' : '(Canards de Barbarie / Sujets)');
+        if (unitLabel) unitLabel.textContent = unitCanard;
+      } else {
+        if (unitLabel) unitLabel.textContent = '(Sujets / Unités)';
       }
-      if (ageInput) {
-        ageInput.disabled = false;
-        ageInput.placeholder = '';
-      }
-      if (price) price.placeholder = '';
-
-    } else if (type === 'poulet') {
-      if (eggFormatGroup) eggFormatGroup.style.display = 'none';
-      if (ageRow) ageRow.classList.remove('hidden');
-      if (smartBox) smartBox.classList.remove('hidden');
-      if (unitLabel) unitLabel.textContent = '(Poulets / Sujets)';
-      if (format) format.value = 'unite';
-
-      // Options d'âge pour Poulet : Mois ou Adulte (> 6 mois)
-      if (ageUnit) {
-        ageUnit.innerHTML = `
-          <option value="mois">${this.t('opt_age_months') || 'Mois'}</option>
-          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois)'}</option>
-        `;
-        ageUnit.value = 'mois';
-      }
-      if (ageInput) {
-        ageInput.disabled = false;
-        ageInput.placeholder = '';
-      }
-      if (price) price.placeholder = '';
-
-    } else if (type === 'pintade') {
-      if (eggFormatGroup) eggFormatGroup.style.display = 'none';
-      if (ageRow) ageRow.classList.remove('hidden');
-      if (smartBox) smartBox.classList.remove('hidden');
-      const unitPintade = appState.lang === 'ar' ? '(دجاج الوادي / غرغر)' : (appState.lang === 'en' ? '(Guinea Fowls)' : '(Pintades / Sujets)');
-      if (unitLabel) unitLabel.textContent = unitPintade;
-      if (format) format.value = 'unite';
-
-      if (ageUnit) {
-        ageUnit.innerHTML = `
-          <option value="mois">${this.t('opt_age_months') || 'Mois'}</option>
-          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois)'}</option>
-        `;
-        ageUnit.value = 'mois';
-      }
-      if (ageInput) {
-        ageInput.disabled = false;
-        ageInput.placeholder = '';
-      }
-      if (price) price.placeholder = '';
-    } else if (type === 'canard') {
-      if (eggFormatGroup) eggFormatGroup.style.display = 'none';
-      if (ageRow) ageRow.classList.remove('hidden');
-      if (smartBox) smartBox.classList.remove('hidden');
-      const unitCanard = appState.lang === 'ar' ? '(البط المسكوفي / بالرأس)' : (appState.lang === 'en' ? '(Muscovy Ducks)' : '(Canards de Barbarie / Sujets)');
-      if (unitLabel) unitLabel.textContent = unitCanard;
-      if (format) format.value = 'unite';
-
-      if (ageUnit) {
-        ageUnit.innerHTML = `
-          <option value="mois">${this.t('opt_age_months') || 'Mois'}</option>
-          <option value="adulte">${this.t('opt_age_adult') || 'Adulte (> 6 mois)'}</option>
-        `;
-        ageUnit.value = 'mois';
-      }
-      if (ageInput) {
-        ageInput.disabled = false;
-        ageInput.placeholder = '';
-      }
-      if (price) price.placeholder = '';
     }
 
+    if (price) price.placeholder = '';
     this.calcSaleTotal();
   },
 
@@ -5378,12 +5302,13 @@ const app = {
     const ageUnit = document.getElementById('saleAgeUnit')?.value || '';
 
     let ageText = '';
-    if (productType === 'poussin') {
-      const days = (!isNaN(rawAge) && rawAge > 0) ? (ageUnit === 'semaines' ? rawAge * 7 : rawAge) : 21;
-      ageText = `${days} jours`;
-    } else if (productType === 'poulet' || productType === 'pintade' || productType === 'canard') {
-      const isAdult = ageUnit === 'adulte' || isNaN(rawAge) || rawAge <= 0;
-      ageText = isAdult ? 'Adulte (> 6 mois)' : `${rawAge} mois`;
+    if (!isNaN(rawAge) && rawAge > 0) {
+      if (productType === 'poussin') {
+        const days = (ageUnit === 'semaines') ? rawAge * 7 : rawAge;
+        ageText = `${days} jours`;
+      } else if (['poulet', 'pintade', 'canard'].includes(productType)) {
+        ageText = (ageUnit === 'adulte') ? 'Adulte (> 6 mois)' : `${rawAge} mois`;
+      }
     }
 
     if (!description || !date) {
