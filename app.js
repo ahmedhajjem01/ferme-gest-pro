@@ -3625,7 +3625,17 @@ const app = {
     const quantity = parseInt(document.getElementById('editAnimalQuantity').value, 10);
     const birthDate = document.getElementById('editAnimalBirthDate')?.value;
     const arrivalAgeVal = document.getElementById('editAnimalArrivalAgeDays')?.value;
-    const arrivalAgeDays = (arrivalAgeVal === '' || isNaN(parseInt(arrivalAgeVal, 10))) ? 0 : Math.max(0, parseInt(arrivalAgeVal, 10));
+    const editStagePresetSelect = document.getElementById('editAnimalStageSelect');
+    let editPresetDefaultDays = 0;
+    if (editStagePresetSelect) {
+      const opt = editStagePresetSelect.options[editStagePresetSelect.selectedIndex];
+      if (opt && opt.getAttribute('data-days') !== null) {
+        editPresetDefaultDays = parseInt(opt.getAttribute('data-days'), 10) || 0;
+      }
+    }
+    const arrivalAgeDays = (arrivalAgeVal !== '' && !isNaN(parseInt(arrivalAgeVal, 10))) 
+      ? Math.max(0, parseInt(arrivalAgeVal, 10)) 
+      : (animal.arrivalAgeDays !== undefined && animal.arrivalAgeDays !== null && animal.arrivalAgeDays > 0 ? animal.arrivalAgeDays : editPresetDefaultDays);
     const stage = document.getElementById('editAnimalStage')?.value || animal.stage || 'Croissance';
     const costVal = document.getElementById('editAnimalCostPerHead').value;
     const costPerHead = (costVal === '' || isNaN(parseFloat(costVal))) ? 0 : Math.max(0, parseFloat(costVal));
@@ -3696,13 +3706,13 @@ const app = {
         },
         {
           key: 'canard_croissance',
-          days: 22,
-          label: isAr ? '🦆 بط نمو' : (isEn ? '🦆 Growing duck' : '🦆 Canard croissance')
+          days: 30,
+          label: isAr ? '🦆 بط نمو (~1 شهر)' : (isEn ? '🦆 Growing duck (~1 mo)' : '🦆 Canard croissance (~1 mois)')
         },
         {
           key: 'canard_adulte',
-          days: 120,
-          label: isAr ? '🦆 بط بالغ' : (isEn ? '🦆 Adult duck' : '🦆 Canard adulte')
+          days: 180,
+          label: isAr ? '🦆 بط بالغ (~6 أشهر)' : (isEn ? '🦆 Adult duck (~6 mos)' : '🦆 Canard adulte (~6 mois)')
         }
       ];
     } else if (sp === 'pintade') {
@@ -3715,12 +3725,12 @@ const app = {
         {
           key: 'pintade_croissance',
           days: 30,
-          label: isAr ? '🪶 دجاج الوادي نمو' : (isEn ? '🪶 Growing guinea' : '🪶 Pintade croissance')
+          label: isAr ? '🪶 دجاج الوادي نمو (~1 شهر)' : (isEn ? '🪶 Growing guinea (~1 mo)' : '🪶 Pintade croissance (~1 mois)')
         },
         {
           key: 'pintade_adulte',
-          days: 90,
-          label: isAr ? '🪶 دجاج الوادي بالغ' : (isEn ? '🪶 Adult guinea' : '🪶 Pintade adulte')
+          days: 180,
+          label: isAr ? '🪶 دجاج الوادي بالغ (~6 أشهر)' : (isEn ? '🪶 Adult guinea (~6 mos)' : '🪶 Pintade adulte (~6 mois)')
         }
       ];
     } else if (sp === 'autre') {
@@ -3733,12 +3743,12 @@ const app = {
         {
           key: 'autre_croissance',
           days: 30,
-          label: isAr ? '🐥 مرحلة النمو' : (isEn ? '🐥 Growing' : '🐥 Croissance')
+          label: isAr ? '🐥 مرحلة النمو (~1 شهر)' : (isEn ? '🐥 Growing (~1 mo)' : '🐥 Croissance (~1 mois)')
         },
         {
           key: 'autre_adulte',
           days: 180,
-          label: isAr ? '🦃 طيور بالغة' : (isEn ? '🦃 Adult' : '🦃 Adulte')
+          label: isAr ? '🦃 طيور بالغة (~6 أشهر)' : (isEn ? '🦃 Adult (~6 mos)' : '🦃 Adulte (~6 mois)')
         }
       ];
     } else {
@@ -3752,17 +3762,17 @@ const app = {
         {
           key: 'croissance',
           days: 30,
-          label: isAr ? '🐥 دجاج نمو / فرارج' : (isEn ? '🐥 Growing chicken' : '🐥 Poulet croissance')
+          label: isAr ? '🐥 دجاج نمو / فرارج (~1 شهر)' : (isEn ? '🐥 Growing chicken (~1 mo)' : '🐥 Poulet croissance (~1 mois)')
         },
         {
           key: 'pondeuse',
           days: 180,
-          label: isAr ? '🐓 دجاجة بياضة' : (isEn ? '🐓 Laying hen' : '🐓 Poule pondeuse')
+          label: isAr ? '🐓 دجاجة بياضة (~6 أشهر)' : (isEn ? '🐓 Laying hen (~6 mos)' : '🐓 Poule pondeuse (~6 mois)')
         },
         {
           key: 'coq',
-          days: 180,
-          label: isAr ? '🐓 سردوك بالغ' : (isEn ? '🐓 Adult rooster' : '🐓 Coq adulte')
+          days: 210,
+          label: isAr ? '🐓 سردوك بالغ (~7 أشهر)' : (isEn ? '🐓 Adult rooster (~7 mos)' : '🐓 Coq adulte (~7 mois)')
         }
       ];
     }
@@ -3775,6 +3785,8 @@ const app = {
   handleAnimalStagePresetChange(presetKey, formPrefix = 'animal') {
     const arrivalAgeInput = document.getElementById(`${formPrefix}ArrivalAgeDays`);
     const hiddenStage = document.getElementById(`${formPrefix}Stage`);
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
 
     let defaultDays = 0;
     let stageName = 'Croissance';
@@ -3786,25 +3798,31 @@ const app = {
       defaultDays = 30;
       stageName = 'Croissance';
     } else if (presetKey === 'canard_croissance') {
-      defaultDays = 22;
+      defaultDays = 30;
       stageName = 'Croissance';
     } else if (presetKey === 'pondeuse') {
-      defaultDays = 180;
+      defaultDays = 180; // 6 mois
       stageName = 'Ponte';
     } else if (presetKey === 'coq') {
-      defaultDays = 180;
+      defaultDays = 210; // 7 mois
       stageName = 'Adulte';
-    } else if (presetKey === 'canard_adulte') {
-      defaultDays = 120;
+    } else if (presetKey === 'canard_adulte' || presetKey === 'pintade_adulte' || presetKey === 'autre_adulte') {
+      defaultDays = 180; // 6 mois
       stageName = 'Adulte';
     } else {
-      defaultDays = 120;
+      defaultDays = 180;
       stageName = 'Adulte';
     }
 
     if (arrivalAgeInput) {
-      arrivalAgeInput.value = '';
-      arrivalAgeInput.placeholder = '';
+      if (defaultDays > 0) {
+        const months = Math.round(defaultDays / 30);
+        arrivalAgeInput.placeholder = isAr 
+          ? `تلقائياً: ${defaultDays} يوم (~${months} أشهر إذا ترك فارغاً)`
+          : (isEn ? `Default: ${defaultDays} days (~${months} mos if empty)` : `Par défaut : ${defaultDays} j (~${months} mois si vide)`);
+      } else {
+        arrivalAgeInput.placeholder = isAr ? '0 يوم (كتاكيت بداية)' : (isEn ? '0 days (chicks)' : '0 jour (poussin démarrage)');
+      }
     }
     if (hiddenStage) {
       hiddenStage.value = stageName;
@@ -3822,7 +3840,19 @@ const app = {
     const quantity = parseInt(document.getElementById('animalQuantity').value, 10);
     const birthDate = document.getElementById('animalBirthDate').value;
     const arrivalAgeVal = document.getElementById('animalArrivalAgeDays')?.value;
-    const arrivalAgeDays = (arrivalAgeVal === '' || isNaN(parseInt(arrivalAgeVal, 10))) ? 0 : Math.max(0, parseInt(arrivalAgeVal, 10));
+
+    // Estimation intelligente de l'âge à l'achat si non renseigné (ex: 210j pour coq adulte, 180j pour poule pondeuse)
+    const stagePresetSelect = document.getElementById('animalStageSelect');
+    let presetDefaultDays = 0;
+    if (stagePresetSelect) {
+      const opt = stagePresetSelect.options[stagePresetSelect.selectedIndex];
+      if (opt && opt.getAttribute('data-days') !== null) {
+        presetDefaultDays = parseInt(opt.getAttribute('data-days'), 10) || 0;
+      }
+    }
+    const arrivalAgeDays = (arrivalAgeVal !== '' && !isNaN(parseInt(arrivalAgeVal, 10))) 
+      ? Math.max(0, parseInt(arrivalAgeVal, 10)) 
+      : presetDefaultDays;
     
     // Accepte explicitement 0 pour les animaux gratuits / éclos
     const rawCost = document.getElementById('animalCostPerHead').value;
