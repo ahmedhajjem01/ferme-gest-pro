@@ -2504,6 +2504,12 @@ const app = {
     const container = document.getElementById('feedSmartPresetsContainer');
     if (!container) return;
 
+    const declaredFeeds = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0);
+    if (declaredFeeds.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
     const hasHistory = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
     const favorite = appState.savedFavoriteFeedRoutine;
     const routine = favorite || (hasHistory ? appState.feedDistributions[0] : null);
@@ -2511,6 +2517,8 @@ const app = {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
+    const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'boîte');
+    const btesLabel = isAr ? 'علب' : (isEn ? 'cans' : 'boîtes');
 
     let routineHtml = '';
     if (routine && Array.isArray(routine.items) && routine.items.length > 0) {
@@ -2546,6 +2554,70 @@ const app = {
       `;
     }
 
+    let presetsGridHtml = '';
+
+    if (declaredFeeds.length === 1) {
+      // 1 seul aliment en stock (ex: uniquement Blé) -> raccourcis 100% dédiés à cet aliment sans aucun autre aliment mentionné !
+      const f = declaredFeeds[0];
+      const name = this.getFeedShortName(f);
+
+      presetsGridHtml = `
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; margin-bottom: 0.4rem;">
+          <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setSingleFeedDistribCans('${f.id}', 1.0)">
+            <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-emerald);">🌾 1 ${bteLabel} ${name}</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">~0.67 ${unitKg}</div>
+          </button>
+          <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setSingleFeedDistribCans('${f.id}', 2.0)">
+            <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-amber);">🌾 2 ${btesLabel} ${name}</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">~1.33 ${unitKg}</div>
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;">
+          <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setSingleFeedDistribCans('${f.id}', 0.5)">
+            0.5 ${bteLabel}
+          </button>
+          <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setSingleFeedDistribCans('${f.id}', 1.5)">
+            1.5 ${bteLabel}
+          </button>
+          <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
+            ${this.t('feed_smart_clear')}
+          </button>
+        </div>
+      `;
+    } else {
+      // 2 ou plusieurs aliments déclarés en stock (ex: Blé + Bouchon, ou Blé + Maïs)
+      const feedA = declaredFeeds[0];
+      const feedB = declaredFeeds[1];
+      const nameA = this.getFeedShortName(feedA);
+      const nameB = this.getFeedShortName(feedB);
+
+      presetsGridHtml = `
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; margin-bottom: 0.4rem;">
+          <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setTwoFeedsDistribCans('${feedA.id}', 1.0, '${feedB.id}', 1.0)">
+            <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-emerald);">1 ${nameA} + 1 ${nameB}</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">2 ${btesLabel} (~1.33 ${unitKg})</div>
+          </button>
+          <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setTwoFeedsDistribCans('${feedA.id}', 1.0, '${feedB.id}', 0.5)">
+            <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-amber);">1 ${nameA} + 0.5 ${nameB}</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">1.5 ${bteLabel} (~1.00 ${unitKg})</div>
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;">
+          <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setSingleFeedDistribCans('${feedA.id}', 1.0)">
+            1 ${bteLabel} ${nameA}
+          </button>
+          <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.setSingleFeedDistribCans('${feedB.id}', 1.0)">
+            1 ${bteLabel} ${nameB}
+          </button>
+          <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
+            ${this.t('feed_smart_clear')}
+          </button>
+        </div>
+      `;
+    }
+
     container.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
         <label class="form-label" style="font-weight: 700; font-size: 0.8rem; margin: 0;">
@@ -2557,31 +2629,7 @@ const app = {
       </div>
 
       ${routineHtml}
-
-      <!-- Combos 1-clic Blé + Bouchon -->
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; margin-bottom: 0.4rem;">
-        <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.applyDistribPreset('ble_1_bouchon_1')">
-          <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-emerald);">${this.t('feed_preset_combo_1_1')}</div>
-          <div style="font-size: 0.67rem; color: var(--text-muted);">${this.t('feed_preset_combo_1_1_sub')}</div>
-        </button>
-        <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.applyDistribPreset('ble_1_bouchon_half')">
-          <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-amber);">${this.t('feed_preset_combo_1_half')}</div>
-          <div style="font-size: 0.67rem; color: var(--text-muted);">${this.t('feed_preset_combo_1_half_sub')}</div>
-        </button>
-      </div>
-
-      <!-- Raccourcis individuels + Reset -->
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;">
-        <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.applyDistribPreset('ble_1_only')">
-          ${this.t('feed_preset_ble_only')}
-        </button>
-        <button type="button" class="btn btn-outline" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 700;" onclick="app.applyDistribPreset('bouchon_1_only')">
-          ${this.t('feed_preset_bouchon_only')}
-        </button>
-        <button type="button" class="btn btn-outline btn-emerald" style="padding: 0.38rem 0.2rem; font-size: 0.72rem; font-weight: 800;" onclick="app.applyDistribPreset('clear')">
-          ${this.t('feed_smart_clear')}
-        </button>
-      </div>
+      ${presetsGridHtml}
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; flex-wrap: wrap; gap: 0.3rem;">
         <small style="font-size: 0.7rem; color: var(--text-muted);">
@@ -2594,10 +2642,27 @@ const app = {
     `;
   },
 
+  setSingleFeedDistribCans(feedId, cans) {
+    (appState.feedTypes || []).forEach(ft => {
+      this.setFeedTypeDistribSicam(ft.id, ft.id === feedId ? cans : 0);
+    });
+  },
+
+  setTwoFeedsDistribCans(feedAId, cansA, feedBId, cansB) {
+    (appState.feedTypes || []).forEach(ft => {
+      if (ft.id === feedAId) this.setFeedTypeDistribSicam(ft.id, cansA);
+      else if (ft.id === feedBId) this.setFeedTypeDistribSicam(ft.id, cansB);
+      else this.setFeedTypeDistribSicam(ft.id, 0);
+    });
+  },
+
   applyLearnedRoutine(mode) {
     const routine = appState.savedFavoriteFeedRoutine || (appState.feedDistributions && appState.feedDistributions[0]);
     if (!routine || !Array.isArray(routine.items)) {
-      this.applyDistribPreset('ble_1_bouchon_1');
+      const declaredFeeds = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0);
+      if (declaredFeeds.length > 0) {
+        this.setSingleFeedDistribCans(declaredFeeds[0].id, 1.0);
+      }
       return;
     }
 
@@ -2861,30 +2926,30 @@ const app = {
   },
 
   applyDistribPreset(presetName) {
-    appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
-    const bleFeed = (appState.feedTypes || []).find(ft => ft.id === 'feed-ble' || ft.name?.toLowerCase().includes('blé') || ft.name?.toLowerCase().includes('ble') || ft.name?.includes('قمح'));
-    const bouchonFeed = (appState.feedTypes || []).find(ft => ft.id === 'feed-bouchon' || ft.name?.toLowerCase().includes('bouchon') || ft.name?.toLowerCase().includes('ponte') || ft.name?.includes('بوشون'));
+    if (presetName === 'clear') {
+      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+    } else {
+      const declaredFeeds = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0);
+      const bleFeed = declaredFeeds.find(ft => ft.id === 'feed-ble' || ft.name?.toLowerCase().includes('blé') || ft.name?.toLowerCase().includes('ble') || ft.name?.includes('قمح'));
+      const bouchonFeed = declaredFeeds.find(ft => ft.id === 'feed-bouchon' || ft.name?.toLowerCase().includes('bouchon') || ft.name?.toLowerCase().includes('ponte') || ft.name?.includes('بوشون'));
 
-    if (presetName === 'ble_1_bouchon_1') {
-      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
-      if (bleFeed) this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
-      if (bouchonFeed) this.setFeedTypeDistribSicam(bouchonFeed.id, 1.0);
-    } else if (presetName === 'ble_1_bouchon_half') {
-      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
-      if (bleFeed) this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
-      if (bouchonFeed) this.setFeedTypeDistribSicam(bouchonFeed.id, 0.5);
-    } else if (presetName === 'ble_1_only') {
-      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
-      if (bleFeed) this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
-    } else if (presetName === 'bouchon_1_only') {
-      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
-      if (bouchonFeed) this.setFeedTypeDistribSicam(bouchonFeed.id, 1.0);
-    } else if (presetName === 'half_can') {
-      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0.5));
-    } else if (presetName === 'one_can') {
-      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 1.0));
-    } else if (presetName === 'clear') {
-      (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+      if (presetName === 'ble_1_bouchon_1' && bleFeed && bouchonFeed) {
+        (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+        this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
+        this.setFeedTypeDistribSicam(bouchonFeed.id, 1.0);
+      } else if (presetName === 'ble_1_bouchon_half' && bleFeed && bouchonFeed) {
+        (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+        this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
+        this.setFeedTypeDistribSicam(bouchonFeed.id, 0.5);
+      } else if (presetName === 'ble_1_only' && bleFeed) {
+        (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+        this.setFeedTypeDistribSicam(bleFeed.id, 1.0);
+      } else if (presetName === 'bouchon_1_only' && bouchonFeed) {
+        (appState.feedTypes || []).forEach(ft => this.setFeedTypeDistribSicam(ft.id, 0));
+        this.setFeedTypeDistribSicam(bouchonFeed.id, 1.0);
+      } else if (declaredFeeds.length > 0) {
+        this.setSingleFeedDistribCans(declaredFeeds[0].id, 1.0);
+      }
     }
     this.recalcDistribTotal();
   },
