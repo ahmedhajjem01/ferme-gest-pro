@@ -265,8 +265,8 @@ const SAMPLE_DATA = {
       description: 'Vente 15 Haras d\'œufs frais (60 œufs au marché)',
       format: 'hara',
       quantity: 15,
-      unitPrice: 1.800,
-      total: 27.000,
+      unitPrice: 2.000,
+      total: 30.000,
       linkedLotId: 'lot-p-02'
     },
     {
@@ -276,8 +276,8 @@ const SAMPLE_DATA = {
       description: 'Vente 12 œufs à l\'unité (3 Haras)',
       format: 'oeuf-unite',
       quantity: 12,
-      unitPrice: 0.450,
-      total: 5.400,
+      unitPrice: 0.500,
+      total: 6.000,
       linkedLotId: 'lot-p-02'
     },
     {
@@ -580,7 +580,8 @@ const app = {
         sales: appState.sales,
         incubatorBatches: appState.incubatorBatches,
         dismissedSaleAlerts: Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : [],
-        savedFavoriteFeedRoutine: appState.savedFavoriteFeedRoutine || null
+        savedFavoriteFeedRoutine: appState.savedFavoriteFeedRoutine || null,
+        _zeroInitialized: true
       }));
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
@@ -641,6 +642,21 @@ const app = {
         appState.expenses = rawExpenses.filter(e => e.linkedLotId !== 'lot-b-01' && e.linkedLotId !== 'lot-o-01');
 
         appState.incubatorBatches = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches : [];
+
+        // Mise à 0 automatique des données de démo selon la consigne de l'utilisateur
+        if (!parsed._zeroInitialized) {
+          appState.animals = [];
+          appState.expenses = [];
+          appState.sales = [];
+          appState.incubatorBatches = [];
+          appState.eggHarvests = [];
+          appState.eggStock = 0;
+          appState.feedDistributions = [];
+          appState._zeroInitialized = true;
+        } else {
+          appState._zeroInitialized = true;
+        }
+
         if (!appState.animals || appState.animals.length === 0) {
           appState.customDailyFeedKg = null;
           appState.sicamCansCount = null;
@@ -656,6 +672,7 @@ const app = {
         appState.expenses = [];
         appState.sales = [];
         appState.incubatorBatches = [];
+        appState._zeroInitialized = true;
         this.saveState();
       }
     } catch (e) {
@@ -1184,11 +1201,11 @@ const app = {
     const isTND = appState.currency === 'TND';
     if (priceInput) {
       if (format === 'hara') {
-        priceInput.value = isTND ? '1.800' : '0.90';
+        priceInput.value = isTND ? '2.000' : '1.00';
       } else if (format === 'plateau') {
-        priceInput.value = isTND ? '13.500' : '6.50';
+        priceInput.value = isTND ? '15.000' : '7.50';
       } else {
-        priceInput.value = isTND ? '0.450' : '0.25';
+        priceInput.value = isTND ? '0.500' : '0.25';
       }
     }
     this.calcSellEggTotal();
@@ -5164,6 +5181,19 @@ const app = {
       }
     }
 
+    // Prix suggéré d'après le cours en Tunisie (0.500 DT l'œuf, 2.000 DT la Hara, 15.000 DT le plateau)
+    const priceInput = document.getElementById('saleUnitPrice');
+    if (priceInput && (!priceInput.value || ['0.450', '0.45', '0.500', '0.5', '1.800', '1.8', '2.000', '2', '13.500', '13.5', '15.000', '15'].includes(priceInput.value))) {
+      const isTND = appState.currency === 'TND';
+      if (format === 'hara') {
+        priceInput.value = isTND ? '2.000' : '1.00';
+      } else if (format === 'plateau') {
+        priceInput.value = isTND ? '15.000' : '7.50';
+      } else {
+        priceInput.value = isTND ? '0.500' : '0.25';
+      }
+    }
+
     this.handleFormatChange();
   },
 
@@ -5178,16 +5208,16 @@ const app = {
       const cur = parseFloat(qtyInput?.value) || 0;
       if (qtyInput) qtyInput.value = (cur < 20) ? cur + qty : qty;
       if (priceInput && (!priceInput.value || parseFloat(priceInput.value) > 2)) {
-        priceInput.value = isTND ? 0.450 : 0.20;
+        priceInput.value = isTND ? 0.500 : 0.25;
       }
     } else if (mode === 'hara') {
       this.setSaleEggFormat('hara');
       if (qtyInput) qtyInput.value = qty;
-      if (priceInput) priceInput.value = isTND ? 1.800 : 0.80;
+      if (priceInput) priceInput.value = isTND ? 2.000 : 1.00;
     } else if (mode === 'plateau') {
       this.setSaleEggFormat('plateau');
       if (qtyInput) qtyInput.value = qty;
-      if (priceInput) priceInput.value = isTND ? 13.500 : 5.50;
+      if (priceInput) priceInput.value = isTND ? 15.000 : 7.50;
     }
 
     this.calcSaleTotal();
@@ -5212,8 +5242,8 @@ const app = {
       descInput.value = 'Vente œufs frais de ferme';
       qtyInput.value = '';
       qtyInput.placeholder = '';
-      priceInput.value = '';
-      priceInput.placeholder = '';
+      priceInput.value = '2.000';
+      priceInput.placeholder = '2.000';
     } else if (type === 'poussin') {
       typeSelect.value = 'poussin';
       const formatSelect = document.getElementById('saleUnitFormat');
@@ -5516,49 +5546,54 @@ const app = {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
 
+    const zeroHint = isAr ? 'الربح الصافي: 0% (في انتظار تسجيل بيع)' : (isEn ? 'Net margin: 0% (Awaiting sales)' : 'Marge nette: 0% (En attente de vente)');
+    const marginLbl = isAr ? 'الربح الصافي :' : (isEn ? 'Net margin:' : 'Marge nette :');
+
     // 1. Cost per Egg (Coût de revient par Œuf)
     const layingLots = (appState.animals || []).filter(a => a.species === 'pondeuse');
     const layingLotIds = layingLots.map(a => a.id);
     const eggFeedCost = (appState.expenses || [])
-      .filter(e => layingLotIds.includes(e.linkedLotId))
+      .filter(e => layingLotIds.includes(e.linkedLotId) || e.linkedLotId === 'lot-pondeuses')
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
-    const totalEggsCollected = (appState.eggCollections || [])
+    const totalEggsCollected = (appState.eggCollections || appState.eggHarvests || [])
       .reduce((sum, c) => sum + (Number(c.quantity) || 0), 0);
     const currentEggStock = Number(appState.eggStock) || 0;
-    const totalEggsSold = (appState.sales || [])
-      .filter(s => s.productType === 'oeufs')
-      .reduce((sum, s) => {
-        let factor = 1;
-        if (s.format === 'plateau') factor = 30;
-        else if (s.format === 'hara') factor = 4;
-        return sum + ((Number(s.quantity) || 0) * factor);
-      }, 0);
-    const totalEggsRevenue = (appState.sales || [])
-      .filter(s => s.productType === 'oeufs')
-      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
-
-    const totalEggsCounted = Math.max(totalEggsCollected, totalEggsSold, currentEggStock);
+    const eggSales = (appState.sales || []).filter(s => s.productType === 'oeufs');
+    const totalEggsSold = eggSales.reduce((sum, s) => {
+      let factor = 1;
+      if (s.format === 'plateau') factor = 30;
+      else if (s.format === 'hara') factor = 4;
+      return sum + ((Number(s.quantity) || 0) * factor);
+    }, 0);
+    const totalEggsRevenue = eggSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
     const eggPriceEl = document.getElementById('costPerEgg');
     const eggMarginEl = document.getElementById('marginPerEgg');
 
-    if (eggFeedCost > 0 && totalEggsCounted > 0) {
-      const costEgg = eggFeedCost / totalEggsCounted;
+    if (totalEggsSold > 0 && totalEggsRevenue > 0) {
+      // Une vente d'œufs a eu lieu : calcul du coût unitaire réel et de la marge nette
+      const totalEggsBase = Math.max(totalEggsSold, totalEggsCollected, currentEggStock);
+      const costEgg = eggFeedCost > 0 ? (eggFeedCost / totalEggsBase) : 0;
+      const netProfit = totalEggsRevenue - (costEgg * totalEggsSold);
+      const marginPct = ((netProfit / totalEggsRevenue) * 100).toFixed(1);
+
       if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(costEgg);
       if (eggMarginEl) {
-        eggMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(eggFeedCost)} (${totalEggsCounted} ${isAr ? 'بيضة' : (isEn ? 'eggs' : 'œufs')})`;
-        eggMarginEl.className = 'text-muted';
+        const sign = Number(marginPct) >= 0 ? '+' : '';
+        eggMarginEl.textContent = `${marginLbl} ${sign}${marginPct}% (${totalEggsSold} ${isAr ? 'بيضة مباعة' : (isEn ? 'eggs sold' : 'œufs vendus')})`;
+        eggMarginEl.className = Number(marginPct) >= 0 ? 'text-emerald bold' : 'text-rose bold';
       }
     } else {
+      // 0 vente enregistrée : compteur strictement à zéro
       if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(0);
       if (eggMarginEl) {
-        eggMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(0)} (${this.t('unit_cost_zero_hint')})`;
+        eggMarginEl.textContent = zeroHint;
         eggMarginEl.className = 'text-muted';
       }
     }
 
-    // 2. Cost per Chicken (Coût de revient par Poulet 1-6 mois / chair)
+    // 2. Cost per Chicken (Coût de revient par Poulet)
     const chickenLots = (appState.animals || []).filter(a => a.species === 'poulet' || a.species === 'poulet-croissance');
     const chickenLotIds = chickenLots.map(a => a.id);
     const chickenPurchaseCost = chickenLots.reduce((sum, a) => sum + (Number(a.purchaseCost) || 0), 0);
@@ -5568,28 +5603,30 @@ const app = {
     const totalChickenCost = chickenPurchaseCost + chickenDirectExpenses;
 
     const livingChickens = chickenLots.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
-    const chickensSold = (appState.sales || [])
-      .filter(s => s.productType === 'poulet' || s.productType === 'poulet-croissance')
-      .reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
-    const chickenRevenue = (appState.sales || [])
-      .filter(s => s.productType === 'poulet' || s.productType === 'poulet-croissance')
-      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+    const chickenSales = (appState.sales || []).filter(s => s.productType === 'poulet' || s.productType === 'poulet-croissance');
+    const chickensSold = chickenSales.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
+    const chickenRevenue = chickenSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
     const totalChickensCount = livingChickens + chickensSold;
 
     const chickenPriceEl = document.getElementById('costPerChicken');
     const chickenMarginEl = document.getElementById('marginPerChicken');
 
-    if (totalChickenCost > 0 && totalChickensCount > 0) {
-      const costChicken = totalChickenCost / totalChickensCount;
+    if (chickensSold > 0 && chickenRevenue > 0) {
+      const costChicken = totalChickenCost > 0 ? (totalChickenCost / Math.max(totalChickensCount, chickensSold)) : 0;
+      const netProfit = chickenRevenue - (costChicken * chickensSold);
+      const marginPct = ((netProfit / chickenRevenue) * 100).toFixed(1);
+
       if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(costChicken);
       if (chickenMarginEl) {
-        chickenMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(totalChickenCost)} (${totalChickensCount} ${isAr ? 'طائر' : (isEn ? 'birds' : 'sujets')})`;
-        chickenMarginEl.className = 'text-muted';
+        const sign = Number(marginPct) >= 0 ? '+' : '';
+        chickenMarginEl.textContent = `${marginLbl} ${sign}${marginPct}% (${chickensSold} ${isAr ? 'طائر مباع' : (isEn ? 'birds sold' : 'sujets vendus')})`;
+        chickenMarginEl.className = Number(marginPct) >= 0 ? 'text-emerald bold' : 'text-rose bold';
       }
     } else {
+      // 0 vente enregistrée : compteur strictement à zéro
       if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(0);
       if (chickenMarginEl) {
-        chickenMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(0)} (${this.t('unit_cost_zero_hint')})`;
+        chickenMarginEl.textContent = zeroHint;
         chickenMarginEl.className = 'text-muted';
       }
     }
@@ -5604,28 +5641,30 @@ const app = {
     const totalChickCost = chickPurchaseCost + chickDirectExpenses;
 
     const livingChicks = chickLots.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
-    const chicksSold = (appState.sales || [])
-      .filter(s => s.productType === 'poussin' || s.productType === 'poussin-1j' || s.productType === 'poussin-demarre')
-      .reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
-    const chickRevenue = (appState.sales || [])
-      .filter(s => s.productType === 'poussin' || s.productType === 'poussin-1j' || s.productType === 'poussin-demarre')
-      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+    const chickSales = (appState.sales || []).filter(s => s.productType === 'poussin' || s.productType === 'poussin-1j' || s.productType === 'poussin-demarre');
+    const chicksSold = chickSales.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
+    const chickRevenue = chickSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
     const totalChicksCount = livingChicks + chicksSold;
 
     const chicksPriceEl = document.getElementById('costPerChicks');
     const chicksMarginEl = document.getElementById('marginPerChicks');
 
-    if (totalChickCost > 0 && totalChicksCount > 0) {
-      const costChick = totalChickCost / totalChicksCount;
+    if (chicksSold > 0 && chickRevenue > 0) {
+      const costChick = totalChickCost > 0 ? (totalChickCost / Math.max(totalChicksCount, chicksSold)) : 0;
+      const netProfit = chickRevenue - (costChick * chicksSold);
+      const marginPct = ((netProfit / chickRevenue) * 100).toFixed(1);
+
       if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(costChick);
       if (chicksMarginEl) {
-        chicksMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(totalChickCost)} (${totalChicksCount} ${isAr ? 'كتكوت' : (isEn ? 'chicks' : 'poussins')})`;
-        chicksMarginEl.className = 'text-muted';
+        const sign = Number(marginPct) >= 0 ? '+' : '';
+        chicksMarginEl.textContent = `${marginLbl} ${sign}${marginPct}% (${chicksSold} ${isAr ? 'كتكوت مباع' : (isEn ? 'chicks sold' : 'poussins vendus')})`;
+        chicksMarginEl.className = Number(marginPct) >= 0 ? 'text-emerald bold' : 'text-rose bold';
       }
     } else {
+      // 0 vente enregistrée : compteur strictement à zéro
       if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(0);
       if (chicksMarginEl) {
-        chicksMarginEl.textContent = `${this.t('card_total_cost') || 'Coût Total :'} ${this.formatMoney(0)} (${this.t('unit_cost_zero_hint')})`;
+        chicksMarginEl.textContent = zeroHint;
         chicksMarginEl.className = 'text-muted';
       }
     }
@@ -6850,6 +6889,10 @@ const app = {
         appState.expenses = [];
         appState.sales = [];
         appState.incubatorBatches = [];
+        appState.eggHarvests = [];
+        appState.eggStock = 0;
+        appState.feedDistributions = [];
+        appState._zeroInitialized = true;
         this.saveState();
         this.closeModal('modalDataOptions');
         this.renderAll();

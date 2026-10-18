@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="stylesheet" href="styles.css?v=56">
 
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -889,16 +889,16 @@
                 <div class="unit-details">
                   <h4 data-i18n="unit_egg_title">Coût de revient par Œuf</h4>
                   <p class="unit-price" id="costPerEgg">0,000 DT</p>
-                  <small id="marginPerEgg">Marge nette: +0%</small>
+                  <small id="marginPerEgg" class="text-muted" data-i18n="unit_egg_margin">Marge nette: 0% (En attente de vente)</small>
                 </div>
               </div>
 
               <div class="unit-cost-card">
                 <div class="unit-icon">🐔</div>
                 <div class="unit-details">
-                  <h4 data-i18n="unit_chicken_title">Coût de revient par Poulet</h4>
+                  <h4 data-i18n="unit_chicken_title">Coût de revient par Poulet (1-6 mois)</h4>
                   <p class="unit-price" id="costPerChicken">0,000 DT</p>
-                  <small id="marginPerChicken">Marge nette: +0%</small>
+                  <small id="marginPerChicken" class="text-muted" data-i18n="unit_chicken_margin">Marge nette: 0% (En attente de vente)</small>
                 </div>
               </div>
 
@@ -907,7 +907,7 @@
                 <div class="unit-details">
                   <h4 data-i18n="unit_chicks_title">Coût de revient par Poussin</h4>
                   <p class="unit-price" id="costPerChicks">0,000 DT</p>
-                  <small id="marginPerChicks">Marge nette: +0%</small>
+                  <small id="marginPerChicks" class="text-muted" data-i18n="unit_chicks_margin">Marge nette: 0% (En attente de vente)</small>
                 </div>
               </div>
             </div>
@@ -2407,8 +2407,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=55"></script>
-  <script src="translations.js?v=55"></script>
-  <script src="app.js?v=55"></script>
+  <script src="supabase-client.js?v=56"></script>
+  <script src="translations.js?v=56"></script>
+  <script src="app.js?v=56"></script>
 </body>
 </html>
