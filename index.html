@@ -1312,6 +1312,86 @@
     </div>
   </div>
 
+  <!-- Modal: Confirmation Universelle In-App (Sans alert ni confirm navigateur) -->
+  <div id="modalAppConfirm" class="modal-overlay hidden" style="z-index: 100000;">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 style="color: var(--accent-rose); display: flex; align-items: center; gap: 0.4rem;">
+          <span id="appConfirmIcon">⚠️</span>
+          <span id="appConfirmTitleText" data-i18n="modal_app_confirm_title">Confirmation</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeAppConfirm(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="appConfirmMessage" style="font-size: 0.95rem; color: var(--text-main); margin-bottom: 0.5rem; line-height: 1.45;"></p>
+        <div id="appConfirmExtra" style="display: none; background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1.5px solid rgba(239, 68, 68, 0.35); margin-top: 0.5rem;">
+          <strong id="appConfirmExtraTitle" style="color: var(--accent-rose); font-size: 1.05rem; display: block;"></strong>
+          <span id="appConfirmExtraText" style="font-size: 0.82rem; color: var(--text-secondary); display: block; margin-top: 0.2rem;"></span>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 0.5rem;">
+        <button type="button" id="appConfirmCancelBtn" class="btn btn-outline flex-1" onclick="app.closeAppConfirm(false)" data-i18n="btn_cancel">Annuler</button>
+        <button type="button" id="appConfirmOkBtn" class="btn btn-danger flex-1" style="font-weight: 800;" onclick="app.closeAppConfirm(true)" data-i18n="btn_validate">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Saisie / Prompt In-App Universel (Sans prompt navigateur) -->
+  <div id="modalAppPrompt" class="modal-overlay hidden" style="z-index: 100000;">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 style="color: var(--accent-emerald); display: flex; align-items: center; gap: 0.4rem;">
+          <span id="appPromptIcon">📝</span>
+          <span id="appPromptTitleText" data-i18n="modal_app_prompt_title">Saisie</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeAppPrompt(null)">&times;</button>
+      </div>
+      <form id="formAppPrompt" onsubmit="app.submitAppPrompt(event)">
+        <div class="modal-body">
+          <p id="appPromptMessage" style="font-size: 0.95rem; color: var(--text-main); margin-bottom: 0.85rem; line-height: 1.45;"></p>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label id="appPromptInputLabel" style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.35rem; display: none;"></label>
+            <input type="text" id="appPromptInput" class="input-field" style="font-size: 1.05rem;">
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+          <button type="button" id="appPromptCancelBtn" class="btn btn-outline flex-1" onclick="app.closeAppPrompt(null)" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" id="appPromptOkBtn" class="btn btn-primary flex-1" style="font-weight: 800;" data-i18n="btn_validate">Valider</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Réassigner le lot d'une dépense -->
+  <div id="modalReassignExpenseLot" class="modal-overlay hidden" style="z-index: 100000;">
+    <div class="modal-card" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3 style="color: var(--accent-violet); display: flex; align-items: center; gap: 0.4rem;">
+          <span>🏷️</span>
+          <span data-i18n="modal_reassign_lot_title">Changer le Lot Associé</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalReassignExpenseLot')">&times;</button>
+      </div>
+      <form id="formReassignExpenseLot" onsubmit="app.submitReassignExpenseLot(event)">
+        <div class="modal-body">
+          <input type="hidden" id="reassignExpenseId">
+          <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1rem;">
+            <strong id="reassignExpenseTitle" style="color: var(--text-main); font-size: 0.95rem; display: block;"></strong>
+            <span id="reassignExpenseAmount" style="color: var(--accent-emerald); font-weight: 700; font-size: 0.85rem; display: block; margin-top: 0.2rem;"></span>
+          </div>
+          <div class="form-group">
+            <label for="reassignExpenseLotSelect" data-i18n="lbl_reassign_target">Affecter cette dépense à :</label>
+            <select id="reassignExpenseLotSelect" class="input-field" required></select>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-outline flex-1" onclick="app.closeModal('modalReassignExpenseLot')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-primary flex-1" style="font-weight: 800;" data-i18n="btn_save">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal: Déclarer des Pertes / Mortalité -->
   <div id="modalRecordMortality" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 460px;">
@@ -2364,8 +2444,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=50"></script>
-  <script src="translations.js?v=50"></script>
-  <script src="app.js?v=50"></script>
+  <script src="supabase-client.js?v=52"></script>
+  <script src="translations.js?v=52"></script>
+  <script src="app.js?v=52"></script>
 </body>
 </html>

@@ -260,7 +260,11 @@
           errEl.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
           errEl.classList.remove('hidden');
         } else {
-          alert('Erreur Google: ' + (err.message || err));
+          if (window.app && app.showToast) {
+            app.showToast('Erreur Google: ' + (err.message || err), 'error');
+          } else {
+            console.error('Erreur Google:', err);
+          }
         }
       }
     },
@@ -297,7 +301,11 @@
           errEl.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
           errEl.classList.remove('hidden');
         } else {
-          alert('Erreur Facebook: ' + (err.message || err));
+          if (window.app && app.showToast) {
+            app.showToast('Erreur Facebook: ' + (err.message || err), 'error');
+          } else {
+            console.error('Erreur Facebook:', err);
+          }
         }
       }
     },
@@ -373,7 +381,7 @@
     // 4. Sign Out
     async signOut() {
       if (!this.client) return;
-      if (confirm('Voulez-vous vous déconnecter de votre compte ?')) {
+      const doSignOut = async () => {
         try {
           await this.client.auth.signOut();
           this.currentUser = null;
@@ -385,6 +393,19 @@
         } catch (err) {
           console.error('Sign-out error:', err);
         }
+      };
+
+      if (window.app && typeof app.confirmDialog === 'function') {
+        const isAr = (window.appState && appState.lang === 'ar');
+        app.confirmDialog({
+          title: isAr ? 'تسجيل الخروج' : 'Déconnexion',
+          message: isAr ? 'هل تريد تسجيل الخروج من حسابك ؟' : 'Voulez-vous vous déconnecter de votre compte ?',
+          confirmText: isAr ? 'خروج' : 'Se déconnecter',
+          isDanger: true,
+          onConfirm: doSignOut
+        });
+      } else {
+        doSignOut();
       }
     },
 
@@ -1055,22 +1076,35 @@
     },
 
     async leaveSharedFarm() {
-      if (!confirm('Voulez-vous vraiment quitter cette ferme partagée ? Vous repasserez en mode ferme individuelle.')) {
-        return;
-      }
+      const doLeave = async () => {
+        // Repasser en propriétaire avec un nouveau code indépendant
+        localStorage.setItem('fermegest_farm_role', 'owner');
+        const newCode = this.generateFarmCode();
+        localStorage.setItem('fermegest_farm_code', newCode);
+        localStorage.removeItem('fermegest_farm_owner_email');
 
-      // Repasser en propriétaire avec un nouveau code indépendant
-      localStorage.setItem('fermegest_farm_role', 'owner');
-      const newCode = this.generateFarmCode();
-      localStorage.setItem('fermegest_farm_code', newCode);
-      localStorage.removeItem('fermegest_farm_owner_email');
+        this.subscribeCollaborativeRealtime();
+        await this.pushData(false);
+        this.updateProfileModalUI();
 
-      this.subscribeCollaborativeRealtime();
-      await this.pushData(false);
-      this.updateProfileModalUI();
+        if (window.app && app.showToast) {
+          app.showToast((window.app && app.t) ? app.t('team_toast_left_farm') : 'Vous avez quitté la ferme partagée.');
+        }
+      };
 
-      if (window.app && app.showToast) {
-        app.showToast((window.app && app.t) ? app.t('team_toast_left_farm') : 'Vous avez quitté la ferme partagée.');
+      if (window.app && typeof app.confirmDialog === 'function') {
+        const isAr = (window.appState && appState.lang === 'ar');
+        app.confirmDialog({
+          title: isAr ? 'مغادرة المزرعة المشتركة' : 'Quitter la ferme partagée',
+          message: isAr 
+            ? 'هل تريد مغادرة هذه المزرعة المشتركة والعودة إلى وضع المزرعة الفردية ؟'
+            : 'Voulez-vous vraiment quitter cette ferme partagée ? Vous repasserez en mode ferme individuelle.',
+          confirmText: isAr ? 'مغادرة' : 'Quitter',
+          isDanger: true,
+          onConfirm: doLeave
+        });
+      } else {
+        doLeave();
       }
     },
 

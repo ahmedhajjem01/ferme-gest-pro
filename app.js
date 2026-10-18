@@ -1221,7 +1221,10 @@ const app = {
       return;
     }
     if (totalEggs > stock) {
-      alert(`La quantité à vendre (${totalEggs} œufs) dépasse votre stock disponible (${stock} œufs).`);
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr 
+        ? `الكمية المراد بيعها (${totalEggs} بيضة) تتجاوز الرصيد المتوفر (${stock} بيضة)` 
+        : `La quantité à vendre (${totalEggs} œufs) dépasse votre stock disponible (${stock} œufs).`, 'warning');
       return;
     }
 
@@ -1291,7 +1294,8 @@ const app = {
     const stock = Number(appState.eggStock) || 0;
     if (qty <= 0) return;
     if (qty > stock) {
-      alert(`La quantité dépasse le stock actuel (${stock}).`);
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? `الكمية تتجاوز الرصيد الحالي (${stock})` : `La quantité dépasse le stock actuel (${stock}).`, 'warning');
       return;
     }
     appState.eggStock = Math.max(0, stock - qty);
@@ -1364,6 +1368,186 @@ const app = {
       toast.style.transition = 'all 0.3s ease';
       setTimeout(() => toast.remove(), 300);
     }, 3200);
+  },
+
+  // ==========================================
+  // IN-APP DIALOGS (100% sans alert/confirm/prompt de navigateur)
+  // ==========================================
+  confirmDialog(options) {
+    return new Promise((resolve) => {
+      let cfg = typeof options === 'string' ? { message: options } : (options || {});
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+
+      const titleEl = document.getElementById('appConfirmTitleText');
+      const iconEl = document.getElementById('appConfirmIcon');
+      const msgEl = document.getElementById('appConfirmMessage');
+      const cancelBtn = document.getElementById('appConfirmCancelBtn');
+      const okBtn = document.getElementById('appConfirmOkBtn');
+      const extraBox = document.getElementById('appConfirmExtra');
+
+      if (titleEl) titleEl.textContent = cfg.title || (isAr ? 'تأكيد العملية' : (isEn ? 'Confirmation' : 'Confirmation'));
+      if (iconEl) iconEl.textContent = cfg.icon || '⚠️';
+      if (msgEl) msgEl.textContent = cfg.message || '';
+      if (extraBox) extraBox.style.display = 'none';
+
+      const defaultCancel = isAr ? 'إلغاء' : (isEn ? 'Cancel' : 'Annuler');
+      const defaultConfirm = isAr ? 'تأكيد' : (isEn ? 'Confirm' : 'Confirmer');
+
+      if (cancelBtn) cancelBtn.textContent = cfg.cancelText || defaultCancel;
+      if (okBtn) {
+        okBtn.textContent = cfg.confirmText || defaultConfirm;
+        if (cfg.isDanger === false) {
+          okBtn.className = 'btn btn-primary flex-1';
+        } else {
+          okBtn.className = 'btn btn-danger flex-1';
+        }
+      }
+
+      this._confirmCallback = (res) => {
+        if (res) {
+          if (typeof cfg.onConfirm === 'function') cfg.onConfirm();
+          resolve(true);
+        } else {
+          if (typeof cfg.onCancel === 'function') cfg.onCancel();
+          resolve(false);
+        }
+      };
+
+      this.openModal('modalAppConfirm');
+    });
+  },
+
+  closeAppConfirm(accepted) {
+    this.closeModal('modalAppConfirm');
+    if (typeof this._confirmCallback === 'function') {
+      const cb = this._confirmCallback;
+      this._confirmCallback = null;
+      cb(Boolean(accepted));
+    }
+  },
+
+  promptDialog(options) {
+    return new Promise((resolve) => {
+      let cfg = typeof options === 'string' ? { message: options } : (options || {});
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+
+      const titleEl = document.getElementById('appPromptTitleText');
+      const iconEl = document.getElementById('appPromptIcon');
+      const msgEl = document.getElementById('appPromptMessage');
+      const labelEl = document.getElementById('appPromptInputLabel');
+      const inputEl = document.getElementById('appPromptInput');
+      const cancelBtn = document.getElementById('appPromptCancelBtn');
+      const okBtn = document.getElementById('appPromptOkBtn');
+
+      if (titleEl) titleEl.textContent = cfg.title || (isAr ? 'إدخال بيانات' : (isEn ? 'Input' : 'Saisie'));
+      if (iconEl) iconEl.textContent = cfg.icon || '📝';
+      if (msgEl) msgEl.textContent = cfg.message || '';
+      if (labelEl) {
+        labelEl.textContent = cfg.label || '';
+        labelEl.style.display = cfg.label ? 'block' : 'none';
+      }
+      if (inputEl) {
+        inputEl.type = cfg.inputType || 'text';
+        inputEl.value = cfg.defaultValue !== undefined ? cfg.defaultValue : '';
+        inputEl.placeholder = cfg.placeholder || '';
+        if (cfg.min !== undefined) inputEl.min = cfg.min;
+        if (cfg.max !== undefined) inputEl.max = cfg.max;
+        if (cfg.step !== undefined) inputEl.step = cfg.step;
+      }
+
+      const defaultCancel = isAr ? 'إلغاء' : (isEn ? 'Cancel' : 'Annuler');
+      const defaultConfirm = isAr ? 'تأكيد' : (isEn ? 'Confirm' : 'Valider');
+
+      if (cancelBtn) cancelBtn.textContent = cfg.cancelText || defaultCancel;
+      if (okBtn) okBtn.textContent = cfg.confirmText || defaultConfirm;
+
+      this._promptCallback = (val) => {
+        if (val !== null && val !== undefined) {
+          if (typeof cfg.onConfirm === 'function') cfg.onConfirm(val);
+          resolve(val);
+        } else {
+          if (typeof cfg.onCancel === 'function') cfg.onCancel();
+          resolve(null);
+        }
+      };
+
+      this.openModal('modalAppPrompt');
+      setTimeout(() => {
+        if (inputEl) {
+          inputEl.focus();
+          if (inputEl.select) inputEl.select();
+        }
+      }, 120);
+    });
+  },
+
+  submitAppPrompt(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const inputEl = document.getElementById('appPromptInput');
+    const val = inputEl ? inputEl.value : '';
+    this.closeAppPrompt(val);
+  },
+
+  closeAppPrompt(val) {
+    this.closeModal('modalAppPrompt');
+    if (typeof this._promptCallback === 'function') {
+      const cb = this._promptCallback;
+      this._promptCallback = null;
+      cb(val);
+    }
+  },
+
+  reassignExpenseLot(expId) {
+    const exp = (appState.expenses || []).find(e => e.id === expId);
+    if (!exp) return;
+
+    const idInput = document.getElementById('reassignExpenseId');
+    const titleEl = document.getElementById('reassignExpenseTitle');
+    const amountEl = document.getElementById('reassignExpenseAmount');
+    const selectEl = document.getElementById('reassignExpenseLotSelect');
+
+    if (idInput) idInput.value = exp.id;
+    if (titleEl) titleEl.textContent = exp.title || 'Dépense';
+    if (amountEl) amountEl.textContent = `${this.formatMoney(exp.total || 0)}`;
+
+    if (selectEl) {
+      let optionsHtml = `<option value="general">${this.t('opt_general_farm') || 'Frais Généraux (Réparti sur tous les animaux)'}</option>`;
+      (appState.animals || []).forEach(a => {
+        const displayName = this.getAnimalDisplayName(a);
+        const lotNum = (a.name && a.name.toString().trim() !== '') ? (appState.lang === 'ar' ? `دفعة #${a.name}` : `Lot #${a.name}`) : '';
+        const label = lotNum ? `${displayName} (${lotNum})` : displayName;
+        const selected = (exp.linkedLotId === a.id) ? 'selected' : '';
+        optionsHtml += `<option value="${a.id}" ${selected}>${label}</option>`;
+      });
+      selectEl.innerHTML = optionsHtml;
+      selectEl.value = exp.linkedLotId || 'general';
+    }
+
+    this.openModal('modalReassignExpenseLot');
+  },
+
+  submitReassignExpenseLot(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const idInput = document.getElementById('reassignExpenseId');
+    const selectEl = document.getElementById('reassignExpenseLotSelect');
+    if (!idInput || !selectEl) return;
+
+    const exp = (appState.expenses || []).find(e => e.id === idInput.value);
+    if (!exp) return;
+
+    exp.linkedLotId = selectEl.value;
+    this.saveState();
+    this.closeModal('modalReassignExpenseLot');
+    this.renderAll();
+
+    const isAr = appState.lang === 'ar';
+    const lotName = selectEl.options[selectEl.selectedIndex]?.text || '';
+    this.showToast(isAr ? `تم ربط المصاريف بـ : ${lotName}` : `Dépense affectée à : ${lotName}`);
+    if (window.appAuth && appAuth.pushData) {
+      appAuth.pushData();
+    }
   },
 
   // ==========================================
@@ -2835,20 +3019,29 @@ const app = {
     }
     const ft = (appState.feedTypes || []).find(f => f.id === id);
     if (!ft) return;
-    if (!confirm(`Voulez-vous vraiment supprimer l'aliment "${ft.name}" ?`)) return;
 
-    if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-      appAuth.addDeletedId(id);
-    }
+    this.confirmDialog({
+      title: isAr ? 'حذف العلف' : 'Supprimer l\'aliment',
+      message: isAr 
+        ? `هل تريد بالتأكيد حذف العلف "${ft.name}" ؟`
+        : `Voulez-vous vraiment supprimer l'aliment "${ft.name}" ?`,
+      isDanger: true,
+      confirmText: isAr ? 'حذف' : 'Supprimer',
+      onConfirm: () => {
+        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+          appAuth.addDeletedId(id);
+        }
 
-    appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id);
-    appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+        appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id);
+        appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
 
-    this.saveState();
-    this.renderFeedStockAdjustModal();
-    this.renderFeedDistributionModal();
-    this.renderAll();
-    this.showToast(`Aliment "${ft.name}" supprimé.`);
+        this.saveState();
+        this.renderFeedStockAdjustModal();
+        this.renderFeedDistributionModal();
+        this.renderAll();
+        this.showToast(`Aliment "${ft.name}" supprimé.`);
+      }
+    });
   },
 
   calcSicamToKg() {
@@ -3617,7 +3810,8 @@ const app = {
     const notes = document.getElementById('animalNotes').value.trim();
 
     if (!quantity || !birthDate) {
-      alert('Veuillez renseigner le nombre de têtes et la date.');
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? 'يرجى إدخال عدد الرؤوس والتاريخ.' : 'Veuillez renseigner le nombre de têtes et la date.', 'warning');
       return;
     }
 
@@ -4043,36 +4237,6 @@ const app = {
     });
   },
 
-  reassignExpenseLot(expId) {
-    const exp = (appState.expenses || []).find(e => e.id === expId);
-    if (!exp) return;
-
-    const options = [{ id: 'general', name: this.t('opt_general_farm') || 'Frais Généraux (Réparti sur tous les animaux)' }];
-    (appState.animals || []).forEach(a => {
-      options.push({ id: a.id, name: `[${a.species}] ${a.name} (${a.breed})` });
-    });
-
-    const isAr = appState.lang === 'ar';
-    const choiceStr = options.map((o, idx) => `${idx + 1}. ${o.name}`).join('\n');
-    const msg = isAr 
-      ? `اختر الدفعة التي تريد ربط هذه المصاريف بها "${exp.title}" (${this.formatMoney(exp.total)}) :\n\n${choiceStr}\n\nأدخل رقم الخيار :`
-      : `Affecter la dépense "${exp.title}" (${this.formatMoney(exp.total)}) à quel lot d'animaux ?\n\n${choiceStr}\n\nEntrez le numéro du lot :`;
-    
-    const ans = prompt(msg, "1");
-    if (!ans) return;
-
-    const idx = parseInt(ans.trim(), 10) - 1;
-    if (options[idx]) {
-      exp.linkedLotId = options[idx].id;
-      this.saveState();
-      this.renderAll();
-      this.showToast(isAr ? `تم ربط المصاريف بـ : ${options[idx].name}` : `Dépense affectée à : ${options[idx].name}`);
-      if (window.appAuth && appAuth.pushData) {
-        appAuth.pushData();
-      }
-    }
-  },
-
   calcExpenseTotal() {
     const q = parseFloat(document.getElementById('expenseQuantity').value) || 0;
     const p = parseFloat(document.getElementById('expenseUnitPrice').value) || 0;
@@ -4287,7 +4451,8 @@ const app = {
     const linkedLotId = document.getElementById('expenseAnimalLot').value;
 
     if (!date) {
-      alert('Veuillez renseigner la date.');
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? 'يرجى إدخال التاريخ.' : 'Veuillez renseigner la date.', 'warning');
       return;
     }
 
@@ -4384,7 +4549,8 @@ const app = {
       total = parseFloat(document.getElementById('expenseTotalCalculated')?.value) || (quantity * unitPrice);
 
       if (!title) {
-        alert('Veuillez renseigner l\'intitulé de la dépense.');
+        const isAr = appState.lang === 'ar';
+        this.showToast(isAr ? 'يرجى إدخال بيان المصروف.' : 'Veuillez renseigner l\'intitulé de la dépense.', 'warning');
         return;
       }
     }
@@ -4424,23 +4590,30 @@ const app = {
   },
 
   deleteExpense(expId) {
-    if (confirm('Confirmer la suppression de cette dépense ?')) {
-      const exp = (appState.expenses || []).find(e => e.id === expId);
-      if (exp && exp.feedStockAddedKg && exp.feedTypeId) {
-        const ft = (appState.feedTypes || []).find(f => f.id === exp.feedTypeId);
-        if (ft) {
-          ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) - Number(exp.feedStockAddedKg));
-          appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+    const isAr = appState.lang === 'ar';
+    this.confirmDialog({
+      title: isAr ? 'حذف المصروف' : 'Supprimer la dépense',
+      message: isAr ? 'هل تريد بالتأكيد حذف هذا المصروف ؟' : 'Confirmer la suppression de cette dépense ?',
+      isDanger: true,
+      confirmText: isAr ? 'حذف' : 'Supprimer',
+      onConfirm: () => {
+        const exp = (appState.expenses || []).find(e => e.id === expId);
+        if (exp && exp.feedStockAddedKg && exp.feedTypeId) {
+          const ft = (appState.feedTypes || []).find(f => f.id === exp.feedTypeId);
+          if (ft) {
+            ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) - Number(exp.feedStockAddedKg));
+            appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+          }
         }
+        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+          appAuth.addDeletedId(expId);
+        }
+        appState.expenses = appState.expenses.filter(e => e.id !== expId);
+        this.saveState();
+        this.renderAll();
+        this.showToast(this.t('toast_expense_deleted'));
       }
-      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-        appAuth.addDeletedId(expId);
-      }
-      appState.expenses = appState.expenses.filter(e => e.id !== expId);
-      this.saveState();
-      this.renderAll();
-      this.showToast(this.t('toast_expense_deleted'));
-    }
+    });
   },
 
   addExistingExpenseToFeedStock(expId) {
@@ -4463,49 +4636,59 @@ const app = {
       ? `كم كيلوغرام من العلف تريد إضافته للمخزون الاحتياطي للمصروف "${exp.title}" ؟`
       : `Combien de kilos d'aliments ajouter au stock réserve pour la dépense "${exp.title}" ?`;
 
-    const inputKgStr = prompt(promptMsg, defaultKg.toString());
-    if (inputKgStr === null) return;
-    const addedKg = parseFloat(inputKgStr) || 0;
-    if (addedKg <= 0) return;
+    this.promptDialog({
+      title: isAr ? 'إضافة إلى مخزون العلف' : 'Ajouter au Stock Réserve',
+      message: promptMsg,
+      label: isAr ? 'الكمية بالكيلوغرام (كغ) :' : 'Quantité en kilogrammes (kg) :',
+      inputType: 'number',
+      defaultValue: defaultKg,
+      min: 0.1,
+      step: 0.5,
+      confirmText: isAr ? 'إضافة للمخزون' : 'Ajouter au Stock',
+      onConfirm: (val) => {
+        const addedKg = parseFloat(val) || 0;
+        if (addedKg <= 0) return;
 
-    // Match or ask which feed
-    let ft = appState.feedTypes.find(f => {
-      const fn = (f.name || '').toLowerCase();
-      return titleLower.includes(fn) || fn.includes(titleLower);
-    });
+        // Match or ask which feed
+        let ft = appState.feedTypes.find(f => {
+          const fn = (f.name || '').toLowerCase();
+          return titleLower.includes(fn) || fn.includes(titleLower);
+        });
 
-    if (!ft) {
-      if (titleLower.includes('blé') || titleLower.includes('ble') || titleLower.includes('قمح')) {
-        ft = appState.feedTypes.find(f => f.id === 'feed-ble');
-      } else if (titleLower.includes('bouchon') || titleLower.includes('ponte') || titleLower.includes('بوشون')) {
-        ft = appState.feedTypes.find(f => f.id === 'feed-bouchon');
+        if (!ft) {
+          if (titleLower.includes('blé') || titleLower.includes('ble') || titleLower.includes('قمح')) {
+            ft = appState.feedTypes.find(f => f.id === 'feed-ble');
+          } else if (titleLower.includes('bouchon') || titleLower.includes('ponte') || titleLower.includes('بوشون')) {
+            ft = appState.feedTypes.find(f => f.id === 'feed-bouchon');
+          }
+        }
+
+        if (!ft) {
+          ft = {
+            id: 'feed-' + Date.now().toString(36),
+            name: exp.title.replace(/\(\d+.*?\)/g, '').trim() || (isAr ? 'علف جديد' : 'Nouvel aliment'),
+            stockKg: 0,
+            pricePerKg: (Number(exp.total) / (addedKg || 1)) || 1.2
+          };
+          appState.feedTypes.push(ft);
+        }
+
+        ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) + addedKg);
+        if (exp.total > 0 && addedKg > 0) {
+          ft.pricePerKg = Number(exp.total) / addedKg;
+        }
+        exp.feedStockAddedKg = addedKg;
+        exp.feedTypeId = ft.id;
+
+        appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+        appState.feedStockDate = this.getTodayStr();
+        appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
+
+        this.saveState();
+        this.renderAll();
+        this.showToast(`✅ +${addedKg.toFixed(1)} ${unitKg} ajoutés au stock (${this.getFeedDisplayName(ft)}) !`);
       }
-    }
-
-    if (!ft) {
-      ft = {
-        id: 'feed-' + Date.now().toString(36),
-        name: exp.title.replace(/\(\d+.*?\)/g, '').trim() || (isAr ? 'علف جديد' : 'Nouvel aliment'),
-        stockKg: 0,
-        pricePerKg: (Number(exp.total) / (addedKg || 1)) || 1.2
-      };
-      appState.feedTypes.push(ft);
-    }
-
-    ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) + addedKg);
-    if (exp.total > 0 && addedKg > 0) {
-      ft.pricePerKg = Number(exp.total) / addedKg;
-    }
-    exp.feedStockAddedKg = addedKg;
-    exp.feedTypeId = ft.id;
-
-    appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
-    appState.feedStockDate = this.getTodayStr();
-    appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
-
-    this.saveState();
-    this.renderAll();
-    this.showToast(`✅ +${addedKg.toFixed(1)} ${unitKg} ajoutés au stock (${this.getFeedDisplayName(ft)}) !`);
+    });
   },
 
   quickImportFoodExpensesToStock() {
@@ -5165,63 +5348,86 @@ const app = {
     }
 
     if (!description || !date) {
-      alert('Veuillez renseigner la description et la date.');
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? 'يرجى إدخال الوصف والتاريخ.' : 'Veuillez renseigner la description et la date.', 'warning');
       return;
     }
+
+    const finalizeSaleSave = () => {
+      const newSale = {
+        id: 'sale-' + Date.now().toString(36),
+        date,
+        productType,
+        description,
+        format,
+        quantity,
+        unitPrice,
+        total,
+        linkedLotId,
+        ageText
+      };
+
+      appState.sales.unshift(newSale);
+
+      // Déduction automatique du stock d'œufs si c'est une vente d'œufs
+      if (productType === 'oeufs' && appState.eggStock > 0) {
+        let soldEggs = quantity;
+        if (format === 'hara') soldEggs = quantity * 4;
+        else if (format === 'plateau') soldEggs = quantity * 30;
+        appState.eggStock = Math.max(0, appState.eggStock - soldEggs);
+      }
+
+      this.saveState();
+      this.closeModal('modalAddSale');
+      this.renderAll();
+      this.showToast(this.t('toast_sale_saved', { amount: this.formatMoney(total) }));
+      document.getElementById('formAddSale').reset();
+    };
 
     // Déduction automatique du lot lié
     if (linkedLotId && linkedLotId !== 'none') {
       const lot = appState.animals.find(a => a.id === linkedLotId);
       if (lot && (productType === 'poulet' || productType === 'poussin' || productType === 'pintade' || productType === 'canard' || productType.startsWith('poulet') || productType.startsWith('poussin'))) {
         if (quantity > lot.currentQuantity) {
-          if (!confirm(`Attention: La quantité vendue (${quantity} sujets) dépasse l'effectif actuel (${lot.currentQuantity}). Voulez-vous continuer ?`)) {
-            return;
-          }
+          const isAr = appState.lang === 'ar';
+          this.confirmDialog({
+            title: isAr ? 'تنبيه كمية المبيعات' : 'Attention Effectif',
+            message: isAr 
+              ? `الكمية المباعة (${quantity} طائر) تتجاوز العدد الحالي للدفعة (${lot.currentQuantity}). هل ترغب في المتابعة ؟` 
+              : `Attention: La quantité vendue (${quantity} sujets) dépasse l'effectif actuel (${lot.currentQuantity}). Voulez-vous continuer ?`,
+            isDanger: true,
+            confirmText: isAr ? 'متابعة' : 'Continuer',
+            onConfirm: () => {
+              lot.currentQuantity = Math.max(0, lot.currentQuantity - quantity);
+              finalizeSaleSave();
+            }
+          });
+          return;
         }
         lot.currentQuantity = Math.max(0, lot.currentQuantity - quantity);
       }
     }
 
-    const newSale = {
-      id: 'sale-' + Date.now().toString(36),
-      date,
-      productType,
-      description,
-      format,
-      quantity,
-      unitPrice,
-      total,
-      linkedLotId,
-      ageText
-    };
-
-    appState.sales.unshift(newSale);
-
-    // Déduction automatique du stock d'œufs si c'est une vente d'œufs
-    if (productType === 'oeufs' && appState.eggStock > 0) {
-      let soldEggs = quantity;
-      if (format === 'hara') soldEggs = quantity * 4;
-      else if (format === 'plateau') soldEggs = quantity * 30;
-      appState.eggStock = Math.max(0, appState.eggStock - soldEggs);
-    }
-
-    this.saveState();
-    this.closeModal('modalAddSale');
-    this.renderAll();
-    this.showToast(this.t('toast_sale_saved', { amount: this.formatMoney(total) }));
-    document.getElementById('formAddSale').reset();
+    finalizeSaleSave();
   },
 
   deleteSale(saleId) {
-    if (confirm('Supprimer cette vente ?')) {
-      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-        appAuth.addDeletedId(saleId);
+    const isAr = appState.lang === 'ar';
+    this.confirmDialog({
+      title: isAr ? 'حذف البيع' : 'Supprimer la vente',
+      message: isAr ? 'هل تريد بالتأكيد حذف هذه العملية ؟' : 'Supprimer cette vente ?',
+      isDanger: true,
+      confirmText: isAr ? 'حذف' : 'Supprimer',
+      onConfirm: () => {
+        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+          appAuth.addDeletedId(saleId);
+        }
+        appState.sales = appState.sales.filter(s => s.id !== saleId);
+        this.saveState();
+        this.renderAll();
+        this.showToast(this.t('toast_sale_deleted'));
       }
-      appState.sales = appState.sales.filter(s => s.id !== saleId);
-      this.saveState();
-      this.renderAll();
-      this.showToast(this.t('toast_sale_deleted'));
-    }
+    });
   },
 
   calcSaleEstimatedMargin(sale) {
@@ -5644,7 +5850,8 @@ const app = {
     const notes = document.getElementById('batchNotes')?.value.trim() || '';
 
     if (!breed || !name || !eggsCount || !startDate) {
-      alert('Veuillez remplir les informations obligatoires.');
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? 'يرجى ملء جميع الحقول الإلزامية.' : 'Veuillez remplir les informations obligatoires.', 'warning');
       return;
     }
 
@@ -5720,7 +5927,8 @@ const app = {
     if (!batch) return;
 
     if (isNaN(liveCount) || liveCount < 0) {
-      alert('Veuillez entrer un nombre positif de poussins.');
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? 'يرجى إدخال عدد صحيح موجب من الفراخ.' : 'Veuillez entrer un nombre positif de poussins.', 'warning');
       return;
     }
 
@@ -5775,15 +5983,22 @@ const app = {
   },
 
   deleteIncubatorBatch(batchId) {
-    if (confirm('Voulez-vous supprimer ce lot d\'incubation ?')) {
-      if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-        appAuth.addDeletedId(batchId);
+    const isAr = appState.lang === 'ar';
+    this.confirmDialog({
+      title: isAr ? 'حذف دفعة الحضانة' : 'Supprimer le lot d\'incubation',
+      message: isAr ? 'هل تريد بالتأكيد حذف دفعة الحضانة هذه ؟' : 'Voulez-vous supprimer ce lot d\'incubation ?',
+      isDanger: true,
+      confirmText: isAr ? 'حذف' : 'Supprimer',
+      onConfirm: () => {
+        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+          appAuth.addDeletedId(batchId);
+        }
+        appState.incubatorBatches = appState.incubatorBatches.filter(b => b.id !== batchId);
+        this.saveState();
+        this.renderAll();
+        this.showToast(this.t('toast_batch_deleted'));
       }
-      appState.incubatorBatches = appState.incubatorBatches.filter(b => b.id !== batchId);
-      this.saveState();
-      this.renderAll();
-      this.showToast(this.t('toast_batch_deleted'));
-    }
+    });
   },
 
   // ==========================================
@@ -6170,16 +6385,23 @@ const app = {
   // DATA IMPORT / EXPORT & BACKUP
   // ==========================================
   loadSampleData() {
-    if (confirm(this.t('modal_settings_desc') || 'Voulez-vous charger les données de démonstration ?')) {
-      appState.animals = JSON.parse(JSON.stringify(SAMPLE_DATA.animals));
-      appState.expenses = JSON.parse(JSON.stringify(SAMPLE_DATA.expenses));
-      appState.sales = JSON.parse(JSON.stringify(SAMPLE_DATA.sales));
-      appState.incubatorBatches = JSON.parse(JSON.stringify(SAMPLE_DATA.incubatorBatches));
-      this.saveState();
-      this.closeModal('modalDataOptions');
-      this.renderAll();
-      this.showToast(this.t('toast_demo_loaded') || 'Données de démonstration chargées !');
-    }
+    const isAr = appState.lang === 'ar';
+    this.confirmDialog({
+      title: isAr ? 'بيانات توضيحية' : 'Données Démo',
+      message: this.t('modal_settings_desc') || 'Voulez-vous charger les données de démonstration ?',
+      isDanger: false,
+      confirmText: isAr ? 'تحميل' : 'Charger',
+      onConfirm: () => {
+        appState.animals = JSON.parse(JSON.stringify(SAMPLE_DATA.animals));
+        appState.expenses = JSON.parse(JSON.stringify(SAMPLE_DATA.expenses));
+        appState.sales = JSON.parse(JSON.stringify(SAMPLE_DATA.sales));
+        appState.incubatorBatches = JSON.parse(JSON.stringify(SAMPLE_DATA.incubatorBatches));
+        this.saveState();
+        this.closeModal('modalDataOptions');
+        this.renderAll();
+        this.showToast(this.t('toast_demo_loaded') || 'Données de démonstration chargées !');
+      }
+    });
   },
 
   // Export officiel vers Excel (Classeur Multi-Onglets .xlsx avec fallback XML Spreadsheet)
@@ -6651,16 +6873,25 @@ const app = {
   },
 
   resetAllData() {
-    if (confirm('ATTENTION: Cette action va supprimer toutes vos données. Continuer ?')) {
-      appState.animals = [];
-      appState.expenses = [];
-      appState.sales = [];
-      appState.incubatorBatches = [];
-      this.saveState();
-      this.closeModal('modalDataOptions');
-      this.renderAll();
-      this.showToast(this.t('toast_data_reset'));
-    }
+    const isAr = appState.lang === 'ar';
+    this.confirmDialog({
+      title: isAr ? 'إعادة ضبط شاملة' : 'Suppression Totale',
+      message: isAr 
+        ? 'تحذير هام: سيتم مسح كافة البيانات المسجلة نهائياً. هل ترغب في المتابعة؟'
+        : 'ATTENTION: Cette action va supprimer toutes vos données. Continuer ?',
+      isDanger: true,
+      confirmText: isAr ? 'مسح الكل' : 'Tout supprimer',
+      onConfirm: () => {
+        appState.animals = [];
+        appState.expenses = [];
+        appState.sales = [];
+        appState.incubatorBatches = [];
+        this.saveState();
+        this.closeModal('modalDataOptions');
+        this.renderAll();
+        this.showToast(this.t('toast_data_reset'));
+      }
+    });
   },
 
   // ==========================================
@@ -6892,6 +7123,15 @@ const app = {
 // Expose app on global window
 window.app = app;
 window.appState = appState;
+
+// Safe in-app replacement for native browser alert (empêche les boîtes d'alerte Google/navigateur)
+window.alert = function(msg) {
+  if (window.app && typeof window.app.showToast === 'function') {
+    window.app.showToast(msg, 'warning');
+  } else {
+    console.warn('[InAppAlert]', msg);
+  }
+};
 
 // Initialize Application on DOM Ready or immediately if DOM is already ready
 if (document.readyState === 'loading') {

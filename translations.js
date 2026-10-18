@@ -564,7 +564,12 @@ const TRANSLATIONS = {
     consume_eggs_modal_sub: "Déduire des œufs du stock pour la consommation de la ferme ou des œufs cassés.",
     consume_eggs_qty_lbl: "Nombre d'œufs à déduire",
     consume_eggs_btn_submit: "Déduire du Stock",
-    consume_eggs_toast_success: "Stock mis à jour (-{count} œufs). Nouveau stock : {remaining} œufs"
+    consume_eggs_toast_success: "Stock mis à jour (-{count} œufs). Nouveau stock : {remaining} œufs",
+    modal_app_confirm_title: "Confirmation",
+    modal_app_prompt_title: "Saisie",
+    modal_reassign_lot_title: "Changer le Lot Associé",
+    lbl_reassign_target: "Affecter cette dépense à :",
+    btn_validate: "Valider"
   },
 
   ar: {
@@ -1127,7 +1132,12 @@ const TRANSLATIONS = {
     consume_eggs_modal_sub: "خصم بيض من الرصيد لاستهلاك العائلة أو بيض مكسور.",
     consume_eggs_qty_lbl: "عدد البيض المخصوم",
     consume_eggs_btn_submit: "تأكيد الخصم من الرصيد",
-    consume_eggs_toast_success: "تم تحديث الرصيد (-{count} بيضة). الرصيد الجديد: {remaining} بيضة"
+    consume_eggs_toast_success: "تم تحديث الرصيد (-{count} بيضة). الرصيد الجديد: {remaining} بيضة",
+    modal_app_confirm_title: "تأكيد العملية",
+    modal_app_prompt_title: "إدخال بيانات",
+    modal_reassign_lot_title: "تغيير الدفعة المرتبطة",
+    lbl_reassign_target: "ربط هذه المصاريف بـ :",
+    btn_validate: "تأكيد"
   },
 
   en: {
@@ -1689,7 +1699,12 @@ const TRANSLATIONS = {
     consume_eggs_modal_sub: "Deduct eggs from stock for family consumption or broken eggs.",
     consume_eggs_qty_lbl: "Number of eggs to deduct",
     consume_eggs_btn_submit: "Deduct from Stock",
-    consume_eggs_toast_success: "Stock updated (-{count} eggs). New stock: {remaining} eggs"
+    consume_eggs_toast_success: "Stock updated (-{count} eggs). New stock: {remaining} eggs",
+    modal_app_confirm_title: "Confirmation",
+    modal_app_prompt_title: "Input",
+    modal_reassign_lot_title: "Change Associated Lot",
+    lbl_reassign_target: "Assign this expense to:",
+    btn_validate: "Submit"
   }
 };
 
