@@ -23,10 +23,7 @@ const appState = {
   customDailyFeedKg: null,
   sicamCansCount: null,
   feedDistributions: [],
-  feedTypes: [
-    { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
-    { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
-  ],
+  feedTypes: [],
   
   animals: [],
   expenses: [],
@@ -615,10 +612,7 @@ const app = {
         }
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
         if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
-          appState.feedTypes = [
-            { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
-            { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
-          ];
+          appState.feedTypes = [];
         } else {
           appState.feedTypes = this.sanitizeFeedTypes(parsed.feedTypes);
         }
@@ -1032,7 +1026,8 @@ const app = {
       }
 
       if (modalId === 'modalAddFeedType') {
-        this.renderFeedSuggestions();
+        this.openFeedPurchaseModal();
+        return;
       }
 
       if (modalId === 'modalAddSale') {
@@ -1048,6 +1043,131 @@ const app = {
   closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.add('hidden');
+    if (modalId === 'modalAddExpense') {
+      const titleHeader = document.getElementById('modalAddExpenseTitle');
+      if (titleHeader) titleHeader.textContent = this.t('modal_add_expense_title') || 'Enregistrer une Dépense';
+      const submitBtn = document.getElementById('expenseSubmitBtn');
+      if (submitBtn) {
+        submitBtn.textContent = this.t('btn_validate_expense') || 'Valider la Dépense';
+        submitBtn.className = 'btn btn-danger';
+      }
+      const expCatRow = document.getElementById('expenseCategoryRow');
+      if (expCatRow) expCatRow.style.display = 'flex';
+      const feedSuggRow = document.getElementById('expenseFeedSuggestionsRow');
+      if (feedSuggRow) feedSuggRow.style.display = 'none';
+    }
+  },
+
+  openFeedPurchaseModal(presetFeedName = null) {
+    this.closeModal('modalFeedDistribution');
+    this.closeModal('modalAdjustFeedStock');
+    this.closeModal('modalAddFeedType');
+
+    const catEl = document.getElementById('expenseCategory');
+    if (catEl) catEl.value = 'nourriture';
+
+    const dateEl = document.getElementById('expenseDate');
+    if (dateEl) dateEl.value = this.getTodayStr();
+
+    const titleEl = document.getElementById('expenseTitle');
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    if (titleEl) {
+      if (presetFeedName) {
+        titleEl.value = presetFeedName.startsWith('Achat') || presetFeedName.startsWith('شراء') ? presetFeedName : (isAr ? `شراء ${presetFeedName}` : (isEn ? `Purchase ${presetFeedName}` : `Achat ${presetFeedName}`));
+      } else {
+        titleEl.value = '';
+      }
+    }
+
+    const titleHeader = document.getElementById('modalAddExpenseTitle');
+    if (titleHeader) {
+      titleHeader.textContent = this.t('modal_buy_feed_title') || '🌾 Acheter / Approvisionner un Aliment';
+    }
+
+    const submitBtn = document.getElementById('expenseSubmitBtn');
+    if (submitBtn) {
+      submitBtn.textContent = this.t('btn_validate_feed_purchase') || 'Valider l\'Achat et le Stock';
+      submitBtn.className = 'btn btn-emerald bold';
+    }
+
+    this.handleExpenseCatChange();
+    this.renderFeedExpenseSuggestions();
+
+    if (presetFeedName) {
+      this.selectFeedSuggestion(presetFeedName);
+    }
+
+    this.openModal('modalAddExpense');
+  },
+
+  renderFeedExpenseSuggestions() {
+    const container = document.getElementById('expenseFeedSuggestionsContainer');
+    if (!container) return;
+
+    const lang = appState.lang || 'fr';
+    const suggestions = lang === 'ar' ? [
+      { id: 'ble', name: 'قمح' },
+      { id: 'bouchon', name: 'علف بياضة (بوشون)' },
+      { id: 'mais', name: 'ذرة مرحية' },
+      { id: 'son', name: 'نخالة القمح' },
+      { id: 'tournesol', name: 'قلوب عباد الشمس' },
+      { id: 'melange', name: 'خلطة حبوب' },
+      { id: 'demarrage', name: 'علف بداية' }
+    ] : (lang === 'en' ? [
+      { id: 'ble', name: 'Wheat' },
+      { id: 'bouchon', name: 'Layer Pellets' },
+      { id: 'mais', name: 'Cracked Corn' },
+      { id: 'son', name: 'Wheat Bran' },
+      { id: 'tournesol', name: 'Sunflower Seeds' },
+      { id: 'melange', name: 'Grain Mixture' },
+      { id: 'demarrage', name: 'Starter Feed' }
+    ] : [
+      { id: 'ble', name: 'Blé' },
+      { id: 'bouchon', name: 'Aliment ponte (Bouchon)' },
+      { id: 'mais', name: 'Maïs concassé' },
+      { id: 'son', name: 'Son de blé (Sedari)' },
+      { id: 'tournesol', name: 'Tournesol' },
+      { id: 'melange', name: 'Mélange graines' },
+      { id: 'demarrage', name: 'Aliment démarrage' }
+    ]);
+
+    container.innerHTML = suggestions.map(s => `
+      <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.74rem; padding: 3px 9px; border-radius: var(--radius-pill); font-weight: 700;" onclick="app.selectFeedSuggestion('${s.name}')">
+        🌾 ${s.name}
+      </button>
+    `).join('');
+  },
+
+  selectFeedSuggestion(feedName) {
+    const titleEl = document.getElementById('expenseTitle');
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const prefix = isAr ? 'شراء' : (isEn ? 'Purchase' : 'Achat');
+
+    if (titleEl) {
+      titleEl.value = `${prefix} ${feedName}`;
+    }
+
+    const select = document.getElementById('expenseFeedTypeSelect');
+    if (select) {
+      const lower = feedName.toLowerCase();
+      let matched = false;
+      for (let i = 0; i < select.options.length; i++) {
+        const opt = select.options[i];
+        if (opt.value !== '__new__' && opt.textContent.toLowerCase().includes(lower)) {
+          select.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        select.value = '__new__';
+      }
+    }
+
+    this.calcFeedPurchaseFields();
   },
 
   // ==========================================
@@ -2356,29 +2476,27 @@ const app = {
   },
 
   sanitizeFeedTypes(feedTypes) {
-    if (!Array.isArray(feedTypes) || feedTypes.length === 0) {
-      return [
-        { id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 },
-        { id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 }
-      ];
-    }
+    if (!Array.isArray(feedTypes)) return [];
     let list = feedTypes.map(ft => {
       let name = ft.name || '';
       if (name.includes('بليه') || name === 'قمح / بليه') {
         name = 'Blé';
       }
-      return { ...ft, name };
+      return {
+        id: ft.id || 'feed-' + Math.random().toString(36).substr(2, 9),
+        name: name,
+        stockKg: Math.max(0, Number(ft.stockKg) || 0),
+        pricePerKg: Math.max(0, Number(ft.pricePerKg) || 1.0)
+      };
     });
 
-    const hasBle = list.some(ft => ft.id === 'feed-ble' || (ft.name && (ft.name.toLowerCase().includes('blé') || ft.name.toLowerCase().includes('ble') || ft.name.includes('قمح'))));
-    const hasBouchon = list.some(ft => ft.id === 'feed-bouchon' || (ft.name && (ft.name.toLowerCase().includes('bouchon') || ft.name.toLowerCase().includes('ponte') || ft.name.includes('بوشون'))));
+    // Remove legacy dummy 0kg placeholder feeds if the user hasn't recorded any feed stock or distribution yet
+    const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+    const hasFoodExpenses = Array.isArray(appState.expenses) && appState.expenses.some(e => e.category === 'nourriture');
+    if (!hasDistributions && !hasFoodExpenses) {
+      list = list.filter(ft => (Number(ft.stockKg) || 0) > 0);
+    }
 
-    if (!hasBle) {
-      list.unshift({ id: 'feed-ble', name: 'Blé', stockKg: 0, pricePerKg: 1.10 });
-    }
-    if (!hasBouchon) {
-      list.push({ id: 'feed-bouchon', name: 'Aliment ponte (Bouchon)', stockKg: 0, pricePerKg: 1.50 });
-    }
     return list;
   },
 
@@ -2587,16 +2705,12 @@ const app = {
     const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
     const sicamCansLabel = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
 
-    // Vérifier si des aliments ont été réellement déclarés ou enregistrés avec du stock
+    // Un utilisateur qui n'a pas encore déclaré de stock disponible ne doit rien voir d'artificiel ici
     const declaredFeeds = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0);
-    const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
-    const hasFoodExpenses = (appState.expenses || []).some(e => e.category === 'nourriture' && Number(e.total) > 0);
-    const hasCustomFeeds = (appState.feedTypes || []).some(ft => ft.id !== 'feed-ble' && ft.id !== 'feed-bouchon');
+    const hasDeclaredStock = declaredFeeds.length > 0 || ((Number(appState.feedStockKg) || 0) > 0);
 
-    const hasAnyDeclaredFeed = declaredFeeds.length > 0 || hasDistributions || hasFoodExpenses || hasCustomFeeds || ((Number(appState.feedStockKg) || 0) > 0);
-
-    if (!hasAnyDeclaredFeed) {
-      // Première utilisation : aucun aliment déclaré ! N'affiche rien d'artificiel.
+    if (!hasDeclaredStock) {
+      // Première utilisation : aucun aliment déclaré en stock ! N'affiche rien d'artificiel.
       if (presetsContainer) presetsContainer.innerHTML = '';
       if (addAnotherWrapper) addAnotherWrapper.style.display = 'none';
       if (totalsCard) totalsCard.style.display = 'none';
@@ -2606,14 +2720,14 @@ const app = {
         <div style="background: var(--bg-surface); border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 2rem 1.25rem; text-align: center; margin-bottom: 0.85rem;">
           <div style="font-size: 2.5rem; margin-bottom: 0.65rem;">🌾</div>
           <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.45rem;">
-            ${isAr ? 'لم تسجل أي مخزون علف حتى الآن' : (isEn ? 'No feed stock recorded yet' : 'Aucun aliment déclaré en stock')}
+            ${isAr ? 'لم تسجل أي مخزون علف حتى الآن' : (isEn ? 'No feed stock declared yet' : 'Aucun aliment déclaré en stock')}
           </h4>
           <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1.35rem; line-height: 1.5; max-width: 360px; margin-left: auto; margin-right: auto;">
             ${isAr 
-              ? 'لبدء ضبط وتوزيع كميات العلف اليومية، سجل مخزون الأعلاف المتوفر لديك أولاً (أكياس، قمح، علف بياض...).' 
+              ? 'لبدء ضبط وتوزيع كميات العلف اليومية، سجل مخزون الأعلاف المتوفر لديك أولاً.' 
               : (isEn ? 'To start distributing and tracking daily grammage, please declare the feed available in your farm first.' : 'Pour commencer à distribuer et contrôler vos grammages quotidiens, déclarez d\'abord les aliments disponibles dans votre ferme.')}
           </p>
-          <button type="button" class="btn btn-emerald bold" style="padding: 0.75rem 1.4rem; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.45rem; margin: 0 auto; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); border-radius: var(--radius-pill); cursor: pointer;" onclick="app.closeModal('modalFeedDistribution'); app.openModal('modalAdjustFeedStock');">
+          <button type="button" class="btn btn-emerald bold" style="padding: 0.75rem 1.4rem; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.45rem; margin: 0 auto; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); border-radius: var(--radius-pill); cursor: pointer;" onclick="app.openFeedPurchaseModal();">
             <span>➕</span>
             <span data-i18n="btn_add_your_feed_stock">${isAr ? 'إضافة مخزون العلف الخاص بك' : (isEn ? 'Add your feed stock' : 'Ajouter votre stock de nourriture')}</span>
           </button>
@@ -2629,8 +2743,7 @@ const app = {
     if (submitBtn) submitBtn.style.display = 'block';
 
     let html = '';
-    const feedsToDisplay = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0 || hasCustomFeeds || hasDistributions);
-    const activeFeeds = feedsToDisplay.length > 0 ? feedsToDisplay : appState.feedTypes;
+    const activeFeeds = declaredFeeds.length > 0 ? declaredFeeds : appState.feedTypes;
 
     activeFeeds.forEach((ft) => {
       const defaultKg = '0.00';
@@ -2934,23 +3047,41 @@ const app = {
       `;
     }
 
+    if (!appState.feedTypes || appState.feedTypes.length === 0) {
+      const emptyTitle = isAr ? '🌾 لا توجد أعلاف مسجلة في المخزن' : (isEn ? '🌾 No feed recorded in reserve' : '🌾 Aucun aliment en réserve');
+      const emptyDesc = isAr 
+        ? 'قم بشراء أو إضافة أعلافك الأولى لتموين المستودع.' 
+        : (isEn ? 'Purchase or declare your first feeds to stock the warehouse.' : 'Achetez vos premiers aliments pour approvisionner le magasin.');
+      const emptyBtn = isAr ? '➕ شراء / إضافة علف' : (isEn ? '➕ Buy / Add Feed' : '➕ Acheter / Ajouter un aliment');
+
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; background: var(--bg-surface); border: 2px dashed var(--border-color); border-radius: var(--radius-md); margin-bottom: 0.85rem;">
+          <div style="font-size: 2.3rem; margin-bottom: 0.5rem;">🌾</div>
+          <strong style="display: block; font-size: 0.95rem; color: var(--text-main); margin-bottom: 0.35rem;">${emptyTitle}</strong>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.1rem; max-width: 340px; margin-left: auto; margin-right: auto;">${emptyDesc}</p>
+          <button type="button" class="btn btn-emerald bold" style="padding: 0.65rem 1.3rem; font-size: 0.88rem;" onclick="app.openFeedPurchaseModal()">
+            ${emptyBtn}
+          </button>
+        </div>
+      `;
+      this.recalcStockAdjustValuation();
+      return;
+    }
+
     let html = bannerHtml;
     appState.feedTypes.forEach(ft => {
       const stockKg = Number(ft.stockKg) || 0;
       const priceKg = Number(ft.pricePerKg) || 1.0;
       const subtotal = stockKg * priceKg;
       const displayName = this.getFeedDisplayName(ft);
-      const isBaseFeed = ft.id === 'feed-ble' || ft.id === 'feed-bouchon';
 
       html += `
         <div class="feed-stock-row" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
             <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${displayName}</strong>
-            ${!isBaseFeed ? `
-              <button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-rose); padding: 0.15rem 0.45rem; font-size: 0.7rem;" onclick="app.deleteFeedType('${ft.id}')">
-                ${btnDeleteText}
-              </button>
-            ` : ''}
+            <button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-rose); padding: 0.15rem 0.45rem; font-size: 0.7rem;" onclick="app.deleteFeedType('${ft.id}')">
+              ${btnDeleteText}
+            </button>
           </div>
           <div class="form-row" style="margin-bottom: 0; gap: 0.5rem;">
             <div class="form-group flex-1" style="margin-bottom: 0;">
@@ -3074,15 +3205,8 @@ const app = {
   },
 
   deleteFeedType(id) {
-    if (id === 'feed-ble' || id === 'feed-bouchon') {
-      const isAr = appState.lang === 'ar';
-      const isEn = appState.lang === 'en';
-      const msg = isAr 
-        ? 'هذا العلف الأساسي (قمح / بوشون) ضروري للمزرعة ولا يمكن حذفه.' 
-        : (isEn ? 'Base feed (Wheat / Layer Pellets) is essential and cannot be deleted.' : 'Cet aliment de base (Blé / Bouchon) est indispensable et ne peut être supprimé.');
-      this.showToast(msg, 'warning');
-      return;
-    }
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
     const ft = (appState.feedTypes || []).find(f => f.id === id);
     if (!ft) return;
 
@@ -4508,18 +4632,22 @@ const app = {
     const standardRow = document.getElementById('expenseStandardRow');
     const expQty = document.getElementById('expenseQuantity');
     const expPrice = document.getElementById('expenseUnitPrice');
+    const feedSuggRow = document.getElementById('expenseFeedSuggestionsRow');
 
     if (cat === 'nourriture') {
       if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'block';
       if (standardRow) standardRow.style.display = 'none';
+      if (feedSuggRow) feedSuggRow.style.display = 'block';
       if (expQty) expQty.removeAttribute('required');
       if (expPrice) expPrice.removeAttribute('required');
 
       this.populateExpenseFeedTypes();
+      this.renderFeedExpenseSuggestions();
       this.setFeedPurchaseMode(appState.currentFeedPurchaseMode || 'sac');
     } else {
       if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'none';
       if (standardRow) standardRow.style.display = 'flex';
+      if (feedSuggRow) feedSuggRow.style.display = 'none';
       if (expQty) expQty.setAttribute('required', 'required');
       if (expPrice) expPrice.setAttribute('required', 'required');
       this.calcExpenseTotal();
@@ -4765,12 +4893,18 @@ const app = {
           let targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
 
           if (!targetFeed || selectedFeedId === '__new__') {
-            const cleanName = (title || '').trim();
-            targetFeed = (appState.feedTypes || []).find(f => f.name.toLowerCase().trim() === cleanName.toLowerCase().trim());
+            const rawTitle = (title || '').trim();
+            let feedCleanName = rawTitle.replace(/^(achat|شراء|buy|purchase|feed)\s*[:\-]?\s*/i, '').trim();
+            if (!feedCleanName) feedCleanName = rawTitle || (isAr ? 'علف جديد' : 'Nouvel aliment');
+
+            targetFeed = (appState.feedTypes || []).find(f => 
+              f.name.toLowerCase().trim() === feedCleanName.toLowerCase().trim() ||
+              (this.getFeedDisplayName(f) || '').toLowerCase().trim() === feedCleanName.toLowerCase().trim()
+            );
             if (!targetFeed) {
               targetFeed = {
                 id: 'feed-' + Date.now().toString(36),
-                name: cleanName || (isAr ? 'علف جديد' : 'Nouvel aliment'),
+                name: feedCleanName,
                 stockKg: 0,
                 pricePerKg: (total / (addedKg || 1)) || 1.2
               };
@@ -4817,6 +4951,8 @@ const app = {
       this.saveState();
       this.closeModal('modalAddExpense');
       this.renderAll();
+      this.renderFeedDistributionModal();
+      this.renderFeedStockAdjustModal();
 
       let toastMsg = this.t('toast_expense_saved', { amount: this.formatMoney(total) });
       if (feedStockAddedKg > 0) {

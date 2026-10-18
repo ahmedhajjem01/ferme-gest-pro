@@ -1545,12 +1545,12 @@
   <div id="modalAddExpense" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 data-i18n="modal_add_expense_title">Enregistrer une Dépense</h3>
+        <h3 id="modalAddExpenseTitle" data-i18n="modal_add_expense_title">Enregistrer une Dépense</h3>
         <button class="modal-close" onclick="app.closeModal('modalAddExpense')">&times;</button>
       </div>
       <form id="formAddExpense" onsubmit="app.handleSaveExpense(event)">
         <div class="modal-body">
-          <div class="form-row">
+          <div class="form-row" id="expenseCategoryRow">
             <div class="form-group flex-1">
               <label for="expenseCategory" data-i18n="lbl_expense_cat">Catégorie de Dépense</label>
               <select id="expenseCategory" class="input-field" required onchange="app.handleExpenseCatChange()">
@@ -1568,9 +1568,17 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label for="expenseTitle" data-i18n="lbl_expense_title">Description / Intitulé de la Dépense</label>
+          <div class="form-group" style="margin-bottom: 0.65rem;">
+            <label for="expenseTitle" id="expenseTitleLabel" data-i18n="lbl_expense_title">Description / Intitulé de la Dépense</label>
             <input type="text" id="expenseTitle" class="input-field" required oninput="app.onExpenseTitleInput()">
+          </div>
+
+          <!-- Suggestions rapides d'aliments (visible quand catégorie = nourriture) -->
+          <div id="expenseFeedSuggestionsRow" style="display: none; margin-bottom: 0.75rem;">
+            <label style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;" data-i18n="feed_sugg_label">💡 Suggestions rapides d'aliments :</label>
+            <div id="expenseFeedSuggestionsContainer" style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+              <!-- Rendu dynamiquement -->
+            </div>
           </div>
 
           <!-- Feed Custom Purchase Block (Only when category is 'nourriture') -->
@@ -1707,7 +1715,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="app.closeModal('modalAddExpense')" data-i18n="btn_cancel">Annuler</button>
-          <button type="submit" class="btn btn-danger" data-i18n="btn_validate_expense">Valider la Dépense</button>
+          <button type="submit" id="expenseSubmitBtn" class="btn btn-danger" data-i18n="btn_validate_expense">Valider la Dépense</button>
         </div>
       </form>
     </div>
@@ -2049,19 +2057,13 @@
       </div>
       <form id="formAdjustFeedStock" onsubmit="app.handleSaveFeedStockAdjustment(event)">
         <div class="modal-body">
-          <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;">
-            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;" data-i18n="modal_adjust_feed_desc">
-              🌾 <strong>Inventaire Magasin :</strong> Gérez vos stocks d'aliments (granulés, céréales, mélanges...). Ajustez les kilos restants et ajoutez de nouveaux aliments à tout moment !
-            </p>
-          </div>
-
           <!-- Container des stocks par type d'aliment -->
           <div id="feedStockTypesContainer" style="margin-bottom: 0.85rem;">
             <!-- Rendu dynamique par renderFeedStockAdjustModal() -->
           </div>
 
           <div style="text-align: center; margin-bottom: 1rem;">
-            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')" data-i18n="btn_buy_add_feed">
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openFeedPurchaseModal()" data-i18n="btn_buy_add_feed">
               ➕ Acheter / Ajouter un nouveau type d'aliment
             </button>
           </div>
@@ -2173,7 +2175,7 @@
 
           <!-- Bouton ajouter un nouveau type d'aliment -->
           <div id="feedDistribAddAnotherWrapper" style="text-align: center; margin-bottom: 1rem;">
-            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')" data-i18n="btn_add_another_feed">
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openFeedPurchaseModal()" data-i18n="btn_add_another_feed">
               ➕ Ajouter un autre type d'aliment (ex: Maïs, Son, Tournesol...)
             </button>
           </div>
@@ -2453,8 +2455,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=72"></script>
-  <script src="translations.js?v=72"></script>
-  <script src="app.js?v=72"></script>
+  <script src="supabase-client.js?v=73"></script>
+  <script src="translations.js?v=73"></script>
+  <script src="app.js?v=73"></script>
 </body>
 </html>

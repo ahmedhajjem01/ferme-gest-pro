@@ -395,6 +395,9 @@ const TRANSLATIONS = {
     lbl_link_lot: "Affecter à un lot (Optionnel)",
     opt_general_farm: "Frais Généraux de l'Exploitation",
     btn_validate_expense: "Valider la Dépense",
+    modal_buy_feed_title: "🌾 Acheter / Approvisionner un Aliment",
+    btn_validate_feed_purchase: "Valider l'Achat et le Stock",
+    feed_sugg_label: "💡 Suggestions rapides d'aliments :",
 
     modal_add_sale_title: "Enregistrer une Vente & Revenu",
     lbl_product_type: "Type d'Article Vendu",
@@ -974,6 +977,9 @@ const TRANSLATIONS = {
     lbl_link_lot: "تخصيص لدفعة (اختياري)",
     opt_general_farm: "مصاريف عامة للمزرعة",
     btn_validate_expense: "تأكيد المصروف",
+    modal_buy_feed_title: "🌾 شراء وتزويد رصيد العلف",
+    btn_validate_feed_purchase: "تأكيد الشراء وإضافة للمخزون",
+    feed_sugg_label: "💡 اقتراحات سريعة للأعلاف :",
 
     modal_add_sale_title: "تسجيل عملية بيع ومداخيل",
     lbl_product_type: "نوع المادة المباعة",
@@ -1552,6 +1558,9 @@ const TRANSLATIONS = {
     lbl_link_lot: "Assign to a batch (Optional)",
     opt_general_farm: "General Farm Overhead",
     btn_validate_expense: "Confirm Expense",
+    modal_buy_feed_title: "🌾 Buy Feed / Restock Inventory",
+    btn_validate_feed_purchase: "Confirm Purchase & Add to Stock",
+    feed_sugg_label: "💡 Quick feed suggestions:",
 
     modal_add_sale_title: "Record Sale & Revenue",
     lbl_product_type: "Product Type Sold",

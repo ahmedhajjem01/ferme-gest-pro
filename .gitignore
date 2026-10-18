@@ -26,3 +26,5 @@ ios/App/.symlinks/
 .vscode/
 .idea/
 *.log
+
+.vercel
