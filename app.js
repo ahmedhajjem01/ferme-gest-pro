@@ -3156,27 +3156,40 @@ const app = {
     const customRationDeclared = Boolean(appState.customDailyFeedKg && Number(appState.customDailyFeedKg) > 0);
 
     // Activité d'aliment réelle déclarée par l'éleveur (stricte : aucun chiffre simulé de tête !)
-    const hasRealFeedData = feedPurchasesExist || feedDistributionsExist || feedStockDeclared || customRationDeclared;
+    const hasRealFeedData = feedPurchasesExist || hasDistributions || feedStockDeclared || customRationDeclared;
 
     // Détermination de l'état : seulement si des données réelles d'aliment existent
     const hasData = hasRealFeedData && (totalLivingAnimals > 0);
+
+    // Calcul des distributions effectuées aujourd'hui
+    const todayStr = this.getTodayStr();
+    const todayDistributions = (appState.feedDistributions || []).filter(d => d.date === todayStr);
+    const todayDistributedKg = todayDistributions.reduce((s, d) => s + (Number(d.totalKg) || Number(d.quantityKg) || 0), 0);
+    const todayDistributedCost = todayDistributions.reduce((s, d) => s + (Number(d.totalCost) || 0), 0);
+    const todayDistributedCans = todayDistributions.reduce((s, d) => s + (Number(d.cans) || 0), 0);
 
     // Calcul des valeurs avec garantie stricte de 0 si aucune dépense ou aliment signalé
     let totalFarmDailyKg = 0;
     let totalFarmDailyCost = 0;
 
     if (hasRealFeedData && totalLivingAnimals > 0) {
-      if (customRationDeclared) {
+      if (todayDistributedKg > 0) {
+        // Si une distribution a déjà été effectuée aujourd'hui, afficher exactement ce qui a été distribué aujourd'hui !
+        totalFarmDailyKg = todayDistributedKg;
+        totalFarmDailyCost = todayDistributedCost > 0 ? todayDistributedCost : (todayDistributedKg * feedPriceKg);
+      } else if (customRationDeclared) {
         totalFarmDailyKg = Number(appState.customDailyFeedKg) || 0;
+        totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
       } else if (hasDistributions) {
-        // Moyenne des distributions réelles effectuées
-        const recentDist = (appState.feedDistributions || []).slice(-7);
-        const sumKg = recentDist.reduce((s, d) => s + (Number(d.quantityKg) || 0), 0);
+        // Moyenne des distributions réelles récentes
+        const recentDist = (appState.feedDistributions || []).slice(0, 7);
+        const sumKg = recentDist.reduce((s, d) => s + (Number(d.totalKg) || Number(d.quantityKg) || 0), 0);
         totalFarmDailyKg = recentDist.length > 0 ? (sumKg / recentDist.length) : (totalFarmDailyGrams / 1000);
+        totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
       } else if (feedPurchasesExist || feedStockDeclared) {
         totalFarmDailyKg = totalFarmDailyGrams / 1000;
+        totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
       }
-      totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
     }
 
     if (!hasRealFeedData) {
@@ -3216,6 +3229,22 @@ const app = {
         : (isAr ? '0.0 كغ بالمخزن (0,000 د.ت)' : (isEn ? '0.0 kg in stock (0,000 DT)' : '0.0 kg en réserve (0,000 DT)'));
     }
 
+    // Statut de distribution du jour sous la carte
+    const statusHintEl = document.getElementById('farmFeedTodayStatusHint');
+    if (statusHintEl) {
+      if (todayDistributedKg > 0) {
+        statusHintEl.textContent = isAr 
+          ? `✅ تم توزيع اليوم: ${todayDistributedKg.toFixed(2)} كغ (${todayDistributedCans.toFixed(1)} علبة)`
+          : (isEn ? `✅ Distributed today: ${todayDistributedKg.toFixed(2)} kg (${todayDistributedCans.toFixed(1)} cans)` : `✅ Distribué aujourd'hui : ${todayDistributedKg.toFixed(2)} kg (${todayDistributedCans.toFixed(1)} boîtes)`);
+        statusHintEl.style.color = 'var(--accent-emerald)';
+      } else {
+        statusHintEl.textContent = isAr 
+          ? '🥫 اضغط لتسجيل توزيع اليوم' 
+          : (isEn ? '🥫 Click to log today\'s feed' : '🥫 Cliquer pour distribuer aujourd\'hui');
+        statusHintEl.style.color = 'var(--accent-amber)';
+      }
+    }
+
     // Basculement visuel entre mode Diminué et mode Complet
     if (!hasData) {
       card.classList.add('is-diminished');
@@ -3229,6 +3258,9 @@ const app = {
     card.classList.remove('is-diminished');
     if (diminishedSection) diminishedSection.style.display = 'none';
     if (fullSection) fullSection.style.display = 'block';
+
+    const btnDistribText = isAr ? '🥫 توزيع العلف' : (isEn ? '🥫 Distribute Feed' : '🥫 Distribuer l\'aliment');
+    const btnStockText = isAr ? '📦 مخزون المستودع' : (isEn ? '📦 Warehouse Stock' : '📦 Stock Magasin');
 
     let lotsHtml = '';
     if (feedStockRemainingKg > 0 || totalPurchasedFeedCost > 0) {
@@ -3249,9 +3281,6 @@ const app = {
         ? '(غير محتسب على الكتاكيت حتى يتم استهلاكه)' 
         : (isEn ? '(Not charged to chicks until consumed)' : '(Non imputé aux poussins tant que non consommé)');
 
-      const btnDistribText = isAr ? '🥫 توزيع' : (isEn ? '🥫 Distribute' : '🥫 Distribuer');
-      const btnStockText = isAr ? '📦 مخزون المستودع' : (isEn ? '📦 Warehouse Stock' : '📦 Stock Magasin');
-
       lotsHtml += `
         <div style="grid-column: 1 / -1; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; color: var(--accent-emerald); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
@@ -3259,10 +3288,10 @@ const app = {
             <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">${subText}</span>
           </div>
           <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn btn-sm btn-outline" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800; color: var(--accent-amber);" onclick="app.openModal('modalFeedDistribution')">
+            <button type="button" class="btn btn-sm btn-emerald bold" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;" onclick="app.openModal('modalFeedDistribution')">
               ${btnDistribText}
             </button>
-            <button type="button" class="btn btn-sm btn-emerald" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
+            <button type="button" class="btn btn-sm btn-outline" style="padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
               ${btnStockText}
             </button>
           </div>
@@ -3273,15 +3302,20 @@ const app = {
         ? '📦 <strong>مخزون العلف :</strong> لا يوجد أكياس مسجلة في المخزن.'
         : (isEn ? '📦 <strong>Feed stock:</strong> No bags recorded in warehouse.' : '📦 <strong>Stock d\'aliment :</strong> Aucun sac déclaré en réserve.');
       const emptyBtn = isAr
-        ? '➕ إدخال مخزون المستودع (مثال: 65 كغ)'
-        : (isEn ? '➕ Declare Warehouse Stock (e.g. 65 kg)' : '➕ Déclarer Stock de Réserve (ex: 65 kg)');
+        ? '➕ إدخال مخزون المستودع'
+        : (isEn ? '➕ Declare Stock' : '➕ Déclarer Stock de Réserve');
 
       lotsHtml += `
         <div style="grid-column: 1 / -1; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <span>${emptyMsg}</span>
-          <button type="button" class="btn btn-sm btn-primary" style="padding: 0.25rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
-            ${emptyBtn}
-          </button>
+          <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-sm btn-emerald bold" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;" onclick="app.openModal('modalFeedDistribution')">
+              ${btnDistribText}
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
+              ${emptyBtn}
+            </button>
+          </div>
         </div>
       `;
     }
