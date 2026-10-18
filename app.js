@@ -451,6 +451,10 @@ const app = {
     this.updateCurrencyDropdownOptions();
     this.updateMobileMenuControls();
     this.applyTranslations();
+    const addSp = document.getElementById('animalSpecies')?.value || 'poulet';
+    this.handleAnimalSpeciesChange(addSp, 'animal');
+    const editSp = document.getElementById('editAnimalSpecies')?.value || 'poulet';
+    this.handleAnimalSpeciesChange(editSp, 'editAnimal');
     this.renderAll();
     this.calcHatchPreview();
 
@@ -6725,16 +6729,16 @@ const app = {
   },
 
   translateSpecies(species) {
-    if (!species) return 'Poulet';
+    if (!species) return 'Poulet / Coq';
     const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
     const lang = isArabic ? 'ar' : (appState.lang || 'fr');
     const sp = species.toString().toLowerCase().trim();
 
     if (lang === 'ar') {
-      if (sp === 'poulet') return 'دجاج';
+      if (sp === 'poulet' || sp === 'coq') return 'دجاج / ديوك';
       if (sp === 'pondeuse') return 'دجاج بياض';
       if (sp === 'poussin') return 'كتكوت';
-      if (sp === 'adulte') return 'دجاج بالغ';
+      if (sp === 'adulte') return 'دجاج / ديوك';
       if (sp === 'pintade') return 'دجاج الوادي';
       if (sp === 'canard' || sp === 'canard_barbarie') return 'بط';
       if (sp === 'caille') return 'سمان';
@@ -6742,10 +6746,10 @@ const app = {
     }
 
     if (lang === 'en') {
-      if (sp === 'poulet') return 'Chicken';
+      if (sp === 'poulet' || sp === 'coq') return 'Chicken / Rooster';
       if (sp === 'pondeuse') return 'Laying hen';
       if (sp === 'poussin') return 'Chick';
-      if (sp === 'adulte') return 'Adult poultry';
+      if (sp === 'adulte') return 'Adult chicken / rooster';
       if (sp === 'pintade') return 'Guinea fowl';
       if (sp === 'canard' || sp === 'canard_barbarie') return 'Duck';
       if (sp === 'caille') return 'Quail';
@@ -6753,10 +6757,10 @@ const app = {
     }
 
     // French
-    if (sp === 'poulet') return 'Poulet';
+    if (sp === 'poulet' || sp === 'coq') return 'Poulet / Coq';
     if (sp === 'pondeuse') return 'Poule pondeuse';
     if (sp === 'poussin') return 'Poussin';
-    if (sp === 'adulte') return 'Coq / Poule adulte';
+    if (sp === 'adulte') return 'Poulet / Coq adulte';
     if (sp === 'pintade') return 'Pintade';
     if (sp === 'canard' || sp === 'canard_barbarie') return 'Canard';
     if (sp === 'caille') return 'Caille';
