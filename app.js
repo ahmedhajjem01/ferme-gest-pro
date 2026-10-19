@@ -2591,6 +2591,9 @@ const app = {
     if (!Array.isArray(appState.expenses)) return;
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
 
+    const deletedFamilies = Array.isArray(appState.deletedFeedFamilies) ? appState.deletedFeedFamilies : [];
+    const deletedIds = Array.isArray(appState.deletedFeedIds) ? appState.deletedFeedIds : [];
+
     const foodExpenses = appState.expenses.filter(e => e.category === 'nourriture');
     if (foodExpenses.length === 0) return;
 
@@ -2599,47 +2602,7 @@ const app = {
 
     let changed = false;
 
-    // 1. Détecter si des dépenses de Bouchon ont été erronément créditées au Blé
-    const creditedBouchonExps = foodExpenses.filter(e => {
-      const family = this.detectFeedTypeFromText(e.title);
-      return family === 'bouchon' && (Number(e.feedStockAddedKg) || 0) > 0;
-    });
-
-    const totalBouchonAdded = creditedBouchonExps.reduce((s, e) => s + (Number(e.feedStockAddedKg) || 0), 0);
-    const totalBouchonCost = creditedBouchonExps.reduce((s, e) => s + (Number(e.total) || 0), 0);
-
-    if (totalBouchonAdded > 0) {
-      if (!bouchonFeed) {
-        bouchonFeed = this.createDefaultFeedForFamily('bouchon', totalBouchonCost / totalBouchonAdded);
-        appState.feedTypes.push(bouchonFeed);
-        changed = true;
-      }
-
-      // Si le stock de Bouchon est à 0 ou inférieur au total ajouté, et que le Blé a un surplus correspondant
-      if ((Number(bouchonFeed.stockKg) || 0) < totalBouchonAdded) {
-        const diffKg = totalBouchonAdded - (Number(bouchonFeed.stockKg) || 0);
-        // Si le Blé a ce surplus (ex: Blé affiché à 60kg au lieu de 50kg)
-        if (bleFeed && (Number(bleFeed.stockKg) || 0) >= diffKg) {
-          bleFeed.stockKg = Math.max(0, (Number(bleFeed.stockKg) || 0) - diffKg);
-          changed = true;
-        }
-        bouchonFeed.stockKg = Math.max(0, (Number(bouchonFeed.stockKg) || 0) + diffKg);
-        if (totalBouchonCost > 0 && totalBouchonAdded > 0) {
-          bouchonFeed.pricePerKg = Math.max(0.1, totalBouchonCost / totalBouchonAdded);
-        }
-        changed = true;
-      }
-
-      // Corriger les feedTypeId des dépenses Bouchon
-      creditedBouchonExps.forEach(e => {
-        if (e.feedTypeId !== bouchonFeed.id) {
-          e.feedTypeId = bouchonFeed.id;
-          changed = true;
-        }
-      });
-    }
-
-    // 2. Vérifier et corriger le prix au kg du Blé (rétablir 1.00 DT/kg pour 50 DT / 50 kg au lieu de 1.20 DT)
+    // 1. Restaurer le stock de Blé s'il a été artificiellement siphonné (ex: tombé à 30 ou 40kg)
     const creditedBleExps = foodExpenses.filter(e => {
       const family = this.detectFeedTypeFromText(e.title);
       return family === 'ble' && (Number(e.feedStockAddedKg) || 0) > 0;
@@ -2647,11 +2610,54 @@ const app = {
     const totalBleAdded = creditedBleExps.reduce((s, e) => s + (Number(e.feedStockAddedKg) || 0), 0);
     const totalBleCost = creditedBleExps.reduce((s, e) => s + (Number(e.total) || 0), 0);
 
-    if (bleFeed && totalBleAdded > 0 && totalBleCost > 0) {
-      const realBlePrice = totalBleCost / totalBleAdded;
-      if (Math.abs(bleFeed.pricePerKg - realBlePrice) > 0.02) {
-        bleFeed.pricePerKg = realBlePrice;
+    if (bleFeed && !deletedFamilies.includes('ble') && !deletedIds.includes(bleFeed.id)) {
+      const hasDistribs = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+      if (!hasDistribs && totalBleAdded > 0 && (Number(bleFeed.stockKg) || 0) < totalBleAdded) {
+        bleFeed.stockKg = totalBleAdded;
         changed = true;
+      }
+      if (totalBleAdded > 0 && totalBleCost > 0) {
+        const realBlePrice = totalBleCost / totalBleAdded;
+        if (Math.abs(bleFeed.pricePerKg - realBlePrice) > 0.01) {
+          bleFeed.pricePerKg = realBlePrice;
+          changed = true;
+        }
+      }
+    }
+
+    // 2. Bouchon : Ne réconcilier ou créer QUE si l'aliment n'a PAS été explicitement supprimé par l'utilisateur
+    if (!deletedFamilies.includes('bouchon') && (!bouchonFeed || !deletedIds.includes(bouchonFeed.id))) {
+      const creditedBouchonExps = foodExpenses.filter(e => {
+        const family = this.detectFeedTypeFromText(e.title);
+        return family === 'bouchon' && (Number(e.feedStockAddedKg) || 0) > 0;
+      });
+
+      const totalBouchonAdded = creditedBouchonExps.reduce((s, e) => s + (Number(e.feedStockAddedKg) || 0), 0);
+      const totalBouchonCost = creditedBouchonExps.reduce((s, e) => s + (Number(e.total) || 0), 0);
+
+      if (totalBouchonAdded > 0) {
+        if (!bouchonFeed) {
+          bouchonFeed = this.createDefaultFeedForFamily('bouchon', totalBouchonCost / totalBouchonAdded);
+          appState.feedTypes.push(bouchonFeed);
+          changed = true;
+        }
+
+        if ((Number(bouchonFeed.stockKg) || 0) < totalBouchonAdded && (!Array.isArray(appState.feedDistributions) || appState.feedDistributions.length === 0)) {
+          bouchonFeed.stockKg = totalBouchonAdded;
+          changed = true;
+        }
+        if (totalBouchonCost > 0 && totalBouchonAdded > 0) {
+          bouchonFeed.pricePerKg = Math.max(0.1, totalBouchonCost / totalBouchonAdded);
+          changed = true;
+        }
+
+        // Assigner le feedTypeId exact
+        creditedBouchonExps.forEach(e => {
+          if (e.feedTypeId !== bouchonFeed.id) {
+            e.feedTypeId = bouchonFeed.id;
+            changed = true;
+          }
+        });
       }
     }
 
@@ -3240,7 +3246,6 @@ const app = {
   },
 
   renderFeedStockAdjustModal() {
-    this.reconcileFeedTypesFromExpenses();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
     const container = document.getElementById('feedStockTypesContainer');
     if (!container) return;
@@ -3387,6 +3392,11 @@ const app = {
     const priceKg = parseFloat(document.getElementById('newFeedTypePriceKg')?.value) || 1.0;
     const recordExpense = document.getElementById('newFeedTypeRecordExpense')?.checked;
 
+    const family = this.detectFeedTypeFromText(name);
+    if (family && Array.isArray(appState.deletedFeedFamilies)) {
+      appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => f !== family);
+    }
+
     const newType = {
       id: 'feed-' + Date.now().toString(36),
       name: name,
@@ -3413,13 +3423,16 @@ const app = {
         quantity: stockKg,
         unitPrice: priceKg,
         total: totalCost,
-        linkedLotId: 'general'
+        linkedLotId: 'general',
+        feedStockAddedKg: stockKg,
+        feedTypeId: newType.id
       };
       appState.expenses.unshift(newExp);
     }
 
     appState.feedStockKg = appState.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
     appState.feedStockDate = this.getTodayStr();
+    appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
 
     this.saveState();
     this.closeModal('modalAddFeedType');
@@ -3438,11 +3451,13 @@ const app = {
     const ft = (appState.feedTypes || []).find(f => f.id === id);
     if (!ft) return;
 
+    const displayName = this.getFeedDisplayName(ft);
+
     this.confirmDialog({
       title: isAr ? 'حذف العلف' : 'Supprimer l\'aliment',
       message: isAr 
-        ? `هل تريد بالتأكيد حذف العلف "${ft.name}" ؟`
-        : `Voulez-vous vraiment supprimer l'aliment "${ft.name}" ?`,
+        ? `هل تريد بالتأكيد حذف العلف "${displayName}" من مخزون المستودع ؟`
+        : `Voulez-vous vraiment supprimer l'aliment "${displayName}" du stock en réserve ?`,
       isDanger: true,
       confirmText: isAr ? 'حذف' : 'Supprimer',
       onConfirm: () => {
@@ -3450,14 +3465,42 @@ const app = {
           appAuth.addDeletedId(id);
         }
 
+        if (!Array.isArray(appState.deletedFeedIds)) {
+          appState.deletedFeedIds = [];
+        }
+        if (!appState.deletedFeedIds.includes(id)) {
+          appState.deletedFeedIds.push(id);
+        }
+
+        const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id);
+        if (family) {
+          if (!Array.isArray(appState.deletedFeedFamilies)) {
+            appState.deletedFeedFamilies = [];
+          }
+          if (!appState.deletedFeedFamilies.includes(family)) {
+            appState.deletedFeedFamilies.push(family);
+          }
+        }
+
+        // Détacher les dépenses liées à cet aliment pour qu'elles n'apparaissent plus comme actives dans ce stock
+        (appState.expenses || []).forEach(e => {
+          if (e.feedTypeId === id || (family && this.detectFeedTypeFromText(e.title) === family)) {
+            delete e.feedStockAddedKg;
+            delete e.feedTypeId;
+          }
+        });
+
+        // Supprimer définitivement de feedTypes
         appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id);
         appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+        appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
 
         this.saveState();
         this.renderFeedStockAdjustModal();
         this.renderFeedDistributionModal();
+        this.renderExpensesTable();
         this.renderAll();
-        this.showToast(`Aliment "${ft.name}" supprimé.`);
+        this.showToast(`Aliment "${displayName}" supprimé.`);
       }
     });
   },
@@ -5269,6 +5312,9 @@ const app = {
           let targetFeed = null;
           // Priorité absolue à la famille détectée dans l'intitulé (ex: Bouchon ne va JAMAIS dans Blé !)
           if (detectedFamily) {
+            if (Array.isArray(appState.deletedFeedFamilies)) {
+              appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => f !== detectedFamily);
+            }
             targetFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, detectedFamily));
             if (!targetFeed) {
               targetFeed = this.createDefaultFeedForFamily(detectedFamily, total / (addedKg || 1));
@@ -5423,6 +5469,9 @@ const app = {
 
         // Match or ask which feed
         const family = this.detectFeedTypeFromText(exp.title);
+        if (family && Array.isArray(appState.deletedFeedFamilies)) {
+          appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => f !== family);
+        }
         let ft = null;
         if (family) {
           ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, family));
@@ -5487,6 +5536,9 @@ const app = {
       }
 
       const family = this.detectFeedTypeFromText(exp.title);
+      if (family && Array.isArray(appState.deletedFeedFamilies)) {
+        appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => f !== family);
+      }
       let ft = null;
       if (family) {
         ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, family));
