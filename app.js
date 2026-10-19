@@ -4245,43 +4245,35 @@ const app = {
     });
 
     // 2. Dépenses directes affectées à un ou plusieurs lots spécifiques (ex: 2 ou 3 lots achetés ensemble)
-    // Condition temporelle : imputée au lot L uniquement si e.date >= L.date_arrivee && e.date <= L.date_sortie
     (appState.expenses || []).forEach(e => {
       const expTotal = Number(e.total) || 0;
-      if (expTotal <= 0 || !e.date) return;
+      if (expTotal <= 0) return;
       const linkedIds = this.getExpenseLinkedLotIds(e);
       if (linkedIds.length === 0) return; // Frais généraux traités à l'étape 4 ci-dessous
 
-      // Identifier les lots cibles valides et actifs à la date de la dépense
-      let activeTargets = linkedIds
-        .map(id => lotMap[id])
-        .filter(info => info && e.date >= info.arrivalDate && e.date <= info.exitDate);
+      // Identifier tous les lots cibles choisis par l'éleveur
+      const targetLots = linkedIds.map(id => lotMap[id]).filter(Boolean);
+      if (targetLots.length === 0) return;
 
-      // Si l'utilisateur a explicitement ciblé ces lots mais que la date de la transaction précède l'arrivée officielle
-      if (activeTargets.length === 0) {
-        activeTargets = linkedIds.map(id => lotMap[id]).filter(Boolean);
-      }
-
-      if (activeTargets.length === 0) return;
-
-      if (activeTargets.length === 1) {
-        // 1 seul lot actif
+      if (targetLots.length === 1) {
+        // 1 seul lot actif : 100% direct à ce lot
         if (e.category === 'nourriture') {
-          activeTargets[0].allocatedFeed += expTotal;
+          targetLots[0].allocatedFeed += expTotal;
         } else {
-          activeTargets[0].directExpenses += expTotal;
+          targetLots[0].directExpenses += expTotal;
         }
       } else {
-        // Plusieurs lots sélectionnés (2, 3 lots ou plus) : répartition exclusive entre ces lots !
+        // Plusieurs lots sélectionnés (2, 3 lots ou tous les lots de la ferme) :
+        // Répartition agronomique équitable selon la durée de présence et la consommation réelle sur la ferme !
         if (e.category === 'nourriture') {
           let totalWeight = 0;
-          const targetPortions = activeTargets.map(info => {
-            const daysSinceArrival = this.calculateDaysBetween(info.arrivalDate, e.date);
+          const targetPortions = targetLots.map(info => {
+            const daysOnFarm = Math.max(1, this.calculateDaysBetween(info.arrivalDate, info.exitDate || todayStr));
             const arrivalAge = Number(info.animal.arrivalAgeDays) || 0;
-            const ageOnD = arrivalAge + daysSinceArrival;
-            const cumulKg = this.calculateCumulativeFeedKg(info.animal.species, ageOnD, info.animal.stage, info.animal.breed, arrivalAge);
+            const totalAgeDays = arrivalAge + daysOnFarm;
+            const cumulKg = this.calculateCumulativeFeedKg(info.animal.species, totalAgeDays, info.animal.stage, info.animal.breed, arrivalAge);
             const minDailyGrams = this.getDailyGramsForAge(info.animal.species, arrivalAge, info.animal.stage, info.animal.breed);
-            const weightKg = Math.max(minDailyGrams / 1000, cumulKg);
+            const weightKg = Math.max(minDailyGrams / 1000, cumulKg, 0.05);
             const portion = info.activeHeads * weightKg;
             totalWeight += portion;
             return { info, portion };
@@ -4292,15 +4284,15 @@ const app = {
               tp.info.allocatedFeed += expTotal * (tp.portion / totalWeight);
             });
           } else {
-            const totalHeads = activeTargets.reduce((s, info) => s + info.activeHeads, 0);
-            activeTargets.forEach(info => {
-              info.allocatedFeed += expTotal * (info.activeHeads / totalHeads);
+            const totalHeads = targetLots.reduce((s, info) => s + info.activeHeads, 0);
+            targetLots.forEach(info => {
+              info.allocatedFeed += expTotal * (info.activeHeads / (totalHeads || 1));
             });
           }
         } else {
-          const totalHeads = activeTargets.reduce((s, info) => s + info.activeHeads, 0);
+          const totalHeads = targetLots.reduce((s, info) => s + info.activeHeads, 0);
           if (totalHeads > 0) {
-            activeTargets.forEach(info => {
+            targetLots.forEach(info => {
               info.directExpenses += expTotal * (info.activeHeads / totalHeads);
             });
           }
@@ -4323,19 +4315,17 @@ const app = {
 
     // 4. Parcourir chaque jour d pour ventiler la dépense réelle distribuée au prorata strict des parts actives de la journée d
     sortedDates.forEach(d => {
-      // Identifier uniquement les lots actifs ce jour-là : arrivalDate <= d <= exitDate
+      // Identifier les lots actifs ce jour-là : arrivalDate <= d <= exitDate
       const activeLotsOnD = Object.values(lotMap).filter(info => d >= info.arrivalDate && d <= info.exitDate);
-      if (activeLotsOnD.length === 0) return;
 
       // 4a. Distributions réelles d'aliment effectuées le jour d
       const distribsOnD = (appState.feedDistributions || []).filter(dist => dist.date === d);
       const feedDistCost = distribsOnD.reduce((s, dist) => s + (Number(dist.totalCost) || 0), 0);
 
-      // Si des distributions quotidiennes réelles ont eu lieu le jour d :
-      // consommation répartie selon les portions journalières agronomiques du jour d
       if (feedDistCost > 0) {
+        const targetLots = (activeLotsOnD.length > 0) ? activeLotsOnD : Object.values(lotMap);
         let totalFeedPortions = 0;
-        const lotPortions = activeLotsOnD.map(info => {
+        const lotPortions = targetLots.map(info => {
           const daysSinceArrival = this.calculateDaysBetween(info.arrivalDate, d);
           const ageOnD = daysSinceArrival + (Number(info.animal.arrivalAgeDays) || 0);
           const feedData = this.getAgronomicFeedData(info.animal.species, ageOnD, info.animal.stage, info.animal.breed);
@@ -4362,20 +4352,23 @@ const app = {
       );
 
       // Les achats généraux d'aliment nourrissent le troupeau pendant sa période d'élevage :
-      // Chaque lot supporte un coût strictement proportionnel au cumul d'aliment consommé sur la ferme
-      // entre son arrivée (arrivalAgeDays) et la date d. Un caneton/poussin éclos sur place (0 jour)
-      // mange beaucoup moins sur la ferme qu'un canard arrivé déjà adulte !
+      // Si la dépense a eu lieu au début du projet (ex: stocks de démarrage), tous les lots bénéficient de cette nourriture
       if (feedExpsOnD.length > 0) {
         const dayFeedExpCost = feedExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
         if (dayFeedExpCost > 0) {
+          const allLots = Object.values(lotMap);
+          const targetLots = (activeLotsOnD.length > 0 && activeLotsOnD.length >= allLots.length * 0.5)
+            ? activeLotsOnD
+            : allLots;
+
           let totalCumulWeight = 0;
-          const lotExpPortions = activeLotsOnD.map(info => {
-            const daysSinceArrival = this.calculateDaysBetween(info.arrivalDate, d);
+          const lotExpPortions = targetLots.map(info => {
+            const daysOnFarm = Math.max(1, this.calculateDaysBetween(info.arrivalDate, info.exitDate || todayStr));
             const arrivalAge = Number(info.animal.arrivalAgeDays) || 0;
-            const ageOnD = arrivalAge + daysSinceArrival;
+            const ageOnD = arrivalAge + daysOnFarm;
             const cumulKg = this.calculateCumulativeFeedKg(info.animal.species, ageOnD, info.animal.stage, info.animal.breed, arrivalAge);
             const minDailyGrams = this.getDailyGramsForAge(info.animal.species, arrivalAge, info.animal.stage, info.animal.breed);
-            const weightKg = Math.max(minDailyGrams / 1000, cumulKg);
+            const weightKg = Math.max(minDailyGrams / 1000, cumulKg, 0.05);
             const portion = info.activeHeads * weightKg;
             totalCumulWeight += portion;
             return { info, portion };
@@ -4389,7 +4382,7 @@ const app = {
         }
       }
 
-      // 4c. Dépenses générales hors aliment réparties au prorata des têtes actives le jour d
+      // 4c. Dépenses générales hors aliment réparties au prorata des têtes actives
       const otherExpsOnD = (appState.expenses || []).filter(e => 
         e.date === d && 
         e.category !== 'nourriture' && 
@@ -4398,9 +4391,13 @@ const app = {
       const dayOtherCost = otherExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
 
       if (dayOtherCost > 0) {
-        const totalHeads = activeLotsOnD.reduce((s, info) => s + info.activeHeads, 0);
+        const allLots = Object.values(lotMap);
+        const targetLots = (activeLotsOnD.length > 0 && activeLotsOnD.length >= allLots.length * 0.5)
+          ? activeLotsOnD
+          : allLots;
+        const totalHeads = targetLots.reduce((s, info) => s + info.activeHeads, 0);
         if (totalHeads > 0) {
-          activeLotsOnD.forEach(info => {
+          targetLots.forEach(info => {
             info.allocatedOther += dayOtherCost * (info.activeHeads / totalHeads);
           });
         }
