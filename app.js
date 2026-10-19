@@ -4633,6 +4633,8 @@ const app = {
       const totalLotExpenses = fin.totalLotExpenses || 0;
       const totalInvested = fin.totalInvested || 0;
       const costPerCurrentHead = fin.costPerCurrentHead || 0;
+      const feedCostPerHead = (Number(animal.currentQuantity) > 0) ? ((fin.allocatedFeed || 0) / Number(animal.currentQuantity)) : 0;
+      const acqCostPerHead = Number(animal.costPerHead) || 0;
 
       const avatarIcon = this.getSpeciesIcon(animal.species);
       const effectiveStage = this.getEffectiveAnimalStage(animal);
@@ -4744,6 +4746,7 @@ const app = {
             <div class="animal-stat-col">
               <span class="lbl">${this.t('card_age_real')}</span>
               <span class="val text-emerald">${ageText}</span>
+              ${arrivalAgeDays > 0 ? `<div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 1px;">${isAr ? `${daysSinceArrival} يوماً بالمزرعة (وصل بعمر ${this.formatAgeText(arrivalAgeDays)})` : `${daysSinceArrival} j sur ferme (arrivé à ${this.formatAgeText(arrivalAgeDays)})`}</div>` : ''}
             </div>
             <div class="animal-stat-col">
               <span class="lbl">${this.t('card_current_count')}</span>
@@ -4756,7 +4759,10 @@ const app = {
             <div class="animal-stat-col" style="cursor: pointer;" onclick="app.openEditAnimalModal('${animal.id}')" title="Cliquer pour modifier le lot ou le coût">
               <span class="lbl">${this.t('card_cost_head')} ✏️</span>
               <span class="val text-amber">${this.formatMoney(costPerCurrentHead)}</span>
-              <div style="font-size: 0.74rem; font-weight: 700; margin-top: 3px; color: var(--text-secondary);">
+              <div style="font-size: 0.69rem; color: var(--text-muted); margin-top: 1px;">
+                ${isAr ? `شراء: ${this.formatMoney(acqCostPerHead)} &bull; علف: ${this.formatMoney(feedCostPerHead)}` : `Achat: ${this.formatMoney(acqCostPerHead)} &bull; Alim: ${this.formatMoney(feedCostPerHead)}`}
+              </div>
+              <div style="font-size: 0.74rem; font-weight: 700; margin-top: 2px; color: var(--text-secondary);">
                 <span>${this.t('card_total_cost') || (isAr ? 'التكلفة الإجمالية:' : 'Coût Total :')}</span>
                 <strong style="color: var(--accent-amber); font-weight: 800; display: inline-block; margin-inline-start: 3px;">${this.formatMoney(totalInvested)}</strong>
               </div>
