@@ -956,6 +956,32 @@ const app = {
         const sp = document.getElementById('animalSpecies')?.value || 'poulet';
         this.handleAnimalSpeciesChange(sp, 'animal');
         this.updateArrivalAgePreview('animal');
+
+        const existingAlert = document.getElementById('modalAddAnimalFeedWarning');
+        if (existingAlert) existingAlert.remove();
+
+        const availableStock = this.getAvailableFeedStockKg();
+        if (availableStock <= 0) {
+          const isAr = appState.lang === 'ar';
+          const isEn = appState.lang === 'en';
+          const bannerDiv = document.createElement('div');
+          bannerDiv.id = 'modalAddAnimalFeedWarning';
+          bannerDiv.style.cssText = 'background: rgba(245, 158, 11, 0.12); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap;';
+          bannerDiv.innerHTML = `
+            <div style="font-size: 0.82rem; color: var(--accent-amber); font-weight: 700; display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 220px;">
+              <span style="font-size: 1.1rem;">⚠️</span>
+              <span>${isAr ? 'تنبيه: مخزون الأعلاف فارغ حالياً (0 كغ). جميع الأكياس السابقة مغلقة.' : (isEn ? 'Notice: Feed stock is empty (0 kg). All previous stocks are closed.' : 'Attention : Aucun stock d\'aliment disponible (0 kg en réserve). Tous les stocks précédents sont épuisés.')}</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary bold" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;" onclick="app.closeModal('modalAddAnimal'); app.openFeedPurchaseModal();">
+              🛒 ${isAr ? 'شراء علف' : (isEn ? 'Buy feed' : 'Acheter de l\'aliment')}
+            </button>
+          `;
+          const form = document.getElementById('formAddAnimal');
+          const modalBody = form ? form.querySelector('.modal-body') : null;
+          if (modalBody) {
+            modalBody.prepend(bannerDiv);
+          }
+        }
       }
 
       if (modalId === 'modalDailyEggs') {
@@ -3213,8 +3239,13 @@ const app = {
           cost: parseFloat(cost.toFixed(3))
         });
 
-        // Déduire du stock de cet aliment spécifique
+        // Déduire du stock de cet aliment spécifique et clôturer le cycle si épuisé
         ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) - kg);
+        if (ft.stockKg <= 0) {
+          ft.stockKg = 0;
+          ft.isClosed = true;
+          ft.closedDate = date;
+        }
       }
     });
 
@@ -3317,10 +3348,18 @@ const app = {
       const subtotal = stockKg * priceKg;
       const displayName = this.getFeedDisplayName(ft);
 
+      const isClosedStock = stockKg <= 0;
+      const statusBadge = isClosedStock
+        ? `<span class="badge-pill" style="font-size: 0.68rem; font-weight: 700; background: rgba(239, 68, 68, 0.12); color: var(--accent-rose); border: 1px solid rgba(239, 68, 68, 0.25);">📦 ${isAr ? 'منتهي (دورة مغلقة)' : 'Épuisé (Cycle clôturé)'}</span>`
+        : `<span class="badge-pill" style="font-size: 0.68rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.25);">🟢 ${isAr ? 'متوفر' : 'En stock'}</span>`;
+
       html += `
         <div class="feed-stock-row" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
-            <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${displayName}</strong>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; flex-wrap: wrap; gap: 0.35rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <strong style="color: var(--text-main); font-size: 0.95rem;">🌾 ${displayName}</strong>
+              ${statusBadge}
+            </div>
             <button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-rose); padding: 0.15rem 0.45rem; font-size: 0.7rem;" onclick="app.deleteFeedType('${ft.id}')">
               ${btnDeleteText}
             </button>
@@ -3787,6 +3826,193 @@ const app = {
     this.handleAnimalFilterChange();
   },
 
+  calculateDaysBetween(startDateStr, endDateStr) {
+    if (!startDateStr || !endDateStr) return 0;
+    const sParts = startDateStr.split('-').map(Number);
+    const eParts = endDateStr.split('-').map(Number);
+    if (sParts.length !== 3 || eParts.length !== 3) return 0;
+    const sUtc = Date.UTC(sParts[0], sParts[1] - 1, sParts[2]);
+    const eUtc = Date.UTC(eParts[0], eParts[1] - 1, eParts[2]);
+    const diff = eUtc - sUtc;
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  },
+
+  getLotExitDate(animal) {
+    if (!animal) return this.getTodayStr();
+    const isClosed = (Number(animal.currentQuantity) || 0) <= 0;
+    if (!isClosed) return this.getTodayStr();
+    if (animal.exitDate) return animal.exitDate;
+    const lotSales = (appState.sales || []).filter(s => s.linkedLotId === animal.id && s.date);
+    if (lotSales.length > 0) {
+      return lotSales.reduce((max, s) => (s.date > max ? s.date : max), animal.birthDate || this.getTodayStr());
+    }
+    return animal.birthDate || this.getTodayStr();
+  },
+
+  // Algorithme strict d'imputation temporelle par jour selon la fenêtre de présence du lot :
+  // Cout_Total(L) = Somme_{d in [date_arrivee, exitDate]} Cout_Journalier_Alloue(L, d)
+  // Tout stock acheté et entièrement consommé avant date_arrivee a un impact strictement nul (0,000 DT)
+  calculateAllLotsFinancials() {
+    const todayStr = this.getTodayStr();
+    const lotMap = {};
+
+    // 1. Initialiser chaque lot avec sa fenêtre temporelle de présence stricte
+    (appState.animals || []).forEach(a => {
+      const arrivalDate = a.birthDate || todayStr;
+      const isClosed = (Number(a.currentQuantity) || 0) <= 0;
+      const exitDate = this.getLotExitDate(a);
+      const initialQty = Number(a.initialQuantity) || 1;
+      const currentQty = Number(a.currentQuantity) || 0;
+      const activeHeads = isClosed ? initialQty : Math.max(1, currentQty);
+
+      lotMap[a.id] = {
+        animal: a,
+        arrivalDate,
+        exitDate,
+        isClosed,
+        initialQty,
+        currentQty,
+        activeHeads,
+        directExpenses: 0,
+        allocatedFeed: 0,
+        allocatedOther: 0
+      };
+    });
+
+    // 2. Dépenses directes affectées à un lot spécifique
+    // Condition temporelle : imputée au lot L uniquement si e.date >= L.date_arrivee && e.date <= L.date_sortie
+    (appState.expenses || []).forEach(e => {
+      const expTotal = Number(e.total) || 0;
+      if (expTotal <= 0 || !e.date) return;
+      if (e.linkedLotId && e.linkedLotId !== 'general' && e.linkedLotId !== 'none') {
+        const lotInfo = lotMap[e.linkedLotId];
+        if (lotInfo) {
+          if (e.date >= lotInfo.arrivalDate && e.date <= lotInfo.exitDate) {
+            lotInfo.directExpenses += expTotal;
+          }
+        }
+      }
+    });
+
+    // 3. Récupérer toutes les dates distinctes d'activité (distributions ou dépenses générales)
+    const distinctDates = new Set();
+    (appState.feedDistributions || []).forEach(d => {
+      if (d.date) distinctDates.add(d.date);
+    });
+    (appState.expenses || []).forEach(e => {
+      if (e.date && (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')) {
+        distinctDates.add(e.date);
+      }
+    });
+
+    const sortedDates = Array.from(distinctDates).sort();
+
+    // 4. Parcourir chaque jour d pour ventiler la dépense réelle distribuée au prorata strict des parts actives de la journée d
+    sortedDates.forEach(d => {
+      // Identifier uniquement les lots actifs ce jour-là : arrivalDate <= d <= exitDate
+      const activeLotsOnD = Object.values(lotMap).filter(info => d >= info.arrivalDate && d <= info.exitDate);
+      if (activeLotsOnD.length === 0) return;
+
+      // 4a. Distributions réelles d'aliment effectuées le jour d
+      const distribsOnD = (appState.feedDistributions || []).filter(dist => dist.date === d);
+      const feedDistCost = distribsOnD.reduce((s, dist) => s + (Number(dist.totalCost) || 0), 0);
+
+      // 4b. Dépenses générales d'aliment le jour d (hors achats mis en stock de réserve si des distributions sont suivies)
+      const hasAnyDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+      const feedExpsOnD = (appState.expenses || []).filter(e => 
+        e.date === d && 
+        e.category === 'nourriture' && 
+        (!hasAnyDistributions || !e.feedStockAddedKg) &&
+        (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')
+      );
+
+      let dayFeedCost = 0;
+      if (feedDistCost > 0) {
+        dayFeedCost = feedDistCost;
+      } else if (feedExpsOnD.length > 0) {
+        dayFeedCost = feedExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
+      }
+
+      if (dayFeedCost > 0) {
+        // Calculer la part de consommation de chaque lot actif via son coefficient d'équivalence C_i (grammes agronomiques) et son effectif
+        let totalFeedPortions = 0;
+        const lotPortions = activeLotsOnD.map(info => {
+          const daysSinceArrival = this.calculateDaysBetween(info.arrivalDate, d);
+          const ageOnD = daysSinceArrival + (Number(info.animal.arrivalAgeDays) || 0);
+          const feedData = this.getAgronomicFeedData(info.animal.species, ageOnD, info.animal.stage, info.animal.breed);
+          const coef = feedData.avgGrams || 100;
+          const portion = info.activeHeads * coef;
+          totalFeedPortions += portion;
+          return { info, portion };
+        });
+
+        if (totalFeedPortions > 0) {
+          lotPortions.forEach(lp => {
+            lp.info.allocatedFeed += dayFeedCost * (lp.portion / totalFeedPortions);
+          });
+        }
+      }
+
+      // 4c. Dépenses générales hors aliment réparties au prorata des têtes actives le jour d
+      const otherExpsOnD = (appState.expenses || []).filter(e => 
+        e.date === d && 
+        e.category !== 'nourriture' && 
+        (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')
+      );
+      const dayOtherCost = otherExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
+
+      if (dayOtherCost > 0) {
+        const totalHeads = activeLotsOnD.reduce((s, info) => s + info.activeHeads, 0);
+        if (totalHeads > 0) {
+          activeLotsOnD.forEach(info => {
+            info.allocatedOther += dayOtherCost * (info.activeHeads / totalHeads);
+          });
+        }
+      }
+    });
+
+    // 5. Consolidation financière pour chaque lot
+    const results = {};
+    Object.keys(lotMap).forEach(lotId => {
+      const info = lotMap[lotId];
+      const a = info.animal;
+      const acqCostPerHead = Number(a.costPerHead) || 0;
+      const totalAcquisition = (Number(a.initialQuantity) || info.activeHeads) * acqCostPerHead;
+      const currentLivingAcquisition = info.currentQty * acqCostPerHead;
+
+      const totalLotExpenses = info.directExpenses + info.allocatedFeed + info.allocatedOther;
+      const totalInvested = (info.isClosed ? totalAcquisition : currentLivingAcquisition) + totalLotExpenses;
+
+      const costPerCurrentHead = (!info.isClosed && info.currentQty > 0 && totalInvested > 0)
+        ? (totalInvested / info.currentQty)
+        : (totalInvested / (Number(a.initialQuantity) || 1));
+
+      results[lotId] = {
+        animal: a,
+        isClosed: info.isClosed,
+        arrivalDate: info.arrivalDate,
+        exitDate: info.exitDate,
+        acquisitionCostPerHead: acqCostPerHead,
+        totalAcquisition,
+        currentLivingAcquisition,
+        directLotExpenses: info.directExpenses,
+        allocatedFeed: info.allocatedFeed,
+        allocatedOther: info.allocatedOther,
+        totalLotExpenses,
+        totalInvested,
+        costPerCurrentHead
+      };
+    });
+
+    return results;
+  },
+
+  calculateLotFinancials(targetAnimal) {
+    if (!targetAnimal) return null;
+    const all = this.calculateAllLotsFinancials();
+    return all[targetAnimal.id] || null;
+  },
+
   renderAnimals(filter = null) {
     this.synchronizeAnimalStages();
     const grid = document.getElementById('animalsGrid');
@@ -3950,28 +4176,12 @@ const app = {
       return;
     }
 
-    // Répartition biologique de l'aliment général basée sur la consommation cumulée réelle
-    // Cela garantit que la vente d'un lot (ex: poulets) ne change JAMAIS le coût des autres races (ex: canards) !
-    const totalFarmCumulativeFeedGrams = (appState.animals || []).reduce((sum, a) => {
-      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
-      const aStartAge = Number(a.arrivalAgeDays) || 0;
-      const cKg = this.calculateCumulativeFeedKg(a.species, aAge, a.stage, a.breed, aStartAge);
-      const heads = Math.max(Number(a.currentQuantity) || 0, Number(a.initialQuantity) || 1);
-      return sum + (heads * cKg * 1000);
-    }, 0);
-
-    const totalHistoricalAnimals = (appState.animals || []).reduce((sum, a) => sum + (Number(a.initialQuantity) || 1), 0);
-
-    const generalFeedExpenses = (appState.expenses || [])
-      .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category === 'nourriture')
-      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-
-    const generalOtherExpenses = (appState.expenses || [])
-      .filter(e => (!e.linkedLotId || e.linkedLotId === 'general') && e.category !== 'nourriture')
-      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+    // Imputation financière rigoureusement calculée selon la fenêtre temporelle de présence de chaque lot
+    const allFinancials = this.calculateAllLotsFinancials();
 
     filtered.forEach(animal => {
-      const isClosed = (Number(animal.currentQuantity) || 0) <= 0;
+      const fin = allFinancials[animal.id] || {};
+      const isClosed = fin.isClosed !== undefined ? fin.isClosed : ((Number(animal.currentQuantity) || 0) <= 0);
       const daysSinceArrival = this.calculateAgeInDays(animal.birthDate);
       const arrivalAgeDays = Number(animal.arrivalAgeDays) || 0;
       const ageDays = daysSinceArrival + arrivalAgeDays;
@@ -3981,40 +4191,15 @@ const app = {
         : 0;
       const feedData = this.getAgronomicFeedData(animal.species, ageDays, animal.stage, animal.breed);
 
-      // 1. Dépenses réelles directement affectées à ce lot
-      const directLotExpenses = (appState.expenses || [])
-        .filter(e => e.linkedLotId === animal.id)
-        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-
-      // 2. Dépenses générales réparties de façon stable et équitable selon la consommation cumulée réelle
-      const cumulFeedKg = this.calculateCumulativeFeedKg(animal.species, ageDays, animal.stage, animal.breed, arrivalAgeDays);
-      const effectiveHeads = isClosed 
-        ? (Number(animal.initialQuantity) || 1)
-        : (Number(animal.currentQuantity) || 1);
-      const lotCumulGrams = effectiveHeads * cumulFeedKg * 1000;
-
-      const feedShare = totalFarmCumulativeFeedGrams > 0 
-        ? (lotCumulGrams / totalFarmCumulativeFeedGrams) 
-        : 0;
-
-      const headShare = totalHistoricalAnimals > 0 
-        ? ((Number(animal.initialQuantity) || 1) / totalHistoricalAnimals) 
-        : 0;
-
-      const allocatedGeneral = (generalFeedExpenses * feedShare) + (generalOtherExpenses * headShare);
-
-      // 3. Prix d'achat réel saisi par l'éleveur (0 si éclos ou gratuit)
-      const acquisitionCostPerHead = Number(animal.costPerHead) || 0;
-      const totalAcquisition = (Number(animal.initialQuantity) || effectiveHeads) * acquisitionCostPerHead;
-      const currentLivingAcquisition = (Number(animal.currentQuantity) || 0) * acquisitionCostPerHead;
-
-      // Total des dépenses réelles engagées pour ce lot
-      const totalLotExpenses = directLotExpenses + allocatedGeneral;
-      const totalInvested = (isClosed ? totalAcquisition : currentLivingAcquisition) + totalLotExpenses;
-      
-      const costPerCurrentHead = (!isClosed && animal.currentQuantity > 0 && totalInvested > 0)
-        ? (totalInvested / animal.currentQuantity)
-        : (totalInvested / (Number(animal.initialQuantity) || 1));
+      // Valeurs financières rigoureusement imputées :
+      // Tout stock épuisé ou distribué avant arrivalDate a un impact strictement nul (0,000 DT)
+      const directLotExpenses = fin.directLotExpenses || 0;
+      const allocatedGeneral = (fin.allocatedFeed || 0) + (fin.allocatedOther || 0);
+      const totalAcquisition = fin.totalAcquisition || 0;
+      const currentLivingAcquisition = fin.currentLivingAcquisition || 0;
+      const totalLotExpenses = fin.totalLotExpenses || 0;
+      const totalInvested = fin.totalInvested || 0;
+      const costPerCurrentHead = fin.costPerCurrentHead || 0;
 
       const avatarIcon = this.getSpeciesIcon(animal.species);
       const effectiveStage = this.getEffectiveAnimalStage(animal);
@@ -4243,17 +4428,17 @@ const app = {
       const editAgeVal = document.getElementById('editAnimalArrivalAgeValue');
       const editAgeUnit = document.getElementById('editAnimalArrivalAgeUnit');
       if (editAgeVal && editAgeUnit) {
-        if (ageDays >= 365) {
+        if (totalAgeDays >= 365) {
           editAgeUnit.value = 'ans';
-          const yrs = (ageDays / 365).toFixed(1);
+          const yrs = (totalAgeDays / 365).toFixed(1);
           editAgeVal.value = yrs.endsWith('.0') ? parseInt(yrs, 10) : yrs;
-        } else if (ageDays >= 30) {
+        } else if (totalAgeDays >= 30) {
           editAgeUnit.value = 'mois';
-          const mos = (ageDays / 30.5).toFixed(1);
+          const mos = (totalAgeDays / 30.5).toFixed(1);
           editAgeVal.value = mos.endsWith('.0') ? parseInt(mos, 10) : mos;
         } else {
           editAgeUnit.value = 'jours';
-          editAgeVal.value = ageDays > 0 ? ageDays : '';
+          editAgeVal.value = totalAgeDays > 0 ? totalAgeDays : '';
         }
       }
       this.updateArrivalAgePreview('editAnimal');
@@ -4622,6 +4807,25 @@ const app = {
       this.renderAll();
       this.showToast(this.t('toast_lot_saved', { name: this.getAnimalDisplayName(newAnimal) }));
 
+      const availableStock = this.getAvailableFeedStockKg();
+      if (availableStock <= 0) {
+        const isAr = appState.lang === 'ar';
+        const isEn = appState.lang === 'en';
+        this.confirmDialog({
+          title: isAr ? '⚠️ مخزون الأعلاف فارغ (0 كغ)' : (isEn ? '⚠️ Feed Stock Empty (0 kg)' : '⚠️ Stock d\'aliment épuisé (0 kg)'),
+          message: isAr 
+            ? `تم حفظ الدفعة "${this.getAnimalDisplayName(newAnimal)}" بنجاح. لا يوجد حالياً أي مخزون علف في المستودع (جميع الأكياس السابقة مغلقة ومستهلكة).\n\nهل ترغب في تسجيل شراء علف لتغذية هذا الفوج الآن ؟` 
+            : (isEn 
+                ? `Batch "${this.getAnimalDisplayName(newAnimal)}" was saved successfully. There is currently 0 kg of feed stock in reserve (all previous stocks are closed).\n\nWould you like to record a feed purchase to feed this batch now?` 
+                : `Le lot "${this.getAnimalDisplayName(newAnimal)}" a été enregistré avec succès. Il n'existe actuellement aucun stock d'aliment en réserve (0 kg, les cycles précédents étant épuisés).\n\nSouhaitez-vous enregistrer un achat d'aliment pour approvisionner le stock dès maintenant ?`),
+          confirmText: isAr ? '🛒 شراء وتزويد العلف' : (isEn ? '🛒 Record Feed Purchase' : '🛒 Enregistrer un Achat d\'Aliment'),
+          cancelText: isAr ? 'لاحقاً' : (isEn ? 'Later' : 'Plus tard'),
+          onConfirm: () => {
+            this.openFeedPurchaseModal();
+          }
+        });
+      }
+
       const form = document.getElementById('formAddAnimal');
       if (form) form.reset();
       const costHead = document.getElementById('animalCostPerHead');
@@ -4796,6 +5000,9 @@ const app = {
     }
     lot.currentQuantity -= count;
     lot.mortality = (lot.mortality || 0) + count;
+    if (lot.currentQuantity <= 0 && !lot.exitDate) {
+      lot.exitDate = this.getTodayStr();
+    }
     this.saveState();
     this.closeModal('modalRecordMortality');
     this.renderAll();
@@ -5362,6 +5569,10 @@ const app = {
           }
 
           targetFeed.stockKg = Math.max(0, (Number(targetFeed.stockKg) || 0) + addedKg);
+          if (targetFeed.stockKg > 0) {
+            targetFeed.isClosed = false;
+            delete targetFeed.closedDate;
+          }
           if (total > 0 && addedKg > 0) {
             targetFeed.pricePerKg = Math.max(0.1, total / addedKg);
           }
@@ -6209,12 +6420,18 @@ const app = {
             confirmText: isAr ? 'متابعة' : 'Continuer',
             onConfirm: () => {
               lot.currentQuantity = Math.max(0, lot.currentQuantity - quantity);
+              if (lot.currentQuantity <= 0 && !lot.exitDate) {
+                lot.exitDate = date;
+              }
               finalizeSaleSave();
             }
           });
           return;
         }
         lot.currentQuantity = Math.max(0, lot.currentQuantity - quantity);
+        if (lot.currentQuantity <= 0 && !lot.exitDate) {
+          lot.exitDate = date;
+        }
       }
     }
 
@@ -6247,9 +6464,11 @@ const app = {
     // Determine net profitability percentage
     if (!sale.total || sale.total <= 0) return `+0% ${marginWord}`;
     
-    // If linked to a specific lot, compute real feed cost ratio
+    // If linked to a specific lot, compute real margin based on temporal cost
     if (sale.linkedLotId && sale.linkedLotId !== 'none') {
-      const lotExp = appState.expenses
+      const lot = (appState.animals || []).find(a => a.id === sale.linkedLotId);
+      const fin = lot ? this.calculateLotFinancials(lot) : null;
+      const lotExp = fin ? (fin.totalInvested || 0) : appState.expenses
         .filter(e => e.linkedLotId === sale.linkedLotId)
         .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
       const lotSales = appState.sales
@@ -7744,12 +7963,10 @@ const app = {
   // ==========================================
   // HELPER FORMATTERS & UTILITIES
   // ==========================================
-  calculateAgeInDays(birthDateStr) {
+  calculateAgeInDays(birthDateStr, targetDateStr = null) {
     if (!birthDateStr) return 0;
-    const now = this.getTodayDate();
-    const birth = new Date(birthDateStr);
-    const diffTime = Math.max(0, now - birth);
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const target = targetDateStr || this.getTodayStr();
+    return this.calculateDaysBetween(birthDateStr, target);
   },
 
   formatAgeText(days) {
