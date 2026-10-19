@@ -3917,24 +3917,9 @@ const app = {
       const distribsOnD = (appState.feedDistributions || []).filter(dist => dist.date === d);
       const feedDistCost = distribsOnD.reduce((s, dist) => s + (Number(dist.totalCost) || 0), 0);
 
-      // 4b. Dépenses générales d'aliment le jour d (hors achats mis en stock de réserve si des distributions sont suivies)
-      const hasAnyDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
-      const feedExpsOnD = (appState.expenses || []).filter(e => 
-        e.date === d && 
-        e.category === 'nourriture' && 
-        (!hasAnyDistributions || !e.feedStockAddedKg) &&
-        (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')
-      );
-
-      let dayFeedCost = 0;
+      // Si des distributions quotidiennes réelles ont eu lieu le jour d :
+      // consommation répartie selon les portions journalières agronomiques du jour d
       if (feedDistCost > 0) {
-        dayFeedCost = feedDistCost;
-      } else if (feedExpsOnD.length > 0) {
-        dayFeedCost = feedExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
-      }
-
-      if (dayFeedCost > 0) {
-        // Calculer la part de consommation de chaque lot actif via son coefficient d'équivalence C_i (grammes agronomiques) et son effectif
         let totalFeedPortions = 0;
         const lotPortions = activeLotsOnD.map(info => {
           const daysSinceArrival = this.calculateDaysBetween(info.arrivalDate, d);
@@ -3948,8 +3933,45 @@ const app = {
 
         if (totalFeedPortions > 0) {
           lotPortions.forEach(lp => {
-            lp.info.allocatedFeed += dayFeedCost * (lp.portion / totalFeedPortions);
+            lp.info.allocatedFeed += feedDistCost * (lp.portion / totalFeedPortions);
           });
+        }
+      }
+
+      // 4b. Dépenses générales d'aliment le jour d (achats de sacs / stock d'aliment pour le cheptel)
+      const hasAnyDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
+      const feedExpsOnD = (appState.expenses || []).filter(e => 
+        e.date === d && 
+        e.category === 'nourriture' && 
+        (!hasAnyDistributions || !e.feedStockAddedKg) &&
+        (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')
+      );
+
+      // Les achats généraux d'aliment nourrissent le troupeau pendant sa période d'élevage :
+      // Chaque lot supporte un coût strictement proportionnel au cumul d'aliment consommé sur la ferme
+      // entre son arrivée (arrivalAgeDays) et la date d. Un caneton/poussin éclos sur place (0 jour)
+      // mange beaucoup moins sur la ferme qu'un canard arrivé déjà adulte !
+      if (feedExpsOnD.length > 0) {
+        const dayFeedExpCost = feedExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
+        if (dayFeedExpCost > 0) {
+          let totalCumulWeight = 0;
+          const lotExpPortions = activeLotsOnD.map(info => {
+            const daysSinceArrival = this.calculateDaysBetween(info.arrivalDate, d);
+            const arrivalAge = Number(info.animal.arrivalAgeDays) || 0;
+            const ageOnD = arrivalAge + daysSinceArrival;
+            const cumulKg = this.calculateCumulativeFeedKg(info.animal.species, ageOnD, info.animal.stage, info.animal.breed, arrivalAge);
+            const minDailyGrams = this.getDailyGramsForAge(info.animal.species, arrivalAge, info.animal.stage, info.animal.breed);
+            const weightKg = Math.max(minDailyGrams / 1000, cumulKg);
+            const portion = info.activeHeads * weightKg;
+            totalCumulWeight += portion;
+            return { info, portion };
+          });
+
+          if (totalCumulWeight > 0) {
+            lotExpPortions.forEach(lp => {
+              lp.info.allocatedFeed += dayFeedExpCost * (lp.portion / totalCumulWeight);
+            });
+          }
         }
       }
 
@@ -4408,38 +4430,56 @@ const app = {
       this.handleAnimalSpeciesChange(sp, 'editAnimal');
     }
 
-    // Pré-sélectionner le statut le plus proche
+    // Pré-sélectionner le statut d'arrivée selon l'âge à l'achat d'origine du lot (arrivalAgeDays)
     const stagePresetSelect = document.getElementById('editAnimalStageSelect');
     if (stagePresetSelect) {
-      const daysSinceArrival = this.calculateAgeInDays(animal.birthDate);
-      const arrivalAgeDays = Number(animal.arrivalAgeDays) || 0;
-      const totalAgeDays = daysSinceArrival + arrivalAgeDays;
+      const arrivalAgeDays = (animal.arrivalAgeDays !== undefined && animal.arrivalAgeDays !== null)
+        ? Math.max(0, parseInt(animal.arrivalAgeDays, 10) || 0)
+        : 0;
 
-      if (sp === 'canard') {
-        if (totalAgeDays <= 21) stagePresetSelect.value = 'caneton_demarrage';
-        else if (totalAgeDays < 150) stagePresetSelect.value = 'canard_croissance';
+      if (sp === 'canard' || sp === 'canard_barbarie') {
+        if (arrivalAgeDays <= 21) stagePresetSelect.value = 'caneton_demarrage';
+        else if (arrivalAgeDays < 150) stagePresetSelect.value = 'canard_croissance';
         else stagePresetSelect.value = 'canard_adulte';
       } else if (sp === 'poulet') {
-        if (totalAgeDays <= 28) stagePresetSelect.value = 'poussin';
-        else if (totalAgeDays < 180) stagePresetSelect.value = 'croissance';
+        if (arrivalAgeDays <= 28) stagePresetSelect.value = 'poussin';
+        else if (arrivalAgeDays < 180) stagePresetSelect.value = 'croissance';
+        else if (animal.stage === 'Coq' || (animal.breed && animal.breed.toLowerCase().includes('coq'))) stagePresetSelect.value = 'coq';
         else stagePresetSelect.value = 'pondeuse';
+      } else if (sp === 'pintade') {
+        if (arrivalAgeDays <= 28) stagePresetSelect.value = 'pintadeau';
+        else if (arrivalAgeDays < 180) stagePresetSelect.value = 'pintade_croissance';
+        else stagePresetSelect.value = 'pintade_adulte';
+      } else {
+        if (arrivalAgeDays <= 28) stagePresetSelect.value = 'autre_demarrage';
+        else if (arrivalAgeDays < 180) stagePresetSelect.value = 'autre_croissance';
+        else stagePresetSelect.value = 'autre_adulte';
       }
       this.handleAnimalStagePresetChange(stagePresetSelect.value, 'editAnimal');
+
+      // Remplir rigoureusement l'ÂGE À L'ACHAT (arrivalAgeDays) d'origine, JAMAIS l'âge total actuel
       const editAgeVal = document.getElementById('editAnimalArrivalAgeValue');
       const editAgeUnit = document.getElementById('editAnimalArrivalAgeUnit');
+      const hiddenDays = document.getElementById('editAnimalArrivalAgeDays');
       if (editAgeVal && editAgeUnit) {
-        if (totalAgeDays >= 365) {
+        if (arrivalAgeDays === 0) {
+          editAgeUnit.value = 'jours';
+          editAgeVal.value = '0';
+        } else if (arrivalAgeDays >= 365) {
           editAgeUnit.value = 'ans';
-          const yrs = (totalAgeDays / 365).toFixed(1);
+          const yrs = (arrivalAgeDays / 365).toFixed(1);
           editAgeVal.value = yrs.endsWith('.0') ? parseInt(yrs, 10) : yrs;
-        } else if (totalAgeDays >= 30) {
+        } else if (arrivalAgeDays >= 30) {
           editAgeUnit.value = 'mois';
-          const mos = (totalAgeDays / 30.5).toFixed(1);
+          const mos = (arrivalAgeDays / 30.5).toFixed(1);
           editAgeVal.value = mos.endsWith('.0') ? parseInt(mos, 10) : mos;
         } else {
           editAgeUnit.value = 'jours';
-          editAgeVal.value = totalAgeDays > 0 ? totalAgeDays : '';
+          editAgeVal.value = arrivalAgeDays;
         }
+      }
+      if (hiddenDays) {
+        hiddenDays.value = arrivalAgeDays;
       }
       this.updateArrivalAgePreview('editAnimal');
     }
@@ -4572,19 +4612,36 @@ const app = {
       if (isCalculated) {
         const inMonths = (totalDays / 30.5).toFixed(1);
         const inYears = (totalDays / 365).toFixed(1);
+        let baseMsg = '';
         if (totalDays >= 365) {
-          hintEl.textContent = isAr 
-            ? `💡 محسوب: ${totalDays} يوم (~${inMonths} شهر / ~${inYears} سنة)` 
-            : (isEn ? `💡 Calculated: ${totalDays} days (~${inMonths} mos / ~${inYears} yrs)` : `💡 Calculé : ${totalDays} jours (~${inMonths} mois / ~${inYears} an)`);
+          baseMsg = isAr 
+            ? `💡 محسوب عند الوصول: ${totalDays} يوم (~${inMonths} شهر / ~${inYears} سنة)` 
+            : (isEn ? `💡 At arrival: ${totalDays} days (~${inMonths} mos / ~${inYears} yrs)` : `💡 À l'arrivée : ${totalDays} jours (~${inMonths} mois / ~${inYears} an)`);
         } else if (totalDays >= 30) {
-          hintEl.textContent = isAr 
-            ? `💡 محسوب: ${totalDays} يوم (~${inMonths} شهر)` 
-            : (isEn ? `💡 Calculated: ${totalDays} days (~${inMonths} mos)` : `💡 Calculé : ${totalDays} jours (~${inMonths} mois)`);
+          baseMsg = isAr 
+            ? `💡 محسوب عند الوصول: ${totalDays} يوم (~${inMonths} شهر)` 
+            : (isEn ? `💡 At arrival: ${totalDays} days (~${inMonths} mos)` : `💡 À l'arrivée : ${totalDays} jours (~${inMonths} mois)`);
         } else {
-          hintEl.textContent = isAr 
-            ? `💡 محسوب: ${totalDays} يوم` 
-            : (isEn ? `💡 Calculated: ${totalDays} days` : `💡 Calculé : ${totalDays} jours`);
+          baseMsg = isAr 
+            ? `💡 محسوب عند الوصول: ${totalDays} يوم` 
+            : (isEn ? `💡 At arrival: ${totalDays} days` : `💡 À l'arrivée : ${totalDays} jours`);
         }
+
+        if (formPrefix === 'editAnimal') {
+          const editId = document.getElementById('editAnimalId')?.value;
+          const editAnimal = (appState.animals || []).find(a => a.id === editId);
+          if (editAnimal) {
+            const birthDate = document.getElementById('editAnimalBirthDate')?.value || editAnimal.birthDate;
+            const daysSince = this.calculateAgeInDays(birthDate);
+            const currentRealAge = daysSince + totalDays;
+            const realAgeText = this.formatAgeText(currentRealAge);
+            baseMsg += isAr 
+              ? ` • 🟢 العمر الفعلي اليوم: ${realAgeText}` 
+              : (isEn ? ` • 🟢 Current real age: ${realAgeText}` : ` • 🟢 Âge réel actuel : ${realAgeText}`);
+          }
+        }
+
+        hintEl.textContent = baseMsg;
         hintEl.style.color = 'var(--accent-emerald)';
       } else {
         if (totalDays > 0) {
