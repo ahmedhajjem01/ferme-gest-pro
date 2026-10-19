@@ -1083,6 +1083,8 @@ const app = {
       if (expCatRow) expCatRow.style.display = 'flex';
       const feedSuggRow = document.getElementById('expenseFeedSuggestionsRow');
       if (feedSuggRow) feedSuggRow.style.display = 'none';
+      const multiBlock = document.getElementById('expenseAddMultipleLotsBlock');
+      if (multiBlock) multiBlock.style.display = 'none';
     }
   },
 
@@ -1503,7 +1505,10 @@ const app = {
 
     if (expenseLotSelect) {
       const defaultGeneralSelected = (appState.animals.length === 1) ? '' : 'selected';
-      let html = `<option value="general" ${defaultGeneralSelected}>${this.t('opt_general_farm')}</option>`;
+      let html = `<option value="general" ${defaultGeneralSelected}>${this.t('opt_general_farm') || "🏢 Frais Généraux de l'Exploitation (Tous les lots)"}</option>`;
+      if (appState.animals && appState.animals.length > 1) {
+        html += `<option value="__multiple__">${lang === 'ar' ? '🎯 تحديد عدة دفعات معاً (2 أو 3 دفعات...)' : '🎯 Sélectionner plusieurs lots (2 ou 3 lots...)'}</option>`;
+      }
       appState.animals.forEach((a, idx) => {
         const isSelected = (appState.animals.length === 1) ? 'selected' : '';
         const displayName = this.getAnimalDisplayName(a);
@@ -1511,6 +1516,7 @@ const app = {
         html += `<option value="${a.id}" ${isSelected}>${lotPrefix}${displayName}</option>`;
       });
       expenseLotSelect.innerHTML = html;
+      this.onExpenseLotSelectChange(expenseLotSelect.value);
     }
 
     if (saleLotSelect) {
@@ -1523,6 +1529,132 @@ const app = {
         html += `<option value="${a.id}">${lotPrefix}${displayName} (${remWord}: ${a.currentQuantity})</option>`;
       });
       saleLotSelect.innerHTML = html;
+    }
+  },
+
+  onExpenseLotSelectChange(val) {
+    const multiBlock = document.getElementById('expenseAddMultipleLotsBlock');
+    if (!multiBlock) return;
+    if (val === '__multiple__') {
+      multiBlock.style.display = 'block';
+      this.renderAddExpenseLotsList();
+    } else {
+      multiBlock.style.display = 'none';
+    }
+  },
+
+  renderAddExpenseLotsList() {
+    const listEl = document.getElementById('expenseAddLotsList');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    const isAr = appState.lang === 'ar';
+    const animals = appState.animals || [];
+
+    if (animals.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding: 0.8rem; color: var(--text-muted); font-size: 0.8rem;">${isAr ? 'لا توجد دفعات طيور مسجلة' : 'Aucun lot enregistré'}</div>`;
+      return;
+    }
+
+    animals.forEach(a => {
+      const icon = this.getSpeciesIcon(a.species);
+      const displayName = this.getAnimalDisplayName(a);
+      const lotNum = (a.name && a.name.toString().trim() !== '') ? (isAr ? `دفعة #${a.name}` : `Lot #${a.name}`) : '';
+      const daysSinceArrival = this.calculateAgeInDays(a.birthDate);
+      const arrivalAgeDays = Number(a.arrivalAgeDays) || 0;
+      const totalAgeDays = daysSinceArrival + arrivalAgeDays;
+      const ageText = this.formatAgeText(totalAgeDays);
+      const effStage = this.getEffectiveAnimalStage(a);
+      const stageLabel = this.translateStage(effStage);
+
+      const card = document.createElement('div');
+      card.className = 'multi-lot-card';
+      card.setAttribute('data-lot-id', a.id);
+      card.onclick = (ev) => {
+        if (ev.target.tagName !== 'INPUT') {
+          const chk = card.querySelector('.add-expense-lot-checkbox');
+          if (chk) {
+            chk.checked = !chk.checked;
+            chk.dispatchEvent(new Event('change'));
+          }
+        }
+      };
+
+      card.innerHTML = `
+        <input type="checkbox" class="add-expense-lot-checkbox" value="${a.id}" onchange="app.onAddExpenseLotCheckboxChange(this)">
+        <span style="font-size: 1.2rem;">${icon}</span>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+            <strong style="font-size: 0.83rem; color: var(--text-primary);">${displayName}</strong>
+            ${lotNum ? `<span class="badge" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-violet); font-size: 0.68rem; font-weight: 700; padding: 1px 5px; border-radius: 4px;">${lotNum}</span>` : ''}
+            <span class="badge-pill" style="font-size: 0.65rem; padding: 1px 5px;">${stageLabel}</span>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 1px;">
+            <span>${a.currentQuantity} ${isAr ? 'طير حي' : 'sujets'}</span> &bull; 
+            <span>${ageText}</span>
+          </div>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+
+    this.updateAddExpenseLotsSummary();
+  },
+
+  onAddExpenseLotCheckboxChange(chk) {
+    const card = chk.closest('.multi-lot-card');
+    if (card) {
+      if (chk.checked) card.classList.add('selected');
+      else card.classList.remove('selected');
+    }
+    this.updateAddExpenseLotsSummary();
+  },
+
+  toggleAllAddExpenseLots(checkAll = true) {
+    document.querySelectorAll('.add-expense-lot-checkbox').forEach(chk => {
+      chk.checked = checkAll;
+      const card = chk.closest('.multi-lot-card');
+      if (card) {
+        if (checkAll) card.classList.add('selected');
+        else card.classList.remove('selected');
+      }
+    });
+    this.updateAddExpenseLotsSummary();
+  },
+
+  updateAddExpenseLotsSummary() {
+    const summaryEl = document.getElementById('expenseAddLotsSummary');
+    if (!summaryEl) return;
+    const isAr = appState.lang === 'ar';
+
+    const checkedBoxes = Array.from(document.querySelectorAll('.add-expense-lot-checkbox:checked'));
+    const count = checkedBoxes.length;
+
+    if (count === 0) {
+      summaryEl.style.color = 'var(--accent-rose)';
+      summaryEl.innerHTML = isAr 
+        ? `⚠️ يرجى تحديد دفعة واحدة على الأقل` 
+        : `⚠️ Cochez au moins 1 lot (ex: Lot #4 + Lot #5)`;
+      return;
+    }
+
+    const selectedAnimals = checkedBoxes.map(cb => (appState.animals || []).find(a => a.id === cb.value)).filter(Boolean);
+    const totalHeads = selectedAnimals.reduce((s, a) => s + (Number(a.currentQuantity) || 0), 0);
+    const names = selectedAnimals.map(a => {
+      const num = a.name ? (isAr ? `#${a.name}` : `#${a.name}`) : '';
+      const disp = this.getAnimalDisplayName(a);
+      return num ? `${disp} (${num})` : disp;
+    });
+
+    summaryEl.style.color = 'var(--accent-violet)';
+    if (count === 1) {
+      summaryEl.innerHTML = isAr 
+        ? `🎯 دفعة واحدة : ${names[0]} (${totalHeads} طير) &bull; 100% للتكلفة`
+        : `🎯 1 lot sélectionné : ${names[0]} (${totalHeads} sujets) &bull; 100% de la dépense`;
+    } else {
+      summaryEl.innerHTML = isAr 
+        ? `🎯 ${count} دفعات محددة (${totalHeads} طير) : ${names.join(' + ')}<br>• التكلفة ستقسم حصرياً بين هذه الدفعات دون غيرها.`
+        : `🎯 ${count} lots sélectionnés (${totalHeads} sujets) : ${names.join(' + ')}<br>• Coût réparti exclusivement entre ces ${count} lots (0 DT pour les autres).`;
     }
   },
 
@@ -1680,6 +1812,46 @@ const app = {
     }
   },
 
+  getExpenseLinkedLotIds(e) {
+    if (!e) return [];
+    if (Array.isArray(e.linkedLotIds) && e.linkedLotIds.length > 0) {
+      return e.linkedLotIds.filter(id => id && id !== 'general' && id !== 'none');
+    }
+    if (e.linkedLotId && typeof e.linkedLotId === 'string') {
+      if (e.linkedLotId === 'general' || e.linkedLotId === 'none') return [];
+      if (e.linkedLotId.includes(',')) {
+        return e.linkedLotId.split(',').map(s => s.trim()).filter(id => id && id !== 'general' && id !== 'none');
+      }
+      return [e.linkedLotId];
+    }
+    return [];
+  },
+
+  getExpenseLinkedLotsDisplay(exp) {
+    if (!exp) return this.t('opt_general_farm') || 'Frais Généraux';
+    const ids = this.getExpenseLinkedLotIds(exp);
+    const isAr = appState.lang === 'ar';
+    if (ids.length === 0) {
+      return isAr ? '🏢 مصاريف عامة للمزرعة' : '🏢 Frais Généraux';
+    }
+    if (ids.length === 1) {
+      return this.getLotNameById(ids[0]);
+    }
+    // Multiple lots (2, 3 lots ou plus)
+    const lotNames = ids.map(id => {
+      const a = (appState.animals || []).find(x => x.id === id);
+      if (!a) return '';
+      const num = a.name ? (isAr ? `#${a.name}` : `#${a.name}`) : '';
+      const disp = this.getAnimalDisplayName(a);
+      return num ? `${disp} (${num})` : disp;
+    }).filter(Boolean);
+
+    if (isAr) {
+      return `🏷️ ${ids.length} دفعات: ` + lotNames.join(' + ');
+    }
+    return `🏷️ ${ids.length} Lots : ` + lotNames.join(' + ');
+  },
+
   reassignExpenseLot(expId) {
     const exp = (appState.expenses || []).find(e => e.id === expId);
     if (!exp) return;
@@ -1687,45 +1859,238 @@ const app = {
     const idInput = document.getElementById('reassignExpenseId');
     const titleEl = document.getElementById('reassignExpenseTitle');
     const amountEl = document.getElementById('reassignExpenseAmount');
-    const selectEl = document.getElementById('reassignExpenseLotSelect');
+    const dateEl = document.getElementById('reassignExpenseDate');
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
 
     if (idInput) idInput.value = exp.id;
-    if (titleEl) titleEl.textContent = exp.title || 'Dépense';
+    if (titleEl) titleEl.textContent = this.getTranslatedExpenseTitle(exp.title) || exp.title || 'Dépense';
     if (amountEl) amountEl.textContent = `${this.formatMoney(exp.total || 0)}`;
+    if (dateEl) dateEl.textContent = isAr ? `📅 تاريخ المعاملة: ${this.formatDateFR(exp.date)}` : `📅 Date : ${this.formatDateFR(exp.date)}`;
 
-    if (selectEl) {
-      let optionsHtml = `<option value="general">${this.t('opt_general_farm') || 'Frais Généraux (Réparti sur tous les animaux)'}</option>`;
-      (appState.animals || []).forEach(a => {
-        const displayName = this.getAnimalDisplayName(a);
-        const lotNum = (a.name && a.name.toString().trim() !== '') ? (appState.lang === 'ar' ? `دفعة #${a.name}` : `Lot #${a.name}`) : '';
-        const label = lotNum ? `${displayName} (${lotNum})` : displayName;
-        const selected = (exp.linkedLotId === a.id) ? 'selected' : '';
-        optionsHtml += `<option value="${a.id}" ${selected}>${label}</option>`;
-      });
-      selectEl.innerHTML = optionsHtml;
-      selectEl.value = exp.linkedLotId || 'general';
-    }
+    const currentLinkedIds = this.getExpenseLinkedLotIds(exp);
+    const mode = currentLinkedIds.length > 0 ? 'specific' : 'general';
+    this.currentReassignMode = mode;
+
+    this.renderReassignLotsList(currentLinkedIds, exp.date);
+    this.setReassignExpenseMode(mode);
 
     this.openModal('modalReassignExpenseLot');
+  },
+
+  setReassignExpenseMode(mode = 'general') {
+    this.currentReassignMode = mode;
+    const genBtn = document.getElementById('reassignModeGeneralBtn');
+    const specBtn = document.getElementById('reassignModeSpecificBtn');
+    const specBlock = document.getElementById('reassignSpecificLotsBlock');
+
+    if (mode === 'general') {
+      if (genBtn) {
+        genBtn.className = 'btn btn-sm btn-primary';
+        genBtn.style.background = 'var(--primary)';
+        genBtn.style.color = '#fff';
+      }
+      if (specBtn) {
+        specBtn.className = 'btn btn-sm btn-outline';
+        specBtn.style.background = 'transparent';
+        specBtn.style.color = 'var(--text-secondary)';
+      }
+      if (specBlock) specBlock.style.display = 'none';
+    } else {
+      if (genBtn) {
+        genBtn.className = 'btn btn-sm btn-outline';
+        genBtn.style.background = 'transparent';
+        genBtn.style.color = 'var(--text-secondary)';
+      }
+      if (specBtn) {
+        specBtn.className = 'btn btn-sm btn-primary';
+        specBtn.style.background = 'var(--accent-violet)';
+        specBtn.style.color = '#fff';
+      }
+      if (specBlock) specBlock.style.display = 'block';
+    }
+    this.updateReassignLiveSummary();
+  },
+
+  renderReassignLotsList(selectedIds = [], expDate = '') {
+    const listEl = document.getElementById('reassignLotsList');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const animals = appState.animals || [];
+
+    if (animals.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding: 1.2rem; color: var(--text-muted); font-size: 0.82rem;">${isAr ? 'لا توجد دفعات طيور مسجلة' : 'Aucun lot enregistré'}</div>`;
+      return;
+    }
+
+    animals.forEach(a => {
+      const isSelected = selectedIds.includes(a.id);
+      const icon = this.getSpeciesIcon(a.species);
+      const displayName = this.getAnimalDisplayName(a);
+      const lotNum = (a.name && a.name.toString().trim() !== '') ? (isAr ? `دفعة #${a.name}` : `Lot #${a.name}`) : '';
+      const daysSinceArrival = this.calculateAgeInDays(a.birthDate);
+      const arrivalAgeDays = Number(a.arrivalAgeDays) || 0;
+      const totalAgeDays = daysSinceArrival + arrivalAgeDays;
+      const ageText = this.formatAgeText(totalAgeDays);
+      const effStage = this.getEffectiveAnimalStage(a);
+      const stageLabel = this.translateStage(effStage);
+
+      // Warning si le lot n'était pas encore arrivé à la date de la dépense
+      const isBeforeArrival = expDate && a.birthDate && expDate < a.birthDate;
+
+      const card = document.createElement('div');
+      card.className = `multi-lot-card ${isSelected ? 'selected' : ''}`;
+      card.setAttribute('data-lot-id', a.id);
+      card.onclick = (ev) => {
+        if (ev.target.tagName !== 'INPUT') {
+          const chk = card.querySelector('.reassign-lot-checkbox');
+          if (chk) {
+            chk.checked = !chk.checked;
+            chk.dispatchEvent(new Event('change'));
+          }
+        }
+      };
+
+      card.innerHTML = `
+        <input type="checkbox" class="reassign-lot-checkbox" value="${a.id}" ${isSelected ? 'checked' : ''} onchange="app.onReassignLotCheckboxChange(this)">
+        <span style="font-size: 1.3rem;">${icon}</span>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+            <strong style="font-size: 0.85rem; color: var(--text-primary);">${displayName}</strong>
+            ${lotNum ? `<span class="badge" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-violet); font-size: 0.7rem; font-weight: 700; padding: 1px 5px; border-radius: 4px;">${lotNum}</span>` : ''}
+            <span class="badge-pill" style="font-size: 0.68rem; padding: 1px 6px;">${stageLabel}</span>
+          </div>
+          <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 1px;">
+            <span>${a.currentQuantity} ${isAr ? 'طير حي' : 'sujets'}</span> &bull; 
+            <span>${ageText}</span>
+            ${isBeforeArrival ? `<span style="color: var(--accent-amber); font-weight: 700;"> ⚠️ (${isAr ? 'وصل بعد المعاملة' : 'Arrivé après cette dépense'})</span>` : ''}
+          </div>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+
+    this.updateReassignLiveSummary();
+  },
+
+  onReassignLotCheckboxChange(chk) {
+    const card = chk.closest('.multi-lot-card');
+    if (card) {
+      if (chk.checked) card.classList.add('selected');
+      else card.classList.remove('selected');
+    }
+    this.updateReassignLiveSummary();
+  },
+
+  toggleAllReassignLots(checkAll = true) {
+    document.querySelectorAll('.reassign-lot-checkbox').forEach(chk => {
+      chk.checked = checkAll;
+      const card = chk.closest('.multi-lot-card');
+      if (card) {
+        if (checkAll) card.classList.add('selected');
+        else card.classList.remove('selected');
+      }
+    });
+    this.updateReassignLiveSummary();
+  },
+
+  updateReassignLiveSummary() {
+    const summaryEl = document.getElementById('reassignLiveSummary');
+    if (!summaryEl) return;
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    if (this.currentReassignMode === 'general') {
+      summaryEl.style.display = 'block';
+      summaryEl.style.background = 'rgba(59, 130, 246, 0.08)';
+      summaryEl.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+      summaryEl.style.color = 'var(--accent-blue)';
+      summaryEl.innerHTML = isAr 
+        ? `🏢 <strong>مصاريف عامة للمزرعة :</strong> سيتم توزيع التكلفة تلقائياً على جميع الطيور النشطة في المزرعة.`
+        : (isEn 
+          ? `🏢 <strong>General Farm Expense:</strong> Cost is automatically distributed across all active farm flocks.`
+          : `🏢 <strong>Frais Généraux :</strong> Le coût est réparti proportionnellement sur l'ensemble du cheptel actif.`);
+      return;
+    }
+
+    const checkedBoxes = Array.from(document.querySelectorAll('.reassign-lot-checkbox:checked'));
+    const count = checkedBoxes.length;
+
+    if (count === 0) {
+      summaryEl.style.display = 'block';
+      summaryEl.style.background = 'rgba(239, 68, 68, 0.08)';
+      summaryEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      summaryEl.style.color = 'var(--accent-rose)';
+      summaryEl.innerHTML = isAr 
+        ? `⚠️ <strong>يرجى تحديد دفعة واحدة على الأقل</strong> (أو اختر "جميع الدفعات" للأعلى).`
+        : `⚠️ <strong>Veuillez cocher au moins 1 lot</strong> (ou cliquez sur "Tous les lots" ci-dessus).`;
+      return;
+    }
+
+    const selectedAnimals = checkedBoxes.map(cb => (appState.animals || []).find(a => a.id === cb.value)).filter(Boolean);
+    const totalHeads = selectedAnimals.reduce((s, a) => s + (Number(a.currentQuantity) || 0), 0);
+    const names = selectedAnimals.map(a => {
+      const num = a.name ? (isAr ? `#${a.name}` : `#${a.name}`) : '';
+      const disp = this.getAnimalDisplayName(a);
+      return num ? `${disp} (${num})` : disp;
+    });
+
+    summaryEl.style.display = 'block';
+    summaryEl.style.background = 'rgba(139, 92, 246, 0.1)';
+    summaryEl.style.borderColor = 'rgba(139, 92, 246, 0.35)';
+    summaryEl.style.color = 'var(--accent-violet)';
+
+    if (count === 1) {
+      summaryEl.innerHTML = isAr 
+        ? `🎯 <strong>دفعة واحدة محددة :</strong> ${names[0]} (${totalHeads} طير)<br>• 100% من هذا المصروف سيسجل حصرياً على هذه الدفعة.`
+        : `🎯 <strong>1 lot sélectionné :</strong> ${names[0]} (${totalHeads} sujets)<br>• 100% de la dépense sera supportée exclusivement par ce lot.`;
+    } else {
+      summaryEl.innerHTML = isAr 
+        ? `🎯 <strong>${count} دفعات محددة (${totalHeads} طير إجمالي) :</strong><br>${names.join(' + ')}<br>• سيتم اقتسام هذا المصروف <u>فقط</u> بين هذه الدفعات دون غيرها.`
+        : `🎯 <strong>${count} lots sélectionnés (${totalHeads} sujets au total) :</strong><br>${names.join(' + ')}<br>• La dépense sera répartie <u>exclusivement</u> entre ces lots selon leur consommation. Les autres lots de la ferme ne paieront rien !`;
+    }
   },
 
   submitReassignExpenseLot(e) {
     if (e && e.preventDefault) e.preventDefault();
     const idInput = document.getElementById('reassignExpenseId');
-    const selectEl = document.getElementById('reassignExpenseLotSelect');
-    if (!idInput || !selectEl) return;
+    if (!idInput) return;
 
-    const exp = (appState.expenses || []).find(e => e.id === idInput.value);
+    const exp = (appState.expenses || []).find(x => x.id === idInput.value);
     if (!exp) return;
 
-    exp.linkedLotId = selectEl.value;
+    const isAr = appState.lang === 'ar';
+
+    if (this.currentReassignMode === 'general') {
+      exp.linkedLotId = 'general';
+      exp.linkedLotIds = [];
+    } else {
+      const checkedBoxes = Array.from(document.querySelectorAll('.reassign-lot-checkbox:checked'));
+      const checkedIds = checkedBoxes.map(cb => cb.value);
+
+      if (checkedIds.length === 0) {
+        this.showToast(isAr ? 'يرجى تحديد دفعة واحدة على الأقل' : 'Veuillez sélectionner au moins un lot', 'warning');
+        return;
+      }
+
+      if (checkedIds.length === 1) {
+        exp.linkedLotId = checkedIds[0];
+        exp.linkedLotIds = [checkedIds[0]];
+      } else {
+        exp.linkedLotId = checkedIds.join(',');
+        exp.linkedLotIds = checkedIds;
+      }
+    }
+
     this.saveState();
     this.closeModal('modalReassignExpenseLot');
     this.renderAll();
 
-    const isAr = appState.lang === 'ar';
-    const lotName = selectEl.options[selectEl.selectedIndex]?.text || '';
-    this.showToast(isAr ? `تم ربط المصاريف بـ : ${lotName}` : `Dépense affectée à : ${lotName}`);
+    const displayLabel = this.getExpenseLinkedLotsDisplay(exp);
+    this.showToast(isAr ? `تم تحديث التوزيع : ${displayLabel}` : `Affectation mise à jour : ${displayLabel}`);
     if (window.appAuth && appAuth.pushData) {
       appAuth.pushData();
     }
@@ -3879,28 +4244,77 @@ const app = {
       };
     });
 
-    // 2. Dépenses directes affectées à un lot spécifique
+    // 2. Dépenses directes affectées à un ou plusieurs lots spécifiques (ex: 2 ou 3 lots achetés ensemble)
     // Condition temporelle : imputée au lot L uniquement si e.date >= L.date_arrivee && e.date <= L.date_sortie
     (appState.expenses || []).forEach(e => {
       const expTotal = Number(e.total) || 0;
       if (expTotal <= 0 || !e.date) return;
-      if (e.linkedLotId && e.linkedLotId !== 'general' && e.linkedLotId !== 'none') {
-        const lotInfo = lotMap[e.linkedLotId];
-        if (lotInfo) {
-          if (e.date >= lotInfo.arrivalDate && e.date <= lotInfo.exitDate) {
-            lotInfo.directExpenses += expTotal;
+      const linkedIds = this.getExpenseLinkedLotIds(e);
+      if (linkedIds.length === 0) return; // Frais généraux traités à l'étape 4 ci-dessous
+
+      // Identifier les lots cibles valides et actifs à la date de la dépense
+      let activeTargets = linkedIds
+        .map(id => lotMap[id])
+        .filter(info => info && e.date >= info.arrivalDate && e.date <= info.exitDate);
+
+      // Si l'utilisateur a explicitement ciblé ces lots mais que la date de la transaction précède l'arrivée officielle
+      if (activeTargets.length === 0) {
+        activeTargets = linkedIds.map(id => lotMap[id]).filter(Boolean);
+      }
+
+      if (activeTargets.length === 0) return;
+
+      if (activeTargets.length === 1) {
+        // 1 seul lot actif
+        if (e.category === 'nourriture') {
+          activeTargets[0].allocatedFeed += expTotal;
+        } else {
+          activeTargets[0].directExpenses += expTotal;
+        }
+      } else {
+        // Plusieurs lots sélectionnés (2, 3 lots ou plus) : répartition exclusive entre ces lots !
+        if (e.category === 'nourriture') {
+          let totalWeight = 0;
+          const targetPortions = activeTargets.map(info => {
+            const daysSinceArrival = this.calculateDaysBetween(info.arrivalDate, e.date);
+            const arrivalAge = Number(info.animal.arrivalAgeDays) || 0;
+            const ageOnD = arrivalAge + daysSinceArrival;
+            const cumulKg = this.calculateCumulativeFeedKg(info.animal.species, ageOnD, info.animal.stage, info.animal.breed, arrivalAge);
+            const minDailyGrams = this.getDailyGramsForAge(info.animal.species, arrivalAge, info.animal.stage, info.animal.breed);
+            const weightKg = Math.max(minDailyGrams / 1000, cumulKg);
+            const portion = info.activeHeads * weightKg;
+            totalWeight += portion;
+            return { info, portion };
+          });
+
+          if (totalWeight > 0) {
+            targetPortions.forEach(tp => {
+              tp.info.allocatedFeed += expTotal * (tp.portion / totalWeight);
+            });
+          } else {
+            const totalHeads = activeTargets.reduce((s, info) => s + info.activeHeads, 0);
+            activeTargets.forEach(info => {
+              info.allocatedFeed += expTotal * (info.activeHeads / totalHeads);
+            });
+          }
+        } else {
+          const totalHeads = activeTargets.reduce((s, info) => s + info.activeHeads, 0);
+          if (totalHeads > 0) {
+            activeTargets.forEach(info => {
+              info.directExpenses += expTotal * (info.activeHeads / totalHeads);
+            });
           }
         }
       }
     });
 
-    // 3. Récupérer toutes les dates distinctes d'activité (distributions ou dépenses générales)
+    // 3. Récupérer toutes les dates distinctes d'activité générale (distributions ou dépenses générales)
     const distinctDates = new Set();
     (appState.feedDistributions || []).forEach(d => {
       if (d.date) distinctDates.add(d.date);
     });
     (appState.expenses || []).forEach(e => {
-      if (e.date && (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')) {
+      if (e.date && this.getExpenseLinkedLotIds(e).length === 0) {
         distinctDates.add(e.date);
       }
     });
@@ -3944,7 +4358,7 @@ const app = {
         e.date === d && 
         e.category === 'nourriture' && 
         (!hasAnyDistributions || !e.feedStockAddedKg) &&
-        (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')
+        (this.getExpenseLinkedLotIds(e).length === 0)
       );
 
       // Les achats généraux d'aliment nourrissent le troupeau pendant sa période d'élevage :
@@ -3979,7 +4393,7 @@ const app = {
       const otherExpsOnD = (appState.expenses || []).filter(e => 
         e.date === d && 
         e.category !== 'nourriture' && 
-        (!e.linkedLotId || e.linkedLotId === 'general' || e.linkedLotId === 'none')
+        (this.getExpenseLinkedLotIds(e).length === 0)
       );
       const dayOtherCost = otherExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
 
@@ -5263,7 +5677,7 @@ const app = {
     filtered.forEach(exp => {
       const tr = document.createElement('tr');
       const catBadge = this.getExpenseCategoryBadge(exp.category);
-      const lotName = this.getLotNameById(exp.linkedLotId);
+      const lotDisplay = this.getExpenseLinkedLotsDisplay(exp);
       const displayTitle = this.getTranslatedExpenseTitle(exp.title);
 
       let feedStockTag = '';
@@ -5280,8 +5694,8 @@ const app = {
         <td>${catBadge}</td>
         <td><strong>${displayTitle}</strong>${feedStockTag}</td>
         <td>
-          <button type="button" class="badge-pill btn-subtle" onclick="app.reassignExpenseLot('${exp.id}')" title="Cliquer pour changer le lot affecté" style="cursor:pointer; border:1px solid var(--border-color); background:var(--bg-card); padding:3px 8px; font-size:0.75rem;">
-            ${lotName} ✏️
+          <button type="button" class="badge-pill btn-subtle" onclick="app.reassignExpenseLot('${exp.id}')" title="Cliquer pour changer le ou les lots affectés" style="cursor:pointer; border:1px solid var(--border-color); background:var(--bg-card); padding:3px 8px; font-size:0.75rem;">
+            ${lotDisplay} ✏️
           </button>
         </td>
         <td>${exp.quantity}</td>
@@ -5527,7 +5941,32 @@ const app = {
       const date = document.getElementById('expenseDate')?.value || this.getTodayStr();
       const titleInput = document.getElementById('expenseTitle');
       let title = (titleInput?.value || '').trim();
-      const linkedLotId = document.getElementById('expenseAnimalLot')?.value || 'general';
+      const rawLotVal = document.getElementById('expenseAnimalLot')?.value || 'general';
+      let linkedLotId = 'general';
+      let linkedLotIds = [];
+
+      if (rawLotVal === '__multiple__') {
+        const checkedBoxes = Array.from(document.querySelectorAll('.add-expense-lot-checkbox:checked'));
+        const checkedIds = checkedBoxes.map(cb => cb.value);
+        if (checkedIds.length === 0) {
+          const isArLang = appState.lang === 'ar';
+          this.showToast(isArLang ? 'يرجى تحديد دفعة واحدة على الأقل' : 'Veuillez sélectionner au moins un lot', 'warning');
+          return;
+        }
+        if (checkedIds.length === 1) {
+          linkedLotId = checkedIds[0];
+          linkedLotIds = [checkedIds[0]];
+        } else {
+          linkedLotId = checkedIds.join(',');
+          linkedLotIds = checkedIds;
+        }
+      } else if (rawLotVal && rawLotVal !== 'general' && rawLotVal !== 'none') {
+        linkedLotId = rawLotVal;
+        linkedLotIds = [rawLotVal];
+      } else {
+        linkedLotId = 'general';
+        linkedLotIds = [];
+      }
 
       let quantity = 1;
       let unitPrice = 0;
@@ -5660,6 +6099,7 @@ const app = {
         unitPrice,
         total,
         linkedLotId,
+        linkedLotIds,
         feedStockAddedKg,
         feedTypeId
       };
@@ -5681,6 +6121,8 @@ const app = {
 
       const form = document.getElementById('formAddExpense');
       if (form) form.reset();
+      const multiBlock = document.getElementById('expenseAddMultipleLotsBlock');
+      if (multiBlock) multiBlock.style.display = 'none';
       const expQty = document.getElementById('expenseQuantity');
       const expPrice = document.getElementById('expenseUnitPrice');
       if (expQty) { expQty.value = ''; expQty.placeholder = ''; }
