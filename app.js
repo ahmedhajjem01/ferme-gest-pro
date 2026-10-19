@@ -643,6 +643,7 @@ const app = {
           appState.customDailyFeedKg = null;
           appState.sicamCansCount = null;
         }
+        this.synchronizeAnimalStages();
         this.reconcileFeedTypesFromExpenses();
         this.saveState();
       } else {
@@ -3787,6 +3788,7 @@ const app = {
   },
 
   renderAnimals(filter = null) {
+    this.synchronizeAnimalStages();
     const grid = document.getElementById('animalsGrid');
     if (!grid) return;
     grid.innerHTML = '';
@@ -4015,7 +4017,8 @@ const app = {
         : (totalInvested / (Number(animal.initialQuantity) || 1));
 
       const avatarIcon = this.getSpeciesIcon(animal.species);
-      const stageBadgeClass = this.getStageBadgeClass(animal.stage);
+      const effectiveStage = this.getEffectiveAnimalStage(animal);
+      const stageBadgeClass = this.getStageBadgeClass(effectiveStage);
       const lossesWord = isAr ? 'خسائر' : (isEn ? 'losses' : 'pertes');
       const defaultNotes = isAr ? 'لا توجد ملاحظات' : (isEn ? 'No specific notes' : 'Aucune note particulière');
       const agronomicStageLabel = isAr ? feedData.labelAr : (isEn ? feedData.labelEn : feedData.labelFr);
@@ -4116,7 +4119,7 @@ const app = {
                 <p class="animal-breed">${cardSubtitle}</p>
               </div>
             </div>
-            <span class="stage-badge ${stageBadgeClass}">${this.translateStage(animal.stage)}</span>
+            <span class="stage-badge ${stageBadgeClass}">${this.translateStage(effectiveStage)}</span>
           </div>
 
           <div class="animal-stats-grid">
@@ -4223,14 +4226,17 @@ const app = {
     // Pré-sélectionner le statut le plus proche
     const stagePresetSelect = document.getElementById('editAnimalStageSelect');
     if (stagePresetSelect) {
-      const ageDays = Number(animal.arrivalAgeDays) || 0;
+      const daysSinceArrival = this.calculateAgeInDays(animal.birthDate);
+      const arrivalAgeDays = Number(animal.arrivalAgeDays) || 0;
+      const totalAgeDays = daysSinceArrival + arrivalAgeDays;
+
       if (sp === 'canard') {
-        if (ageDays <= 21) stagePresetSelect.value = 'caneton_demarrage';
-        else if (ageDays <= 112) stagePresetSelect.value = 'canard_croissance';
+        if (totalAgeDays <= 21) stagePresetSelect.value = 'caneton_demarrage';
+        else if (totalAgeDays < 150) stagePresetSelect.value = 'canard_croissance';
         else stagePresetSelect.value = 'canard_adulte';
       } else if (sp === 'poulet') {
-        if (ageDays <= 28) stagePresetSelect.value = 'poussin';
-        else if (ageDays <= 154) stagePresetSelect.value = 'croissance';
+        if (totalAgeDays <= 28) stagePresetSelect.value = 'poussin';
+        else if (totalAgeDays < 180) stagePresetSelect.value = 'croissance';
         else stagePresetSelect.value = 'pondeuse';
       }
       this.handleAnimalStagePresetChange(stagePresetSelect.value, 'editAnimal');
@@ -7839,6 +7845,78 @@ const app = {
     return 'Volaille';
   },
 
+  getEffectiveAnimalStage(animal) {
+    if (!animal) return 'Adulte';
+    const sp = (animal.species || 'poulet').toLowerCase();
+    const stg = (animal.stage || '').toLowerCase();
+    const brd = (animal.breed || '').toLowerCase();
+    const notes = (animal.notes || '').toLowerCase();
+
+    const daysSince = this.calculateAgeInDays(animal.birthDate);
+    const startAge = Number(animal.arrivalAgeDays) || 0;
+    const ageDays = Math.max(0, daysSince + startAge);
+
+    const isLaying = stg.includes('ponte') || stg.includes('lay') || brd.includes('ponte') || brd.includes('pondeuse') || notes.includes('ponte') || notes.includes('pondeuse') || sp === 'pondeuse';
+    const isRooster = stg.includes('coq') || stg.includes('rooster') || brd.includes('coq') || notes.includes('coq') || stg.includes('سردوك') || notes.includes('سردوك');
+
+    // 1. Poulets / Gallinacés / Poules
+    if (sp === 'poulet' || sp === 'coq' || sp === 'pondeuse' || sp === 'adulte' || sp === 'poussin') {
+      // Règle biologique intelligente : à partir de 6 mois (>= 180 jours), la croissance est définitivement terminée -> ADULTE !
+      if (ageDays >= 180) {
+        if (isLaying && (stg.includes('ponte') || brd.includes('pondeuse') || notes.includes('pondeuse') || sp === 'pondeuse')) {
+          return 'Ponte';
+        }
+        return 'Adulte';
+      }
+      if (ageDays >= 30) {
+        if (isLaying && ageDays >= 140) return 'Ponte';
+        return 'Croissance';
+      }
+      return 'Démarrage';
+    }
+
+    // 2. Canards / Canards de Barbarie (Adulte à 5 mois / 150 jours)
+    if (sp === 'canard' || sp === 'canard_barbarie') {
+      if (ageDays >= 150) return isLaying ? 'Ponte' : 'Adulte';
+      if (ageDays >= 28) return 'Croissance';
+      return 'Démarrage';
+    }
+
+    // 3. Pintades (Adulte à 6 mois / 180 jours)
+    if (sp === 'pintade') {
+      if (ageDays >= 180) return isLaying ? 'Ponte' : 'Adulte';
+      if (ageDays >= 28) return 'Croissance';
+      return 'Démarrage';
+    }
+
+    // 4. Cailles (Adulte à 45 jours / 1.5 mois)
+    if (sp === 'caille') {
+      if (ageDays >= 45) return isLaying ? 'Ponte' : 'Adulte';
+      if (ageDays >= 21) return 'Croissance';
+      return 'Démarrage';
+    }
+
+    // 5. Autre volaille
+    if (ageDays >= 180) return isLaying ? 'Ponte' : 'Adulte';
+    if (ageDays >= 30) return 'Croissance';
+    return 'Démarrage';
+  },
+
+  synchronizeAnimalStages() {
+    if (!Array.isArray(appState.animals)) return;
+    let changed = false;
+    appState.animals.forEach(a => {
+      const effStage = this.getEffectiveAnimalStage(a);
+      if (a.stage !== effStage && (a.stage === 'Croissance' || a.stage === 'Démarrage' || !a.stage)) {
+        a.stage = effStage;
+        changed = true;
+      }
+    });
+    if (changed) {
+      this.saveState();
+    }
+  },
+
   getAnimalDisplayName(animal) {
     if (!animal) return '';
     const breed = (animal.breed || '').toString().trim();
@@ -7847,7 +7925,8 @@ const app = {
       return breed;
     }
     const speciesLabel = this.translateSpecies(animal.species);
-    const stageLabel = this.translateStage(animal.stage);
+    const effStage = this.getEffectiveAnimalStage(animal);
+    const stageLabel = this.translateStage(effStage);
     return stageLabel ? `${speciesLabel} (${stageLabel})` : speciesLabel;
   },
 
