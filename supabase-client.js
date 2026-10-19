@@ -195,11 +195,20 @@
     reconnectRealtimeIfNeeded() {
       if (!this.client || !this.currentUser) return;
       const now = Date.now();
-      if (this._lastReconnectTime && (now - this._lastReconnectTime < 5000)) return;
+      if (this._lastReconnectTime && (now - this._lastReconnectTime < 10000)) return;
       this._lastReconnectTime = now;
-      this.subscribeRealtime();
-      this.subscribeUserSync();
-      this.subscribeCollaborativeRealtime();
+
+      // Only reconnect if channels are not currently joined or connected
+      const isChannelActive = (ch) => ch && (ch.state === 'joined' || ch.state === 'joining');
+      if (!isChannelActive(this.realtimeChannel)) {
+        this.subscribeRealtime();
+      }
+      if (!isChannelActive(this.userSyncChannel)) {
+        this.subscribeUserSync();
+      }
+      if (!isChannelActive(this.collabChannel)) {
+        this.subscribeCollaborativeRealtime();
+      }
     },
 
     async handleAuthStateChange(event, session) {
@@ -645,9 +654,6 @@
                 this.applyCloudData(payload.new.data, true);
                 this.lastSyncedAt = new Date();
                 this.updateUI();
-                if (window.app && app.showToast) {
-                  app.showToast('⚡ Synchronisé en direct avec votre autre appareil !');
-                }
               }
             }
           )
@@ -683,9 +689,6 @@
               this.applyCloudData(data.farmData, true);
               this.lastSyncedAt = new Date();
               this.updateUI();
-              if (window.app && app.showToast) {
-                app.showToast('⚡ Synchronisé en direct depuis votre autre appareil !');
-              }
             }
           })
           .on('broadcast', { event: 'request_state' }, (payload) => {
@@ -1135,13 +1138,6 @@
               this.applyCloudData(data.farmData, true);
               this.lastSyncedAt = new Date();
               this.updateUI();
-              if (window.app && app.showToast) {
-                const name = sender.split('@')[0];
-                const msg = (window.app && app.t)
-                  ? app.t('team_toast_partner_update', { name: name })
-                  : `🔄 Mis à jour en direct par votre associé (${name}) !`;
-                app.showToast(msg);
-              }
             }
           })
           .on('broadcast', { event: 'request_state' }, (payload) => {
@@ -1150,12 +1146,6 @@
             if (raw.senderSessionId && raw.senderSessionId === this.sessionId) return;
             // Un associé vient de se connecter, on lui envoie les dernières données
             this.broadcastCurrentState();
-            if (window.app && app.showToast) {
-              const requester = raw.requesterEmail || 'Un associé';
-              if (!this.currentUser || raw.requesterEmail !== this.currentUser.email) {
-                app.showToast((window.app && app.t) ? app.t('team_toast_partner_joined') : `🤝 Associé connecté (${requester.split('@')[0]}) !`);
-              }
-            }
           })
           .subscribe((status) => {
             console.log(`[CollabRoom] Subscribed to ${farmCode}:`, status);

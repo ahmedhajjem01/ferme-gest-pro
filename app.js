@@ -1661,7 +1661,20 @@ const app = {
   // Toast notifications
   showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
-    if (!container) return;
+    if (!container || !message) return;
+
+    // Protection anti-spam : ignorer le même message s'il a été affiché il y a moins de 3.5 secondes
+    const now = Date.now();
+    this._recentToasts = this._recentToasts || {};
+    if (this._recentToasts[message] && (now - this._recentToasts[message] < 3500)) {
+      return;
+    }
+    this._recentToasts[message] = now;
+
+    // Ne jamais accumuler plus de 2 notifications simultanées pour ne pas masquer les formulaires
+    while (container.children.length >= 2) {
+      if (container.firstElementChild) container.firstElementChild.remove();
+    }
 
     if (window.MobileBridge) {
       if (type === 'success') window.MobileBridge.hapticSuccess();
@@ -1671,16 +1684,25 @@ const app = {
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    const icon = type === 'success' ? '✅' : '⚠️';
+    const icon = type === 'success' ? '✅' : (type === 'danger' || type === 'error' ? '❌' : '⚠️');
     toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+    toast.style.cursor = 'pointer';
+    toast.title = 'Cliquer pour fermer';
+    toast.onclick = () => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(20px)';
+      setTimeout(() => toast.remove(), 200);
+    };
     container.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(20px)';
-      toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, 3200);
+      if (toast && toast.parentNode) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }
+    }, 2800);
   },
 
   // ==========================================
