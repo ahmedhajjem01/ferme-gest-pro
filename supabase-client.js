@@ -827,6 +827,7 @@
 
       if (window.app) {
         if (app.updateCurrencySymbols) app.updateCurrencySymbols();
+        if (app.reconcileFeedTypesFromExpenses) app.reconcileFeedTypesFromExpenses();
         if (app.renderAll) app.renderAll();
       }
     },

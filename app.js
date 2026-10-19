@@ -3005,79 +3005,125 @@ const app = {
     if (!Array.isArray(appState.expenses)) return;
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
 
-    const deletedFamilies = Array.isArray(appState.deletedFeedFamilies) ? appState.deletedFeedFamilies : [];
-    const deletedIds = Array.isArray(appState.deletedFeedIds) ? appState.deletedFeedIds : [];
-
     const foodExpenses = appState.expenses.filter(e => e.category === 'nourriture');
     if (foodExpenses.length === 0) return;
 
-    let bleFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, 'ble'));
-    let bouchonFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, 'bouchon'));
-
     let changed = false;
 
-    // 1. Restaurer le stock de Blé s'il a été artificiellement siphonné (ex: tombé à 30 ou 40kg)
-    const creditedBleExps = foodExpenses.filter(e => {
-      const family = this.detectFeedTypeFromText(e.title);
-      return family === 'ble' && (Number(e.feedStockAddedKg) || 0) > 0;
-    });
-    const totalBleAdded = creditedBleExps.reduce((s, e) => s + (Number(e.feedStockAddedKg) || 0), 0);
-    const totalBleCost = creditedBleExps.reduce((s, e) => s + (Number(e.total) || 0), 0);
+    // Récupérer toutes les dépenses d'aliments qui approvisionnent le stock magasin
+    const creditedExpenses = foodExpenses.filter(e => (Number(e.feedStockAddedKg) || 0) > 0);
+    if (creditedExpenses.length === 0) return;
 
-    if (bleFeed && !deletedFamilies.includes('ble') && !deletedIds.includes(bleFeed.id)) {
-      const hasDistribs = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
-      if (!hasDistribs && totalBleAdded > 0 && (Number(bleFeed.stockKg) || 0) < totalBleAdded) {
-        bleFeed.stockKg = totalBleAdded;
-        changed = true;
+    // Grouper les dépenses par identité d'aliment (par famille détectée, par feedTypeId ou par intitulé propre)
+    const feedGroups = {};
+    creditedExpenses.forEach(exp => {
+      const family = this.detectFeedTypeFromText(exp.title) || (exp.feedTypeId ? this.detectFeedTypeFromText(exp.feedTypeId) : null);
+      const groupKey = family ? `family_${family}` : (exp.feedTypeId || `title_${(exp.title || 'Aliment').toLowerCase().trim()}`);
+      if (!feedGroups[groupKey]) {
+        feedGroups[groupKey] = {
+          family,
+          feedTypeId: exp.feedTypeId,
+          title: exp.title,
+          totalAddedKg: 0,
+          totalCost: 0,
+          expenses: []
+        };
       }
-      if (totalBleAdded > 0 && totalBleCost > 0) {
-        const realBlePrice = totalBleCost / totalBleAdded;
-        if (Math.abs(bleFeed.pricePerKg - realBlePrice) > 0.01) {
-          bleFeed.pricePerKg = realBlePrice;
-          changed = true;
-        }
-      }
+      const addedKg = Number(exp.feedStockAddedKg) || 0;
+      const cost = Number(exp.total) || 0;
+      feedGroups[groupKey].totalAddedKg += addedKg;
+      feedGroups[groupKey].totalCost += cost;
+      feedGroups[groupKey].expenses.push(exp);
+    });
+
+    // Débloquer toute famille supprimée par erreur si l'éleveur a acheté activement cet aliment
+    const activeFamilies = new Set();
+    Object.values(feedGroups).forEach(g => {
+      if (g.family) activeFamilies.add(g.family);
+    });
+    if (Array.isArray(appState.deletedFeedFamilies)) {
+      appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => !activeFamilies.has(f));
     }
 
-    // 2. Bouchon : Ne réconcilier ou créer QUE si l'aliment n'a PAS été explicitement supprimé par l'utilisateur
-    if (!deletedFamilies.includes('bouchon') && (!bouchonFeed || !deletedIds.includes(bouchonFeed.id))) {
-      const creditedBouchonExps = foodExpenses.filter(e => {
-        const family = this.detectFeedTypeFromText(e.title);
-        return family === 'bouchon' && (Number(e.feedStockAddedKg) || 0) > 0;
-      });
-
-      const totalBouchonAdded = creditedBouchonExps.reduce((s, e) => s + (Number(e.feedStockAddedKg) || 0), 0);
-      const totalBouchonCost = creditedBouchonExps.reduce((s, e) => s + (Number(e.total) || 0), 0);
-
-      if (totalBouchonAdded > 0) {
-        if (!bouchonFeed) {
-          bouchonFeed = this.createDefaultFeedForFamily('bouchon', totalBouchonCost / totalBouchonAdded);
-          appState.feedTypes.push(bouchonFeed);
-          changed = true;
-        }
-
-        if ((Number(bouchonFeed.stockKg) || 0) < totalBouchonAdded && (!Array.isArray(appState.feedDistributions) || appState.feedDistributions.length === 0)) {
-          bouchonFeed.stockKg = totalBouchonAdded;
-          changed = true;
-        }
-        if (totalBouchonCost > 0 && totalBouchonAdded > 0) {
-          bouchonFeed.pricePerKg = Math.max(0.1, totalBouchonCost / totalBouchonAdded);
-          changed = true;
-        }
-
-        // Assigner le feedTypeId exact
-        creditedBouchonExps.forEach(e => {
-          if (e.feedTypeId !== bouchonFeed.id) {
-            e.feedTypeId = bouchonFeed.id;
-            changed = true;
-          }
+    // Traiter chaque groupe d'aliments et synchroniser avec appState.feedTypes
+    Object.values(feedGroups).forEach(group => {
+      let ft = null;
+      if (group.family) {
+        ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, group.family));
+      }
+      if (!ft && group.feedTypeId) {
+        ft = (appState.feedTypes || []).find(f => f.id === group.feedTypeId);
+      }
+      if (!ft) {
+        const rawTitle = (group.title || '').replace(/^(achat|شراء|buy|purchase|feed)\s*[:\-]?\s*/i, '').trim();
+        ft = (appState.feedTypes || []).find(f => {
+          const fn = (f.name || '').toLowerCase();
+          return rawTitle && (fn.includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().includes(fn));
         });
       }
-    }
 
-    if (changed) {
-      appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+      const unitPrice = group.totalAddedKg > 0 ? (group.totalCost / group.totalAddedKg) : 1.0;
+
+      if (!ft) {
+        if (group.family) {
+          ft = this.createDefaultFeedForFamily(group.family, unitPrice);
+        } else {
+          const cleanName = (group.title || '').replace(/^(achat|شراء|buy|purchase|feed)\s*[:\-]?\s*/i, '').trim() || 'Aliment';
+          ft = {
+            id: group.feedTypeId || ('feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4)),
+            name: cleanName,
+            stockKg: 0,
+            pricePerKg: unitPrice
+          };
+        }
+        appState.feedTypes.push(ft);
+        changed = true;
+      }
+
+      // Associer le feedTypeId officiel à toutes les dépenses du groupe
+      group.expenses.forEach(e => {
+        if (e.feedTypeId !== ft.id) {
+          e.feedTypeId = ft.id;
+          changed = true;
+        }
+      });
+
+      // Calculer les distributions réelles déjà effectuées pour cet aliment
+      const totalDistributedKg = (appState.feedDistributions || []).reduce((sum, d) => {
+        let kg = 0;
+        if (Array.isArray(d.items)) {
+          d.items.forEach(it => {
+            if (it.feedTypeId === ft.id || (group.family && this.detectFeedTypeFromText(it.name) === group.family)) {
+              kg += Number(it.kg) || 0;
+            }
+          });
+        }
+        return sum + kg;
+      }, 0);
+
+      const expectedStock = Math.max(0, group.totalAddedKg - totalDistributedKg);
+
+      // Si le stock dans le magasin est inférieur à ce qui a été acheté (ou vide à 0 alors qu'aucune distribution n'a eu lieu)
+      if ((Number(ft.stockKg) || 0) < expectedStock || ((Number(ft.stockKg) || 0) === 0 && expectedStock > 0)) {
+        ft.stockKg = expectedStock;
+        changed = true;
+      }
+
+      // Mettre à jour le prix unitaire réel au kg
+      if (group.totalCost > 0 && group.totalAddedKg > 0) {
+        const calculatedPrice = group.totalCost / group.totalAddedKg;
+        if (Math.abs((Number(ft.pricePerKg) || 0) - calculatedPrice) > 0.005) {
+          ft.pricePerKg = calculatedPrice;
+          changed = true;
+        }
+      }
+    });
+
+    const totalStock = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
+    if (changed || appState.feedStockKg === null || appState.feedStockKg === undefined || Math.abs((Number(appState.feedStockKg) || 0) - totalStock) > 0.05) {
+      appState.feedStockKg = totalStock;
       appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
+      appState.feedStockDate = this.getTodayStr();
       this.saveState();
     }
   },
@@ -3335,6 +3381,7 @@ const app = {
   },
 
   renderFeedDistributionModal() {
+    this.reconcileFeedTypesFromExpenses();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
 
     const container = document.getElementById('feedDistribItemsContainer');
@@ -3673,6 +3720,7 @@ const app = {
   },
 
   renderFeedStockAdjustModal() {
+    this.reconcileFeedTypesFromExpenses();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
     const container = document.getElementById('feedStockTypesContainer');
     if (!container) return;
@@ -4019,14 +4067,22 @@ const app = {
       });
     }
 
+    // Reconcilier automatiquement les achats avec les stocks magasins
+    this.reconcileFeedTypesFromExpenses();
+
     // Calcul du stock d'aliment restant en réserve
     const totalPurchasedFeedCost = (appState.expenses || [])
       .filter(e => e.category === 'nourriture')
       .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
 
     let feedStockRemainingKg = Math.max(0, this.getAvailableFeedStockKg() || 0);
-    const unitFeedVal = appState.feedStockCostPerKg || feedPriceKg;
-    let feedStockRemaining = feedStockRemainingKg * unitFeedVal;
+    let feedStockRemaining = 0;
+    if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
+      feedStockRemaining = appState.feedTypes.reduce((sum, ft) => sum + ((Number(ft.stockKg) || 0) * (Number(ft.pricePerKg) || 1.0)), 0);
+    } else {
+      const unitFeedVal = appState.feedStockCostPerKg || feedPriceKg;
+      feedStockRemaining = feedStockRemainingKg * unitFeedVal;
+    }
 
     const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
     const feedPurchasesExist = (appState.expenses || []).some(e => e.category === 'nourriture' && Number(e.total) > 0);
