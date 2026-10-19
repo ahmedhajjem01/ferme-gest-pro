@@ -3041,7 +3041,15 @@ const app = {
     });
 
     container.innerHTML = html;
-    this.recalcDistribTotal();
+
+    // Pré-sélectionner intelligemment 1 boîte ou la routine favorite pour éviter d'ouvrir sur "0 nourriture"
+    if (appState.savedFavoriteFeedRoutine) {
+      this.applyLearnedRoutine('repeat');
+    } else if (activeFeeds.length === 1) {
+      this.setFeedTypeDistribSicam(activeFeeds[0].id, 1.0);
+    } else {
+      this.recalcDistribTotal();
+    }
   },
 
   adjustFeedTypeDistribSicamStep(feedId, delta) {
@@ -3601,9 +3609,6 @@ const app = {
     // Activité d'aliment réelle déclarée par l'éleveur (stricte : aucun chiffre simulé de tête !)
     const hasRealFeedData = feedPurchasesExist || hasDistributions || feedStockDeclared || customRationDeclared;
 
-    // Détermination de l'état : seulement si des données réelles d'aliment existent
-    const hasData = hasRealFeedData && (totalLivingAnimals > 0);
-
     // Calcul des distributions effectuées aujourd'hui
     const todayStr = this.getTodayStr();
     const todayDistributions = (appState.feedDistributions || []).filter(d => d.date === todayStr);
@@ -3611,16 +3616,19 @@ const app = {
     const todayDistributedCost = todayDistributions.reduce((s, d) => s + (Number(d.totalCost) || 0), 0);
     const todayDistributedCans = todayDistributions.reduce((s, d) => s + (Number(d.cans) || 0), 0);
 
-    // Calcul des valeurs avec garantie stricte de 0 si aucune dépense ou aliment signalé
+    // Détermination de l'état : dès que des données d'aliment existent (stock en réserve, achat, ration ou distribution)
+    const hasData = hasRealFeedData && (totalLivingAnimals > 0 || todayDistributedKg > 0 || feedStockRemainingKg > 0);
+
+    // Calcul des valeurs avec garantie d'exactitude
     let totalFarmDailyKg = 0;
     let totalFarmDailyCost = 0;
 
-    if (hasRealFeedData && totalLivingAnimals > 0) {
-      if (todayDistributedKg > 0) {
-        // Si une distribution a déjà été effectuée aujourd'hui, afficher exactement ce qui a été distribué aujourd'hui !
-        totalFarmDailyKg = todayDistributedKg;
-        totalFarmDailyCost = todayDistributedCost > 0 ? todayDistributedCost : (todayDistributedKg * feedPriceKg);
-      } else if (customRationDeclared) {
+    if (todayDistributedKg > 0) {
+      // Priorité 1 : Si une distribution a déjà été effectuée aujourd'hui, TOUJOURS afficher exactement ce qui a été distribué !
+      totalFarmDailyKg = todayDistributedKg;
+      totalFarmDailyCost = todayDistributedCost > 0 ? todayDistributedCost : (todayDistributedKg * feedPriceKg);
+    } else if (hasRealFeedData && totalLivingAnimals > 0) {
+      if (customRationDeclared) {
         totalFarmDailyKg = Number(appState.customDailyFeedKg) || 0;
         totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
       } else if (hasDistributions) {
@@ -3633,6 +3641,9 @@ const app = {
         totalFarmDailyKg = totalFarmDailyGrams / 1000;
         totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
       }
+    } else if (customRationDeclared) {
+      totalFarmDailyKg = Number(appState.customDailyFeedKg) || 0;
+      totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
     }
 
     if (!hasRealFeedData) {
