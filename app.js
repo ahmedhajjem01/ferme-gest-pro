@@ -642,6 +642,12 @@ const app = {
         if (!appState.animals || appState.animals.length === 0) {
           appState.customDailyFeedKg = null;
           appState.sicamCansCount = null;
+          if (!appState.expenses || appState.expenses.length === 0) {
+            appState.feedTypes = [];
+            appState.feedStockKg = null;
+            appState.feedDistributions = [];
+            appState.savedFavoriteFeedRoutine = null;
+          }
         }
         this.synchronizeAnimalStages();
         this.reconcileFeedTypesFromExpenses();
@@ -8519,20 +8525,52 @@ const app = {
     this.confirmDialog({
       title: isAr ? 'إعادة ضبط شاملة' : 'Suppression Totale',
       message: isAr 
-        ? 'تحذير هام: سيتم مسح كافة البيانات المسجلة نهائياً. هل ترغب في المتابعة؟'
-        : 'ATTENTION: Cette action va supprimer toutes vos données. Continuer ?',
+        ? 'تحذير هام: سيتم مسح كافة البيانات المسجلة نهائياً (الحيوانات، المصاريف، المبيعات، ومخزون الأعلاف بالكامل). هل ترغب في المتابعة؟'
+        : 'ATTENTION: Cette action va réinitialiser absolument toutes vos données à 0 (animaux, dépenses, ventes, récoltes, stocks d\'aliments et rations). Continuer ?',
       isDanger: true,
       confirmText: isAr ? 'مسح الكل' : 'Tout supprimer',
       onConfirm: () => {
+        // Enregistrer tous les identifiants supprimés dans les tombstones Cloud pour éviter toute résurrection
+        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
+          (appState.animals || []).forEach(a => a && a.id && appAuth.addDeletedId(a.id));
+          (appState.expenses || []).forEach(e => e && e.id && appAuth.addDeletedId(e.id));
+          (appState.sales || []).forEach(s => s && s.id && appAuth.addDeletedId(s.id));
+          (appState.incubatorBatches || []).forEach(b => b && b.id && appAuth.addDeletedId(b.id));
+          (appState.eggHarvests || []).forEach(h => h && h.id && appAuth.addDeletedId(h.id));
+          (appState.feedDistributions || []).forEach(d => d && d.id && appAuth.addDeletedId(d.id));
+          (appState.feedTypes || []).forEach(ft => ft && ft.id && appAuth.addDeletedId(ft.id));
+        }
+
+        // Remise à zéro totale de toutes les collections et compteurs
         appState.animals = [];
         appState.expenses = [];
         appState.sales = [];
         appState.incubatorBatches = [];
         appState.eggHarvests = [];
         appState.eggStock = 0;
+
+        // Remise à zéro intégrale de l'alimentation, du stock magasin et des rations
         appState.feedDistributions = [];
+        appState.feedTypes = [];
+        appState.feedStockKg = null;
+        appState.feedStockDate = null;
+        appState.feedStockCostPerKg = 1.0;
+        appState.customDailyFeedKg = null;
+        appState.sicamCansCount = null;
+        appState.feedRationMode = 'custom';
+        appState.savedFavoriteFeedRoutine = null;
+        appState.deletedFeedFamilies = [];
+        appState.deletedFeedIds = [];
+
         appState._zeroInitialized = true;
         this.saveState();
+
+        // Propager immédiatement l'état vide au cloud et aux autres appareils
+        if (window.appAuth) {
+          if (typeof appAuth.pushData === 'function') appAuth.pushData(false);
+          if (typeof appAuth.broadcastCurrentState === 'function') appAuth.broadcastCurrentState();
+        }
+
         this.closeModal('modalDataOptions');
         this.renderAll();
         this.showToast(this.t('toast_data_reset'));
