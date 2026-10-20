@@ -8843,6 +8843,31 @@ const app = {
     const displayName = this.getAnimalDisplayName(lot);
     const lotNum = (lot.name && lot.name.toString().trim() !== '') ? (appState.lang === 'ar' ? `دفعة #${lot.name}` : `Lot #${lot.name}`) : '';
     return lotNum ? `${displayName} (${lotNum})` : displayName;
+  },
+
+  shareApkLink() {
+    const isAr = appState.lang === 'ar';
+    const apkUrl = 'https://fermegestpro.vercel.app/FermeGestPro.apk';
+    const webUrl = 'https://fermegestpro.vercel.app';
+    const title = 'FermeGest PRO - Application Mobile Android';
+    const text = isAr 
+      ? `حمّل تطبيق FermeGest PRO لهواتف الأندرويد مباشرة من هذا الرابط:\n${apkUrl}\n\nأو افتح التطبيق مباشرة في المتصفح:\n${webUrl}`
+      : `Téléchargez l'application officielle FermeGest PRO pour Android directement ici :\n${apkUrl}\n\nOu ouvrez-la sur votre navigateur :\n${webUrl}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title,
+        text,
+        url: apkUrl
+      }).catch(() => {});
+    } else {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(apkUrl);
+        this.showToast(this.t('mobile_share_toast_copied') || (isAr ? 'تم نسخ رابط التحميل!' : 'Lien de téléchargement copié !'));
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      }
+    }
   }
 };
 

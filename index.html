@@ -2430,6 +2430,27 @@
           </div>
         </div>
 
+        <!-- Mobile App Download & Share Section -->
+        <div class="team-card" style="margin-top: 1rem; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05); border-radius: var(--radius-md); padding: 0.9rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+            <span style="font-size: 1.25rem;">📱</span>
+            <strong style="color: var(--accent-emerald);" data-i18n="mobile_app_download_title">Application Mobile Android (APK)</strong>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4;" data-i18n="mobile_app_download_desc">
+            Téléchargez le fichier APK directement pour installer l'application sur tous les téléphones Android de votre famille :
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <a href="./FermeGestPro.apk" download="FermeGestPro.apk" class="btn btn-emerald btn-full" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; padding: 0.65rem;">
+              <span>⬇️</span>
+              <span data-i18n="mobile_btn_download_apk">Télécharger l'APK Direct</span>
+            </a>
+            <button type="button" class="btn btn-secondary btn-full" onclick="app.shareApkLink()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem;">
+              <span>📲</span>
+              <span data-i18n="mobile_btn_share_apk">Partager le lien APK (WhatsApp / Famille)</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="profile-action-btns">
           <button type="button" class="btn btn-emerald btn-full profile-sync-btn" onclick="appAuth.syncNow(true)" data-i18n="profile_sync_now">
@@ -2450,8 +2471,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=90"></script>
-  <script src="translations.js?v=90"></script>
-  <script src="app.js?v=90"></script>
+  <script src="supabase-client.js?v=91"></script>
+  <script src="translations.js?v=91"></script>
+  <script src="app.js?v=91"></script>
 </body>
 </html>

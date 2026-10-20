@@ -547,6 +547,11 @@ const TRANSLATIONS = {
     team_toast_left_farm: "Vous avez quitté la ferme partagée.",
     team_toast_partner_update: "🔄 Mis à jour en direct par votre associé ({name}) !",
     team_toast_partner_joined: "🤝 Votre associé vient de se connecter à votre ferme !",
+    mobile_app_download_title: "Application Mobile Android (APK)",
+    mobile_app_download_desc: "Téléchargez le fichier APK directement pour installer l'application sur tous les téléphones Android de votre famille :",
+    mobile_btn_download_apk: "📥 Télécharger l'APK Direct",
+    mobile_btn_share_apk: "📲 Partager le lien APK (WhatsApp / Famille)",
+    mobile_share_toast_copied: "Lien de téléchargement APK copié dans le presse-papiers !",
 
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚 FermeGest Pro - Récolte du Jour",
@@ -1131,6 +1136,11 @@ const TRANSLATIONS = {
     team_toast_left_farm: "لقد غادرت المزرعة المشتركة.",
     team_toast_partner_update: "🔄 تحديث مباشر من شريكك ({name})!",
     team_toast_partner_joined: "🤝 انضم شريكك للتو إلى مزرعتك!",
+    mobile_app_download_title: "تطبيق الهاتف أندرويد (APK)",
+    mobile_app_download_desc: "قم بتنزيل ملف APK مباشرة لتثبيت التطبيق على هواتف الأندرويد لعائلتك :",
+    mobile_btn_download_apk: "📥 تحميل تطبيق الأندرويد (APK)",
+    mobile_btn_share_apk: "📲 مشاركة رابط التحميل (واتساب / العائلة)",
+    mobile_share_toast_copied: "تم نسخ رابط تحميل التطبيق في الحافظة!",
 
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚 فيرم-جست برو - جمع البيض اليومي",
@@ -1714,6 +1724,11 @@ const TRANSLATIONS = {
     team_toast_left_farm: "You left the shared farm.",
     team_toast_partner_update: "🔄 Live update from your partner ({name})!",
     team_toast_partner_joined: "🤝 Your partner just joined your farm!",
+    mobile_app_download_title: "Android Mobile App (APK)",
+    mobile_app_download_desc: "Download the APK directly to install the app on your family's Android phones:",
+    mobile_btn_download_apk: "📥 Download Direct APK",
+    mobile_btn_share_apk: "📲 Share APK Link (WhatsApp / Family)",
+    mobile_share_toast_copied: "APK download link copied to clipboard!",
 
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚 FermeGest Pro - Daily Egg Collection",
