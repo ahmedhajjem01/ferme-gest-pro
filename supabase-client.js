@@ -740,11 +740,8 @@
         state.feedStockDate = cloudData.feedStockDate || null;
         state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
       }
-      if (cloudData.customDailyFeedKg !== undefined) {
-        state.feedRationMode = cloudData.feedRationMode || 'custom';
-        state.customDailyFeedKg = (cloudData.customDailyFeedKg !== undefined && cloudData.customDailyFeedKg !== null) ? Number(cloudData.customDailyFeedKg) : null;
-        state.sicamCansCount = (cloudData.sicamCansCount !== undefined && cloudData.sicamCansCount !== null) ? Number(cloudData.sicamCansCount) : null;
-      }
+      state.customDailyFeedKg = null;
+      state.sicamCansCount = null;
 
       if (doMerge) {
         state.animals = this.mergeCollections(state.animals, cloudData.animals || []);

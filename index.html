@@ -461,7 +461,7 @@
                   <span class="farm-feed-diminished-icon">🌾</span>
                   <div>
                     <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                      <h4 class="farm-feed-diminished-title" data-i18n="farm_feed_title">Ration & Consommation Générale</h4>
+                      <h4 class="farm-feed-diminished-title" data-i18n="farm_feed_title">Alimentation & Stock de Réserve</h4>
                       <span class="badge-pill text-amber" style="font-size: 0.68rem; padding: 0.1rem 0.45rem;" data-i18n="farm_feed_badge_initial">Début (0 donnée)</span>
                     </div>
                   </div>
@@ -469,9 +469,6 @@
                 <div class="farm-feed-diminished-actions">
                   <button type="button" class="btn btn-sm btn-emerald bold" style="padding: 0.25rem 0.65rem; font-size: 0.76rem;" onclick="app.openModal('modalFeedDistribution')" title="Distribuer l'aliment">
                     🥫 <span data-i18n="btn_distribute_daily">Distribuer</span>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.2rem 0.55rem; font-size: 0.74rem; font-weight: 700; color: var(--accent-amber);" onclick="app.openModal('modalDailyFeedRation')">
-                    ⚙️ <span data-i18n="btn_adjust_ration">Ration</span>
                   </button>
                   <button type="button" class="btn btn-sm btn-primary" style="padding: 0.2rem 0.6rem; font-size: 0.74rem; font-weight: 700;" onclick="app.openModal('modalAddAnimal')">
                     ➕ <span data-i18n="btn_add_first_animal">Ajouter un lot</span>
@@ -511,10 +508,10 @@
                   <div style="font-size: 2rem; width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);">🌾</div>
                   <div>
                     <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                      <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Ration & Consommation Générale</h3>
-                      <span class="badge-pill text-amber" style="font-size: 0.72rem;" data-i18n="farm_feed_badge">Consommation Générale</span>
+                      <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Alimentation & Stock de Réserve</h3>
+                      <span class="badge-pill text-amber" style="font-size: 0.72rem;" data-i18n="farm_feed_badge">Aliments & Stock</span>
                     </div>
-                    <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Consommation journalière globale de la ferme et réserve en magasin</small>
+                    <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Consommation journalière du cheptel et réserve en magasin</small>
                   </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
@@ -522,18 +519,15 @@
                     <span>🥫</span>
                     <span data-i18n="btn_distribute_daily">Distribuer l'aliment</span>
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.35rem 0.65rem; font-size: 0.78rem; font-weight: 700; color: var(--accent-amber);" onclick="app.openModal('modalDailyFeedRation')" title="Ajuster la ration">
-                    ⚙️ <span data-i18n="btn_adjust_ration">Ration</span>
-                  </button>
                 </div>
               </div>
 
               <!-- 3 Cartes de Consommation Générale -->
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 0.85rem;">
-                <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalFeedDistribution')" title="Cliquer pour distribuer ou ajuster votre aliment du jour (boîtes Sicam ou kg)">
+                <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalFeedDistribution')" title="Cliquer pour enregistrer la distribution du jour">
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; margin-bottom: 0.25rem;">
                     <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" data-i18n="farm_feed_daily_total">Consommation journalière</span>
-                    <span style="font-size: 0.75rem; color: var(--accent-amber);">🥫 ✏️</span>
+                    <span style="font-size: 0.75rem; color: var(--accent-amber);">🥫</span>
                   </div>
                   <strong style="font-size: 1.25rem; color: var(--accent-amber); display: block;" id="farmFeedTodayKg">0.00 kg / j</strong>
                   <small id="farmFeedTodayStatusHint" style="font-size: 0.7rem; color: var(--accent-emerald); font-weight: 600; display: block; margin-top: 0.2rem;"></small>
@@ -2148,62 +2142,7 @@
     </div>
   </div>
 
-  <!-- Modal: Régime & Ration Quotidienne Réelle (Plein air / Boîtes Sicam) -->
-  <div id="modalDailyFeedRation" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 500px;">
-      <div class="modal-header">
-        <h3>🌾 Ration Quotidienne Réelle de la Ferme</h3>
-        <button class="modal-close" onclick="app.closeModal('modalDailyFeedRation')">&times;</button>
-      </div>
-      <form id="formDailyFeedRation" onsubmit="app.handleSaveDailyFeedRation(event)">
-        <div class="modal-body">
-          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem;">
-            <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.45;">
-              🐔 <strong>Élevage Fermier & Plein Air :</strong> Les volailles picorent aussi dehors (herbe, insectes, épluchures). Indiquez la quantité de grains/granulés que vous distribuez réellement par jour pour que vos coûts reflètent la réalité !
-            </p>
-          </div>
 
-          <input type="hidden" id="feedModeCustomRadio" name="feedRationModeRadio" value="custom">
-
-          <!-- Section Saisie Ration Réelle (Affichée en mode custom) -->
-          <div id="feedRationCustomBlock" style="background: var(--bg-surface); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.15rem;">
-            <!-- Convertisseur Boîte Sicam 800g -->
-            <div class="form-group" style="margin-bottom: 0.85rem;">
-              <label for="feedSicamCansInput" class="form-label" style="font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
-                <span>🥫 Nombre de boîtes Sicam (800g) par jour</span>
-                <span class="badge-pill text-amber" style="font-size: 0.72rem;">Mesurette locale</span>
-              </label>
-              <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="number" id="feedSicamCansInput" class="input-field" step="0.5" min="0" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-amber);" oninput="app.calcSicamToKg()">
-                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;">boîtes / j</span>
-              </div>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
-                1 boîte Sicam standard (800g) pleine de céréales ou granulés pèse environ <strong>~650g à 700g</strong>.
-              </small>
-            </div>
-
-            <!-- Équivalent en kg par jour -->
-            <div class="form-group" style="margin-bottom: 0;">
-              <label for="feedCustomKgInput" class="form-label" style="font-weight: 700;">
-                ⚖️ Poids total équivalent distribué par jour (kg/j)
-              </label>
-              <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <input type="number" id="feedCustomKgInput" class="input-field" step="0.1" min="0.1" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.calcKgToSicam()">
-                <strong style="font-size: 1.1rem; color: var(--accent-emerald);">kg / jour</strong>
-              </div>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.74rem;">
-                Saisie directe en kg ou calculée automatiquement depuis vos boîtes Sicam.
-              </small>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;">
-            Appliquer cette Ration Quotidienne
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <!-- Modal: Distribution Réelle d'Aliment du Jour (Multi-Types) -->
   <div id="modalFeedDistribution" class="modal-overlay hidden">
@@ -2511,8 +2450,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=88"></script>
-  <script src="translations.js?v=88"></script>
-  <script src="app.js?v=88"></script>
+  <script src="supabase-client.js?v=89"></script>
+  <script src="translations.js?v=89"></script>
+  <script src="app.js?v=89"></script>
 </body>
 </html>

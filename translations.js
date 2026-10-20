@@ -40,9 +40,9 @@ const TRANSLATIONS = {
     kpi_animals_sub: "Poulets, Pondeuses, Poussins (Aviculture)",
 
     // Farm Daily Feed & Ration Card (Consommation Générale)
-    farm_feed_title: "Ration & Consommation Générale",
-    farm_feed_subtitle: "Consommation journalière globale de la ferme et réserve en magasin",
-    farm_feed_badge: "Consommation Générale",
+    farm_feed_title: "Alimentation & Stock de Réserve",
+    farm_feed_subtitle: "Consommation journalière du cheptel et réserve en magasin",
+    farm_feed_badge: "Aliments & Stock",
     farm_feed_badge_initial: "Début (0 donnée)",
     farm_feed_daily_total: "Consommation journalière",
     farm_feed_daily_short: "Conso :",
@@ -624,9 +624,9 @@ const TRANSLATIONS = {
     kpi_animals_sub: "دجاج، بياض، كتاكيت (تربية الدواجن)",
 
     // Farm Daily Feed & Ration Card (Consommation Générale)
-    farm_feed_title: "العليقة والاستهلاك العام للعلف",
-    farm_feed_subtitle: "الاستهلاك اليومي الإجمالي للمزرعة والمخزون المتوفر بالمستودع",
-    farm_feed_badge: "الاستهلاك العام",
+    farm_feed_title: "الأعلاف والمخزون بالمستودع",
+    farm_feed_subtitle: "الاستهلاك اليومي للقطيع والمخزون المتوفر بالمستودع",
+    farm_feed_badge: "الأعلاف والمخزون",
     farm_feed_badge_initial: "البداية (0 بيانات)",
     farm_feed_daily_total: "الاستهلاك اليومي الإجمالي",
     farm_feed_daily_short: "الاستهلاك :",
@@ -1208,9 +1208,9 @@ const TRANSLATIONS = {
     kpi_animals_sub: "Broilers, Layers, Chicks (Poultry)",
 
     // Farm Daily Feed & Ration Card (Consommation Générale)
-    farm_feed_title: "General Feed & Ration Consumption",
-    farm_feed_subtitle: "Overall daily farm feed consumption and warehouse stock",
-    farm_feed_badge: "General Consumption",
+    farm_feed_title: "Feed & Warehouse Stock",
+    farm_feed_subtitle: "Daily flock feed consumption and warehouse reserve stock",
+    farm_feed_badge: "Feed & Stock",
     farm_feed_badge_initial: "Initial (0 data)",
     farm_feed_daily_total: "Daily farm consumption",
     farm_feed_daily_short: "Daily feed:",

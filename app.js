@@ -603,13 +603,8 @@ const app = {
         appState.feedStockKg = parsed.feedStockKg !== undefined ? parsed.feedStockKg : null;
         appState.feedStockDate = parsed.feedStockDate || null;
         appState.feedStockCostPerKg = parsed.feedStockCostPerKg ? Number(parsed.feedStockCostPerKg) : 1.0;
-        appState.feedRationMode = parsed.feedRationMode || 'custom';
-        appState.customDailyFeedKg = (parsed.customDailyFeedKg !== undefined && parsed.customDailyFeedKg !== null) ? Number(parsed.customDailyFeedKg) : null;
-        appState.sicamCansCount = (parsed.sicamCansCount !== undefined && parsed.sicamCansCount !== null) ? Number(parsed.sicamCansCount) : null;
-        if (appState.customDailyFeedKg !== null && (appState.customDailyFeedKg < 1.0 || isNaN(appState.customDailyFeedKg))) {
-          appState.customDailyFeedKg = null;
-          appState.sicamCansCount = null;
-        }
+        appState.customDailyFeedKg = null;
+        appState.sicamCansCount = null;
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
         if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
           appState.feedTypes = [];
@@ -1040,18 +1035,7 @@ const app = {
         this.renderFeedStockAdjustModal();
       }
 
-      if (modalId === 'modalDailyFeedRation') {
-        const customKgInput = document.getElementById('feedCustomKgInput');
-        const sicamInput = document.getElementById('feedSicamCansInput');
-        const customRadio = document.getElementById('feedModeCustomRadio');
-        const industrialRadio = document.getElementById('feedModeIndustrialRadio');
-        const isCustom = appState.feedRationMode !== 'industrial';
-        if (customRadio) customRadio.checked = isCustom;
-        if (industrialRadio) industrialRadio.checked = !isCustom;
-        if (customKgInput) customKgInput.value = (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? appState.customDailyFeedKg : '';
-        if (sicamInput) sicamInput.value = (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? appState.sicamCansCount : '';
-        this.toggleFeedRationModeUI();
-      }
+
 
       if (modalId === 'modalFeedDistribution') {
         const dateInput = document.getElementById('distribDate');
@@ -3994,52 +3978,8 @@ const app = {
     });
   },
 
-  calcSicamToKg() {
-    const cans = parseFloat(document.getElementById('feedSicamCansInput')?.value) || 0;
-    const kgEl = document.getElementById('feedCustomKgInput');
-    if (kgEl) kgEl.value = (cans * 0.667).toFixed(1);
-  },
-
-  calcKgToSicam() {
-    const kg = parseFloat(document.getElementById('feedCustomKgInput')?.value) || 0;
-    const cansEl = document.getElementById('feedSicamCansInput');
-    if (cansEl) cansEl.value = (kg / 0.667).toFixed(1);
-  },
-
-  toggleFeedRationModeUI() {
-    // Mode is consistently tailored to real farm ration
-  },
-
-  handleSaveDailyFeedRation(e) {
-    e.preventDefault();
-    appState.feedRationMode = 'custom';
-    const kg = parseFloat(document.getElementById('feedCustomKgInput')?.value) || 2.0;
-    const cans = parseFloat(document.getElementById('feedSicamCansInput')?.value) || 3;
-    appState.customDailyFeedKg = Math.max(0.1, kg);
-    appState.sicamCansCount = Math.max(0.5, cans);
-
-    this.saveState();
-    this.closeModal('modalDailyFeedRation');
-    this.renderAll();
-    this.showToast(`✅ Ration fermière appliquée : ${appState.customDailyFeedKg} kg/j (~${appState.sicamCansCount} boîtes Sicam)`);
-  },
-
   getFeedScalingRatio() {
-    if (appState.feedRationMode === 'industrial') return 1.0;
-    if (appState.customDailyFeedKg === null || appState.customDailyFeedKg === undefined || appState.customDailyFeedKg <= 0) return 1.0;
-
-    let theoreticalDailyKg = 0;
-    (appState.animals || []).forEach(a => {
-      const qty = Number(a.currentQuantity) || 0;
-      if (qty <= 0) return;
-      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
-      const feedData = this.getAgronomicFeedData(a.species, aAge, a.stage, a.breed);
-      theoreticalDailyKg += (qty * feedData.avgGrams) / 1000;
-    });
-
-    if (theoreticalDailyKg <= 0) return 1.0;
-    const ratio = appState.customDailyFeedKg / theoreticalDailyKg;
-    return Math.max(0.15, Math.min(2.5, ratio));
+    return 1.0;
   },
 
   renderFarmFeedSummary() {
@@ -4093,10 +4033,9 @@ const app = {
     const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
     const feedPurchasesExist = (appState.expenses || []).some(e => e.category === 'nourriture' && Number(e.total) > 0);
     const feedStockDeclared = (Number(appState.feedStockKg) > 0) || (Array.isArray(appState.feedTypes) && appState.feedTypes.some(ft => Number(ft.stockKg) > 0));
-    const customRationDeclared = Boolean(appState.customDailyFeedKg && Number(appState.customDailyFeedKg) > 0);
 
     // Activité d'aliment réelle déclarée par l'éleveur (stricte : aucun chiffre simulé de tête !)
-    const hasRealFeedData = feedPurchasesExist || hasDistributions || feedStockDeclared || customRationDeclared;
+    const hasRealFeedData = feedPurchasesExist || hasDistributions || feedStockDeclared;
 
     // Calcul des distributions effectuées aujourd'hui
     const todayStr = this.getTodayStr();
@@ -4105,7 +4044,7 @@ const app = {
     const todayDistributedCost = todayDistributions.reduce((s, d) => s + (Number(d.totalCost) || 0), 0);
     const todayDistributedCans = todayDistributions.reduce((s, d) => s + (Number(d.cans) || 0), 0);
 
-    // Détermination de l'état : dès que des données d'aliment existent (stock en réserve, achat, ration ou distribution)
+    // Détermination de l'état : dès que des données d'aliment existent (stock en réserve, achat ou distribution)
     const hasData = hasRealFeedData && (totalLivingAnimals > 0 || todayDistributedKg > 0 || feedStockRemainingKg > 0);
 
     // Calcul des valeurs avec garantie d'exactitude
@@ -4117,29 +4056,21 @@ const app = {
       totalFarmDailyKg = todayDistributedKg;
       totalFarmDailyCost = todayDistributedCost > 0 ? todayDistributedCost : (todayDistributedKg * feedPriceKg);
     } else if (hasRealFeedData && totalLivingAnimals > 0) {
-      if (customRationDeclared) {
-        totalFarmDailyKg = Number(appState.customDailyFeedKg) || 0;
-        totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
-      } else if (hasDistributions) {
+      if (hasDistributions) {
         // Moyenne des distributions réelles récentes
         const recentDist = (appState.feedDistributions || []).slice(0, 7);
         const sumKg = recentDist.reduce((s, d) => s + (Number(d.totalKg) || Number(d.quantityKg) || 0), 0);
         totalFarmDailyKg = recentDist.length > 0 ? (sumKg / recentDist.length) : (totalFarmDailyGrams / 1000);
         totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
-      } else if (feedPurchasesExist || feedStockDeclared) {
+      } else {
         totalFarmDailyKg = totalFarmDailyGrams / 1000;
         totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
       }
-    } else if (customRationDeclared) {
-      totalFarmDailyKg = Number(appState.customDailyFeedKg) || 0;
-      totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
     }
 
-    if (!hasRealFeedData) {
+    if (!hasRealFeedData || (totalLivingAnimals <= 0 && todayDistributedKg <= 0)) {
       totalFarmDailyKg = 0;
       totalFarmDailyCost = 0;
-      feedStockRemainingKg = 0;
-      feedStockRemaining = 0;
     }
 
     const isAr = appState.lang === 'ar';
