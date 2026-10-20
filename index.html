@@ -67,6 +67,26 @@
             }
           });
         }
+        // Sync feedTypes array with declared stock so distribution modal can always display items
+        if ((!Array.isArray(s.feedTypes) || s.feedTypes.length === 0) && (Number(s.feedStockKg) || 0) > 0) {
+          s.feedTypes = [{
+            id: 'feed-principal',
+            name: s.lang === 'ar' ? 'علف رئيسي (مخزون)' : 'Aliment principal (Réserve)',
+            stockKg: Number(s.feedStockKg),
+            pricePerKg: Number(s.feedStockCostPerKg) || 1.0,
+            manuallyAdjusted: true,
+            updatedAt: now
+          }];
+          changed = true;
+        } else if (Array.isArray(s.feedTypes) && s.feedTypes.length > 0) {
+          var sumStk = s.feedTypes.reduce(function(acc, ft) { return acc + (Number(ft.stockKg) || 0); }, 0);
+          if (sumStk <= 0 && (Number(s.feedStockKg) || 0) > 0) {
+            s.feedTypes[0].stockKg = Number(s.feedStockKg);
+            s.feedTypes[0].manuallyAdjusted = true;
+            s.feedTypes[0].updatedAt = now;
+            changed = true;
+          }
+        }
         if (changed) {
           localStorage.setItem('fermegest_state', JSON.stringify(s));
         }
@@ -80,7 +100,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=141').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=142').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -2497,8 +2517,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=101"></script>
-  <script src="translations.js?v=101"></script>
-  <script src="app.js?v=101"></script>
+  <script src="supabase-client.js?v=102"></script>
+  <script src="translations.js?v=102"></script>
+  <script src="app.js?v=102"></script>
 </body>
 </html>

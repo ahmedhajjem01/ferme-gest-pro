@@ -618,6 +618,7 @@ const app = {
         } else {
           appState.feedTypes = this.sanitizeFeedTypes(parsed.feedTypes);
         }
+        this.ensureFeedTypesSyncedWithStock();
         if (parsed.savedFavoriteFeedRoutine && Array.isArray(parsed.savedFavoriteFeedRoutine.items)) {
           parsed.savedFavoriteFeedRoutine.items.forEach(it => {
             if (it.name && (it.name.includes('بليه') || it.name === 'قمح / بليه')) {
@@ -3363,8 +3364,41 @@ const app = {
     if (input) input.value = names[type] || '';
   },
 
+  ensureFeedTypesSyncedWithStock() {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const declaredStock = (appState.feedStockKg !== null && appState.feedStockKg !== undefined) ? Math.max(0, Number(appState.feedStockKg) || 0) : 0;
+    const defaultPrice = (Number(appState.feedStockCostPerKg) > 0) ? Number(appState.feedStockCostPerKg) : (this.getAverageFeedPricePerKg() || 1.0);
+
+    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+      if (declaredStock > 0) {
+        appState.feedTypes = [{
+          id: 'feed-principal',
+          name: isAr ? 'علف رئيسي (مخزون)' : (isEn ? 'Main Feed Reserve' : 'Aliment principal (Réserve)'),
+          stockKg: declaredStock,
+          pricePerKg: defaultPrice,
+          manuallyAdjusted: true,
+          updatedAt: Date.now()
+        }];
+        this.saveState();
+      }
+    } else {
+      const sumStock = appState.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+      if (sumStock <= 0 && declaredStock > 0) {
+        appState.feedTypes[0].stockKg = declaredStock;
+        appState.feedTypes[0].manuallyAdjusted = true;
+        appState.feedTypes[0].updatedAt = Date.now();
+        this.saveState();
+      } else if (sumStock > 0 && Math.abs(sumStock - declaredStock) > 0.05) {
+        appState.feedStockKg = sumStock;
+      }
+    }
+  },
+
   renderFeedDistributionModal() {
+    this.ensureFeedTypesSyncedWithStock();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+    this.ensureFeedTypesSyncedWithStock();
 
     const container = document.getElementById('feedDistribItemsContainer');
     const presetsContainer = document.getElementById('feedSmartPresetsContainer');
@@ -3699,7 +3733,7 @@ const app = {
     this.saveState();
 
     if (window.appAuth && typeof window.appAuth.pushData === 'function') {
-      window.appAuth.pushData();
+      window.appAuth.pushData(false, true);
     }
     this.closeModal('modalFeedDistribution');
     this.renderAll();
@@ -3709,7 +3743,9 @@ const app = {
   },
 
   renderFeedStockAdjustModal() {
+    this.ensureFeedTypesSyncedWithStock();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+    this.ensureFeedTypesSyncedWithStock();
     const container = document.getElementById('feedStockTypesContainer');
     if (!container) return;
 

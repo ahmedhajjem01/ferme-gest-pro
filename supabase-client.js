@@ -814,9 +814,25 @@
         if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
       }
 
-      // Keep total feedStockKg in sync with feedTypes
-      if (Array.isArray(state.feedTypes) && state.feedTypes.length > 0) {
-        state.feedStockKg = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+      // Keep feedTypes and feedStockKg completely unified and distributable
+      if ((!Array.isArray(state.feedTypes) || state.feedTypes.length === 0) && (Number(state.feedStockKg) || 0) > 0) {
+        state.feedTypes = [{
+          id: 'feed-principal',
+          name: state.lang === 'ar' ? 'علف رئيسي (مخزون)' : 'Aliment principal (Réserve)',
+          stockKg: Number(state.feedStockKg),
+          pricePerKg: Number(state.feedStockCostPerKg) || 1.0,
+          manuallyAdjusted: true,
+          updatedAt: Date.now()
+        }];
+      } else if (Array.isArray(state.feedTypes) && state.feedTypes.length > 0) {
+        const sumStock = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+        if (sumStock <= 0 && (Number(state.feedStockKg) || 0) > 0) {
+          state.feedTypes[0].stockKg = Number(state.feedStockKg);
+          state.feedTypes[0].manuallyAdjusted = true;
+          state.feedTypes[0].updatedAt = Date.now();
+        } else {
+          state.feedStockKg = sumStock;
+        }
       }
 
       // Filter out any bovine or ovine residue
