@@ -20,7 +20,6 @@ const appState = {
   feedStockDate: null,
   feedStockCostPerKg: 1.0,
   feedStockUpdatedAt: null,
-  _feedStockFixed58: false,
   feedRationMode: 'custom',
   customDailyFeedKg: null,
   sicamCansCount: null,
@@ -570,8 +569,6 @@ const app = {
         feedStockDate: appState.feedStockDate || null,
         feedStockCostPerKg: appState.feedStockCostPerKg || 1.0,
         feedStockUpdatedAt: appState.feedStockUpdatedAt || null,
-        _feedStockMigrated58: !!appState._feedStockMigrated58,
-        _feedStockFixed58: !!appState._feedStockFixed58,
         feedRationMode: appState.feedRationMode || 'custom',
         customDailyFeedKg: (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? Number(appState.customDailyFeedKg) : null,
         sicamCansCount: (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? Number(appState.sicamCansCount) : null,
@@ -609,8 +606,6 @@ const app = {
         appState.feedStockDate = parsed.feedStockDate || null;
         appState.feedStockCostPerKg = parsed.feedStockCostPerKg ? Number(parsed.feedStockCostPerKg) : 1.0;
         appState.feedStockUpdatedAt = parsed.feedStockUpdatedAt || null;
-        appState._feedStockMigrated58 = !!parsed._feedStockMigrated58;
-        appState._feedStockFixed58 = !!parsed._feedStockFixed58;
         appState.customDailyFeedKg = null;
         appState.sicamCansCount = null;
         if (!Array.isArray(parsed.feedDistributions)) {
@@ -666,44 +661,6 @@ const app = {
             appState.feedDistributions = [];
             appState.savedFavoriteFeedRoutine = null;
           }
-        }
-        // Détection universelle de l'anomalie 44.6 kg -> Rétablissement garanti à 58.0 kg réels
-        const totalLocalStock = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
-        const isStuckAt44 = Math.abs((Number(appState.feedStockKg) || 0) - 44.6) < 0.3 || 
-          Math.abs(totalLocalStock - 44.6) < 0.3 ||
-          (Array.isArray(appState.feedTypes) && appState.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3));
-
-        if (isStuckAt44) {
-          appState._feedStockFixed58 = true;
-          appState.feedStockKg = 58.0;
-          if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
-            let fixedAny = false;
-            appState.feedTypes.forEach(f => {
-              if (Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3) {
-                f.stockKg = 58.0;
-                fixedAny = true;
-              }
-              f.manuallyAdjusted = true;
-              f.updatedAt = now;
-            });
-            if (!fixedAny && appState.feedTypes.length > 0) {
-              appState.feedTypes[0].stockKg = 58.0;
-              appState.feedTypes[0].manuallyAdjusted = true;
-              appState.feedTypes[0].updatedAt = now;
-            }
-          } else {
-            appState.feedTypes = [{
-              id: 'feed-principal',
-              name: appState.lang === 'ar' ? 'علف رئيسي (مخزون)' : 'Aliment principal (Réserve)',
-              stockKg: 58.0,
-              pricePerKg: 1.2,
-              manuallyAdjusted: true,
-              updatedAt: now
-            }];
-          }
-          appState.feedStockDate = this.getTodayStr();
-          appState.feedStockUpdatedAt = now;
-          this.saveState();
         }
 
         this.synchronizeAnimalStages();
@@ -3799,24 +3756,7 @@ const app = {
       }];
     }
 
-    const resetBarHtml = `
-      <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(16, 185, 129, 0.15)); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
-        <div>
-          <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 700;">
-            🌾 ${isAr ? 'المخزون الحقيقي بالمستودع :' : 'Stock physique réel disponible :'}
-            <strong style="color: var(--accent-amber); font-size: 1.1rem; margin-left: 4px;">58.0 ${unitKg}</strong>
-          </div>
-          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
-            ${isAr ? 'انقر لتثبيت 58.0 كغ بشكل نهائي ومزامنته سحابياً مع منع أي نقصان تلقائي.' : 'Cliquez pour fixer et verrouiller à 58.0 kg réels (synchronisation Cloud immédiate).'}
-          </div>
-        </div>
-        <button type="button" class="btn btn-sm btn-amber bold" style="padding: 6px 14px; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);" onclick="app.forceResetStockTo58()">
-          ⚡ ${isAr ? 'تثبيت 58.0 كغ الآن' : 'Fixer à 58.0 kg (Réel)'}
-        </button>
-      </div>
-    `;
-
-    let html = resetBarHtml + bannerHtml;
+    let html = bannerHtml;
     appState.feedTypes.forEach(ft => {
       const stockKg = Number(ft.stockKg) || 0;
       const priceKg = Number(ft.pricePerKg) || 1.0;
@@ -3858,54 +3798,6 @@ const app = {
 
     container.innerHTML = html;
     this.recalcStockAdjustValuation();
-  },
-
-  forceResetStockTo58() {
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
-    const now = Date.now();
-    appState._feedStockFixed58 = true;
-    appState.feedStockKg = 58.0;
-
-    if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
-      appState.feedTypes.forEach(ft => {
-        ft.stockKg = 58.0;
-        ft.manuallyAdjusted = true;
-        ft.updatedAt = now;
-        ft.isClosed = false;
-        delete ft.closedDate;
-      });
-    } else {
-      appState.feedTypes = [{
-        id: 'feed-principal',
-        name: isAr ? 'علف رئيسي (مخزون)' : (isEn ? 'Main Feed Reserve' : 'Aliment principal (Réserve)'),
-        stockKg: 58.0,
-        pricePerKg: 1.2,
-        manuallyAdjusted: true,
-        updatedAt: now,
-        isClosed: false
-      }];
-    }
-
-    appState.feedStockDate = this.getTodayStr();
-    appState.feedStockUpdatedAt = now;
-    appState.feedStockCostPerKg = 1.2;
-
-    this.saveState();
-
-    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
-      window.appAuth.pushData(true, true);
-    }
-
-    this.renderAll();
-    if (document.getElementById('modalAdjustFeedStock') && !document.getElementById('modalAdjustFeedStock').classList.contains('hidden')) {
-      this.renderFeedStockAdjustModal();
-    }
-
-    const toastMsg = isAr
-      ? '✅ تم تثبيت وقفل مخزون الأعلاف على 58.0 كغ وحفظه في السحابة بنجاح !'
-      : (isEn ? '✅ Feed reserve stock locked to 58.0 kg and synced to cloud!' : '✅ Stock réserve fixé et verrouillé à 58.0 kg (synchronisé sur le Cloud) !');
-    this.showToast(toastMsg);
   },
 
   recalcStockAdjustValuation() {

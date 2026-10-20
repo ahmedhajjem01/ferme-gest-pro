@@ -96,11 +96,6 @@
           const cloudTs = Math.min(getTs(cloudItem), now);
           const localTs = Math.min(getTs(localItem), now);
 
-          // Si c'est un aliment et qu'il est stuck à 44.6kg sur le cloud, le corriger immédiatement
-          if (cloudItem.stockKg !== undefined && Math.abs((Number(cloudItem.stockKg) || 0) - 44.6) < 0.3) {
-            cloudItem.stockKg = 58.0;
-          }
-
           // Priorité aux ajustements manuels récents de l'éleveur local
           if (localItem.manuallyAdjusted && localTs >= cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
@@ -116,9 +111,6 @@
           }
         } else {
           // Exists on cloud, add to local
-          if (cloudItem.stockKg !== undefined && Math.abs((Number(cloudItem.stockKg) || 0) - 44.6) < 0.3) {
-            cloudItem.stockKg = 58.0;
-          }
           merged.push(cloudItem);
         }
       });
@@ -528,7 +520,6 @@
           feedStockDate: state.feedStockDate || null,
           feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
           feedStockUpdatedAt: state.feedStockUpdatedAt || Date.now(),
-          _feedStockMigrated58: !!state._feedStockMigrated58,
           feedRationMode: state.feedRationMode || 'custom',
           customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
           sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
@@ -614,8 +605,6 @@
         feedStockDate: state.feedStockDate || null,
         feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
         feedStockUpdatedAt: Math.min(Number(state.feedStockUpdatedAt) || Date.now(), Date.now()),
-        _feedStockMigrated58: !!state._feedStockMigrated58,
-        _feedStockFixed58: !!state._feedStockFixed58,
         feedRationMode: state.feedRationMode || 'custom',
         customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
         sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
@@ -794,27 +783,6 @@
         });
       }
 
-      // Pre-sanitize cloudData against legacy 44.6 kg artifact
-      const cloudStockIs44 = Math.abs((Number(cloudData.feedStockKg) || 0) - 44.6) < 0.3 ||
-        (Array.isArray(cloudData.feedTypes) && (
-          Math.abs(cloudData.feedTypes.reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0) - 44.6) < 0.3 ||
-          cloudData.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3)
-        ));
-      if (cloudStockIs44) {
-        cloudData._feedStockFixed58 = true;
-        cloudData.feedStockKg = 58.0;
-        if (Array.isArray(cloudData.feedTypes) && cloudData.feedTypes.length > 0) {
-          cloudData.feedTypes.forEach(f => {
-            if (Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3) {
-              f.stockKg = 58.0;
-            }
-            f.manuallyAdjusted = true;
-            f.updatedAt = now;
-          });
-        }
-        cloudData.feedStockUpdatedAt = now;
-      }
-
       if (cloudData.feedStockKg !== undefined) {
         const cloudTs = Math.min(Number(cloudData.feedStockUpdatedAt || cloudData.lastUpdated) || 0, now);
         const localTs = Math.min(Number(state.feedStockUpdatedAt) || 0, now);
@@ -851,49 +819,6 @@
         state.feedStockKg = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
       }
 
-      // Détection universelle de l'anomalie 44.6 kg -> Rétablissement garanti à 58.0 kg réels
-      const totalMergedStock = (state.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
-      const isCloudOrLocalStuckAt44 = Math.abs((Number(state.feedStockKg) || 0) - 44.6) < 0.3 ||
-        Math.abs(totalMergedStock - 44.6) < 0.3 ||
-        (Array.isArray(state.feedTypes) && state.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3));
-
-      if (isCloudOrLocalStuckAt44) {
-        state._feedStockFixed58 = true;
-        state.feedStockKg = 58.0;
-        if (Array.isArray(state.feedTypes) && state.feedTypes.length > 0) {
-          let fixedAny = false;
-          state.feedTypes.forEach(f => {
-            if (Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3) {
-              f.stockKg = 58.0;
-              fixedAny = true;
-            }
-            f.manuallyAdjusted = true;
-            f.updatedAt = now;
-          });
-          if (!fixedAny && state.feedTypes.length > 0) {
-            state.feedTypes[0].stockKg = 58.0;
-            state.feedTypes[0].manuallyAdjusted = true;
-            state.feedTypes[0].updatedAt = now;
-          }
-        } else {
-          state.feedTypes = [{
-            id: 'feed-principal',
-            name: state.lang === 'ar' ? 'علف رئيسي (مخزون)' : 'Aliment principal (Réserve)',
-            stockKg: 58.0,
-            pricePerKg: 1.2,
-            manuallyAdjusted: true,
-            updatedAt: now
-          }];
-        }
-        state.feedStockUpdatedAt = now;
-        // Clean Supabase record immediately
-        setTimeout(() => {
-          if (this.currentUser) {
-            this.pushData(false, true);
-          }
-        }, 500);
-      }
-
       // Filter out any bovine or ovine residue
       state.animals = (state.animals || []).filter(a => a.species !== 'bovin' && a.species !== 'ovin');
 
@@ -924,7 +849,6 @@
         window.appState.expenses = state.expenses;
         window.appState.sales = state.sales;
         window.appState.incubatorBatches = state.incubatorBatches;
-        window.appState._feedStockMigrated58 = state._feedStockMigrated58;
       }
 
       // Persist to local device storage as well (offline fallback)
@@ -939,8 +863,6 @@
           feedStockKg: state.feedStockKg,
           feedStockDate: state.feedStockDate,
           feedStockCostPerKg: state.feedStockCostPerKg,
-          _feedStockMigrated58: state._feedStockMigrated58,
-          _feedStockFixed58: state._feedStockFixed58,
           feedRationMode: state.feedRationMode,
           customDailyFeedKg: state.customDailyFeedKg,
           sicamCansCount: state.sicamCansCount,
