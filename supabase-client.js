@@ -92,9 +92,19 @@
         seenIds.add(key);
         if (localMap.has(key)) {
           const localItem = localMap.get(key);
-          const cloudTs = getTs(cloudItem);
-          const localTs = getTs(localItem);
-          if (cloudTs && localTs) {
+          const now = Date.now();
+          const cloudTs = Math.min(getTs(cloudItem), now);
+          const localTs = Math.min(getTs(localItem), now);
+
+          // Si c'est un aliment et qu'il est stuck à 44.6kg sur le cloud, le corriger immédiatement
+          if (cloudItem.stockKg !== undefined && Math.abs((Number(cloudItem.stockKg) || 0) - 44.6) < 0.3) {
+            cloudItem.stockKg = 58.0;
+          }
+
+          // Priorité aux ajustements manuels récents de l'éleveur local
+          if (localItem.manuallyAdjusted && localTs >= cloudTs) {
+            merged.push({ ...cloudItem, ...localItem });
+          } else if (cloudTs && localTs) {
             merged.push(cloudTs > localTs ? { ...localItem, ...cloudItem } : { ...cloudItem, ...localItem });
           } else if (localTs && !cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
@@ -106,6 +116,9 @@
           }
         } else {
           // Exists on cloud, add to local
+          if (cloudItem.stockKg !== undefined && Math.abs((Number(cloudItem.stockKg) || 0) - 44.6) < 0.3) {
+            cloudItem.stockKg = 58.0;
+          }
           merged.push(cloudItem);
         }
       });
@@ -458,6 +471,10 @@
         console.warn('[SupabaseAuth] Pull error:', err);
       } finally {
         this.isSyncing = false;
+        if (this._needPushAgain) {
+          this._needPushAgain = false;
+          setTimeout(() => this.pushData(false), 300);
+        }
       }
     },
 
@@ -559,12 +576,20 @@
         }
       } finally {
         this.isSyncing = false;
+        if (this._needPushAgain) {
+          this._needPushAgain = false;
+          setTimeout(() => this.pushData(false), 300);
+        }
       }
     },
 
     // 6. Push Cloud Data to 'user_farms'
-    async pushData(showToast = false) {
-      if (!this.client || !this.currentUser || this.isSyncing) return;
+    async pushData(showToast = false, force = false) {
+      if (!this.client || !this.currentUser) return;
+      if (this.isSyncing && !force) {
+        this._needPushAgain = true;
+        return;
+      }
       this.isSyncing = true;
       this.updateSyncBadge('syncing');
 
@@ -588,8 +613,9 @@
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
         feedStockDate: state.feedStockDate || null,
         feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
-        feedStockUpdatedAt: state.feedStockUpdatedAt || Date.now(),
+        feedStockUpdatedAt: Math.min(Number(state.feedStockUpdatedAt) || Date.now(), Date.now()),
         _feedStockMigrated58: !!state._feedStockMigrated58,
+        _feedStockFixed58: !!state._feedStockFixed58,
         feedRationMode: state.feedRationMode || 'custom',
         customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
         sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
@@ -628,6 +654,10 @@
         this.updateSyncBadge('error');
       } finally {
         this.isSyncing = false;
+        if (this._needPushAgain) {
+          this._needPushAgain = false;
+          setTimeout(() => this.pushData(false), 300);
+        }
       }
     },
 
@@ -744,6 +774,26 @@
         const localEggs = Number(state.eggStock) || 0;
         state.eggStock = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
       }
+      const now = Date.now();
+      const cloudBaseTs = Number(cloudData.lastUpdated) || (now - 10000);
+      // Nettoyer tout timestamp dans le futur (utiliser l'horodatage réel passé de cloudData)
+      if (Number(cloudData.feedStockUpdatedAt) > now + 1000) {
+        cloudData.feedStockUpdatedAt = cloudBaseTs;
+      }
+      if (Array.isArray(cloudData.feedTypes)) {
+        cloudData.feedTypes.forEach(f => {
+          if (Number(f.updatedAt) > now + 1000) f.updatedAt = cloudBaseTs;
+        });
+      }
+      if (Number(state.feedStockUpdatedAt) > now + 1000) {
+        state.feedStockUpdatedAt = now;
+      }
+      if (Array.isArray(state.feedTypes)) {
+        state.feedTypes.forEach(f => {
+          if (Number(f.updatedAt) > now + 1000) f.updatedAt = now;
+        });
+      }
+
       // Pre-sanitize cloudData against legacy 44.6 kg artifact
       const cloudStockIs44 = Math.abs((Number(cloudData.feedStockKg) || 0) - 44.6) < 0.3 ||
         (Array.isArray(cloudData.feedTypes) && (
@@ -751,6 +801,7 @@
           cloudData.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3)
         ));
       if (cloudStockIs44) {
+        cloudData._feedStockFixed58 = true;
         cloudData.feedStockKg = 58.0;
         if (Array.isArray(cloudData.feedTypes) && cloudData.feedTypes.length > 0) {
           cloudData.feedTypes.forEach(f => {
@@ -758,16 +809,16 @@
               f.stockKg = 58.0;
             }
             f.manuallyAdjusted = true;
-            f.updatedAt = Date.now() + 1000000;
+            f.updatedAt = now;
           });
         }
-        cloudData.feedStockUpdatedAt = Date.now() + 1000000;
+        cloudData.feedStockUpdatedAt = now;
       }
 
       if (cloudData.feedStockKg !== undefined) {
-        const cloudTs = Number(cloudData.feedStockUpdatedAt || cloudData.lastUpdated) || 0;
-        const localTs = Number(state.feedStockUpdatedAt) || 0;
-        if (!doMerge || cloudTs >= localTs) {
+        const cloudTs = Math.min(Number(cloudData.feedStockUpdatedAt || cloudData.lastUpdated) || 0, now);
+        const localTs = Math.min(Number(state.feedStockUpdatedAt) || 0, now);
+        if (!doMerge || cloudTs > localTs) {
           state.feedStockKg = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
           state.feedStockDate = cloudData.feedStockDate || null;
           state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
@@ -807,7 +858,7 @@
         (Array.isArray(state.feedTypes) && state.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.3));
 
       if (isCloudOrLocalStuckAt44) {
-        state._feedStockMigrated58 = true;
+        state._feedStockFixed58 = true;
         state.feedStockKg = 58.0;
         if (Array.isArray(state.feedTypes) && state.feedTypes.length > 0) {
           let fixedAny = false;
@@ -817,12 +868,12 @@
               fixedAny = true;
             }
             f.manuallyAdjusted = true;
-            f.updatedAt = Date.now() + 1000000;
+            f.updatedAt = now;
           });
           if (!fixedAny && state.feedTypes.length > 0) {
             state.feedTypes[0].stockKg = 58.0;
             state.feedTypes[0].manuallyAdjusted = true;
-            state.feedTypes[0].updatedAt = Date.now() + 1000000;
+            state.feedTypes[0].updatedAt = now;
           }
         } else {
           state.feedTypes = [{
@@ -831,11 +882,16 @@
             stockKg: 58.0,
             pricePerKg: 1.2,
             manuallyAdjusted: true,
-            updatedAt: Date.now() + 1000000
+            updatedAt: now
           }];
         }
-        state.feedStockUpdatedAt = Date.now() + 1000000;
-        setTimeout(() => this.pushData(), 400);
+        state.feedStockUpdatedAt = now;
+        // Clean Supabase record immediately
+        setTimeout(() => {
+          if (this.currentUser) {
+            this.pushData(false, true);
+          }
+        }, 500);
       }
 
       // Filter out any bovine or ovine residue
@@ -884,6 +940,7 @@
           feedStockDate: state.feedStockDate,
           feedStockCostPerKg: state.feedStockCostPerKg,
           _feedStockMigrated58: state._feedStockMigrated58,
+          _feedStockFixed58: state._feedStockFixed58,
           feedRationMode: state.feedRationMode,
           customDailyFeedKg: state.customDailyFeedKg,
           sicamCansCount: state.sicamCansCount,
@@ -898,7 +955,6 @@
 
       if (window.app) {
         if (app.updateCurrencySymbols) app.updateCurrencySymbols();
-        if (app.reconcileFeedTypesFromExpenses) app.reconcileFeedTypesFromExpenses();
         if (app.renderAll) app.renderAll();
       }
     },

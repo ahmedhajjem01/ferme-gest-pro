@@ -47,39 +47,55 @@
       return null;
     };
 
-    // Synchronous Pre-Boot: Sanitize legacy 44.6 kg stock artifact immediately
+    // Synchronous Pre-Boot: Sanitize legacy 44.6 kg stock artifact immediately (once only)
     try {
       var rawState = localStorage.getItem('fermegest_state');
       if (rawState) {
         var s = JSON.parse(rawState);
         var changed = false;
-        if (Math.abs((Number(s.feedStockKg) || 0) - 44.6) < 0.3) {
-          s.feedStockKg = 58.0;
+        var now = Date.now();
+        // Clear any poisoned future timestamps
+        if (Number(s.feedStockUpdatedAt) > now + 1000) {
+          s.feedStockUpdatedAt = now;
           changed = true;
         }
         if (Array.isArray(s.feedTypes)) {
           s.feedTypes.forEach(function(ft) {
-            if (Math.abs((Number(ft.stockKg) || 0) - 44.6) < 0.3) {
-              ft.stockKg = 58.0;
-              ft.manuallyAdjusted = true;
-              ft.updatedAt = Date.now() + 1000000;
+            if (Number(ft.updatedAt) > now + 1000) {
+              ft.updatedAt = now;
               changed = true;
             }
           });
+        }
+        // Permanent fix for 44.6 kg
+        var is44 = Math.abs((Number(s.feedStockKg) || 0) - 44.6) < 0.3;
+        if (Array.isArray(s.feedTypes)) {
           var sumStock = s.feedTypes.reduce(function(acc, ft) { return acc + (Number(ft.stockKg) || 0); }, 0);
-          if (Math.abs(sumStock - 44.6) < 0.3) {
-            if (s.feedTypes[0]) {
+          if (Math.abs(sumStock - 44.6) < 0.3) is44 = true;
+          if (s.feedTypes.some(function(ft) { return Math.abs((Number(ft.stockKg) || 0) - 44.6) < 0.3; })) is44 = true;
+        }
+        if (is44) {
+          s._feedStockFixed58 = true;
+          s.feedStockKg = 58.0;
+          if (Array.isArray(s.feedTypes) && s.feedTypes.length > 0) {
+            s.feedTypes.forEach(function(ft) {
+              if (Math.abs((Number(ft.stockKg) || 0) - 44.6) < 0.3) {
+                ft.stockKg = 58.0;
+              }
+              ft.manuallyAdjusted = true;
+              ft.updatedAt = now;
+            });
+            if (s.feedTypes.length > 0 && !s.feedTypes.some(function(ft) { return Number(ft.stockKg) > 0; })) {
               s.feedTypes[0].stockKg = 58.0;
               s.feedTypes[0].manuallyAdjusted = true;
-              s.feedTypes[0].updatedAt = Date.now() + 1000000;
+              s.feedTypes[0].updatedAt = now;
             }
-            s.feedStockKg = 58.0;
-            changed = true;
           }
+          s.feedStockDate = new Date().toISOString().split('T')[0];
+          s.feedStockUpdatedAt = now;
+          changed = true;
         }
         if (changed) {
-          s.feedStockDate = new Date().toISOString().split('T')[0];
-          s.feedStockUpdatedAt = Date.now() + 1000000;
           localStorage.setItem('fermegest_state', JSON.stringify(s));
         }
       }
@@ -92,7 +108,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=137').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=140').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -2509,8 +2525,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=97"></script>
-  <script src="translations.js?v=97"></script>
-  <script src="app.js?v=97"></script>
+  <script src="supabase-client.js?v=100"></script>
+  <script src="translations.js?v=100"></script>
+  <script src="app.js?v=100"></script>
 </body>
 </html>
