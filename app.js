@@ -618,7 +618,13 @@ const app = {
         } else {
           appState.feedTypes = this.sanitizeFeedTypes(parsed.feedTypes);
         }
-        this.ensureFeedTypesSyncedWithStock();
+        if (Array.isArray(appState.feedTypes)) {
+          appState.feedTypes = appState.feedTypes.filter(ft => 
+            ft && ft.id !== 'feed-principal' &&
+            !(ft.name || '').toLowerCase().includes('principal') &&
+            !(ft.name || '').includes('علف رئيسي')
+          );
+        }
         if (parsed.savedFavoriteFeedRoutine && Array.isArray(parsed.savedFavoriteFeedRoutine.items)) {
           parsed.savedFavoriteFeedRoutine.items.forEach(it => {
             if (it.name && (it.name.includes('بليه') || it.name === 'قمح / بليه')) {
@@ -2920,6 +2926,13 @@ const app = {
       };
     });
 
+    // Eradicate any synthetic feed-principal
+    list = list.filter(ft => 
+      ft.id !== 'feed-principal' &&
+      !(ft.name || '').toLowerCase().includes('principal') &&
+      !(ft.name || '').includes('علف رئيسي')
+    );
+
     // Remove legacy dummy 0kg placeholder feeds if the user hasn't recorded any feed stock or distribution yet
     const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
     const hasFoodExpenses = Array.isArray(appState.expenses) && appState.expenses.some(e => e.category === 'nourriture');
@@ -3078,11 +3091,17 @@ const app = {
           ft = {
             id: group.feedTypeId || ('feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4)),
             name: cleanName,
-            stockKg: 0,
+            stockKg: Math.max(0, group.totalAddedKg || 0),
             pricePerKg: unitPrice
           };
         }
+        if (group.totalAddedKg > 0 && (Number(ft.stockKg) || 0) <= 0) {
+          ft.stockKg = group.totalAddedKg;
+        }
         appState.feedTypes.push(ft);
+        changed = true;
+      } else if (!ft.manuallyAdjusted && (Number(ft.stockKg) || 0) <= 0 && group.totalAddedKg > 0) {
+        ft.stockKg = group.totalAddedKg;
         changed = true;
       }
 
@@ -3364,41 +3383,8 @@ const app = {
     if (input) input.value = names[type] || '';
   },
 
-  ensureFeedTypesSyncedWithStock() {
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
-    const declaredStock = (appState.feedStockKg !== null && appState.feedStockKg !== undefined) ? Math.max(0, Number(appState.feedStockKg) || 0) : 0;
-    const defaultPrice = (Number(appState.feedStockCostPerKg) > 0) ? Number(appState.feedStockCostPerKg) : (this.getAverageFeedPricePerKg() || 1.0);
-
-    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
-      if (declaredStock > 0) {
-        appState.feedTypes = [{
-          id: 'feed-principal',
-          name: isAr ? 'علف رئيسي (مخزون)' : (isEn ? 'Main Feed Reserve' : 'Aliment principal (Réserve)'),
-          stockKg: declaredStock,
-          pricePerKg: defaultPrice,
-          manuallyAdjusted: true,
-          updatedAt: Date.now()
-        }];
-        this.saveState();
-      }
-    } else {
-      const sumStock = appState.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
-      if (sumStock <= 0 && declaredStock > 0) {
-        appState.feedTypes[0].stockKg = declaredStock;
-        appState.feedTypes[0].manuallyAdjusted = true;
-        appState.feedTypes[0].updatedAt = Date.now();
-        this.saveState();
-      } else if (sumStock > 0 && Math.abs(sumStock - declaredStock) > 0.05) {
-        appState.feedStockKg = sumStock;
-      }
-    }
-  },
-
   renderFeedDistributionModal() {
-    this.ensureFeedTypesSyncedWithStock();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
-    this.ensureFeedTypesSyncedWithStock();
 
     const container = document.getElementById('feedDistribItemsContainer');
     const presetsContainer = document.getElementById('feedSmartPresetsContainer');
@@ -3410,69 +3396,56 @@ const app = {
 
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
+    const currSym = this.getCurrencySymbol();
     const unitKg = isAr ? 'كغ' : 'kg';
     const inStockPrefix = isAr ? 'في المخزون :' : (isEn ? 'In stock:' : 'En stock :');
+    const pricePrefix = isAr ? 'السعر :' : (isEn ? 'Price:' : 'Prix :');
     const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
     const sicamCansLabel = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
 
-    // Un utilisateur qui n'a pas encore déclaré de stock disponible ne doit rien voir d'artificiel ici
-    const declaredFeeds = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0);
-    const hasDeclaredStock = declaredFeeds.length > 0 || ((Number(appState.feedStockKg) || 0) > 0);
-
-    if (!hasDeclaredStock) {
-      // Première utilisation : aucun aliment déclaré en stock ! N'affiche rien d'artificiel.
-      if (presetsContainer) presetsContainer.innerHTML = '';
-      if (addAnotherWrapper) addAnotherWrapper.style.display = 'none';
-      if (totalsCard) totalsCard.style.display = 'none';
-      if (submitBtn) submitBtn.style.display = 'none';
-
-      container.innerHTML = `
-        <div style="background: var(--bg-surface); border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 2rem 1.25rem; text-align: center; margin-bottom: 0.85rem;">
-          <div style="font-size: 2.5rem; margin-bottom: 0.65rem;">🌾</div>
-          <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.45rem;">
-            ${isAr ? 'لم تسجل أي مخزون علف حتى الآن' : (isEn ? 'No feed stock declared yet' : 'Aucun aliment déclaré en stock')}
-          </h4>
-          <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1.35rem; line-height: 1.5; max-width: 360px; margin-left: auto; margin-right: auto;">
-            ${isAr 
-              ? 'لبدء ضبط وتوزيع كميات العلف اليومية، سجل مخزون الأعلاف المتوفر لديك أولاً.' 
-              : (isEn ? 'To start distributing and tracking daily grammage, please declare the feed available in your farm first.' : 'Pour commencer à distribuer et contrôler vos grammages quotidiens, déclarez d\'abord les aliments disponibles dans votre ferme.')}
-          </p>
-          <button type="button" class="btn btn-emerald bold" style="padding: 0.75rem 1.4rem; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.45rem; margin: 0 auto; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); border-radius: var(--radius-pill); cursor: pointer;" onclick="app.openFeedPurchaseModal();">
-            <span>➕</span>
-            <span data-i18n="btn_add_your_feed_stock">${isAr ? 'إضافة مخزون العلف الخاص بك' : (isEn ? 'Add your feed stock' : 'Ajouter votre stock de nourriture')}</span>
-          </button>
-        </div>
-      `;
-      return;
+    // S'assurer que les aliments d'élevage existent
+    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+      const hasFoodExpenses = (appState.expenses || []).some(e => e.category === 'nourriture');
+      if (hasFoodExpenses) {
+        this.reconcileFeedTypesFromExpenses();
+      }
+      if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+        appState.feedTypes = [
+          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: 0, pricePerKg: 1.10 },
+          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: 0, pricePerKg: 1.50 }
+        ];
+      }
     }
 
-    // Sinon, afficher normalement les aliments réels déclarés
+    // Afficher chaque nourriture ajoutée avec son stock propre, son prix et sa quantité à distribuer
     this.renderSmartFeedPresets();
     if (addAnotherWrapper) addAnotherWrapper.style.display = 'block';
     if (totalsCard) totalsCard.style.display = 'flex';
     if (submitBtn) submitBtn.style.display = 'block';
 
     let html = '';
-    const activeFeeds = declaredFeeds.length > 0 ? declaredFeeds : appState.feedTypes;
-
-    activeFeeds.forEach((ft) => {
+    appState.feedTypes.forEach((ft) => {
       const defaultKg = '0.00';
       const stockKg = Number(ft.stockKg) || 0;
+      const priceKg = Number(ft.pricePerKg) || 1.0;
       const displayName = this.getFeedDisplayName(ft);
 
       html += `
         <div class="feed-distrib-card" style="background: var(--bg-surface); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 0.75rem;">
-          <!-- Titre & Badge Stock / Sélection -->
+          <!-- Titre & Badges Stock + Prix -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.55rem; flex-wrap: wrap; gap: 0.35rem;">
             <div style="font-weight: 800; font-size: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem;">
               <span>🌾</span> <span>${displayName}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+              <span class="badge-pill" style="font-size: 0.72rem; font-weight: 700; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
+                📦 ${inStockPrefix} <strong>${stockKg.toFixed(1)} ${unitKg}</strong>
+              </span>
+              <span class="badge-pill" style="font-size: 0.72rem; font-weight: 700; color: #f59e0b; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25);">
+                💰 ${pricePrefix} <strong>${priceKg.toFixed(3)} ${currSym}/${unitKg}</strong>
+              </span>
               <span id="distribCanBadge_${ft.id}" class="badge-pill text-muted" style="font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.55rem; background: var(--bg-elevated); border: 1px solid var(--border-subtle);">
                 0 ${bteLabel}
-              </span>
-              <span class="badge-pill" style="font-size: 0.72rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
-                ${inStockPrefix} <strong>${stockKg.toFixed(1)} ${unitKg}</strong>
               </span>
             </div>
           </div>
@@ -3507,7 +3480,7 @@ const app = {
           <!-- Saisie directe en kg et équivalence -->
           <div style="display: flex; gap: 0.5rem; align-items: center; background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
             <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">⚖️ ${isAr ? 'الوزن بالكغ :' : (isEn ? 'Weight (kg):' : 'Poids (kg) :')}</span>
-            <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="any" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${ft.pricePerKg || 1}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-emerald); max-width: 110px; padding: 0.3rem 0.5rem;" oninput="app.recalcDistribTotal()">
+            <input type="number" id="distribKg_${ft.id}" class="input-field distrib-kg-input" step="any" min="0" value="${defaultKg}" data-feed-id="${ft.id}" data-price="${priceKg}" style="font-weight: 800; font-size: 1.15rem; color: var(--accent-emerald); max-width: 110px; padding: 0.3rem 0.5rem;" oninput="app.recalcDistribTotal()">
             <span style="font-weight: 800; color: var(--text-main); font-size: 0.95rem;">${unitKg}</span>
             <span id="distribHint_${ft.id}" style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto; font-weight: 600;">
               0 ${bteLabel}
@@ -3522,8 +3495,8 @@ const app = {
     // Pré-sélectionner intelligemment 1 boîte ou la routine favorite pour éviter d'ouvrir sur "0 nourriture"
     if (appState.savedFavoriteFeedRoutine) {
       this.applyLearnedRoutine('repeat');
-    } else if (activeFeeds.length === 1) {
-      this.setFeedTypeDistribSicam(activeFeeds[0].id, 1.0);
+    } else if (appState.feedTypes.length === 1) {
+      this.setFeedTypeDistribSicam(appState.feedTypes[0].id, 1.0);
     } else {
       this.recalcDistribTotal();
     }
@@ -3743,9 +3716,7 @@ const app = {
   },
 
   renderFeedStockAdjustModal() {
-    this.ensureFeedTypesSyncedWithStock();
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
-    this.ensureFeedTypesSyncedWithStock();
     const container = document.getElementById('feedStockTypesContainer');
     if (!container) return;
 
@@ -3780,16 +3751,16 @@ const app = {
     }
 
     if (!appState.feedTypes || appState.feedTypes.length === 0) {
-      const defaultStock = (appState.feedStockKg !== null && appState.feedStockKg !== undefined) ? Math.max(0, Number(appState.feedStockKg) || 0) : 0;
-      const defaultPrice = (Number(appState.feedStockCostPerKg) > 0) ? Number(appState.feedStockCostPerKg) : 1.2;
-      appState.feedTypes = [{
-        id: 'feed-principal',
-        name: isAr ? 'علف رئيسي (مخزون)' : (isEn ? 'Main Feed Reserve' : 'Aliment principal (Réserve)'),
-        stockKg: defaultStock,
-        pricePerKg: defaultPrice,
-        manuallyAdjusted: true,
-        updatedAt: Date.now()
-      }];
+      const hasFoodExpenses = (appState.expenses || []).some(e => e.category === 'nourriture');
+      if (hasFoodExpenses) {
+        this.reconcileFeedTypesFromExpenses();
+      }
+      if (!appState.feedTypes || appState.feedTypes.length === 0) {
+        appState.feedTypes = [
+          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: 0, pricePerKg: 1.10 },
+          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: 0, pricePerKg: 1.50 }
+        ];
+      }
     }
 
     let html = bannerHtml;
