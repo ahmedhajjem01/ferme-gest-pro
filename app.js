@@ -4221,17 +4221,19 @@ const app = {
     if (!animal) return this.getTodayStr();
     const isClosed = (Number(animal.currentQuantity) || 0) <= 0;
     if (!isClosed) return this.getTodayStr();
-    if (animal.exitDate) return animal.exitDate;
     const lotSales = (appState.sales || []).filter(s => s.linkedLotId === animal.id && s.date);
-    if (lotSales.length > 0) {
-      return lotSales.reduce((max, s) => (s.date > max ? s.date : max), animal.birthDate || this.getTodayStr());
+    const maxSaleDate = lotSales.length > 0 
+      ? lotSales.reduce((max, s) => (s.date > max ? s.date : max), '') 
+      : '';
+    if (animal.exitDate && maxSaleDate) {
+      return animal.exitDate > maxSaleDate ? animal.exitDate : maxSaleDate;
     }
-    return animal.birthDate || this.getTodayStr();
+    return animal.exitDate || maxSaleDate || animal.birthDate || this.getTodayStr();
   },
 
   // Algorithme strict d'imputation temporelle par jour selon la fenêtre de présence du lot :
   // Cout_Total(L) = Somme_{d in [date_arrivee, exitDate]} Cout_Journalier_Alloue(L, d)
-  // Tout stock acheté et entièrement consommé avant date_arrivee a un impact strictement nul (0,000 DT)
+  // Tout stock acheté et entièrement consommé après la sortie ou avant l'arrivée a un impact strictement nul (0,000 DT)
   calculateAllLotsFinancials() {
     const todayStr = this.getTodayStr();
     const lotMap = {};
@@ -4258,6 +4260,17 @@ const app = {
         allocatedOther: 0
       };
     });
+
+    // Helper: calcul précis de l'effectif vivant présent sur la ferme le jour d
+    const getLivingHeadsOnDate = (info, d) => {
+      if (d < info.arrivalDate || d > info.exitDate) return 0;
+      // Ventes ayant eu lieu strictement après la date d pour ce lot
+      const salesAfterD = (appState.sales || [])
+        .filter(s => s.linkedLotId === info.animal.id && s.date && s.date > d)
+        .reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
+      const livingOnD = (Number(info.animal.currentQuantity) || 0) + salesAfterD;
+      return Math.max(1, Math.min(info.initialQty, livingOnD));
+    };
 
     // 2. Dépenses directes affectées à un ou plusieurs lots spécifiques (ex: 2 ou 3 lots achetés ensemble)
     (appState.expenses || []).forEach(e => {
@@ -4345,9 +4358,10 @@ const app = {
           const ageOnD = daysSinceArrival + (Number(info.animal.arrivalAgeDays) || 0);
           const feedData = this.getAgronomicFeedData(info.animal.species, ageOnD, info.animal.stage, info.animal.breed);
           const coef = feedData.avgGrams || 100;
-          const portion = info.activeHeads * coef;
+          const headsOnD = getLivingHeadsOnDate(info, d);
+          const portion = headsOnD * coef;
           totalFeedPortions += portion;
-          return { info, portion };
+          return { info, portion, headsOnD };
         });
 
         if (totalFeedPortions > 0) {
@@ -4366,27 +4380,26 @@ const app = {
         (this.getExpenseLinkedLotIds(e).length === 0)
       );
 
-      // Les achats généraux d'aliment nourrissent le troupeau pendant sa période d'élevage :
-      // Si la dépense a eu lieu au début du projet (ex: stocks de démarrage), tous les lots bénéficient de cette nourriture
+      // Les achats généraux d'aliment nourrissent le cheptel actif à la date d'achat :
+      // Les lots déjà vendus (exitDate < d) ne reçoivent STRICTEMENT RIEN (0,000 DT)
       if (feedExpsOnD.length > 0) {
         const dayFeedExpCost = feedExpsOnD.reduce((s, e) => s + (Number(e.total) || 0), 0);
         if (dayFeedExpCost > 0) {
           const allLots = Object.values(lotMap);
-          const targetLots = (activeLotsOnD.length > 0 && activeLotsOnD.length >= allLots.length * 0.5)
-            ? activeLotsOnD
-            : allLots;
+          const targetLots = (activeLotsOnD.length > 0) ? activeLotsOnD : allLots;
 
           let totalCumulWeight = 0;
           const lotExpPortions = targetLots.map(info => {
+            const headsOnD = getLivingHeadsOnDate(info, d);
             const daysOnFarm = Math.max(1, this.calculateDaysBetween(info.arrivalDate, info.exitDate || todayStr));
             const arrivalAge = Number(info.animal.arrivalAgeDays) || 0;
             const ageOnD = arrivalAge + daysOnFarm;
             const cumulKg = this.calculateCumulativeFeedKg(info.animal.species, ageOnD, info.animal.stage, info.animal.breed, arrivalAge);
             const minDailyGrams = this.getDailyGramsForAge(info.animal.species, arrivalAge, info.animal.stage, info.animal.breed);
             const weightKg = Math.max(minDailyGrams / 1000, cumulKg, 0.05);
-            const portion = info.activeHeads * weightKg;
+            const portion = headsOnD * weightKg;
             totalCumulWeight += portion;
-            return { info, portion };
+            return { info, portion, headsOnD };
           });
 
           if (totalCumulWeight > 0) {
@@ -4397,7 +4410,7 @@ const app = {
         }
       }
 
-      // 4c. Dépenses générales hors aliment réparties au prorata des têtes actives
+      // 4c. Dépenses générales hors aliment réparties au prorata strict des têtes vivantes à la date d
       const otherExpsOnD = (appState.expenses || []).filter(e => 
         e.date === d && 
         e.category !== 'nourriture' && 
@@ -4407,13 +4420,17 @@ const app = {
 
       if (dayOtherCost > 0) {
         const allLots = Object.values(lotMap);
-        const targetLots = (activeLotsOnD.length > 0 && activeLotsOnD.length >= allLots.length * 0.5)
-          ? activeLotsOnD
-          : allLots;
-        const totalHeads = targetLots.reduce((s, info) => s + info.activeHeads, 0);
-        if (totalHeads > 0) {
-          targetLots.forEach(info => {
-            info.allocatedOther += dayOtherCost * (info.activeHeads / totalHeads);
+        const targetLots = (activeLotsOnD.length > 0) ? activeLotsOnD : allLots;
+        let totalLivingHeads = 0;
+        const lotHeads = targetLots.map(info => {
+          const headsOnD = getLivingHeadsOnDate(info, d);
+          totalLivingHeads += headsOnD;
+          return { info, headsOnD };
+        });
+
+        if (totalLivingHeads > 0) {
+          lotHeads.forEach(lh => {
+            lh.info.allocatedOther += dayOtherCost * (lh.headsOnD / totalLivingHeads);
           });
         }
       }
@@ -4630,7 +4647,9 @@ const app = {
     filtered.forEach(animal => {
       const fin = allFinancials[animal.id] || {};
       const isClosed = fin.isClosed !== undefined ? fin.isClosed : ((Number(animal.currentQuantity) || 0) <= 0);
-      const daysSinceArrival = this.calculateAgeInDays(animal.birthDate);
+      const daysSinceArrival = isClosed
+        ? Math.max(1, this.calculateDaysBetween(fin.arrivalDate || animal.birthDate, fin.exitDate || animal.exitDate || this.getTodayStr()))
+        : this.calculateAgeInDays(animal.birthDate);
       const arrivalAgeDays = Number(animal.arrivalAgeDays) || 0;
       const ageDays = daysSinceArrival + arrivalAgeDays;
       const ageText = this.formatAgeText(ageDays);
@@ -6963,6 +6982,27 @@ const app = {
       isDanger: true,
       confirmText: isAr ? 'حذف' : 'Supprimer',
       onConfirm: () => {
+        const saleToDelete = (appState.sales || []).find(s => s.id === saleId);
+        if (saleToDelete) {
+          // Si vente d'animaux liée à un lot, restituer l'effectif
+          if (saleToDelete.linkedLotId && saleToDelete.linkedLotId !== 'none') {
+            const lot = (appState.animals || []).find(a => a.id === saleToDelete.linkedLotId);
+            if (lot) {
+              const qty = Number(saleToDelete.quantity) || 0;
+              lot.currentQuantity = Math.min(Number(lot.initialQuantity) || 9999, (Number(lot.currentQuantity) || 0) + qty);
+              if (lot.currentQuantity > 0) {
+                lot.exitDate = null;
+              }
+            }
+          }
+          // Si vente d'œufs, restituer le stock d'œufs
+          if (saleToDelete.productType === 'oeufs') {
+            let eggsToAdd = Number(saleToDelete.quantity) || 0;
+            if (saleToDelete.format === 'hara') eggsToAdd *= 4;
+            else if (saleToDelete.format === 'plateau') eggsToAdd *= 30;
+            appState.eggStock = (Number(appState.eggStock) || 0) + eggsToAdd;
+          }
+        }
         if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
           appAuth.addDeletedId(saleId);
         }
