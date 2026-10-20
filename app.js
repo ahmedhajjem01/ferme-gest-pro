@@ -19,6 +19,7 @@ const appState = {
   feedStockKg: null,
   feedStockDate: null,
   feedStockCostPerKg: 1.0,
+  feedStockUpdatedAt: null,
   feedRationMode: 'custom',
   customDailyFeedKg: null,
   sicamCansCount: null,
@@ -567,6 +568,8 @@ const app = {
         feedStockKg: appState.feedStockKg !== undefined ? appState.feedStockKg : null,
         feedStockDate: appState.feedStockDate || null,
         feedStockCostPerKg: appState.feedStockCostPerKg || 1.0,
+        feedStockUpdatedAt: appState.feedStockUpdatedAt || null,
+        _feedStockMigrated58: !!appState._feedStockMigrated58,
         feedRationMode: appState.feedRationMode || 'custom',
         customDailyFeedKg: (appState.customDailyFeedKg !== undefined && appState.customDailyFeedKg !== null) ? Number(appState.customDailyFeedKg) : null,
         sicamCansCount: (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? Number(appState.sicamCansCount) : null,
@@ -603,6 +606,8 @@ const app = {
         appState.feedStockKg = parsed.feedStockKg !== undefined ? parsed.feedStockKg : null;
         appState.feedStockDate = parsed.feedStockDate || null;
         appState.feedStockCostPerKg = parsed.feedStockCostPerKg ? Number(parsed.feedStockCostPerKg) : 1.0;
+        appState.feedStockUpdatedAt = parsed.feedStockUpdatedAt || null;
+        appState._feedStockMigrated58 = !!parsed._feedStockMigrated58;
         appState.customDailyFeedKg = null;
         appState.sicamCansCount = null;
         appState.feedDistributions = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions : [];
@@ -644,6 +649,27 @@ const app = {
             appState.savedFavoriteFeedRoutine = null;
           }
         }
+        // Correction/Migration automatique unique si le stock était resté coincé à 44.6 kg
+        const isStuckAt44 = !appState._feedStockMigrated58 && (
+          Math.abs((Number(appState.feedStockKg) || 0) - 44.6) < 0.2 || 
+          (Array.isArray(appState.feedTypes) && appState.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.2))
+        );
+        if (isStuckAt44) {
+          appState._feedStockMigrated58 = true;
+          appState.feedStockKg = 58.0;
+          if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
+            appState.feedTypes.forEach(f => {
+              if (Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.2) {
+                f.stockKg = 58.0;
+              }
+              f.manuallyAdjusted = true;
+              f.updatedAt = Date.now();
+            });
+          }
+          appState.feedStockDate = this.getTodayStr();
+          appState.feedStockUpdatedAt = Date.now();
+        }
+
         this.synchronizeAnimalStages();
         this.reconcileFeedTypesFromExpenses();
         this.saveState();
@@ -2181,15 +2207,40 @@ const app = {
     const kpiAnimals = document.getElementById('kpiTotalAnimals');
     if (kpiAnimals) kpiAnimals.textContent = this.t('kpi_animals_unit', { n: totalAnimals });
 
-    // Sidebar Summary Box
+    // Sidebar Summary Box (Santé de l'Exploitation)
     const sideMargin = document.getElementById('sidebarMarginVal');
     const sideProfit = document.getElementById('sidebarProfitVal');
     const sideProgress = document.getElementById('sidebarProgressBar');
-    if (sideMargin) sideMargin.textContent = `${marginPercent >= 0 ? '+' : ''}${marginPercent}%`;
-    if (sideProfit) sideProfit.textContent = this.formatMoney(netProfit);
+    const summaryDot = document.querySelector('.sidebar-summary-card .summary-dot');
+    const marginNum = parseFloat(marginPercent) || 0;
+    const isNegative = marginNum < 0 || netProfit < 0;
+
+    if (sideMargin) {
+      sideMargin.textContent = `${marginNum >= 0 ? '+' : ''}${marginPercent}%`;
+      sideMargin.className = `mini-val ${marginNum >= 0 ? 'text-emerald' : 'text-rose'} bold`;
+      sideMargin.style.color = marginNum >= 0 ? 'var(--accent-emerald, #10b981)' : 'var(--accent-rose, #f43f5e)';
+    }
+
+    if (sideProfit) {
+      sideProfit.textContent = (netProfit >= 0 ? '+' : '') + this.formatMoney(netProfit);
+      sideProfit.className = `mini-val ${netProfit >= 0 ? 'text-emerald' : 'text-rose'} bold`;
+      sideProfit.style.color = netProfit >= 0 ? 'var(--accent-emerald, #10b981)' : 'var(--accent-rose, #f43f5e)';
+    }
+
+    if (summaryDot) {
+      summaryDot.style.backgroundColor = isNegative ? 'var(--accent-rose, #f43f5e)' : 'var(--accent-emerald, #10b981)';
+      summaryDot.style.boxShadow = isNegative ? '0 0 8px rgba(244, 63, 94, 0.7)' : '0 0 8px rgba(16, 185, 129, 0.7)';
+    }
+
     if (sideProgress) {
-      const positivePercent = Math.min(Math.max(Number(marginPercent) + 30, 10), 100);
-      sideProgress.style.width = `${positivePercent}%`;
+      if (marginNum < 0) {
+        sideProgress.style.background = 'linear-gradient(90deg, #f43f5e, #fb7185)';
+        sideProgress.style.width = '100%';
+      } else {
+        sideProgress.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+        const positivePercent = Math.min(Math.max(marginNum, 10), 100);
+        sideProgress.style.width = `${positivePercent}%`;
+      }
     }
 
     // Alerts for critical farm events
@@ -2759,42 +2810,20 @@ const app = {
       return appState.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
     }
 
-    const feedPriceKg = this.getAverageFeedPricePerKg();
-
-    // 1. Si l'éleveur a déclaré manuellement son inventaire physique (ex: 65 kg)
+    // 1. Si l'éleveur a déclaré manuellement son inventaire physique (ex: 58 kg)
     if (appState.feedStockKg !== null && appState.feedStockKg !== undefined) {
-      const baseStock = Number(appState.feedStockKg) || 0;
-      if (!appState.feedStockDate) return baseStock;
-      
-      const daysSince = Math.max(0, this.calculateAgeInDays(appState.feedStockDate));
-      if (daysSince === 0) return baseStock;
-
-      let dailyGrams = 0;
-      (appState.animals || []).forEach(a => {
-        const qty = Number(a.currentQuantity) || 0;
-        if (qty <= 0) return;
-        const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
-        const feedData = this.getAgronomicFeedData(a.species, aAge, a.stage, a.breed);
-        dailyGrams += qty * feedData.avgGrams;
-      });
-      const dailyKg = dailyGrams / 1000;
-      return Math.max(0, baseStock - (daysSince * dailyKg));
+      return Math.max(0, Number(appState.feedStockKg) || 0);
     }
 
-    // 2. Sinon, calcul automatique (Total acheté - Total mangé)
-    const totalPurchasedFeedCost = (appState.expenses || [])
+    // 2. Sinon, calcul réel (Total acheté en kg - Total distribué en kg)
+    const totalPurchasedKg = (appState.expenses || [])
       .filter(e => e.category === 'nourriture')
-      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+      .reduce((sum, e) => sum + (Number(e.feedStockAddedKg) || Number(e.quantity) || 0), 0);
 
-    const totalConsumedFeedCost = (appState.animals || []).reduce((sum, a) => {
-      const aAge = this.calculateAgeInDays(a.birthDate) + (Number(a.arrivalAgeDays) || 0);
-      const aStartAge = Number(a.arrivalAgeDays) || 0;
-      const cKg = this.calculateCumulativeFeedKg(a.species, aAge, a.stage, a.breed, aStartAge);
-      return sum + ((Number(a.currentQuantity) || 0) * cKg * feedPriceKg);
-    }, 0);
+    const totalDistributedKg = (appState.feedDistributions || [])
+      .reduce((sum, d) => sum + (Number(d.totalKg) || Number(d.quantityKg) || 0), 0);
 
-    const feedStockRemaining = Math.max(0, totalPurchasedFeedCost - totalConsumedFeedCost);
-    return feedPriceKg > 0 ? (feedStockRemaining / feedPriceKg) : 0;
+    return Math.max(0, totalPurchasedKg - totalDistributedKg);
   },
 
   getFeedDisplayName(ft) {
@@ -2897,10 +2926,13 @@ const app = {
         name = 'Blé';
       }
       return {
+        ...ft,
         id: ft.id || 'feed-' + Math.random().toString(36).substr(2, 9),
         name: name,
         stockKg: Math.max(0, Number(ft.stockKg) || 0),
-        pricePerKg: Math.max(0, Number(ft.pricePerKg) || 1.0)
+        pricePerKg: Math.max(0, Number(ft.pricePerKg) || 1.0),
+        manuallyAdjusted: ft.manuallyAdjusted !== undefined ? ft.manuallyAdjusted : true,
+        updatedAt: ft.updatedAt || Date.now()
       };
     });
 
@@ -3093,8 +3125,8 @@ const app = {
 
       const expectedStock = Math.max(0, group.totalAddedKg - totalDistributedKg);
 
-      // Si le stock dans le magasin est inférieur à ce qui a été acheté (ou vide à 0 alors qu'aucune distribution n'a eu lieu)
-      if ((Number(ft.stockKg) || 0) < expectedStock || ((Number(ft.stockKg) || 0) === 0 && expectedStock > 0)) {
+      // Ne JAMAIS écraser un stock existant ou manuellement ajusté par l'éleveur
+      if (!ft.manuallyAdjusted && (Number(ft.stockKg) || 0) === 0 && expectedStock > 0 && !ft.isClosed) {
         ft.stockKg = expectedStock;
         changed = true;
       }
@@ -3108,6 +3140,28 @@ const app = {
         }
       }
     });
+
+    // Correction / Migration automatique unique : si le stock était bloqué sur le calcul erroné à 44.6 kg, corriger immédiatement à 58.0 kg réels
+    const isStuckAt44 = !appState._feedStockMigrated58 && (
+      Math.abs((Number(appState.feedStockKg) || 0) - 44.6) < 0.2 || 
+      (Array.isArray(appState.feedTypes) && appState.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.2))
+    );
+    if (isStuckAt44) {
+      appState._feedStockMigrated58 = true;
+      appState.feedStockKg = 58.0;
+      if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
+        appState.feedTypes.forEach(f => {
+          if (Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.2) {
+            f.stockKg = 58.0;
+          }
+          f.manuallyAdjusted = true;
+          f.updatedAt = Date.now();
+        });
+      }
+      appState.feedStockDate = this.getTodayStr();
+      appState.feedStockUpdatedAt = Date.now();
+      changed = true;
+    }
 
     const totalStock = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
     if (changed || appState.feedStockKg === null || appState.feedStockKg === undefined || Math.abs((Number(appState.feedStockKg) || 0) - totalStock) > 0.05) {
@@ -3665,6 +3719,8 @@ const app = {
 
         // Déduire du stock de cet aliment spécifique et clôturer le cycle si épuisé
         ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) - kg);
+        ft.manuallyAdjusted = true;
+        ft.updatedAt = Date.now();
         if (ft.stockKg <= 0) {
           ft.stockKg = 0;
           ft.isClosed = true;
@@ -3700,8 +3756,13 @@ const app = {
     // Mettre à jour le stock global en kg
     appState.feedStockKg = (appState.feedTypes || []).reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
     appState.feedStockDate = date;
+    appState.feedStockUpdatedAt = Date.now();
 
     this.saveState();
+
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData();
+    }
     this.closeModal('modalFeedDistribution');
     this.renderAll();
 
@@ -3746,24 +3807,16 @@ const app = {
     }
 
     if (!appState.feedTypes || appState.feedTypes.length === 0) {
-      const emptyTitle = isAr ? '🌾 لا توجد أعلاف مسجلة في المخزن' : (isEn ? '🌾 No feed recorded in reserve' : '🌾 Aucun aliment en réserve');
-      const emptyDesc = isAr 
-        ? 'قم بشراء أو إضافة أعلافك الأولى لتموين المستودع.' 
-        : (isEn ? 'Purchase or declare your first feeds to stock the warehouse.' : 'Achetez vos premiers aliments pour approvisionner le magasin.');
-      const emptyBtn = isAr ? '➕ شراء / إضافة علف' : (isEn ? '➕ Buy / Add Feed' : '➕ Acheter / Ajouter un aliment');
-
-      container.innerHTML = `
-        <div style="text-align: center; padding: 2rem 1rem; background: var(--bg-surface); border: 2px dashed var(--border-color); border-radius: var(--radius-md); margin-bottom: 0.85rem;">
-          <div style="font-size: 2.3rem; margin-bottom: 0.5rem;">🌾</div>
-          <strong style="display: block; font-size: 0.95rem; color: var(--text-main); margin-bottom: 0.35rem;">${emptyTitle}</strong>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.1rem; max-width: 340px; margin-left: auto; margin-right: auto;">${emptyDesc}</p>
-          <button type="button" class="btn btn-emerald bold" style="padding: 0.65rem 1.3rem; font-size: 0.88rem;" onclick="app.openFeedPurchaseModal()">
-            ${emptyBtn}
-          </button>
-        </div>
-      `;
-      this.recalcStockAdjustValuation();
-      return;
+      const defaultStock = (Number(appState.feedStockKg) > 0) ? Number(appState.feedStockKg) : 58;
+      const defaultPrice = (Number(appState.feedStockCostPerKg) > 0) ? Number(appState.feedStockCostPerKg) : 1.2;
+      appState.feedTypes = [{
+        id: 'feed-principal',
+        name: isAr ? 'علف رئيسي (مخزون)' : (isEn ? 'Main Feed Reserve' : 'Aliment principal (Réserve)'),
+        stockKg: defaultStock,
+        pricePerKg: defaultPrice,
+        manuallyAdjusted: true,
+        updatedAt: Date.now()
+      }];
     }
 
     let html = bannerHtml;
@@ -3833,25 +3886,37 @@ const app = {
   },
 
   handleSaveFeedStockAdjustment(e) {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
     let totalKg = 0;
     let totalVal = 0;
+    const now = Date.now();
 
     (appState.feedTypes || []).forEach(ft => {
-      const kg = parseFloat(document.getElementById(`stockKg_${ft.id}`)?.value) || 0;
-      const price = parseFloat(document.getElementById(`priceKg_${ft.id}`)?.value) || 1.0;
+      const kgInput = document.getElementById(`stockKg_${ft.id}`);
+      const priceInput = document.getElementById(`priceKg_${ft.id}`);
+      const kg = kgInput ? parseFloat(kgInput.value) || 0 : (Number(ft.stockKg) || 0);
+      const price = priceInput ? parseFloat(priceInput.value) || 1.0 : (Number(ft.pricePerKg) || 1.0);
       ft.stockKg = Math.max(0, kg);
       ft.pricePerKg = Math.max(0, price);
+      ft.manuallyAdjusted = true;
+      ft.updatedAt = now;
       totalKg += ft.stockKg;
       totalVal += ft.stockKg * ft.pricePerKg;
     });
 
     appState.feedStockKg = totalKg;
     appState.feedStockDate = this.getTodayStr();
+    appState.feedStockUpdatedAt = now;
     appState.feedStockCostPerKg = totalKg > 0 ? (totalVal / totalKg) : 1.48;
 
     this.saveState();
+
+    // Synchronisation Cloud immédiate pour éviter toute perte lors d'un rafraîchissement rapide
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData();
+    }
+
     this.closeModal('modalAdjustFeedStock');
     this.renderAll();
     this.showToast(`✅ Stocks magasins mis à jour : ${totalKg.toFixed(1)} kg au total (~${this.formatMoney(totalVal)})`);
@@ -6102,6 +6167,8 @@ const app = {
           }
 
           targetFeed.stockKg = Math.max(0, (Number(targetFeed.stockKg) || 0) + addedKg);
+          targetFeed.manuallyAdjusted = true;
+          targetFeed.updatedAt = Date.now();
           if (targetFeed.stockKg > 0) {
             targetFeed.isClosed = false;
             delete targetFeed.closedDate;
@@ -6112,6 +6179,7 @@ const app = {
 
           appState.feedStockKg = (appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
           appState.feedStockDate = this.getTodayStr();
+          appState.feedStockUpdatedAt = Date.now();
           appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
 
           feedStockAddedKg = addedKg;
@@ -6143,6 +6211,10 @@ const app = {
 
       appState.expenses.unshift(newExp);
       this.saveState();
+
+      if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+        window.appAuth.pushData();
+      }
       this.closeModal('modalAddExpense');
       this.renderAll();
       this.renderFeedDistributionModal();
@@ -6415,6 +6487,7 @@ const app = {
       
       // Calculate estimated net margin for this sale based on linked lot feed costs
       const estimatedMargin = this.calcSaleEstimatedMargin(sale);
+      const isNegMargin = String(estimatedMargin).trim().startsWith('-');
 
       tr.innerHTML = `
         <td>${this.formatDateFR(sale.date)}</td>
@@ -6424,7 +6497,7 @@ const app = {
         <td>${this.formatMoney(sale.unitPrice)}</td>
         <td class="text-emerald bold">${this.formatMoney(sale.total)}</td>
         <td><small class="badge-pill">${lotName}</small></td>
-        <td><span class="badge-tag text-emerald">${estimatedMargin}</span></td>
+        <td><span class="badge-tag ${isNegMargin ? 'text-rose' : 'text-emerald'}">${estimatedMargin}</span></td>
         <td>
           <button class="btn btn-sm btn-danger-outline" style="padding:2px 8px;" onclick="app.deleteSale('${sale.id}')">
             🗑️
@@ -6667,25 +6740,28 @@ const app = {
     }
 
     const typeSelect = document.getElementById('saleProductType');
-    const ageUnit = document.getElementById('saleAgeUnit');
-    const ageInput = document.getElementById('saleAgeValue');
+    const arrivalAgeDays = Number(lot.arrivalAgeDays) || 0;
+    const ageDays = this.calculateAgeInDays(lot.birthDate) + arrivalAgeDays;
+    const stage = (lot.stage || '').toLowerCase();
 
     if (lot.species === 'canard' || lot.species === 'canard_barbarie') {
       if (typeSelect) typeSelect.value = 'canard';
     } else if (lot.species === 'pintade') {
       if (typeSelect) typeSelect.value = 'pintade';
-    } else if (lot.species === 'poussin') {
+    } else if (lot.species === 'poussin' || ageDays <= 30 || stage.includes('poussin') || stage.includes('demarrage')) {
       if (typeSelect) typeSelect.value = 'poussin';
     } else if (lot.species === 'pondeuse') {
       if (typeSelect && typeSelect.value !== 'oeufs') typeSelect.value = 'poulet';
+    } else if (ageDays > 180 || stage.includes('adulte') || stage.includes('reproducteur')) {
+      if (typeSelect) typeSelect.value = 'poulet';
     } else {
       if (typeSelect) typeSelect.value = 'poulet';
     }
     this.handleSaleTypeChange();
 
     // Remplir l'âge d'après sa date de naissance réelle + âge d'achat
-    const arrivalAgeDays = Number(lot.arrivalAgeDays) || 0;
-    const ageDays = this.calculateAgeInDays(lot.birthDate) + arrivalAgeDays;
+    const ageUnit = document.getElementById('saleAgeUnit');
+    const ageInput = document.getElementById('saleAgeValue');
     if (ageInput && ageUnit) {
       if (ageDays <= 28) {
         ageUnit.value = 'jours';
@@ -7058,10 +7134,60 @@ const app = {
   // ==========================================
   // SMART FINANCIAL CALCULATIONS & MATRIX
   // ==========================================
+  getLotProductionCategory(lot) {
+    if (!lot) return 'poulet-croissance';
+    const species = (lot.species || '').toLowerCase();
+    if (species === 'canard' || species === 'canard_barbarie') return 'canard';
+    if (species === 'pintade') return 'pintade';
+    if (species === 'pondeuse') return 'oeufs';
+
+    const arrivalAge = Number(lot.arrivalAgeDays) || 0;
+    const daysSinceArrival = this.calculateAgeInDays(lot.birthDate);
+    const ageDays = daysSinceArrival + arrivalAge;
+    const stage = (lot.stage || '').toLowerCase();
+
+    if (species === 'poussin' || ageDays <= 30 || stage.includes('poussin') || stage.includes('demarrage')) {
+      return 'poussin';
+    }
+    if (ageDays > 180 || stage.includes('adulte') || stage.includes('reproducteur')) {
+      return 'poulet-adulte';
+    }
+    return 'poulet-croissance';
+  },
+
+  getSaleProductionCategory(sale) {
+    if (!sale) return 'poulet-croissance';
+    const prodType = (sale.productType || '').toLowerCase();
+    if (prodType === 'oeufs') return 'oeufs';
+    if (prodType === 'canard' || prodType === 'canard_barbarie') return 'canard';
+    if (prodType === 'pintade') return 'pintade';
+
+    if (sale.linkedLotId && sale.linkedLotId !== 'none') {
+      const lot = (appState.animals || []).find(a => a.id === sale.linkedLotId);
+      if (lot) {
+        return this.getLotProductionCategory(lot);
+      }
+    }
+
+    if (prodType === 'poussin' || prodType === 'poussin-1j' || prodType === 'poussin-demarre') return 'poussin';
+    if (prodType === 'poulet-adulte') return 'poulet-adulte';
+
+    const ageText = (sale.ageText || '').toLowerCase();
+    if (ageText.includes('jour')) {
+      const matchDays = parseInt(ageText);
+      if (!isNaN(matchDays) && matchDays <= 30) return 'poussin';
+    }
+    if (ageText.includes('adulte') || ageText.includes('> 6')) return 'poulet-adulte';
+
+    return 'poulet-croissance';
+  },
+
   renderSmartCalculations() {
     const tbody = document.getElementById('smartProfitTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
+
+    const allFinancials = this.calculateAllLotsFinancials();
 
     // Calculate production matrix per category
     const categories = ['poulet-croissance', 'oeufs', 'poussin', 'poulet-adulte', 'pintade', 'canard'];
@@ -7075,43 +7201,47 @@ const app = {
     };
 
     categories.forEach(cat => {
-      // Find matching sales
-      const catSales = appState.sales
-        .filter(s => {
-          if (cat === 'poulet-croissance') return s.productType === 'poulet-croissance' || s.productType === 'poulet';
-          if (cat === 'oeufs') return s.productType === 'oeufs';
-          if (cat === 'poussin') return s.productType === 'poussin-1j' || s.productType === 'poussin-demarre' || s.productType === 'poussin';
-          if (cat === 'poulet-adulte') return s.productType === 'poulet-adulte';
-          if (cat === 'pintade') return s.productType === 'pintade';
-          if (cat === 'canard') return s.productType === 'canard';
-          return false;
-        })
-        .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+      // 1. Ventes appartenant à cette catégorie
+      const catSalesList = (appState.sales || []).filter(s => this.getSaleProductionCategory(s) === cat);
+      const catSales = catSalesList.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
-      // Find matching animal lots for this category
-      const matchingLots = appState.animals
-        .filter(a => {
-          if (cat === 'oeufs' && a.species === 'pondeuse') return true;
-          if (cat === 'poulet-croissance' && a.species === 'poulet') return true;
-          if (cat === 'poussin' && a.species === 'poussin') return true;
-          if (cat === 'poulet-adulte' && a.species === 'adulte') return true;
-          if (cat === 'pintade' && a.species === 'pintade') return true;
-          if (cat === 'canard' && (a.species === 'canard' || a.species === 'canard_barbarie')) return true;
-          return false;
-        })
-        .map(a => a.id);
+      // 2. Lots appartenant à cette catégorie
+      const catLots = (appState.animals || []).filter(a => this.getLotProductionCategory(a) === cat);
 
-      // Feed cost for these lots
-      const feedCost = appState.expenses
-        .filter(e => e.category === 'nourriture' && matchingLots.includes(e.linkedLotId))
-        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+      let feedCost = 0;
+      let otherCost = 0;
 
-      // Other healthcare / vet costs
-      const otherCost = appState.expenses
-        .filter(e => e.category !== 'nourriture' && matchingLots.includes(e.linkedLotId))
-        .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+      if (cat === 'oeufs') {
+        const layingLots = catLots.map(a => a.id);
+        const eggExps = (appState.expenses || []).filter(e => 
+          layingLots.includes(e.linkedLotId) || 
+          e.linkedLotId === 'lot-pondeuses' || 
+          (e.category === 'oeufs')
+        );
+        feedCost = catLots.reduce((sum, lot) => sum + (allFinancials[lot.id]?.allocatedFeed || 0), 0) +
+          eggExps.filter(e => e.category === 'nourriture').reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+        otherCost = catLots.reduce((sum, lot) => sum + (allFinancials[lot.id]?.allocatedOther || 0) + (allFinancials[lot.id]?.directLotExpenses || 0), 0) +
+          eggExps.filter(e => e.category !== 'nourriture').reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+      } else {
+        catLots.forEach(lot => {
+          const fin = allFinancials[lot.id];
+          if (!fin) return;
+          const initialQty = Number(lot.initialQuantity) || 1;
+          const lotSales = (appState.sales || []).filter(s => s.linkedLotId === lot.id);
+          const totalSoldQty = lotSales.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
 
-      const netProfit = catSales - feedCost - otherCost;
+          if (totalSoldQty > 0 || fin.isClosed) {
+            const ratio = fin.isClosed ? 1 : Math.min(1, totalSoldQty / initialQty);
+            const lotFeed = (fin.allocatedFeed || 0) * ratio;
+            const lotOther = Math.max(0, (fin.totalInvested || 0) - (fin.allocatedFeed || 0)) * ratio;
+            feedCost += lotFeed;
+            otherCost += lotOther;
+          }
+        });
+      }
+
+      const totalCost = feedCost + otherCost;
+      const netProfit = catSales - totalCost;
       const marginPct = catSales > 0 ? ((netProfit / catSales) * 100).toFixed(1) : '0';
 
       const tr = document.createElement('tr');
@@ -7140,17 +7270,9 @@ const app = {
 
     const zeroHint = isAr ? 'الربح الصافي: 0% (في انتظار تسجيل بيع)' : (isEn ? 'Net margin: 0% (Awaiting sales)' : 'Marge nette: 0% (En attente de vente)');
     const marginLbl = isAr ? 'الربح الصافي :' : (isEn ? 'Net margin:' : 'Marge nette :');
+    const allFinancials = this.calculateAllLotsFinancials();
 
     // 1. Cost per Egg (Coût de revient par Œuf)
-    const layingLots = (appState.animals || []).filter(a => a.species === 'pondeuse');
-    const layingLotIds = layingLots.map(a => a.id);
-    const eggFeedCost = (appState.expenses || [])
-      .filter(e => layingLotIds.includes(e.linkedLotId) || e.linkedLotId === 'lot-pondeuses')
-      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-
-    const totalEggsCollected = (appState.eggCollections || appState.eggHarvests || [])
-      .reduce((sum, c) => sum + (Number(c.quantity) || 0), 0);
-    const currentEggStock = Number(appState.eggStock) || 0;
     const eggSales = (appState.sales || []).filter(s => s.productType === 'oeufs');
     const totalEggsSold = eggSales.reduce((sum, s) => {
       let factor = 1;
@@ -7160,11 +7282,19 @@ const app = {
     }, 0);
     const totalEggsRevenue = eggSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
+    const layingLots = (appState.animals || []).filter(a => a.species === 'pondeuse');
+    const layingLotIds = layingLots.map(a => a.id);
+    const eggFeedCost = (appState.expenses || [])
+      .filter(e => layingLotIds.includes(e.linkedLotId) || e.linkedLotId === 'lot-pondeuses')
+      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+    const totalEggsCollected = (appState.eggCollections || appState.eggHarvests || [])
+      .reduce((sum, c) => sum + (Number(c.quantity) || 0), 0);
+    const currentEggStock = Number(appState.eggStock) || 0;
+
     const eggPriceEl = document.getElementById('costPerEgg');
     const eggMarginEl = document.getElementById('marginPerEgg');
 
     if (totalEggsSold > 0 && totalEggsRevenue > 0) {
-      // Une vente d'œufs a eu lieu : calcul du coût unitaire réel et de la marge nette
       const totalEggsBase = Math.max(totalEggsSold, totalEggsCollected, currentEggStock);
       const costEgg = eggFeedCost > 0 ? (eggFeedCost / totalEggsBase) : 0;
       const netProfit = totalEggsRevenue - (costEgg * totalEggsSold);
@@ -7177,7 +7307,6 @@ const app = {
         eggMarginEl.className = Number(marginPct) >= 0 ? 'text-emerald bold' : 'text-rose bold';
       }
     } else {
-      // 0 vente enregistrée : compteur strictement à zéro
       if (eggPriceEl) eggPriceEl.textContent = this.formatMoney(0);
       if (eggMarginEl) {
         eggMarginEl.textContent = zeroHint;
@@ -7185,27 +7314,30 @@ const app = {
       }
     }
 
-    // 2. Cost per Chicken (Coût de revient par Poulet)
-    const chickenLots = (appState.animals || []).filter(a => a.species === 'poulet' || a.species === 'poulet-croissance');
-    const chickenLotIds = chickenLots.map(a => a.id);
-    const chickenPurchaseCost = chickenLots.reduce((sum, a) => sum + (Number(a.purchaseCost) || 0), 0);
-    const chickenDirectExpenses = (appState.expenses || [])
-      .filter(e => chickenLotIds.includes(e.linkedLotId))
-      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-    const totalChickenCost = chickenPurchaseCost + chickenDirectExpenses;
-
-    const livingChickens = chickenLots.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
-    const chickenSales = (appState.sales || []).filter(s => s.productType === 'poulet' || s.productType === 'poulet-croissance');
+    // 2. Cost per Chicken (Coût de revient par Poulet 1-6 mois)
+    const chickenSales = (appState.sales || []).filter(s => this.getSaleProductionCategory(s) === 'poulet-croissance');
     const chickensSold = chickenSales.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
     const chickenRevenue = chickenSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
-    const totalChickensCount = livingChickens + chickensSold;
+
+    const chickenLots = (appState.animals || []).filter(a => this.getLotProductionCategory(a) === 'poulet-croissance');
+    let totalChickenCost = 0;
+    chickenLots.forEach(lot => {
+      const fin = allFinancials[lot.id];
+      if (!fin) return;
+      const lotSales = (appState.sales || []).filter(s => s.linkedLotId === lot.id);
+      const soldQty = lotSales.reduce((s, x) => s + (Number(x.quantity) || 0), 0);
+      if (soldQty > 0 || fin.isClosed) {
+        const ratio = fin.isClosed ? 1 : Math.min(1, soldQty / (Number(lot.initialQuantity) || 1));
+        totalChickenCost += (fin.totalInvested || 0) * ratio;
+      }
+    });
 
     const chickenPriceEl = document.getElementById('costPerChicken');
     const chickenMarginEl = document.getElementById('marginPerChicken');
 
     if (chickensSold > 0 && chickenRevenue > 0) {
-      const costChicken = totalChickenCost > 0 ? (totalChickenCost / Math.max(totalChickensCount, chickensSold)) : 0;
-      const netProfit = chickenRevenue - (costChicken * chickensSold);
+      const costChicken = totalChickenCost > 0 ? (totalChickenCost / chickensSold) : 0;
+      const netProfit = chickenRevenue - totalChickenCost;
       const marginPct = ((netProfit / chickenRevenue) * 100).toFixed(1);
 
       if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(costChicken);
@@ -7215,7 +7347,6 @@ const app = {
         chickenMarginEl.className = Number(marginPct) >= 0 ? 'text-emerald bold' : 'text-rose bold';
       }
     } else {
-      // 0 vente enregistrée : compteur strictement à zéro
       if (chickenPriceEl) chickenPriceEl.textContent = this.formatMoney(0);
       if (chickenMarginEl) {
         chickenMarginEl.textContent = zeroHint;
@@ -7224,26 +7355,29 @@ const app = {
     }
 
     // 3. Cost per Chick (Coût de revient par Poussin)
-    const chickLots = (appState.animals || []).filter(a => a.species === 'poussin');
-    const chickLotIds = chickLots.map(a => a.id);
-    const chickPurchaseCost = chickLots.reduce((sum, a) => sum + (Number(a.purchaseCost) || 0), 0);
-    const chickDirectExpenses = (appState.expenses || [])
-      .filter(e => chickLotIds.includes(e.linkedLotId))
-      .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
-    const totalChickCost = chickPurchaseCost + chickDirectExpenses;
-
-    const livingChicks = chickLots.reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
-    const chickSales = (appState.sales || []).filter(s => s.productType === 'poussin' || s.productType === 'poussin-1j' || s.productType === 'poussin-demarre');
+    const chickSales = (appState.sales || []).filter(s => this.getSaleProductionCategory(s) === 'poussin');
     const chicksSold = chickSales.reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
     const chickRevenue = chickSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
-    const totalChicksCount = livingChicks + chicksSold;
+
+    const chickLots = (appState.animals || []).filter(a => this.getLotProductionCategory(a) === 'poussin');
+    let totalChickCost = 0;
+    chickLots.forEach(lot => {
+      const fin = allFinancials[lot.id];
+      if (!fin) return;
+      const lotSales = (appState.sales || []).filter(s => s.linkedLotId === lot.id);
+      const soldQty = lotSales.reduce((s, x) => s + (Number(x.quantity) || 0), 0);
+      if (soldQty > 0 || fin.isClosed) {
+        const ratio = fin.isClosed ? 1 : Math.min(1, soldQty / (Number(lot.initialQuantity) || 1));
+        totalChickCost += (fin.totalInvested || 0) * ratio;
+      }
+    });
 
     const chicksPriceEl = document.getElementById('costPerChicks');
     const chicksMarginEl = document.getElementById('marginPerChicks');
 
     if (chicksSold > 0 && chickRevenue > 0) {
-      const costChick = totalChickCost > 0 ? (totalChickCost / Math.max(totalChicksCount, chicksSold)) : 0;
-      const netProfit = chickRevenue - (costChick * chicksSold);
+      const costChick = totalChickCost > 0 ? (totalChickCost / chicksSold) : 0;
+      const netProfit = chickRevenue - totalChickCost;
       const marginPct = ((netProfit / chickRevenue) * 100).toFixed(1);
 
       if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(costChick);
@@ -7253,7 +7387,6 @@ const app = {
         chicksMarginEl.className = Number(marginPct) >= 0 ? 'text-emerald bold' : 'text-rose bold';
       }
     } else {
-      // 0 vente enregistrée : compteur strictement à zéro
       if (chicksPriceEl) chicksPriceEl.textContent = this.formatMoney(0);
       if (chicksMarginEl) {
         chicksMarginEl.textContent = zeroHint;

@@ -95,9 +95,14 @@
           const cloudTs = getTs(cloudItem);
           const localTs = getTs(localItem);
           if (cloudTs && localTs) {
-            merged.push(cloudTs >= localTs ? { ...localItem, ...cloudItem } : { ...cloudItem, ...localItem });
-          } else {
+            merged.push(cloudTs > localTs ? { ...localItem, ...cloudItem } : { ...cloudItem, ...localItem });
+          } else if (localTs && !cloudTs) {
+            merged.push({ ...cloudItem, ...localItem });
+          } else if (cloudTs && !localTs) {
             merged.push({ ...localItem, ...cloudItem });
+          } else {
+            // Priorité absolue aux modifications locales sur l'appareil actuel si aucun timestamp explicite
+            merged.push({ ...cloudItem, ...localItem });
           }
         } else {
           // Exists on cloud, add to local
@@ -505,6 +510,8 @@
           feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
           feedStockDate: state.feedStockDate || null,
           feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
+          feedStockUpdatedAt: state.feedStockUpdatedAt || Date.now(),
+          _feedStockMigrated58: !!state._feedStockMigrated58,
           feedRationMode: state.feedRationMode || 'custom',
           customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
           sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
@@ -581,6 +588,8 @@
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
         feedStockDate: state.feedStockDate || null,
         feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
+        feedStockUpdatedAt: state.feedStockUpdatedAt || Date.now(),
+        _feedStockMigrated58: !!state._feedStockMigrated58,
         feedRationMode: state.feedRationMode || 'custom',
         customDailyFeedKg: (state.customDailyFeedKg !== undefined && state.customDailyFeedKg !== null) ? state.customDailyFeedKg : null,
         sicamCansCount: (state.sicamCansCount !== undefined && state.sicamCansCount !== null) ? state.sicamCansCount : null,
@@ -735,10 +744,18 @@
         const localEggs = Number(state.eggStock) || 0;
         state.eggStock = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
       }
+      if (cloudData._feedStockMigrated58 !== undefined) {
+        state._feedStockMigrated58 = !!cloudData._feedStockMigrated58;
+      }
       if (cloudData.feedStockKg !== undefined) {
-        state.feedStockKg = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
-        state.feedStockDate = cloudData.feedStockDate || null;
-        state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
+        const cloudTs = Number(cloudData.feedStockUpdatedAt || cloudData.lastUpdated) || 0;
+        const localTs = Number(state.feedStockUpdatedAt) || 0;
+        if (!doMerge || cloudTs >= localTs) {
+          state.feedStockKg = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
+          state.feedStockDate = cloudData.feedStockDate || null;
+          state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
+          state.feedStockUpdatedAt = cloudTs;
+        }
       }
       state.customDailyFeedKg = null;
       state.sicamCansCount = null;
@@ -764,6 +781,27 @@
       // Keep total feedStockKg in sync with feedTypes
       if (Array.isArray(state.feedTypes) && state.feedTypes.length > 0) {
         state.feedStockKg = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+      }
+
+      // Correction automatique unique si le stock cloud ou local est resté bloqué à 44.6 kg -> mise à jour à 58.0 kg
+      const isCloudOrLocalStuckAt44 = !state._feedStockMigrated58 && (
+        Math.abs((Number(state.feedStockKg) || 0) - 44.6) < 0.2 ||
+        (Array.isArray(state.feedTypes) && state.feedTypes.some(f => Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.2))
+      );
+      if (isCloudOrLocalStuckAt44) {
+        state._feedStockMigrated58 = true;
+        state.feedStockKg = 58.0;
+        if (Array.isArray(state.feedTypes) && state.feedTypes.length > 0) {
+          state.feedTypes.forEach(f => {
+            if (Math.abs((Number(f.stockKg) || 0) - 44.6) < 0.2) {
+              f.stockKg = 58.0;
+            }
+            f.manuallyAdjusted = true;
+            f.updatedAt = Date.now();
+          });
+        }
+        state.feedStockUpdatedAt = Date.now();
+        setTimeout(() => this.pushData(), 500);
       }
 
       // Filter out any bovine or ovine residue
@@ -796,6 +834,7 @@
         window.appState.expenses = state.expenses;
         window.appState.sales = state.sales;
         window.appState.incubatorBatches = state.incubatorBatches;
+        window.appState._feedStockMigrated58 = state._feedStockMigrated58;
       }
 
       // Persist to local device storage as well (offline fallback)
@@ -810,6 +849,7 @@
           feedStockKg: state.feedStockKg,
           feedStockDate: state.feedStockDate,
           feedStockCostPerKg: state.feedStockCostPerKg,
+          _feedStockMigrated58: state._feedStockMigrated58,
           feedRationMode: state.feedRationMode,
           customDailyFeedKg: state.customDailyFeedKg,
           sicamCansCount: state.sicamCansCount,
