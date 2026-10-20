@@ -5,6 +5,7 @@
   "bundledWebRuntime": false,
   "backgroundColor": "#0b1120",
   "server": {
+    "url": "https://fermegestpro.vercel.app",
     "androidScheme": "https",
     "cleartext": true
   },
