@@ -97,7 +97,11 @@
           const localTs = Math.min(getTs(localItem), now);
 
           // Priorité aux ajustements manuels récents de l'éleveur local
-          if (localItem.manuallyAdjusted && localTs >= cloudTs) {
+          // et protection absolue des déductions d'aliments : si le stock local a été décrémenté, ne jamais le ressusciter depuis le cloud
+          const isFeedType = key.startsWith('feed-') || localItem.stockKg !== undefined;
+          if (isFeedType && (Number(localItem.stockKg) < Number(cloudItem.stockKg))) {
+            merged.push({ ...cloudItem, ...localItem });
+          } else if (localItem.manuallyAdjusted && localTs >= cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
           } else if (cloudTs && localTs) {
             merged.push(cloudTs > localTs ? { ...localItem, ...cloudItem } : { ...cloudItem, ...localItem });
@@ -786,8 +790,11 @@
       if (cloudData.feedStockKg !== undefined) {
         const cloudTs = Math.min(Number(cloudData.feedStockUpdatedAt || cloudData.lastUpdated) || 0, now);
         const localTs = Math.min(Number(state.feedStockUpdatedAt) || 0, now);
-        if (!doMerge || cloudTs > localTs) {
-          state.feedStockKg = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
+        const cloudStock = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
+        const localStock = (state.feedStockKg !== null && state.feedStockKg !== undefined) ? Number(state.feedStockKg) : null;
+        const shouldAcceptCloud = !doMerge || (cloudTs > localTs && (localStock === null || cloudStock <= localStock));
+        if (shouldAcceptCloud) {
+          state.feedStockKg = cloudStock;
           state.feedStockDate = cloudData.feedStockDate || null;
           state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
           state.feedStockUpdatedAt = cloudTs;
@@ -822,7 +829,7 @@
           !(ft.name || '').includes('علف رئيسي')
         );
         if (state.feedTypes.length > 0) {
-          state.feedStockKg = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+          state.feedStockKg = parseFloat(state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
         }
       }
 

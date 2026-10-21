@@ -2806,11 +2806,11 @@ const app = {
 
   getAvailableFeedStockKg() {
     if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
-      return appState.feedTypes.reduce((acc, ft) => acc + (Number(ft.stockKg) || 0), 0);
+      return parseFloat(appState.feedTypes.reduce((acc, ft) => acc + (Number(ft.stockKg) || 0), 0).toFixed(2));
     }
 
     if (appState.feedStockKg !== null && appState.feedStockKg !== undefined) {
-      return Math.max(0, Number(appState.feedStockKg) || 0);
+      return Math.max(0, parseFloat((Number(appState.feedStockKg) || 0).toFixed(2)));
     }
 
     return 0;
@@ -3081,6 +3081,22 @@ const app = {
         });
       }
 
+      // Calculer les distributions réelles enregistrées pour cet aliment
+      const distributedForFeed = (appState.feedDistributions || []).reduce((sum, d) => {
+        let k = 0;
+        (d.items || []).forEach(it => {
+          const isMatch = (ft && it.feedTypeId === ft.id) ||
+            (group.feedTypeId && it.feedTypeId === group.feedTypeId) ||
+            (group.family && this.isFeedInFamily(it, group.family)) ||
+            (it.name && group.family && this.detectFeedTypeFromText(it.name) === group.family);
+          if (isMatch) {
+            k += Number(it.kg) || 0;
+          }
+        });
+        return sum + k;
+      }, 0);
+
+      const netAvailableFromExpenses = Math.max(0, parseFloat((group.totalAddedKg - distributedForFeed).toFixed(2)));
       const unitPrice = group.totalAddedKg > 0 ? (group.totalCost / group.totalAddedKg) : 1.0;
 
       if (!ft) {
@@ -3091,17 +3107,22 @@ const app = {
           ft = {
             id: group.feedTypeId || ('feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4)),
             name: cleanName,
-            stockKg: Math.max(0, group.totalAddedKg || 0),
+            stockKg: netAvailableFromExpenses,
             pricePerKg: unitPrice
           };
         }
-        if (group.totalAddedKg > 0 && (Number(ft.stockKg) || 0) <= 0) {
-          ft.stockKg = group.totalAddedKg;
-        }
+        ft.stockKg = netAvailableFromExpenses;
+        ft.manuallyAdjusted = true;
+        ft.updatedAt = Date.now();
         appState.feedTypes.push(ft);
         changed = true;
       } else if (!ft.manuallyAdjusted && (Number(ft.stockKg) || 0) <= 0 && group.totalAddedKg > 0) {
-        ft.stockKg = group.totalAddedKg;
+        ft.stockKg = netAvailableFromExpenses;
+        changed = true;
+      } else if (distributedForFeed > 0 && Number(ft.stockKg) >= group.totalAddedKg) {
+        // Auto-réparation si des distributions réelles ont été enregistrées mais que le stock magasin était resté figé
+        ft.stockKg = netAvailableFromExpenses;
+        ft.updatedAt = Date.now();
         changed = true;
       }
 
@@ -3122,12 +3143,10 @@ const app = {
       }
     });
 
-    // Maintenir le feedStockKg global synchronisé avec le total actuel si non initialisé
+    // Maintenir le feedStockKg global synchronisé avec le total actuel
     if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
-      const currentTotalStock = appState.feedTypes.reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0);
-      if (appState.feedStockKg === null || appState.feedStockKg === undefined) {
-        appState.feedStockKg = currentTotalStock;
-      }
+      const currentTotalStock = parseFloat(appState.feedTypes.reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0).toFixed(2));
+      appState.feedStockKg = currentTotalStock;
     }
   },
 
@@ -3663,9 +3682,10 @@ const app = {
         });
 
         // Déduire du stock de cet aliment spécifique et clôturer le cycle si épuisé
-        ft.stockKg = Math.max(0, (Number(ft.stockKg) || 0) - kg);
+        const prevStock = Number(ft.stockKg) || 0;
+        ft.stockKg = Math.max(0, parseFloat((prevStock - kg).toFixed(2)));
         ft.manuallyAdjusted = true;
-        ft.updatedAt = Date.now();
+        ft.updatedAt = Date.now() + 2000;
         if (ft.stockKg <= 0) {
           ft.stockKg = 0;
           ft.isClosed = true;
@@ -3685,7 +3705,7 @@ const app = {
     }
 
     const distrib = {
-      id: 'distrib-' + Date.now().toString(36),
+      id: 'distrib-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
       date,
       totalKg: parseFloat(totalKg.toFixed(2)),
       totalCost: parseFloat(totalCost.toFixed(3)),
@@ -3699,9 +3719,9 @@ const app = {
     appState.feedDistributions.unshift(distrib);
 
     // Mettre à jour le stock global en kg
-    appState.feedStockKg = (appState.feedTypes || []).reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+    appState.feedStockKg = parseFloat((appState.feedTypes || []).reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
     appState.feedStockDate = date;
-    appState.feedStockUpdatedAt = Date.now();
+    appState.feedStockUpdatedAt = Date.now() + 2000;
 
     this.saveState();
 
@@ -3710,6 +3730,8 @@ const app = {
     }
     this.closeModal('modalFeedDistribution');
     this.renderAll();
+    this.renderFeedDistributionModal();
+    this.renderFeedStockAdjustModal();
 
     const details = items.map(it => `${it.kg}kg ${this.getFeedDisplayName(it).split(' ')[0]}`).join(' + ');
     this.showToast(`🌾 Distribution enregistrée : ${details} (Total ${totalKg.toFixed(1)} kg) !`);
