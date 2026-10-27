@@ -92,7 +92,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=147').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=148').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -2220,9 +2220,14 @@
 
           <!-- Champ Commentaire / Remarque facultatif -->
           <div class="form-group" style="margin-bottom: 0.85rem;">
-            <label for="distribComment" class="form-label" style="font-size: 0.76rem; font-weight: 700;">
-              📝 <span data-i18n="feed_comment_label">Commentaire / Remarque (optionnel) :</span>
-            </label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+              <label for="distribComment" class="form-label" style="font-size: 0.76rem; font-weight: 700; margin: 0;">
+                📝 <span data-i18n="feed_comment_label">Commentaire / Remarque (optionnel) :</span>
+              </label>
+              <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 0.15rem 0.45rem; border-color: var(--accent-emerald); color: var(--accent-emerald);" onclick="app.closeModal('modalFeedDistribution'); app.openFeedConsumptionCommentModal();">
+                🧮 <span data-i18n="feed_comment_calc_btn_edit">Calculer la consommation (Total kg ÷ Jours)</span>
+              </button>
+            </div>
             <input type="text" id="distribComment" class="input-field" data-i18n-placeholder="feed_comment_placeholder" placeholder="ex: Appétit normal, ajout de vitamines, temps chaud..." style="font-size: 0.82rem;">
           </div>
 
@@ -2331,6 +2336,100 @@
       </form>
     </div>
   </div>
+
+  <!-- Modal: Calculateur & Commentaire de Consommation Journalière (Sans déduction de stock) -->
+  <div id="modalFeedConsumptionComment" class="modal-overlay hidden" style="z-index: 10002;">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">💬</span>
+          <div>
+            <h3 data-i18n="feed_comment_modal_title" style="margin: 0; font-size: 1.05rem;">Commentaire : Calcul de Consommation</h3>
+            <span class="badge-pill" style="font-size: 0.68rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.25); margin-top: 2px;">
+              🔒 <span data-i18n="feed_comment_calc_badge_no_stock">Simple commentaire — Ne diminue pas le stock</span>
+            </span>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalFeedConsumptionComment')">&times;</button>
+      </div>
+      <form id="formFeedConsumptionComment" onsubmit="app.handleSaveFeedConsumptionComment(event)">
+        <div class="modal-body">
+          <p class="modal-desc" data-i18n="feed_comment_modal_desc" style="font-size: 0.8rem; margin-bottom: 0.85rem; line-height: 1.45;">
+            Calculez la consommation moyenne par jour à partir de la quantité totale de nourriture et du nombre de jours. Ce résultat s'affiche comme commentaire indicatif et <strong>ne touche pas au stock de votre réserve</strong>.
+          </p>
+
+          <!-- Raccourcis rapides de sacs / quantités -->
+          <div style="margin-bottom: 0.75rem;">
+            <label class="form-label" style="font-size: 0.76rem; font-weight: 700;">
+              🌾 <span data-i18n="feed_comment_field_total_kg">Quantité totale de nourriture (kg) :</span>
+            </label>
+            <div style="display: flex; gap: 0.3rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(10, null)">10 kg</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(25, null)">25 kg</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(50, null)">50 kg (1 sac)</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(100, null)">100 kg (2 sacs)</button>
+            </div>
+            <input type="number" id="commentFeedTotalKg" class="input-field" step="0.5" min="0.1" required style="font-size: 1.15rem; font-weight: 800; color: var(--accent-emerald);" oninput="app.recalcCommentFeedPreview()">
+          </div>
+
+          <!-- Nombre de jours -->
+          <div style="margin-bottom: 0.75rem;">
+            <label class="form-label" style="font-size: 0.76rem; font-weight: 700;">
+              📅 <span data-i18n="feed_comment_field_days">Nombre de jours :</span>
+            </label>
+            <div style="display: flex; gap: 0.3rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(null, 5)">5 j</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(null, 7)">7 j (1 sem)</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(null, 10)">10 j</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(null, 15)">15 j</button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="app.setCommentFeedQuickValues(null, 30)">30 j (1 mois)</button>
+            </div>
+            <input type="number" id="commentFeedDays" class="input-field" step="1" min="1" required style="font-size: 1.15rem; font-weight: 800; color: var(--accent-amber);" oninput="app.recalcCommentFeedPreview()">
+          </div>
+
+          <!-- Carte de Résultat Calculé en Direct -->
+          <div id="commentFeedResultBox" style="background: var(--bg-surface); border: 1.5px solid var(--accent-emerald); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">
+                🎯 <span data-i18n="feed_comment_calc_daily_rate">Consommation par journée :</span>
+              </span>
+              <span id="commentFeedFormulaTag" style="font-size: 0.74rem; font-weight: 800; color: var(--text-main);">
+                0 kg ÷ 0 j
+              </span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <span id="commentFeedDailyKgDisplay" style="font-size: 1.45rem; font-weight: 900; color: var(--accent-emerald);">0.00 kg</span>
+                <span id="commentFeedDailyCansDisplay" style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-left: 0.3rem;">(~0 boîte/j)</span>
+              </div>
+              <div id="commentFeedAnimalGramsDisplay" style="font-size: 0.85rem; font-weight: 800; color: var(--accent-amber);">
+                ~0 g / sujet / jour
+              </div>
+            </div>
+          </div>
+
+          <!-- Remarque / Observation libre (optionnel) -->
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="commentFeedNote" class="form-label" style="font-size: 0.76rem; font-weight: 700;">
+              📝 <span data-i18n="feed_comment_field_note">Remarque / Observation (optionnel) :</span>
+            </label>
+            <input type="text" id="commentFeedNote" class="input-field" placeholder="ex: Ration matinale, météo douce, appétit excellent..." style="font-size: 0.82rem;">
+          </div>
+
+          <!-- Bannière Rappel Sécurité Stock -->
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.74rem; color: var(--text-main); display: flex; align-items: center; gap: 0.45rem;">
+            <span>🛡️</span>
+            <span>Ce calcul est un <strong>commentaire indicatif</strong>. Il ne modifie ni ne déduit aucun kilo de votre stock magasin.</span>
+          </div>
+
+          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 0.95rem;" data-i18n="feed_comment_btn_save">
+            💾 Enregistrer le commentaire de consommation
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 
   <!-- Modal: Sauvegarde & Données de Démonstration -->
   <div id="modalDataOptions" class="modal-overlay hidden">
@@ -2547,8 +2646,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=107"></script>
-  <script src="translations.js?v=107"></script>
-  <script src="app.js?v=107"></script>
+  <script src="supabase-client.js?v=108"></script>
+  <script src="translations.js?v=108"></script>
+  <script src="app.js?v=108"></script>
 </body>
 </html>

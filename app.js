@@ -4569,49 +4569,138 @@ const app = {
       ? `<strong style="color:var(--accent-emerald);">~${autonomyDays}</strong> <small style="font-size:0.7rem; font-weight:600;">${isAr ? 'يوم كفاية' : (isEn ? 'days left' : 'jours')}</small>`
       : (feedStockRemainingKg > 0 ? `<strong>< 1</strong> <small style="font-size:0.7rem;">${isAr ? 'يوم' : 'jour'}</small>` : `<span style="color:var(--accent-rose); font-size:0.85rem; font-weight:700;">⚠️ ${isAr ? 'المخزن فارغ' : 'Stock vide'}</span>`);
 
-    let commentHtml = '';
-    if (recentComment) {
-      commentHtml = `
-        <div style="margin-top: 0.6rem; padding: 0.45rem 0.65rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
-          <div style="font-size: 0.76rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem;">
-            <span>📝</span>
-            <span style="font-weight: 700; color: var(--text-secondary);">${this.t('feed_last_comment')}</span>
-            <span style="font-style: italic; color: var(--accent-emerald); font-weight: 600;">"${recentComment}"</span>
-          </div>
-          <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 0.15rem 0.45rem;" onclick="app.promptEditTodayFeedComment()">
-            ✏️ ${isAr ? 'تعديل' : 'Modifier'}
-          </button>
+    // ==========================================
+    // MODULE COMMENTAIRE & CALCUL DE LA CONSOMMATION PAR JOURNÉE
+    // (Total nourriture ÷ Nombre de jours = Consommation/jour)
+    // STRICTEMENT SANS DIMINUTION DU STOCK (COMMENTAIRE PUR)
+    // ==========================================
+    let commentData = appState.feedConsumptionComment || null;
+    let calcTotalKg = 0;
+    let calcDays = 0;
+    let calcDailyKg = 0;
+    let calcDailyCans = 0;
+    let calcGramsPerAnimal = 0;
+    let calcNote = '';
+    let isCustomComment = false;
+
+    if (commentData && Number(commentData.totalKg) > 0 && Number(commentData.days) > 0) {
+      calcTotalKg = Number(commentData.totalKg);
+      calcDays = Math.max(1, Math.round(Number(commentData.days)));
+      calcDailyKg = parseFloat((calcTotalKg / calcDays).toFixed(2));
+      calcDailyCans = parseFloat((calcDailyKg / 0.65).toFixed(1));
+      calcGramsPerAnimal = totalLivingAnimals > 0 ? Math.round((calcDailyKg * 1000) / totalLivingAnimals) : (commentData.gramsPerAnimal || 0);
+      calcNote = commentData.note || '';
+      isCustomComment = true;
+    } else if (activeDays.length > 0) {
+      const sumKg = activeDays.reduce((acc, dt) => acc + dailyMap[dt].kg, 0);
+      calcTotalKg = parseFloat(sumKg.toFixed(1));
+      calcDays = activeDays.length;
+      calcDailyKg = parseFloat(avg7dKg.toFixed(2));
+      calcDailyCans = parseFloat(avg7dCans.toFixed(1));
+      calcGramsPerAnimal = totalLivingAnimals > 0 ? Math.round((calcDailyKg * 1000) / totalLivingAnimals) : 115;
+    } else if (todayDistributedKg > 0) {
+      calcDailyKg = parseFloat(todayDistributedKg.toFixed(2));
+      calcDays = 7;
+      calcTotalKg = parseFloat((calcDailyKg * 7).toFixed(1));
+      calcDailyCans = parseFloat((calcDailyKg / 0.65).toFixed(1));
+      calcGramsPerAnimal = totalLivingAnimals > 0 ? Math.round((calcDailyKg * 1000) / totalLivingAnimals) : 115;
+    } else {
+      calcDailyKg = parseFloat((totalFarmDailyGrams / 1000).toFixed(2));
+      calcDays = 10;
+      calcTotalKg = parseFloat((calcDailyKg * 10).toFixed(1));
+      calcDailyCans = parseFloat((calcDailyKg / 0.65).toFixed(1));
+      calcGramsPerAnimal = reqAvgGramsPerAnimal;
+    }
+
+    const commentBadgeText = isCustomComment
+      ? (isAr ? '✅ ملاحظة محفوظة' : (isEn ? '✅ Saved note' : '✅ Commentaire enregistré'))
+      : (isAr ? '💡 تقدير تلقائي' : (isEn ? '💡 Auto suggestion' : '💡 Calcul indicatif'));
+
+    let noteExtraHtml = '';
+    if (calcNote) {
+      noteExtraHtml = `
+        <div style="margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem; background: var(--bg-surface); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-subtle);">
+          <span>📝</span>
+          <span style="font-weight: 700; color: var(--text-secondary);">${this.t('feed_last_comment')}</span>
+          <span style="font-style: italic; color: var(--accent-emerald); font-weight: 600;">"${calcNote}"</span>
         </div>
       `;
-    } else {
-      commentHtml = `
-        <div style="margin-top: 0.55rem; display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; flex-wrap: wrap;">
-          <span style="font-size: 0.72rem; color: var(--text-muted); font-style: italic;">
-            💡 ${isAr ? 'يمكنك تدوين ملاحظة يومية عن التغذية (إقبال القطيع، حرارة، فيتامين...)' : 'Notez vos observations quotidiennes (appétit, canicule, vitamines...)'}
-          </span>
-          <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 0.18rem 0.45rem; font-weight: 700;" onclick="app.promptEditTodayFeedComment()">
-            ${this.t('feed_btn_add_comment')}
-          </button>
+    } else if (recentComment) {
+      noteExtraHtml = `
+        <div style="margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem; background: var(--bg-surface); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-subtle);">
+          <span>📝</span>
+          <span style="font-weight: 700; color: var(--text-secondary);">${this.t('feed_last_comment')}</span>
+          <span style="font-style: italic; color: var(--accent-emerald); font-weight: 600;">"${recentComment}"</span>
         </div>
       `;
     }
 
     container.innerHTML = `
-      <div class="feed-moy-conclusion-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <!-- En-tête : Titre & Badge -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.35rem;">
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <span style="font-size: 1.05rem;">💬</span>
-            <strong style="font-size: 0.88rem; color: var(--text-main);">
-              ${this.t('feed_moy_conclusion_title')}
-            </strong>
+      <div class="feed-moy-conclusion-card" style="background: var(--bg-surface); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.95rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+        
+        <!-- En-tête : Titre & Badge de sécurité Stock -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.4rem;">
+          <div style="display: flex; align-items: center; gap: 0.45rem;">
+            <span style="font-size: 1.15rem;">💬</span>
+            <div>
+              <strong style="font-size: 0.92rem; color: var(--text-main); display: block;">
+                ${this.t('feed_comment_calc_title')}
+              </strong>
+              <small style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">
+                ${this.t('feed_comment_calc_formula')}
+              </small>
+            </div>
           </div>
-          <span class="badge-pill" style="font-size: 0.7rem; font-weight: 700; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
-            📊 ${isAr ? 'معدلات حسابية' : 'Calculs Moyennes'}
+          <span class="badge-pill" style="font-size: 0.7rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.28);">
+            ${this.t('feed_comment_calc_badge_no_stock')}
           </span>
         </div>
 
-        <!-- 3 KPIs Moyennes (Intake / Subject, 7-day average, Stock Autonomy) -->
+        <!-- HERO BOX : Consommation calculée par jour (Total kg ÷ Nombre de jours) -->
+        <div style="background: var(--bg-card); border: 1.5px solid var(--accent-emerald); border-radius: var(--radius-md); padding: 0.8rem 0.95rem; margin-bottom: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.35rem;">
+            <div>
+              <span style="font-size: 0.73rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">
+                ${this.t('feed_comment_calc_daily_rate')}
+              </span>
+              <div style="display: flex; align-items: baseline; gap: 0.4rem; margin-top: 2px;">
+                <span style="font-size: 1.6rem; font-weight: 900; color: var(--accent-emerald); letter-spacing: -0.5px;">
+                  ${calcDailyKg.toFixed(2)} ${unitKg}/j
+                </span>
+                <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);">
+                  (~${calcDailyCans.toFixed(1)} ${bteLabel}/j)
+                </span>
+              </div>
+            </div>
+
+            <div style="text-align: right;">
+              <span class="badge-pill" style="font-size: 0.68rem; font-weight: 700; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-secondary); margin-bottom: 3px;">
+                ${commentBadgeText}
+              </span>
+              <div style="font-size: 0.88rem; font-weight: 800; color: var(--text-main);">
+                ${calcTotalKg.toFixed(1)} ${unitKg} ÷ ${calcDays} ${isAr ? 'أيام' : (isEn ? 'days' : 'jours')}
+              </div>
+              <div style="font-size: 0.76rem; font-weight: 800; color: var(--accent-amber);">
+                ~${calcGramsPerAnimal} غ/طائر/يوم
+              </div>
+            </div>
+          </div>
+
+          <!-- Note libre éleveur -->
+          ${noteExtraHtml}
+
+          <!-- Bouton Calculer / Modifier le Commentaire -->
+          <div style="margin-top: 0.65rem; display: flex; justify-content: flex-end; gap: 0.4rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.72rem; padding: 0.25rem 0.65rem; font-weight: 800; border-color: var(--accent-emerald); color: var(--accent-emerald);" onclick="app.openFeedConsumptionCommentModal()">
+              ${this.t('feed_comment_calc_btn_edit')}
+            </button>
+            <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;" onclick="app.promptEditTodayFeedComment()">
+              ✏️ ${isAr ? 'ملاحظة سريعة' : 'Note texte'}
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 KPIs Complémentaires (Intake / Sujet, 7-day average, Stock Autonomy) -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.45rem; margin-bottom: 0.65rem;">
           <div style="background: var(--bg-card); padding: 0.45rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
             <span style="font-size: 0.68rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 2px;">
@@ -4650,11 +4739,133 @@ const app = {
             ${conclusionText}
           </div>
         </div>
-
-        <!-- Remarque / Commentaire personnel -->
-        ${commentHtml}
       </div>
     `;
+  },
+
+  openFeedConsumptionCommentModal() {
+    const commentData = appState.feedConsumptionComment || {};
+    const inputTotalKg = document.getElementById('commentFeedTotalKg');
+    const inputDays = document.getElementById('commentFeedDays');
+    const inputNote = document.getElementById('commentFeedNote');
+
+    if (inputTotalKg) {
+      inputTotalKg.value = commentData.totalKg || 50;
+    }
+    if (inputDays) {
+      inputDays.value = commentData.days || 10;
+    }
+    if (inputNote) {
+      inputNote.value = commentData.note || appState.feedNotes?.[this.getTodayStr()] || '';
+    }
+
+    this.recalcCommentFeedPreview();
+    this.openModal('modalFeedConsumptionComment');
+  },
+
+  setCommentFeedQuickValues(kg, days) {
+    if (kg !== null && kg !== undefined) {
+      const input = document.getElementById('commentFeedTotalKg');
+      if (input) input.value = kg;
+    }
+    if (days !== null && days !== undefined) {
+      const input = document.getElementById('commentFeedDays');
+      if (input) input.value = days;
+    }
+    this.recalcCommentFeedPreview();
+  },
+
+  recalcCommentFeedPreview() {
+    const totalKg = parseFloat(document.getElementById('commentFeedTotalKg')?.value) || 0;
+    const days = Math.max(1, Math.round(parseFloat(document.getElementById('commentFeedDays')?.value) || 1));
+
+    const dailyKg = totalKg > 0 ? (totalKg / days) : 0;
+    const dailyCans = dailyKg / 0.65;
+
+    let totalLivingAnimals = 0;
+    if (Array.isArray(appState.animals)) {
+      appState.animals.forEach(a => {
+        const q = Number(a.currentQuantity) || 0;
+        if (q > 0) totalLivingAnimals += q;
+      });
+    }
+    const gramsPerAnimal = totalLivingAnimals > 0 ? Math.round((dailyKg * 1000) / totalLivingAnimals) : 0;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
+
+    const formulaEl = document.getElementById('commentFeedFormulaTag');
+    const dailyKgEl = document.getElementById('commentFeedDailyKgDisplay');
+    const dailyCansEl = document.getElementById('commentFeedDailyCansDisplay');
+    const animalGramsEl = document.getElementById('commentFeedAnimalGramsDisplay');
+
+    if (formulaEl) formulaEl.textContent = `${totalKg.toFixed(1)} ${unitKg} ÷ ${days} ${isAr ? 'أيام' : (isEn ? 'days' : 'jours')}`;
+    if (dailyKgEl) dailyKgEl.textContent = `${dailyKg.toFixed(2)} ${unitKg}/j`;
+    if (dailyCansEl) dailyCansEl.textContent = `(~${dailyCans.toFixed(1)} ${bteLabel}/j)`;
+    if (animalGramsEl) {
+      animalGramsEl.textContent = totalLivingAnimals > 0
+        ? `~${gramsPerAnimal} ${isAr ? 'غ/طائر/يوم' : 'g/sujet/j'} (${totalLivingAnimals} ${isAr ? 'طائر' : 'sujets'})`
+        : `~${gramsPerAnimal} g/j`;
+    }
+  },
+
+  handleSaveFeedConsumptionComment(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+    const isAr = appState.lang === 'ar';
+    const totalKg = parseFloat(document.getElementById('commentFeedTotalKg')?.value) || 0;
+    const days = Math.max(1, Math.round(parseFloat(document.getElementById('commentFeedDays')?.value) || 1));
+    const note = document.getElementById('commentFeedNote')?.value?.trim() || '';
+
+    if (totalKg <= 0 || days <= 0) {
+      this.showToast(isAr ? 'يرجى إدخال كمية صحيحة وعدد أيام صحيح.' : 'Veuillez saisir une quantité et un nombre de jours valides.', 'warning');
+      return;
+    }
+
+    const dailyKg = parseFloat((totalKg / days).toFixed(2));
+    const dailyCans = parseFloat((dailyKg / 0.65).toFixed(1));
+
+    let totalLivingAnimals = 0;
+    if (Array.isArray(appState.animals)) {
+      appState.animals.forEach(a => {
+        const q = Number(a.currentQuantity) || 0;
+        if (q > 0) totalLivingAnimals += q;
+      });
+    }
+    const gramsPerAnimal = totalLivingAnimals > 0 ? Math.round((dailyKg * 1000) / totalLivingAnimals) : 0;
+
+    // Sauvegarde en tant que commentaire de consommation (PURE COMMENT - STRICTEMENT AUCUNE DÉDUCTION DE STOCK)
+    appState.feedConsumptionComment = {
+      totalKg,
+      days,
+      dailyKg,
+      dailyCans,
+      gramsPerAnimal,
+      note,
+      updatedAt: Date.now(),
+      date: this.getTodayStr()
+    };
+
+    if (note) {
+      if (!appState.feedNotes) appState.feedNotes = {};
+      appState.feedNotes[this.getTodayStr()] = note;
+    }
+
+    this.saveState();
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData(false, true);
+    }
+
+    this.closeModal('modalFeedConsumptionComment');
+    this.renderFarmFeedSummary();
+
+    const successMsg = isAr
+      ? `✅ تم حفظ ملاحظة الاستهلاك: ${dailyKg.toFixed(2)} كغ/يوم (${totalKg} كغ على ${days} أيام). المخزون لم يتغير!`
+      : `✅ Commentaire enregistré : ${dailyKg.toFixed(2)} kg/jour (${totalKg} kg sur ${days} jours). Le stock reste intact !`;
+
+    this.showToast(successMsg);
   },
 
   promptEditTodayFeedComment() {
@@ -4663,11 +4874,15 @@ const app = {
     const todayStr = this.getTodayStr();
 
     let currentVal = '';
-    const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
-    if (todayDist && todayDist.comment) {
-      currentVal = todayDist.comment;
-    } else if (appState.feedNotes && appState.feedNotes[todayStr]) {
-      currentVal = appState.feedNotes[todayStr];
+    if (appState.feedConsumptionComment && appState.feedConsumptionComment.note) {
+      currentVal = appState.feedConsumptionComment.note;
+    } else {
+      const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
+      if (todayDist && todayDist.comment) {
+        currentVal = todayDist.comment;
+      } else if (appState.feedNotes && appState.feedNotes[todayStr]) {
+        currentVal = appState.feedNotes[todayStr];
+      }
     }
 
     const title = isAr ? 'تدوين ملاحظة يومية عن التغذية' : (isEn ? 'Record daily feed note' : 'Enregistrer une remarque alimentation');
@@ -4684,6 +4899,11 @@ const app = {
     }
     appState.feedNotes[todayStr] = clean;
 
+    if (appState.feedConsumptionComment) {
+      appState.feedConsumptionComment.note = clean;
+    }
+
+    const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr);
     if (todayDist) {
       todayDist.comment = clean;
     }
