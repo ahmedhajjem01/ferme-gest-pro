@@ -97,10 +97,20 @@
           const localTs = Math.min(getTs(localItem), now);
 
           // Priorité aux ajustements manuels récents de l'éleveur local
-          // et protection absolue des déductions d'aliments : si le stock local a été décrémenté, ne jamais le ressusciter depuis le cloud
+          // et protection absolue des stocks d'aliments :
+          // 1. Si le stock local a été décrémenté par distribution (local < cloud), préserver strictement local
+          // 2. Si le stock local a été ajusté manuellement ou avec un horodatage >= cloud, préserver local
           const isFeedType = key.startsWith('feed-') || localItem.stockKg !== undefined;
-          if (isFeedType && (Number(localItem.stockKg) < Number(cloudItem.stockKg))) {
-            merged.push({ ...cloudItem, ...localItem });
+          if (isFeedType) {
+            if (Number(localItem.stockKg) < Number(cloudItem.stockKg)) {
+              merged.push({ ...cloudItem, ...localItem });
+            } else if (localTs >= cloudTs) {
+              merged.push({ ...cloudItem, ...localItem });
+            } else if (cloudTs > localTs && !localItem.manuallyAdjusted) {
+              merged.push({ ...localItem, ...cloudItem });
+            } else {
+              merged.push({ ...cloudItem, ...localItem });
+            }
           } else if (localItem.manuallyAdjusted && localTs >= cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
           } else if (cloudTs && localTs) {
@@ -788,11 +798,12 @@
       }
 
       if (cloudData.feedStockKg !== undefined) {
-        const cloudTs = Math.min(Number(cloudData.feedStockUpdatedAt || cloudData.lastUpdated) || 0, now);
-        const localTs = Math.min(Number(state.feedStockUpdatedAt) || 0, now);
+        // Ne JAMAIS utiliser cloudData.lastUpdated comme fallback pour feedStockUpdatedAt :
+        // lastUpdated change à chaque enregistrement d'œufs/dépenses et provoquait l'écrasement intempestif du stock.
+        const cloudTs = Number(cloudData.feedStockUpdatedAt) || 0;
+        const localTs = Number(state.feedStockUpdatedAt) || 0;
         const cloudStock = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
-        const localStock = (state.feedStockKg !== null && state.feedStockKg !== undefined) ? Number(state.feedStockKg) : null;
-        const shouldAcceptCloud = !doMerge || (cloudTs > localTs && (localStock === null || cloudStock <= localStock));
+        const shouldAcceptCloud = !doMerge || (cloudTs > localTs && cloudStock !== null);
         if (shouldAcceptCloud) {
           state.feedStockKg = cloudStock;
           state.feedStockDate = cloudData.feedStockDate || null;

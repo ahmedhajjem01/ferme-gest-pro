@@ -3081,25 +3081,10 @@ const app = {
         });
       }
 
-      // Calculer les distributions réelles enregistrées pour cet aliment
-      const distributedForFeed = (appState.feedDistributions || []).reduce((sum, d) => {
-        let k = 0;
-        (d.items || []).forEach(it => {
-          const isMatch = (ft && it.feedTypeId === ft.id) ||
-            (group.feedTypeId && it.feedTypeId === group.feedTypeId) ||
-            (group.family && this.isFeedInFamily(it, group.family)) ||
-            (it.name && group.family && this.detectFeedTypeFromText(it.name) === group.family);
-          if (isMatch) {
-            k += Number(it.kg) || 0;
-          }
-        });
-        return sum + k;
-      }, 0);
-
-      const netAvailableFromExpenses = Math.max(0, parseFloat((group.totalAddedKg - distributedForFeed).toFixed(2)));
       const unitPrice = group.totalAddedKg > 0 ? (group.totalCost / group.totalAddedKg) : 1.0;
 
       if (!ft) {
+        const initialStock = Math.max(0, parseFloat(group.totalAddedKg.toFixed(2)));
         if (group.family) {
           ft = this.createDefaultFeedForFamily(group.family, unitPrice);
         } else {
@@ -3107,24 +3092,18 @@ const app = {
           ft = {
             id: group.feedTypeId || ('feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4)),
             name: cleanName,
-            stockKg: netAvailableFromExpenses,
+            stockKg: initialStock,
             pricePerKg: unitPrice
           };
         }
-        ft.stockKg = netAvailableFromExpenses;
+        ft.stockKg = initialStock;
         ft.manuallyAdjusted = true;
         ft.updatedAt = Date.now();
         appState.feedTypes.push(ft);
         changed = true;
-      } else if (!ft.manuallyAdjusted && (Number(ft.stockKg) || 0) <= 0 && group.totalAddedKg > 0) {
-        ft.stockKg = netAvailableFromExpenses;
-        changed = true;
-      } else if (distributedForFeed > 0 && Number(ft.stockKg) >= group.totalAddedKg) {
-        // Auto-réparation si des distributions réelles ont été enregistrées mais que le stock magasin était resté figé
-        ft.stockKg = netAvailableFromExpenses;
-        ft.updatedAt = Date.now();
-        changed = true;
       }
+      // Note agronomique stricte : Si l'aliment existe déjà dans appState.feedTypes, NE JAMAIS TOUCHER À SON STOCK !
+      // Le stock magasin en réserve est un inventaire physique vivant qui ne diminue STRICTEMENT que par distribution manuelle validée par l'éleveur.
 
       // Associer le feedTypeId officiel à toutes les dépenses du groupe
       group.expenses.forEach(e => {
@@ -3685,7 +3664,7 @@ const app = {
         const prevStock = Number(ft.stockKg) || 0;
         ft.stockKg = Math.max(0, parseFloat((prevStock - kg).toFixed(2)));
         ft.manuallyAdjusted = true;
-        ft.updatedAt = Date.now() + 2000;
+        ft.updatedAt = Date.now();
         if (ft.stockKg <= 0) {
           ft.stockKg = 0;
           ft.isClosed = true;
@@ -3721,7 +3700,7 @@ const app = {
     // Mettre à jour le stock global en kg
     appState.feedStockKg = parseFloat((appState.feedTypes || []).reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
     appState.feedStockDate = date;
-    appState.feedStockUpdatedAt = Date.now() + 2000;
+    appState.feedStockUpdatedAt = Date.now();
 
     this.saveState();
 
@@ -4075,44 +4054,22 @@ const app = {
     // Détermination de l'état : dès que des données d'aliment existent (stock en réserve, achat ou distribution)
     const hasData = hasRealFeedData && (totalLivingAnimals > 0 || todayDistributedKg > 0 || feedStockRemainingKg > 0);
 
-    // Calcul des valeurs avec garantie d'exactitude
-    let totalFarmDailyKg = 0;
-    let totalFarmDailyCost = 0;
-
-    if (todayDistributedKg > 0) {
-      // Priorité 1 : Si une distribution a déjà été effectuée aujourd'hui, TOUJOURS afficher exactement ce qui a été distribué !
-      totalFarmDailyKg = todayDistributedKg;
-      totalFarmDailyCost = todayDistributedCost > 0 ? todayDistributedCost : (todayDistributedKg * feedPriceKg);
-    } else if (hasRealFeedData && totalLivingAnimals > 0) {
-      if (hasDistributions) {
-        // Moyenne des distributions réelles récentes
-        const recentDist = (appState.feedDistributions || []).slice(0, 7);
-        const sumKg = recentDist.reduce((s, d) => s + (Number(d.totalKg) || Number(d.quantityKg) || 0), 0);
-        totalFarmDailyKg = recentDist.length > 0 ? (sumKg / recentDist.length) : (totalFarmDailyGrams / 1000);
-        totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
-      } else {
-        totalFarmDailyKg = totalFarmDailyGrams / 1000;
-        totalFarmDailyCost = totalFarmDailyKg * feedPriceKg;
-      }
-    }
-
-    if (!hasRealFeedData || (totalLivingAnimals <= 0 && todayDistributedKg <= 0)) {
-      totalFarmDailyKg = 0;
-      totalFarmDailyCost = 0;
-    }
+    // AUCUNE DÉDUCTION AUTOMATIQUE !
+    // Si l'éleveur n'a pas validé de distribution manuelle aujourd'hui, le compteur "Distribué aujourd'hui" est STRICTEMENT 0.00 kg (0,000 DT).
+    // Le stock en réserve ne diminue JAMAIS automatiquement.
+    const totalFarmDailyKg = todayDistributedKg;
+    const totalFarmDailyCost = todayDistributedCost > 0 ? todayDistributedCost : (todayDistributedKg * feedPriceKg);
 
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
-    const unitKgDay = isAr ? 'كغ / يوم' : (isEn ? 'kg / day' : 'kg / j');
-    const unitCostDay = isAr ? ' / يوم' : (isEn ? ' / day' : ' / j');
     const unitKg = isAr ? 'كغ' : 'kg';
 
     // Remplissage des métriques compactes (Diminished mode)
     if (todayKgCompact) {
-      todayKgCompact.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKgDay}`;
+      todayKgCompact.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKg}`;
     }
     if (todayCostCompact) {
-      todayCostCompact.textContent = `${this.formatMoney(totalFarmDailyCost)}${unitCostDay}`;
+      todayCostCompact.textContent = `${this.formatMoney(totalFarmDailyCost)}`;
     }
     if (stockKgCompact) {
       stockKgCompact.textContent = `${feedStockRemainingKg.toFixed(1)} ${unitKg} (${this.formatMoney(feedStockRemaining)})`;
@@ -4120,10 +4077,10 @@ const app = {
 
     // Remplissage des métriques de la vue complète
     if (todayKgEl) {
-      todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKgDay}`;
+      todayKgEl.textContent = `${totalFarmDailyKg.toFixed(2)} ${unitKg}`;
     }
     if (todayCostEl) {
-      todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)}${unitCostDay}`;
+      todayCostEl.textContent = `${this.formatMoney(totalFarmDailyCost)}`;
     }
     if (stockKgEl) {
       stockKgEl.textContent = feedStockRemainingKg > 0
@@ -4136,13 +4093,14 @@ const app = {
     if (statusHintEl) {
       if (todayDistributedKg > 0) {
         statusHintEl.textContent = isAr 
-          ? `✅ تم توزيع اليوم: ${todayDistributedKg.toFixed(2)} كغ (${todayDistributedCans.toFixed(1)} علبة)`
+          ? `✅ تم التوزيع اليوم: ${todayDistributedKg.toFixed(2)} كغ (${todayDistributedCans.toFixed(1)} علبة)`
           : (isEn ? `✅ Distributed today: ${todayDistributedKg.toFixed(2)} kg (${todayDistributedCans.toFixed(1)} cans)` : `✅ Distribué aujourd'hui : ${todayDistributedKg.toFixed(2)} kg (${todayDistributedCans.toFixed(1)} boîtes)`);
         statusHintEl.style.color = 'var(--accent-emerald)';
       } else {
+        const estNeedKg = (totalFarmDailyGrams / 1000).toFixed(1);
         statusHintEl.textContent = isAr 
-          ? '🥫 اضغط لتسجيل توزيع اليوم' 
-          : (isEn ? '🥫 Click to log today\'s feed' : '🥫 Cliquer pour distribuer aujourd\'hui');
+          ? `🥫 لم يتم التوزيع اليوم (حاجة تقريبية: ~${estNeedKg} كغ) — اضغط للتوزيع` 
+          : (isEn ? `🥫 Not distributed yet (est. need: ~${estNeedKg} kg) — Click to log` : `🥫 Non distribué aujourd'hui (besoin estimé : ~${estNeedKg} kg) — Cliquer pour distribuer`);
         statusHintEl.style.color = 'var(--accent-amber)';
       }
     }

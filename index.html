@@ -92,7 +92,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=144').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=145').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -517,13 +517,13 @@
               <div class="farm-feed-diminished-body">
                 <div class="farm-feed-diminished-metrics">
                   <div class="farm-feed-diminished-pill">
-                    <span data-i18n="farm_feed_daily_short">Conso :</span>
-                    <strong id="farmFeedTodayKgCompact">0.00 kg / j</strong>
+                    <span data-i18n="farm_feed_daily_short">Distribué :</span>
+                    <strong id="farmFeedTodayKgCompact">0.00 kg</strong>
                   </div>
 
                   <div class="farm-feed-diminished-pill">
                     <span data-i18n="farm_feed_cost_short">Coût :</span>
-                    <strong style="color: var(--accent-rose);" id="farmFeedTodayCostCompact">0,000 DT / j</strong>
+                    <strong style="color: var(--accent-rose);" id="farmFeedTodayCostCompact">0,000 DT</strong>
                   </div>
 
                   <div class="farm-feed-diminished-pill" style="cursor: pointer;" onclick="app.openModal('modalAdjustFeedStock')" title="Cliquer pour déclarer le stock">
@@ -549,7 +549,7 @@
                       <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-main);" data-i18n="farm_feed_title">Alimentation & Stock de Réserve</h3>
                       <span class="badge-pill text-amber" style="font-size: 0.72rem;" data-i18n="farm_feed_badge">Aliments & Stock</span>
                     </div>
-                    <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Consommation journalière du cheptel et réserve en magasin</small>
+                    <small class="text-muted" style="font-size: 0.78rem;" data-i18n="farm_feed_subtitle">Distribution journalière du cheptel et réserve en magasin</small>
                   </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
@@ -564,16 +564,16 @@
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 0.85rem;">
                 <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalFeedDistribution')" title="Cliquer pour enregistrer la distribution du jour">
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; margin-bottom: 0.25rem;">
-                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" data-i18n="farm_feed_daily_total">Consommation journalière</span>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" data-i18n="farm_feed_daily_total">Distribué aujourd'hui</span>
                     <span style="font-size: 0.75rem; color: var(--accent-amber);">🥫</span>
                   </div>
-                  <strong style="font-size: 1.25rem; color: var(--accent-amber); display: block;" id="farmFeedTodayKg">0.00 kg / j</strong>
+                  <strong style="font-size: 1.25rem; color: var(--accent-amber); display: block;" id="farmFeedTodayKg">0.00 kg</strong>
                   <small id="farmFeedTodayStatusHint" style="font-size: 0.7rem; color: var(--accent-emerald); font-weight: 600; display: block; margin-top: 0.2rem;"></small>
                 </div>
 
                 <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                  <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 0.25rem;" data-i18n="farm_feed_cost_total">Coût aliment / jour</span>
-                  <strong style="font-size: 1.25rem; color: var(--accent-rose); display: block;" id="farmFeedTodayCost">0,000 DT / j</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 0.25rem;" data-i18n="farm_feed_cost_total">Coût distribué aujourd'hui</span>
+                  <strong style="font-size: 1.25rem; color: var(--accent-rose); display: block;" id="farmFeedTodayCost">0,000 DT</strong>
                 </div>
 
                 <div style="background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer; transition: transform 0.15s ease;" onclick="app.openModal('modalAdjustFeedStock')" title="Cliquer pour déclarer ou ajuster le stock réel">
@@ -2509,8 +2509,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=104"></script>
-  <script src="translations.js?v=104"></script>
-  <script src="app.js?v=104"></script>
+  <script src="supabase-client.js?v=105"></script>
+  <script src="translations.js?v=105"></script>
+  <script src="app.js?v=105"></script>
 </body>
 </html>
