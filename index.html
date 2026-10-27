@@ -92,7 +92,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=146').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=147').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -588,6 +588,11 @@
               <!-- Réserve de stock magasin & actions de distribution -->
               <div id="farmFeedLotsBreakdown">
                 <!-- Dynamically populated with warehouse reserve banner -->
+              </div>
+
+              <!-- Bloc Commentaire & Conclusion Moyenne Journalière (Moy Conclusion Daily Food) -->
+              <div id="farmFeedMoyConclusionCard" style="margin-top: 0.75rem;">
+                <!-- Dynamiquement généré par renderFarmFeedSummary() -->
               </div>
             </div>
           </div>
@@ -2207,10 +2212,18 @@
           </div>
 
           <!-- Bouton ajouter un nouveau type d'aliment -->
-          <div id="feedDistribAddAnotherWrapper" style="text-align: center; margin-bottom: 1rem;">
+          <div id="feedDistribAddAnotherWrapper" style="text-align: center; margin-bottom: 0.75rem;">
             <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openFeedPurchaseModal()" data-i18n="btn_add_another_feed">
               ➕ Ajouter un autre type d'aliment (ex: Maïs, Son, Tournesol...)
             </button>
+          </div>
+
+          <!-- Champ Commentaire / Remarque facultatif -->
+          <div class="form-group" style="margin-bottom: 0.85rem;">
+            <label for="distribComment" class="form-label" style="font-size: 0.76rem; font-weight: 700;">
+              📝 <span data-i18n="feed_comment_label">Commentaire / Remarque (optionnel) :</span>
+            </label>
+            <input type="text" id="distribComment" class="input-field" data-i18n-placeholder="feed_comment_placeholder" placeholder="ex: Appétit normal, ajout de vitamines, temps chaud..." style="font-size: 0.82rem;">
           </div>
 
           <!-- Récapitulatif Total du Jour -->
@@ -2534,8 +2547,8 @@
   <script src="mobile-bridge.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=106"></script>
-  <script src="translations.js?v=106"></script>
-  <script src="app.js?v=106"></script>
+  <script src="supabase-client.js?v=107"></script>
+  <script src="translations.js?v=107"></script>
+  <script src="app.js?v=107"></script>
 </body>
 </html>

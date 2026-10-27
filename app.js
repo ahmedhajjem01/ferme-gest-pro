@@ -3652,6 +3652,13 @@ const app = {
 
     container.innerHTML = html;
 
+    const commentInput = document.getElementById('distribComment');
+    if (commentInput) {
+      const todayStr = this.getTodayStr();
+      const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
+      commentInput.value = todayDist?.comment || appState.feedNotes?.[todayStr] || '';
+    }
+
     // Pré-sélectionner intelligemment 1 boîte ou la routine favorite si pas de saisie en cours
     const hasExistingInput = Object.values(prevValues).some(v => parseFloat(v) > 0);
     if (hasExistingInput) {
@@ -3859,14 +3866,23 @@ const app = {
       return;
     }
 
+    const commentInput = document.getElementById('distribComment');
+    const comment = commentInput ? commentInput.value.trim() : '';
+
     const distrib = {
       id: 'distrib-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
       date,
       totalKg: parseFloat(totalKg.toFixed(2)),
       totalCost: parseFloat(totalCost.toFixed(3)),
       cans: parseFloat(totalCans.toFixed(1)),
-      items
+      items,
+      comment: comment
     };
+
+    if (comment) {
+      if (!appState.feedNotes) appState.feedNotes = {};
+      appState.feedNotes[date] = comment;
+    }
 
     if (!Array.isArray(appState.feedDistributions)) {
       appState.feedDistributions = [];
@@ -4320,6 +4336,8 @@ const app = {
       if (diminishedSection) diminishedSection.style.display = 'block';
       if (fullSection) fullSection.style.display = 'none';
       if (breakdownEl) breakdownEl.innerHTML = '';
+      const moyCardEl = document.getElementById('farmFeedMoyConclusionCard');
+      if (moyCardEl) moyCardEl.innerHTML = '';
       return;
     }
 
@@ -4390,6 +4408,292 @@ const app = {
     }
 
     if (breakdownEl) breakdownEl.innerHTML = lotsHtml;
+
+    // Rendu du bloc Commentaire & Conclusion Moyenne Journalière (Moy Conclusion Daily Food)
+    const moyCardEl = document.getElementById('farmFeedMoyConclusionCard');
+    if (moyCardEl) {
+      this.renderFarmFeedMoyConclusion(moyCardEl, {
+        totalLivingAnimals,
+        totalFarmDailyGrams,
+        todayDistributedKg,
+        todayDistributedCost,
+        todayDistributedCans,
+        feedStockRemainingKg,
+        feedPriceKg
+      });
+    }
+  },
+
+  renderFarmFeedMoyConclusion(container, data) {
+    if (!container) return;
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
+    const btesLabel = isAr ? 'علب' : (isEn ? 'cans' : 'boîtes');
+
+    const {
+      totalLivingAnimals,
+      totalFarmDailyGrams,
+      todayDistributedKg,
+      todayDistributedCost,
+      todayDistributedCans,
+      feedStockRemainingKg,
+      feedPriceKg
+    } = data;
+
+    // 1. Calcul de la moyenne par sujet aujourd'hui (Average intake per animal today)
+    const todayGramsPerAnimal = (totalLivingAnimals > 0 && todayDistributedKg > 0)
+      ? Math.round((todayDistributedKg * 1000) / totalLivingAnimals)
+      : 0;
+
+    const reqAvgGramsPerAnimal = totalLivingAnimals > 0
+      ? Math.round(totalFarmDailyGrams / totalLivingAnimals)
+      : 115;
+
+    // 2. Calcul de la moyenne réelle sur 7 jours (7-day rolling average)
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+    const dailyMap = {};
+    (appState.feedDistributions || []).forEach(d => {
+      if (d.date && d.date >= sevenDaysAgoStr) {
+        if (!dailyMap[d.date]) {
+          dailyMap[d.date] = { kg: 0, cost: 0, cans: 0 };
+        }
+        dailyMap[d.date].kg += Number(d.totalKg) || Number(d.quantityKg) || 0;
+        dailyMap[d.date].cost += Number(d.totalCost) || 0;
+        dailyMap[d.date].cans += Number(d.cans) || 0;
+      }
+    });
+
+    const activeDays = Object.keys(dailyMap);
+    let avg7dKg = 0;
+    let avg7dCans = 0;
+    let avg7dCost = 0;
+
+    if (activeDays.length > 0) {
+      const sumKg = activeDays.reduce((acc, dt) => acc + dailyMap[dt].kg, 0);
+      const sumCans = activeDays.reduce((acc, dt) => acc + dailyMap[dt].cans, 0);
+      const sumCost = activeDays.reduce((acc, dt) => acc + dailyMap[dt].cost, 0);
+      avg7dKg = sumKg / activeDays.length;
+      avg7dCans = sumCans / activeDays.length;
+      avg7dCost = sumCost / activeDays.length;
+    } else if (todayDistributedKg > 0) {
+      avg7dKg = todayDistributedKg;
+      avg7dCans = todayDistributedCans;
+      avg7dCost = todayDistributedCost;
+    } else {
+      // Estimation indicative si aucune distribution n'a encore été enregistrée
+      avg7dKg = totalFarmDailyGrams / 1000;
+      avg7dCans = avg7dKg / 0.65;
+      avg7dCost = avg7dKg * feedPriceKg;
+    }
+
+    // 3. Calcul de l'autonomie restante en jours (Stock runway)
+    let autonomyDays = 0;
+    if (feedStockRemainingKg > 0 && avg7dKg > 0) {
+      autonomyDays = Math.floor(feedStockRemainingKg / avg7dKg);
+    }
+
+    // 4. Dernier commentaire / remarque enregistrée
+    const todayStr = this.getTodayStr();
+    let todayComment = '';
+    const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
+    if (todayDist && todayDist.comment) {
+      todayComment = todayDist.comment;
+    } else if (appState.feedNotes && appState.feedNotes[todayStr]) {
+      todayComment = appState.feedNotes[todayStr];
+    }
+
+    let recentComment = todayComment;
+    if (!recentComment) {
+      const pastWithComment = (appState.feedDistributions || []).find(d => d.comment);
+      if (pastWithComment && pastWithComment.comment) {
+        recentComment = `${pastWithComment.comment} (${this.formatDateFR ? this.formatDateFR(pastWithComment.date) : pastWithComment.date})`;
+      }
+    }
+
+    // 5. Diagnostic & Conclusion Zootechnique
+    let conclusionBadge = '';
+    let conclusionText = '';
+    let conclusionStyle = '';
+
+    if (todayDistributedKg > 0) {
+      const ratio = reqAvgGramsPerAnimal > 0 ? (todayGramsPerAnimal / reqAvgGramsPerAnimal) : 1.0;
+      if (ratio >= 0.88 && ratio <= 1.15) {
+        conclusionStyle = 'background: rgba(16, 185, 129, 0.09); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--accent-emerald);';
+        conclusionBadge = isAr ? '✅ وجبة متوازنة وممتازة' : (isEn ? '✅ Optimal & Balanced Daily Ration' : '✅ Ration Optimale & Équilibrée');
+        conclusionText = isAr
+          ? `تلقى قطيعك اليوم معدل <strong>~${todayGramsPerAnimal} غ/طائر</strong> (المعيار الموصى به: ~${reqAvgGramsPerAnimal} غ). هذه الكمية تضمن كفاءة تحويل ممتازة وثبات ذروة إنتاج البيض دون هدر.`
+          : (isEn
+              ? `Your flock received an average of <strong>~${todayGramsPerAnimal} g/animal</strong> today (recommended standard: ~${reqAvgGramsPerAnimal} g). Perfect for consistent laying and weight stability.`
+              : `Vos volailles ont reçu aujourd'hui en moyenne <strong>~${todayGramsPerAnimal} g/sujet</strong> (norme conseillée : ~${reqAvgGramsPerAnimal} g). Parfait pour garantir un taux de ponte élevé et une santé robuste.`);
+      } else if (ratio < 0.88) {
+        conclusionStyle = 'background: rgba(245, 158, 11, 0.09); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-amber);';
+        conclusionBadge = isAr ? '⚠️ وجبة خفيفة دون المعيار' : (isEn ? '⚠️ Light Ration (Below Standard)' : '⚠️ Ration Légère (En Retrait)');
+        conclusionText = isAr
+          ? `المعدل الموزع اليوم بلغ <strong>~${todayGramsPerAnimal} غ/طائر</strong> (أقل من المعيار الموصى به: ~${reqAvgGramsPerAnimal} غ). إذا لم يكن لقطيعك مرعى أو بقايا خضار، يُنصح برفع الكمية لتجنب تراجع البيض.`
+          : (isEn
+              ? `Today's average is <strong>~${todayGramsPerAnimal} g/animal</strong> (below target of ~${reqAvgGramsPerAnimal} g). Ensure adequate supplemental foraging to avoid a drop in egg production.`
+              : `Moyenne distribuée à <strong>~${todayGramsPerAnimal} g/sujet</strong> (en dessous des ~${reqAvgGramsPerAnimal} g recommandés). Si le cheptel ne bénéficie pas d'herbe ou de restes, un complément évitera une baisse de ponte.`);
+      } else {
+        conclusionStyle = 'background: rgba(59, 130, 246, 0.09); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6;';
+        conclusionBadge = isAr ? 'ℹ️ وجبة وافرة ومغذية' : (isEn ? 'ℹ️ Generous Daily Ration' : 'ℹ️ Ration Généreuse');
+        conclusionText = isAr
+          ? `تم توزيع <strong>~${todayGramsPerAnimal} غ/طائر</strong> اليوم (أعلى من المعيار: ~${reqAvgGramsPerAnimal} غ). راقب المعالف للتأكد من عدم وجود بعثرة أو هدر للعلف.`
+          : (isEn
+              ? `Distributed <strong>~${todayGramsPerAnimal} g/animal</strong> today (above standard: ~${reqAvgGramsPerAnimal} g). Check feeders to ensure feed is not wasted or scattered.`
+              : `Ration généreuse de <strong>~${todayGramsPerAnimal} g/sujet</strong> (au-delà de ~${reqAvgGramsPerAnimal} g). Surveillez les mangeoires pour vérifier l'absence de refus ou de gaspillage.`);
+      }
+    } else {
+      conclusionStyle = 'background: var(--bg-surface); border: 1px dashed var(--border-subtle); color: var(--text-secondary);';
+      conclusionBadge = isAr ? '🥫 في انتظار توزيع اليوم' : (isEn ? '🥫 Awaiting Today\'s Feeding' : '🥫 En attente de distribution aujourd\'hui');
+      const needKg = (totalFarmDailyGrams / 1000).toFixed(2);
+      const needCans = (Number(needKg) / 0.65).toFixed(1);
+      conclusionText = isAr
+        ? `لم يُسجل توزيع اليوم بعد. الاحتياج التقديري لـ <strong>${totalLivingAnimals} طائر</strong> هو <strong>~${needKg} كغ (~${needCans} علبة)</strong> بمعدل <strong>~${reqAvgGramsPerAnimal} غ/طائر</strong>.`
+        : (isEn
+            ? `No feed logged today yet. Target requirement for <strong>${totalLivingAnimals} birds</strong> is <strong>~${needKg} kg (~${needCans} cans)</strong> at <strong>~${reqAvgGramsPerAnimal} g/bird</strong>.`
+            : `Aucun aliment distribué aujourd'hui pour l'instant. Le besoin estimé pour vos <strong>${totalLivingAnimals} sujets</strong> est de <strong>~${needKg} kg (~${needCans} boîtes)</strong> soit <strong>~${reqAvgGramsPerAnimal} g/sujet</strong>.`);
+    }
+
+    const kpiMoyTodayStr = todayGramsPerAnimal > 0
+      ? `<strong>${todayGramsPerAnimal}</strong> <small style="font-size:0.7rem; font-weight:600;">غ/طائر</small>`
+      : `<span style="font-size:0.88rem; color:var(--text-muted);">~${reqAvgGramsPerAnimal} g <small>(cible)</small></span>`;
+
+    const kpiMoy7dStr = `<strong>${avg7dKg.toFixed(2)}</strong> <small style="font-size:0.7rem; font-weight:600;">${unitKg}/j (~${avg7dCans.toFixed(1)} ${bteLabel})</small>`;
+    
+    const kpiAutonomyStr = autonomyDays > 0
+      ? `<strong style="color:var(--accent-emerald);">~${autonomyDays}</strong> <small style="font-size:0.7rem; font-weight:600;">${isAr ? 'يوم كفاية' : (isEn ? 'days left' : 'jours')}</small>`
+      : (feedStockRemainingKg > 0 ? `<strong>< 1</strong> <small style="font-size:0.7rem;">${isAr ? 'يوم' : 'jour'}</small>` : `<span style="color:var(--accent-rose); font-size:0.85rem; font-weight:700;">⚠️ ${isAr ? 'المخزن فارغ' : 'Stock vide'}</span>`);
+
+    let commentHtml = '';
+    if (recentComment) {
+      commentHtml = `
+        <div style="margin-top: 0.6rem; padding: 0.45rem 0.65rem; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+          <div style="font-size: 0.76rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem;">
+            <span>📝</span>
+            <span style="font-weight: 700; color: var(--text-secondary);">${this.t('feed_last_comment')}</span>
+            <span style="font-style: italic; color: var(--accent-emerald); font-weight: 600;">"${recentComment}"</span>
+          </div>
+          <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 0.15rem 0.45rem;" onclick="app.promptEditTodayFeedComment()">
+            ✏️ ${isAr ? 'تعديل' : 'Modifier'}
+          </button>
+        </div>
+      `;
+    } else {
+      commentHtml = `
+        <div style="margin-top: 0.55rem; display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; flex-wrap: wrap;">
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-style: italic;">
+            💡 ${isAr ? 'يمكنك تدوين ملاحظة يومية عن التغذية (إقبال القطيع، حرارة، فيتامين...)' : 'Notez vos observations quotidiennes (appétit, canicule, vitamines...)'}
+          </span>
+          <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 0.18rem 0.45rem; font-weight: 700;" onclick="app.promptEditTodayFeedComment()">
+            ${this.t('feed_btn_add_comment')}
+          </button>
+        </div>
+      `;
+    }
+
+    container.innerHTML = `
+      <div class="feed-moy-conclusion-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <!-- En-tête : Titre & Badge -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.35rem;">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="font-size: 1.05rem;">💬</span>
+            <strong style="font-size: 0.88rem; color: var(--text-main);">
+              ${this.t('feed_moy_conclusion_title')}
+            </strong>
+          </div>
+          <span class="badge-pill" style="font-size: 0.7rem; font-weight: 700; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+            📊 ${isAr ? 'معدلات حسابية' : 'Calculs Moyennes'}
+          </span>
+        </div>
+
+        <!-- 3 KPIs Moyennes (Intake / Subject, 7-day average, Stock Autonomy) -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.45rem; margin-bottom: 0.65rem;">
+          <div style="background: var(--bg-card); padding: 0.45rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
+            <span style="font-size: 0.68rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 2px;">
+              🍗 ${this.t('feed_moy_per_animal')}
+            </span>
+            <div style="font-size: 0.95rem; color: var(--accent-emerald);">
+              ${kpiMoyTodayStr}
+            </div>
+          </div>
+
+          <div style="background: var(--bg-card); padding: 0.45rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
+            <span style="font-size: 0.68rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 2px;">
+              📈 ${this.t('feed_moy_7d')}
+            </span>
+            <div style="font-size: 0.95rem; color: var(--accent-amber);">
+              ${kpiMoy7dStr}
+            </div>
+          </div>
+
+          <div style="background: var(--bg-card); padding: 0.45rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
+            <span style="font-size: 0.68rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 2px;">
+              ⏳ ${this.t('feed_moy_autonomy')}
+            </span>
+            <div style="font-size: 0.95rem;">
+              ${kpiAutonomyStr}
+            </div>
+          </div>
+        </div>
+
+        <!-- Diagnostic & Conclusion Zootechnique -->
+        <div style="border-radius: var(--radius-sm); padding: 0.6rem 0.75rem; font-size: 0.78rem; line-height: 1.45; ${conclusionStyle}">
+          <div style="font-weight: 800; font-size: 0.82rem; margin-bottom: 0.25rem;">
+            ${conclusionBadge}
+          </div>
+          <div>
+            ${conclusionText}
+          </div>
+        </div>
+
+        <!-- Remarque / Commentaire personnel -->
+        ${commentHtml}
+      </div>
+    `;
+  },
+
+  promptEditTodayFeedComment() {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const todayStr = this.getTodayStr();
+
+    let currentVal = '';
+    const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
+    if (todayDist && todayDist.comment) {
+      currentVal = todayDist.comment;
+    } else if (appState.feedNotes && appState.feedNotes[todayStr]) {
+      currentVal = appState.feedNotes[todayStr];
+    }
+
+    const title = isAr ? 'تدوين ملاحظة يومية عن التغذية' : (isEn ? 'Record daily feed note' : 'Enregistrer une remarque alimentation');
+    const msg = isAr 
+      ? 'أدخل ملاحظتك اليومية حول إقبال الدواجن، نشاطها، أو إضافات العلف (فيتامين، ثوم، خضار...):'
+      : (isEn ? 'Enter your daily feeding note (appetite, activity, supplements):' : 'Indiquez votre remarque sur l\'appétit du cheptel, la météo ou les compléments (vitamines, herbe...) :');
+
+    const input = prompt(msg, currentVal);
+    if (input === null) return;
+
+    const clean = input.trim();
+    if (!appState.feedNotes) {
+      appState.feedNotes = {};
+    }
+    appState.feedNotes[todayStr] = clean;
+
+    if (todayDist) {
+      todayDist.comment = clean;
+    }
+
+    this.saveState();
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData(false, true);
+    }
+    this.renderFarmFeedSummary();
+    this.showToast(isAr ? '✅ تم حفظ الملاحظة بنجاح' : '✅ Remarque enregistrée avec succès');
   },
 
   // ==========================================
