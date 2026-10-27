@@ -2822,24 +2822,25 @@ const app = {
     const name = String(ft.name || '');
     const id = String(ft.id || ft.feedTypeId || '');
     const lower = name.toLowerCase();
+    const isMoulu = ft.texture === 'moulu';
 
     // Blé / قمح (Notice: "بليه" is permanently excluded from display and replaced by Blé / قمح)
     if (id === 'feed-ble' || lower.includes('blé') || lower.includes('ble') || name.includes('قمح') || name.includes('بليه')) {
-      if (lang === 'ar') return 'قمح';
-      if (lang === 'en') return 'Wheat';
-      return 'Blé';
+      if (lang === 'ar') return isMoulu ? 'قمح مرحي' : 'قمح كعب';
+      if (lang === 'en') return isMoulu ? 'Wheat (ground)' : 'Wheat (grain)';
+      return isMoulu ? 'Blé (moulu)' : 'Blé (grain)';
     }
     // Bouchon / Aliment ponte
     if (id === 'feed-bouchon' || name.includes('بوشون') || lower.includes('ponte') || lower.includes('bouchon')) {
-      if (lang === 'ar') return 'علف بياضة (بوشون)';
-      if (lang === 'en') return 'Layer Feed (Pellets)';
-      return 'Aliment ponte (Bouchon)';
+      if (lang === 'ar') return isMoulu ? 'علف بياضة (مرحي)' : 'علف بياضة (بوشون)';
+      if (lang === 'en') return isMoulu ? 'Layer Feed (Mash)' : 'Layer Feed (Pellets)';
+      return isMoulu ? 'Aliment ponte (farine)' : 'Aliment ponte (Bouchon)';
     }
     // Maïs
     if (lower.includes('maïs') || lower.includes('mais') || name.includes('ذرَة') || name.includes('ذرة')) {
-      if (lang === 'ar') return 'ذرة مرحية';
-      if (lang === 'en') return 'Cracked Corn';
-      return 'Maïs concassé';
+      if (lang === 'ar') return isMoulu ? 'ذرة مرحية' : 'ذرة كعب';
+      if (lang === 'en') return isMoulu ? 'Cracked Corn' : 'Whole Corn';
+      return isMoulu ? 'Maïs concassé' : 'Maïs grains';
     }
     // Son
     if (lower.includes('son') || name.includes('نخالة')) {
@@ -2849,17 +2850,17 @@ const app = {
     }
     // Démarrage
     if (lower.includes('démarrage') || lower.includes('demarrage') || name.includes('بداية')) {
-      if (lang === 'ar') return 'علف بداية';
-      if (lang === 'en') return 'Starter Feed';
-      return 'Aliment démarrage';
+      if (lang === 'ar') return isMoulu ? 'علف بداية (مرحي)' : 'علف بداية (حبيبات)';
+      if (lang === 'en') return isMoulu ? 'Starter Feed (Mash)' : 'Starter Feed (Crumbles)';
+      return isMoulu ? 'Aliment démarrage (farine)' : 'Aliment démarrage (miettes)';
     }
     // Féverole
     if (lower.includes('feverole') || lower.includes('féverole') || name.includes('فول')) {
-      if (lang === 'ar') return 'فول مدشش';
-      if (lang === 'en') return 'Faba Beans';
-      return 'Féverole';
+      if (lang === 'ar') return isMoulu ? 'فول مدشش (مرحي)' : 'فول كعب';
+      if (lang === 'en') return isMoulu ? 'Cracked Faba Beans' : 'Whole Faba Beans';
+      return isMoulu ? 'Féverole concassée' : 'Féverole entière';
     }
-    return name;
+    return isMoulu ? `${name} (مرحي)` : name;
   },
 
   getFeedShortName(ft) {
@@ -2868,24 +2869,25 @@ const app = {
     const name = String(ft.name || '');
     const id = String(ft.id || ft.feedTypeId || '');
     const lower = name.toLowerCase();
+    const isMoulu = ft.texture === 'moulu';
 
     // Blé / قمح
     if (id === 'feed-ble' || lower.includes('blé') || lower.includes('ble') || name.includes('قمح') || name.includes('بليه')) {
-      if (lang === 'ar') return 'قمح';
-      if (lang === 'en') return 'Wheat';
-      return 'Blé';
+      if (lang === 'ar') return isMoulu ? 'قمح مرحي' : 'قمح كعب';
+      if (lang === 'en') return isMoulu ? 'Wheat (gr)' : 'Wheat';
+      return isMoulu ? 'Blé moulu' : 'Blé';
     }
     // Bouchon
     if (id === 'feed-bouchon' || name.includes('بوشون') || lower.includes('ponte') || lower.includes('bouchon')) {
-      if (lang === 'ar') return 'بوشون';
-      if (lang === 'en') return 'Pellets';
-      return 'Bouchon';
+      if (lang === 'ar') return isMoulu ? 'بوشون مرحي' : 'بوشون';
+      if (lang === 'en') return isMoulu ? 'Layer Mash' : 'Pellets';
+      return isMoulu ? 'Farine ponte' : 'Bouchon';
     }
     // Maïs
     if (lower.includes('maïs') || lower.includes('mais') || name.includes('ذرَة') || name.includes('ذرة')) {
-      if (lang === 'ar') return 'ذرة';
-      if (lang === 'en') return 'Corn';
-      return 'Maïs';
+      if (lang === 'ar') return isMoulu ? 'ذرة مرحية' : 'ذرة كعب';
+      if (lang === 'en') return isMoulu ? 'Cracked Corn' : 'Corn';
+      return isMoulu ? 'Maïs concassé' : 'Maïs grains';
     }
     // Son
     if (lower.includes('son') || name.includes('نخالة')) {
@@ -2895,15 +2897,15 @@ const app = {
     }
     // Démarrage
     if (lower.includes('démarrage') || lower.includes('demarrage') || name.includes('بداية')) {
-      if (lang === 'ar') return 'علف بداية';
+      if (lang === 'ar') return isMoulu ? 'بداية مرحي' : 'بداية';
       if (lang === 'en') return 'Starter';
-      return 'Démarrage';
+      return isMoulu ? 'Démarrage farine' : 'Démarrage';
     }
     // Féverole
     if (lower.includes('feverole') || lower.includes('féverole') || name.includes('فول')) {
-      if (lang === 'ar') return 'فول';
+      if (lang === 'ar') return isMoulu ? 'فول مدشش' : 'فول كعب';
       if (lang === 'en') return 'Beans';
-      return 'Féverole';
+      return isMoulu ? 'Féverole conc.' : 'Féverole';
     }
     return name.split(' ')[0] || name;
   },
@@ -2915,12 +2917,18 @@ const app = {
       if (name.includes('بليه') || name === 'قمح / بليه') {
         name = 'Blé';
       }
+      const family = this.detectFeedTypeFromText(name) || this.detectFeedTypeFromText(ft.id) || 'general';
+      const texture = ft.texture || (family === 'mais' || family === 'son' ? 'moulu' : 'grain');
+      const kgPerCan = Number(ft.kgPerCan) > 0 ? Number(ft.kgPerCan) : this.getFeedDefaultDensity(family, texture);
+
       return {
         ...ft,
         id: ft.id || 'feed-' + Math.random().toString(36).substr(2, 9),
         name: name,
         stockKg: Math.max(0, Number(ft.stockKg) || 0),
         pricePerKg: Math.max(0, Number(ft.pricePerKg) || 1.0),
+        texture: texture,
+        kgPerCan: kgPerCan,
         manuallyAdjusted: ft.manuallyAdjusted !== undefined ? ft.manuallyAdjusted : true,
         updatedAt: ft.updatedAt || Date.now()
       };
@@ -2968,6 +2976,113 @@ const app = {
     return false;
   },
 
+  getFeedDefaultDensity(family, texture = 'grain') {
+    const isMoulu = texture === 'moulu';
+    switch (family) {
+      case 'ble': // Blé / قمح
+        return isMoulu ? 0.58 : 0.72; // كعب ~0.72 kg, مرحي ~0.58 kg
+      case 'mais': // Maïs / ذرة
+        return isMoulu ? 0.60 : 0.68; // كعب ~0.68 kg, مرحي ~0.60 kg
+      case 'bouchon': // Aliment ponte / بوشون
+        return isMoulu ? 0.52 : 0.65; // كعب ~0.65 kg, مرحي ~0.52 kg
+      case 'son': // Son de blé / نخالة
+        return 0.35; // Léger volumineux
+      case 'demarrage': // Démarrage / بداية
+        return isMoulu ? 0.50 : 0.65; // كعب ~0.65 kg, مرحي ~0.50 kg
+      case 'orge': // Orge / شعير
+        return isMoulu ? 0.48 : 0.60; // كعب ~0.60 kg, مرحي ~0.48 kg
+      case 'feverole': // Féverole / فول
+        return isMoulu ? 0.62 : 0.75; // كعب ~0.75 kg, مرحي ~0.62 kg
+      default:
+        return isMoulu ? 0.55 : 0.70;
+    }
+  },
+
+  getFeedKgPerCan(ft) {
+    if (!ft) return 0.667;
+    if (ft && Number(ft.kgPerCan) > 0) {
+      return Number(ft.kgPerCan);
+    }
+    const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id) || 'general';
+    const texture = ft.texture || (family === 'mais' || family === 'son' ? 'moulu' : 'grain');
+    return this.getFeedDefaultDensity(family, texture);
+  },
+
+  setFeedTypeTexture(feedId, texture) {
+    const ft = (appState.feedTypes || []).find(f => f.id === feedId);
+    if (!ft) return;
+
+    // Déterminer les boîtes actuellement sélectionnées pour cet aliment
+    const input = document.getElementById(`distribKg_${feedId}`);
+    const activeBtn = document.querySelector(`.sicam-btn-${feedId}.active-sicam-btn`);
+    let currentCans = activeBtn ? parseFloat(activeBtn.getAttribute('data-cans')) : null;
+    if ((currentCans === null || isNaN(currentCans)) && input) {
+      const currentKg = parseFloat(String(input.value || '').replace(',', '.')) || 0;
+      const oldDensity = this.getFeedKgPerCan(ft);
+      if (currentKg > 0) {
+        currentCans = Math.round((currentKg / oldDensity) * 2) / 2;
+      }
+    }
+
+    ft.texture = texture;
+    const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id) || 'general';
+    ft.kgPerCan = this.getFeedDefaultDensity(family, texture);
+    ft.manuallyAdjusted = true;
+    ft.updatedAt = Date.now();
+    this.saveState();
+
+    this.renderFeedDistributionModal();
+    this.renderFeedStockAdjustModal();
+
+    if (currentCans !== null && !isNaN(currentCans) && currentCans > 0) {
+      this.setFeedTypeDistribSicam(feedId, currentCans);
+    } else {
+      this.recalcDistribTotal();
+    }
+  },
+
+  onNewFeedTextureChange() {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const grainRadio = document.querySelector('input[name="newFeedTexture"][value="grain"]');
+    const isGrain = grainRadio ? grainRadio.checked : true;
+    const texture = isGrain ? 'grain' : 'moulu';
+
+    // Style des boutons radio
+    const lblGrain = document.getElementById('lblNewFeedTextureGrain');
+    const lblMoulu = document.getElementById('lblNewFeedTextureMoulu');
+    if (lblGrain && lblMoulu) {
+      if (isGrain) {
+        lblGrain.style.border = '2px solid var(--accent-emerald)';
+        lblMoulu.style.border = '1.5px solid var(--border-subtle)';
+      } else {
+        lblGrain.style.border = '1.5px solid var(--border-subtle)';
+        lblMoulu.style.border = '2px solid var(--accent-emerald)';
+      }
+    }
+
+    const name = document.getElementById('newFeedTypeName')?.value || '';
+    const family = this.detectFeedTypeFromText(name) || 'general';
+    const density = this.getFeedDefaultDensity(family, texture);
+
+    const kgPerCanInput = document.getElementById('newFeedKgPerCan');
+    if (kgPerCanInput) {
+      kgPerCanInput.value = density.toFixed(2);
+    }
+
+    const hint = document.getElementById('newFeedDensityHint');
+    if (hint) {
+      const texStr = isGrain 
+        ? (isAr ? 'حبوب كاملة / كعب' : (isEn ? 'Whole grain' : 'Grain entier (كعب)'))
+        : (isAr ? 'مطحون / مرحي' : (isEn ? 'Ground / Milled' : 'Moulu / Concassé (مرحي)'));
+      hint.textContent = `🥫 1 boîte Sicam ≈ ${density.toFixed(2)} kg (${texStr})`;
+    }
+  },
+
+  onNewFeedNameInput() {
+    this.onNewFeedTextureChange();
+  },
+
   createDefaultFeedForFamily(family, pricePerKg = 1.0) {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
@@ -2977,7 +3092,9 @@ const app = {
         id: 'feed-bouchon',
         name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'),
         stockKg: 0,
-        pricePerKg: numPrice || 1.2
+        pricePerKg: numPrice || 1.2,
+        texture: 'grain',
+        kgPerCan: 0.65
       };
     }
     if (family === 'ble') {
@@ -2985,7 +3102,9 @@ const app = {
         id: 'feed-ble',
         name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'),
         stockKg: 0,
-        pricePerKg: numPrice || 1.0
+        pricePerKg: numPrice || 1.0,
+        texture: 'grain',
+        kgPerCan: 0.72
       };
     }
     if (family === 'mais') {
@@ -2993,7 +3112,9 @@ const app = {
         id: 'feed-mais',
         name: isAr ? 'ذرة مرحية' : (isEn ? 'Cracked Corn' : 'Maïs concassé'),
         stockKg: 0,
-        pricePerKg: numPrice || 1.1
+        pricePerKg: numPrice || 1.1,
+        texture: 'moulu',
+        kgPerCan: 0.60
       };
     }
     if (family === 'son') {
@@ -3001,7 +3122,9 @@ const app = {
         id: 'feed-son',
         name: isAr ? 'نخالة القمح' : (isEn ? 'Wheat Bran' : 'Son de blé'),
         stockKg: 0,
-        pricePerKg: numPrice || 0.8
+        pricePerKg: numPrice || 0.8,
+        texture: 'moulu',
+        kgPerCan: 0.35
       };
     }
     if (family === 'demarrage') {
@@ -3009,14 +3132,18 @@ const app = {
         id: 'feed-demarrage',
         name: isAr ? 'علف بداية' : (isEn ? 'Starter Feed' : 'Aliment démarrage'),
         stockKg: 0,
-        pricePerKg: numPrice || 1.4
+        pricePerKg: numPrice || 1.4,
+        texture: 'grain',
+        kgPerCan: 0.65
       };
     }
     return {
       id: 'feed-' + Date.now().toString(36),
       name: isAr ? 'علف جديد' : 'Nouvel aliment',
       stockKg: 0,
-      pricePerKg: numPrice || 1.0
+      pricePerKg: numPrice || 1.0,
+      texture: 'grain',
+      kgPerCan: 0.70
     };
   },
 
@@ -3189,16 +3316,17 @@ const app = {
       // 1 seul aliment en stock (ex: uniquement Blé) -> raccourcis 100% dédiés à cet aliment sans aucun autre aliment mentionné !
       const f = declaredFeeds[0];
       const name = this.getFeedShortName(f);
+      const kgPerCan = this.getFeedKgPerCan(f);
 
       presetsGridHtml = `
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; margin-bottom: 0.4rem;">
           <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setSingleFeedDistribCans('${f.id}', 1.0)">
             <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-emerald);">🌾 1 ${bteLabel} ${name}</div>
-            <div style="font-size: 0.67rem; color: var(--text-muted);">~0.67 ${unitKg}</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">~${kgPerCan.toFixed(2)} ${unitKg}</div>
           </button>
           <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setSingleFeedDistribCans('${f.id}', 2.0)">
             <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-amber);">🌾 2 ${btesLabel} ${name}</div>
-            <div style="font-size: 0.67rem; color: var(--text-muted);">~1.33 ${unitKg}</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">~${(kgPerCan * 2).toFixed(2)} ${unitKg}</div>
           </button>
         </div>
 
@@ -3220,16 +3348,20 @@ const app = {
       const feedB = declaredFeeds[1];
       const nameA = this.getFeedShortName(feedA);
       const nameB = this.getFeedShortName(feedB);
+      const kgPerCanA = this.getFeedKgPerCan(feedA);
+      const kgPerCanB = this.getFeedKgPerCan(feedB);
+      const comboTwoKg = (kgPerCanA + kgPerCanB).toFixed(2);
+      const comboOneAndHalfKg = (kgPerCanA + kgPerCanB * 0.5).toFixed(2);
 
       presetsGridHtml = `
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; margin-bottom: 0.4rem;">
           <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setTwoFeedsDistribCans('${feedA.id}', 1.0, '${feedB.id}', 1.0)">
             <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-emerald);">1 ${nameA} + 1 ${nameB}</div>
-            <div style="font-size: 0.67rem; color: var(--text-muted);">2 ${btesLabel} (~1.33 ${unitKg})</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">2 ${btesLabel} (~${comboTwoKg} ${unitKg})</div>
           </button>
           <button type="button" class="btn btn-outline btn-preset-combo" onclick="app.setTwoFeedsDistribCans('${feedA.id}', 1.0, '${feedB.id}', 0.5)">
             <div style="font-weight: 800; font-size: 0.8rem; color: var(--accent-amber);">1 ${nameA} + 0.5 ${nameB}</div>
-            <div style="font-size: 0.67rem; color: var(--text-muted);">1.5 ${bteLabel} (~1.00 ${unitKg})</div>
+            <div style="font-size: 0.67rem; color: var(--text-muted);">1.5 ${bteLabel} (~${comboOneAndHalfKg} ${unitKg})</div>
           </button>
         </div>
 
@@ -3304,8 +3436,9 @@ const app = {
 
     // Remplir chaque aliment selon la routine mémorisée
     routine.items.forEach(it => {
-      const cans = it.cans !== undefined ? Number(it.cans) * ratio : (Number(it.kg) * ratio) / 0.667;
       const feed = (appState.feedTypes || []).find(ft => ft.id === it.feedTypeId || ft.name === it.name || (it.name && ft.name && ft.name.toLowerCase().includes(it.name.toLowerCase())));
+      const kgPerCan = feed ? this.getFeedKgPerCan(feed) : (it.kgPerCan || 0.667);
+      const cans = it.cans !== undefined ? Number(it.cans) * ratio : (Number(it.kg) * ratio) / kgPerCan;
       if (feed) {
         this.setFeedTypeDistribSicam(feed.id, Math.round(cans * 2) / 2);
       }
@@ -3321,8 +3454,9 @@ const app = {
       const input = document.getElementById(`distribKg_${ft.id}`);
       const kg = parseFloat(input?.value) || 0;
       if (kg > 0) {
-        const cans = parseFloat((kg / 0.667).toFixed(1));
-        items.push({ feedTypeId: ft.id, name: ft.name, kg: parseFloat(kg.toFixed(2)), cans });
+        const kgPerCan = this.getFeedKgPerCan(ft);
+        const cans = parseFloat((kg / kgPerCan).toFixed(1));
+        items.push({ feedTypeId: ft.id, name: ft.name, texture: ft.texture || 'grain', kgPerCan: kgPerCan, kg: parseFloat(kg.toFixed(2)), cans });
         totalKg += kg;
       }
     });
@@ -3421,12 +3555,22 @@ const app = {
     if (totalsCard) totalsCard.style.display = 'flex';
     if (submitBtn) submitBtn.style.display = 'block';
 
+    const prevValues = {};
+    (appState.feedTypes || []).forEach(f => {
+      const inp = document.getElementById(`distribKg_${f.id}`);
+      if (inp && inp.value !== undefined && inp.value !== '') {
+        prevValues[f.id] = inp.value;
+      }
+    });
+
     let html = '';
     appState.feedTypes.forEach((ft) => {
-      const defaultKg = '0.00';
+      const defaultKg = prevValues[ft.id] !== undefined ? prevValues[ft.id] : '0.00';
       const stockKg = Number(ft.stockKg) || 0;
       const priceKg = Number(ft.pricePerKg) || 1.0;
       const displayName = this.getFeedDisplayName(ft);
+      const isGrain = ft.texture !== 'moulu';
+      const kgPerCan = this.getFeedKgPerCan(ft);
 
       html += `
         <div class="feed-distrib-card" style="background: var(--bg-surface); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 0.75rem;">
@@ -3445,6 +3589,24 @@ const app = {
               <span id="distribCanBadge_${ft.id}" class="badge-pill text-muted" style="font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.55rem; background: var(--bg-elevated); border: 1px solid var(--border-subtle);">
                 0 ${bteLabel}
               </span>
+            </div>
+          </div>
+
+          <!-- Choix Texture : كعب vs مرحي (avec poids agronomique de la boîte Sicam) -->
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.55rem; background: var(--bg-card); padding: 0.35rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 0.35rem;">
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary);">${this.t('feed_texture_label')}</span>
+              <div style="display: inline-flex; gap: 0.25rem;">
+                <button type="button" class="btn btn-xs ${isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; font-weight: ${isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'grain')">
+                  🌾 ${this.t('feed_texture_grain')}
+                </button>
+                <button type="button" class="btn btn-xs ${!isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; font-weight: ${!isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'moulu')">
+                  🥣 ${this.t('feed_texture_moulu')}
+                </button>
+              </div>
+            </div>
+            <div style="font-size: 0.74rem; color: var(--accent-emerald); font-weight: 700;">
+              🥫 1 ${bteLabel} ≈ <strong>${kgPerCan.toFixed(2)} ${unitKg}</strong>
             </div>
           </div>
 
@@ -3490,8 +3652,11 @@ const app = {
 
     container.innerHTML = html;
 
-    // Pré-sélectionner intelligemment 1 boîte ou la routine favorite pour éviter d'ouvrir sur "0 nourriture"
-    if (appState.savedFavoriteFeedRoutine) {
+    // Pré-sélectionner intelligemment 1 boîte ou la routine favorite si pas de saisie en cours
+    const hasExistingInput = Object.values(prevValues).some(v => parseFloat(v) > 0);
+    if (hasExistingInput) {
+      this.recalcDistribTotal();
+    } else if (appState.savedFavoriteFeedRoutine) {
       this.applyLearnedRoutine('repeat');
     } else if (appState.feedTypes.length === 1) {
       this.setFeedTypeDistribSicam(appState.feedTypes[0].id, 1.0);
@@ -3501,18 +3666,22 @@ const app = {
   },
 
   adjustFeedTypeDistribSicamStep(feedId, delta) {
+    const ft = (appState.feedTypes || []).find(f => f.id === feedId);
+    const kgPerCan = this.getFeedKgPerCan(ft);
     const input = document.getElementById(`distribKg_${feedId}`);
     const rawVal = String(input?.value || '').replace(',', '.');
     const currentKg = parseFloat(rawVal) || 0;
-    const currentCans = currentKg / 0.667;
+    const currentCans = currentKg / kgPerCan;
     let nextCans = Math.round((currentCans + delta) * 2) / 2;
     if (nextCans < 0) nextCans = 0;
     this.setFeedTypeDistribSicam(feedId, nextCans);
   },
 
   setFeedTypeDistribSicam(feedId, cans) {
+    const ft = (appState.feedTypes || []).find(f => f.id === feedId);
+    const kgPerCan = this.getFeedKgPerCan(ft);
     const cansNum = Math.max(0, Number(cans) || 0);
-    const kg = (cansNum * 0.667).toFixed(2);
+    const kg = (cansNum * kgPerCan).toFixed(2);
     const input = document.getElementById(`distribKg_${feedId}`);
     if (input) {
       input.value = kg;
@@ -3581,6 +3750,7 @@ const app = {
   recalcDistribTotal() {
     let totalKg = 0;
     let totalCost = 0;
+    let totalCans = 0;
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
@@ -3591,8 +3761,9 @@ const app = {
       const input = document.getElementById(`distribKg_${ft.id}`);
       const rawVal = String(input?.value || '').replace(',', '.');
       const kg = parseFloat(rawVal) || 0;
-      const cans = Math.round((kg / 0.667) * 2) / 2;
-      const exactCans = (kg / 0.667).toFixed(1);
+      const kgPerCan = this.getFeedKgPerCan(ft);
+      const cans = Math.round((kg / kgPerCan) * 2) / 2;
+      const exactCans = (kg / kgPerCan).toFixed(1);
 
       // Synchroniser les classes actives des boutons
       document.querySelectorAll(`.sicam-btn-${ft.id}`).forEach(btn => {
@@ -3620,15 +3791,15 @@ const app = {
 
       totalKg += kg;
       totalCost += kg * (Number(ft.pricePerKg) || 1.0);
+      totalCans += kg / kgPerCan;
     });
 
-    const totalCans = (totalKg / 0.667).toFixed(1);
     const totalKgEl = document.getElementById('distribTotalKg');
     const totalCansEl = document.getElementById('distribTotalCans');
     const totalCostEl = document.getElementById('distribTotalCost');
 
     if (totalKgEl) totalKgEl.textContent = `${totalKg.toFixed(2)} ${unitKg}`;
-    if (totalCansEl) totalCansEl.textContent = `${totalCans} ${isAr ? 'علبة' : (isEn ? 'can(s)' : 'boîte(s)')}`;
+    if (totalCansEl) totalCansEl.textContent = `${totalCans.toFixed(1)} ${isAr ? 'علبة' : (isEn ? 'can(s)' : 'boîte(s)')}`;
     if (totalCostEl) totalCostEl.textContent = this.formatMoney(totalCost);
   },
 
@@ -3640,6 +3811,7 @@ const app = {
 
     let totalKg = 0;
     let totalCost = 0;
+    let totalCans = 0;
     const items = [];
 
     (appState.feedTypes || []).forEach(ft => {
@@ -3647,14 +3819,18 @@ const app = {
       const rawVal = String(input?.value || '').replace(',', '.');
       const kg = parseFloat(rawVal) || 0;
       if (kg > 0) {
-        const cans = parseFloat((kg / 0.667).toFixed(1));
+        const kgPerCan = this.getFeedKgPerCan(ft);
+        const cans = parseFloat((kg / kgPerCan).toFixed(1));
         const cost = kg * (Number(ft.pricePerKg) || 1.0);
         totalKg += kg;
         totalCost += cost;
+        totalCans += cans;
 
         items.push({
           feedTypeId: ft.id,
           name: ft.name,
+          texture: ft.texture || 'grain',
+          kgPerCan: kgPerCan,
           kg: parseFloat(kg.toFixed(2)),
           cans: cans,
           cost: parseFloat(cost.toFixed(3))
@@ -3688,7 +3864,7 @@ const app = {
       date,
       totalKg: parseFloat(totalKg.toFixed(2)),
       totalCost: parseFloat(totalCost.toFixed(3)),
-      cans: parseFloat((totalKg / 0.667).toFixed(1)),
+      cans: parseFloat(totalCans.toFixed(1)),
       items
     };
 
@@ -3776,6 +3952,9 @@ const app = {
         ? `<span class="badge-pill" style="font-size: 0.68rem; font-weight: 700; background: rgba(239, 68, 68, 0.12); color: var(--accent-rose); border: 1px solid rgba(239, 68, 68, 0.25);">📦 ${isAr ? 'منتهي (دورة مغلقة)' : 'Épuisé (Cycle clôturé)'}</span>`
         : `<span class="badge-pill" style="font-size: 0.68rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.25);">🟢 ${isAr ? 'متوفر' : 'En stock'}</span>`;
 
+      const isGrain = ft.texture !== 'moulu';
+      const kgPerCan = this.getFeedKgPerCan(ft);
+
       html += `
         <div class="feed-stock-row" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.65rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; flex-wrap: wrap; gap: 0.35rem;">
@@ -3787,6 +3966,25 @@ const app = {
               ${btnDeleteText}
             </button>
           </div>
+
+          <!-- Choix Texture : كعب vs مرحي -->
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; background: var(--bg-card); padding: 0.35rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 0.35rem;">
+            <div style="display: flex; align-items: center; gap: 0.3rem;">
+              <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-secondary);">${this.t('feed_texture_label')}</span>
+              <div style="display: inline-flex; gap: 0.25rem;">
+                <button type="button" class="btn btn-xs ${isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.2rem 0.5rem; font-size: 0.73rem; font-weight: ${isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'grain')">
+                  🌾 ${this.t('feed_texture_grain')}
+                </button>
+                <button type="button" class="btn btn-xs ${!isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.2rem 0.5rem; font-size: 0.73rem; font-weight: ${!isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'moulu')">
+                  🥣 ${this.t('feed_texture_moulu')}
+                </button>
+              </div>
+            </div>
+            <div style="font-size: 0.73rem; color: var(--accent-emerald); font-weight: 700;">
+              🥫 1 ${isAr ? 'علبة' : 'bte'} ≈ <strong>${kgPerCan.toFixed(2)} ${unitKg}</strong>
+            </div>
+          </div>
+
           <div class="form-row" style="margin-bottom: 0; gap: 0.5rem;">
             <div class="form-group flex-1" style="margin-bottom: 0;">
               <label class="form-label" style="font-size: 0.72rem; font-weight: 700;">${lblStockText}</label>
@@ -3875,7 +4073,14 @@ const app = {
     const priceKg = parseFloat(document.getElementById('newFeedTypePriceKg')?.value) || 1.0;
     const recordExpense = document.getElementById('newFeedTypeRecordExpense')?.checked;
 
+    const grainRadio = document.querySelector('input[name="newFeedTexture"][value="grain"]');
+    const isGrain = grainRadio ? grainRadio.checked : true;
+    const texture = isGrain ? 'grain' : 'moulu';
+
     const family = this.detectFeedTypeFromText(name);
+    const kgPerCanVal = parseFloat(document.getElementById('newFeedKgPerCan')?.value);
+    const kgPerCan = kgPerCanVal > 0 ? kgPerCanVal : this.getFeedDefaultDensity(family, texture);
+
     if (family && Array.isArray(appState.deletedFeedFamilies)) {
       appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => f !== family);
     }
@@ -3884,7 +4089,11 @@ const app = {
       id: 'feed-' + Date.now().toString(36),
       name: name,
       stockKg: Math.max(0, stockKg),
-      pricePerKg: Math.max(0, priceKg)
+      pricePerKg: Math.max(0, priceKg),
+      texture: texture,
+      kgPerCan: kgPerCan,
+      manuallyAdjusted: true,
+      updatedAt: Date.now()
     };
 
     if (!Array.isArray(appState.feedTypes)) {
@@ -5845,8 +6054,12 @@ const app = {
       const boiteCount = parseFloat(document.getElementById('feedBoiteCount')?.value) || 0;
       const boiteTotalPrice = parseFloat(document.getElementById('feedBoiteTotalPrice')?.value) || 0;
 
+      const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
+      const selectedFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
+      const kgPerCan = this.getFeedKgPerCan(selectedFeed);
+
       total = boiteTotalPrice;
-      addedKg = Number((boiteCount * 0.667).toFixed(2));
+      addedKg = Number((boiteCount * kgPerCan).toFixed(2));
       quantity = boiteCount;
       unitPrice = boiteCount > 0 ? (total / boiteCount) : 0;
     }
@@ -6036,10 +6249,14 @@ const app = {
           const boiteCount = parseFloat(document.getElementById('feedBoiteCount')?.value) || 1;
           const boiteTotalPrice = parseFloat(document.getElementById('feedBoiteTotalPrice')?.value) || 0;
 
+          const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
+          const selectedFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
+          const kgPerCan = this.getFeedKgPerCan(selectedFeed);
+
           quantity = boiteCount;
           total = boiteTotalPrice;
           unitPrice = boiteCount > 0 ? (total / boiteCount) : 0;
-          addedKg = Number((boiteCount * 0.667).toFixed(2));
+          addedKg = Number((boiteCount * kgPerCan).toFixed(2));
 
           if (!title) {
             const boiteWord = isAr ? 'حكك طماطم' : (isEn ? 'Tomato cans' : 'Boîtes tomate (Sicam)');
