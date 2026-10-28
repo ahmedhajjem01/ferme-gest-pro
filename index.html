@@ -382,6 +382,25 @@
         <!-- ============================================== -->
         <section id="tab-dashboard" class="content-tab active">
           
+          <!-- Daily 17h In-App Notification Banner (Harvest & Feed Care) -->
+          <div id="dailyEggAlertBanner" class="daily-egg-alert-banner" style="display: none;">
+            <div class="daily-egg-alert-content">
+              <div class="daily-egg-alert-icon">🥚</div>
+              <div class="daily-egg-alert-text">
+                <div class="daily-egg-alert-title" data-i18n="daily_egg_banner_title">🥚 Récolte des Œufs & Soins (17h00)</div>
+                <div class="daily-egg-alert-desc" data-i18n="daily_egg_banner_body">Avez-vous récolté les œufs et nourri vos animaux aujourd'hui ?</div>
+              </div>
+            </div>
+            <div class="daily-egg-alert-actions">
+              <button type="button" class="btn btn-sm btn-outline egg-alert-btn-dismiss" onclick="app.dismissDailyEggAlert()" data-i18n="daily_egg_banner_btn_dismiss" title="Supprimer cette alerte">
+                Supprimer
+              </button>
+              <button type="button" class="btn btn-sm btn-emerald bold egg-alert-btn-record" onclick="app.openDailyEggModal()" data-i18n="daily_egg_banner_btn_record" title="Saisir la récolte">
+                Saisir la récolte 🥚
+              </button>
+            </div>
+          </div>
+
           <!-- Alert Banner (Upcoming Hatches / Critical Tasks) -->
           <div id="dashboardAlerts" class="alerts-container">
             <!-- Dynamic alerts rendered by JS -->
@@ -1976,15 +1995,37 @@
             </div>
             <div class="form-group flex-1">
               <label for="batchEggsCount" data-i18n="lbl_eggs_count">Nombre d'Œufs Mis à Couver</label>
-              <input type="number" id="batchEggsCount" class="input-field" min="1" required>
+              <input type="number" id="batchEggsCount" class="input-field" min="1" required oninput="app.handleBatchEggsCountChange()">
+            </div>
+          </div>
+
+          <!-- Origine des Œufs & Coûts Initiaux -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="batchEggSource" data-i18n="lbl_egg_source">Origine des Œufs</label>
+              <select id="batchEggSource" class="input-field" required onchange="app.handleBatchEggSourceChange()">
+                <option value="purchased" data-i18n="opt_egg_source_purchased">🛒 Achetés à l'extérieur (Ne déduit pas du stock)</option>
+                <option value="farm" data-i18n="opt_egg_source_farm">🏡 Œufs de la ferme (Déduit du stock d'œufs)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label id="lblBatchEggCost" for="batchEggCost" data-i18n="lbl_egg_cost_total">Coût d'achat total des œufs (DT)</label>
+              <input type="number" id="batchEggCost" class="input-field" step="0.001" min="0" placeholder="0.000 DT">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group flex-1">
+              <label for="batchElectricityCost" data-i18n="lbl_batch_electricity_cost">Coût électricité / énergie couveuse (DT)</label>
+              <input type="number" id="batchElectricityCost" class="input-field" step="0.001" min="0" placeholder="0.000 DT">
+            </div>
+            <div class="form-group flex-1">
               <label for="batchStartDate" data-i18n="lbl_start_date">Date de Début d'Incubation</label>
               <input type="date" id="batchStartDate" class="input-field" required onchange="app.calcHatchPreview()">
             </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-group flex-1">
               <label data-i18n="lbl_hatch_preview">Fenêtre Prévue d'Éclosion</label>
               <div id="batchHatchPreview" class="preview-date-box text-emerald bold">-- / -- / ---- (21j +/- 2j)</div>
@@ -2006,7 +2047,7 @@
 
   <!-- Modal: Notification & Validation d'Éclosion Interactive (+ Poussins -> Cheptel) -->
   <div id="modalHatchPrompt" class="modal-overlay hidden">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
         <h3 class="text-amber" data-i18n="modal_hatch_title">🐣 Notification : C'est le moment de l'Éclosion !</h3>
         <button class="modal-close" onclick="app.closeModal('modalHatchPrompt')">&times;</button>
@@ -2023,14 +2064,38 @@
 
           <div class="form-group mt-3">
             <label for="hatchLiveCount" style="font-size: 0.95rem; font-weight: 700;" data-i18n="lbl_live_chicks_count">Combien de poussins sont sortis vivants de l'œuf ?</label>
-            <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" required>
+            <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" required oninput="app.updateHatchCalculationsPreview()">
+          </div>
+
+          <!-- Saisie des coûts réels de la couvée -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="hatchEggCostActual" data-i18n="lbl_hatch_egg_cost">Coût total des œufs (DT)</label>
+              <input type="number" id="hatchEggCostActual" class="input-field" step="0.001" min="0" oninput="app.updateHatchCalculationsPreview()">
+            </div>
+            <div class="form-group flex-1">
+              <label for="hatchElectricityCostActual" data-i18n="lbl_hatch_elec_cost">Coût électricité couveuse (DT)</label>
+              <input type="number" id="hatchElectricityCostActual" class="input-field" step="0.001" min="0" oninput="app.updateHatchCalculationsPreview()">
+            </div>
+          </div>
+
+          <!-- Bilan Réel de l'Éclosion (Taux d'éclosion, pertes, coût unitaire calculé) -->
+          <div id="hatchSummaryCard" style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1.15rem;">
+            <!-- Dynamically populated by app.updateHatchCalculationsPreview() -->
           </div>
 
           <div class="form-group">
             <label for="hatchTargetFlock" data-i18n="lbl_where_to_add">Où ajouter ces nouveaux poussins ?</label>
-            <select id="hatchTargetFlock" class="input-field">
+            <select id="hatchTargetFlock" class="input-field" onchange="app.handleHatchTargetFlockChange()">
               <option value="new" data-i18n="opt_create_new_lot">Créer un nouveau lot de poussins de cette génération</option>
-              <option value="first_chick" data-i18n="opt_add_existing">Ajouter à la bande de poussins existante</option>
+              <option value="existing" data-i18n="opt_add_existing_dynamic">Ajouter à un lot existant du cheptel</option>
+            </select>
+          </div>
+
+          <div id="hatchExistingLotGroup" class="form-group" style="display: none;">
+            <label for="hatchExistingLotSelect" data-i18n="lbl_select_existing_flock">Sélectionner le lot qui reçoit les poussins</label>
+            <select id="hatchExistingLotSelect" class="input-field">
+              <!-- Dynamically populated with active lots -->
             </select>
           </div>
         </div>

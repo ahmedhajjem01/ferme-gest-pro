@@ -68,6 +68,9 @@ self.addEventListener('fetch', (e) => {
 // Handle Daily 17h Egg Collection Notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  if (event.action === 'dismiss') {
+    return;
+  }
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

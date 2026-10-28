@@ -227,6 +227,15 @@ const app = {
         setTimeout(() => this.openDailyEggModal(), 600);
       }
     } catch (e) {}
+
+    // Check Daily 17h In-App Notification alert banner
+    this.checkDailyEggInAppAlert();
+    window.addEventListener('focus', () => this.checkDailyEggInAppAlert());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.checkDailyEggInAppAlert();
+      }
+    });
   },
 
   // State Persistence
@@ -949,9 +958,47 @@ const app = {
       input.value = '';
       input.placeholder = '';
       input.removeAttribute('placeholder');
-      setTimeout(() => input.focus(), 150);
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 150);
     }
     this.updateDailyEggPreview();
+  },
+
+  dismissDailyEggAlert() {
+    const todayStr = this.getTodayStr();
+    localStorage.setItem('fermegest_egg_banner_dismissed', todayStr);
+    const banner = document.getElementById('dailyEggAlertBanner');
+    if (banner) {
+      banner.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      banner.style.opacity = '0';
+      banner.style.transform = 'translateY(-10px) scale(0.98)';
+      setTimeout(() => {
+        banner.style.display = 'none';
+        banner.style.opacity = '1';
+        banner.style.transform = 'none';
+      }, 300);
+    }
+  },
+
+  checkDailyEggInAppAlert() {
+    const banner = document.getElementById('dailyEggAlertBanner');
+    if (!banner) return;
+    const now = new Date();
+    const todayStr = this.getTodayStr();
+    const isAfter17 = now.getHours() >= 17;
+    const isDismissed = localStorage.getItem('fermegest_egg_banner_dismissed') === todayStr;
+    const alreadyHarvestedToday = (appState.eggHarvests || []).some(h => {
+      if (!h || !h.date) return false;
+      return String(h.date).split('T')[0] === todayStr && (Number(h.count) || 0) > 0;
+    });
+
+    if (isAfter17 && !isDismissed && !alreadyHarvestedToday) {
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
   },
 
   updateDailyEggPreview() {
@@ -1002,6 +1049,7 @@ const app = {
 
     this.saveState();
     this.closeModal('modalDailyEggs');
+    this.dismissDailyEggAlert();
     this.renderEggStock();
     this.renderEggProductionChart();
     this.showToast(this.t('daily_eggs_toast_success', { count: count, total: appState.eggStock }));
@@ -2203,6 +2251,8 @@ const app = {
   // DASHBOARD RENDERING & CALCULATIONS
   // ==========================================
   renderDashboard() {
+    this.checkDailyEggInAppAlert();
+
     // Financial calculations
     const totalRevenue = appState.sales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
     const totalExpenses = appState.expenses.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
@@ -8358,6 +8408,49 @@ const app = {
     previewEl.textContent = windowText;
   },
 
+  handleBatchEggSourceChange() {
+    const src = document.getElementById('batchEggSource')?.value || 'purchased';
+    const lblCost = document.getElementById('lblBatchEggCost');
+    const costInput = document.getElementById('batchEggCost');
+    if (!lblCost) return;
+
+    if (src === 'purchased') {
+      lblCost.textContent = this.t('lbl_egg_cost_total') || 'Coût d\'achat total des œufs (DT)';
+      if (costInput) costInput.placeholder = 'ex: 120.000 DT';
+    } else {
+      lblCost.textContent = this.t('lbl_farm_egg_val') || 'Valeur / Coût des œufs de la ferme (DT)';
+      if (costInput && (!costInput.value || Number(costInput.value) === 0)) {
+        const count = parseInt(document.getElementById('batchEggsCount')?.value, 10) || 0;
+        if (count > 0) costInput.value = (count * 0.350).toFixed(3);
+      }
+    }
+  },
+
+  handleBatchEggsCountChange() {
+    const src = document.getElementById('batchEggSource')?.value;
+    const count = parseInt(document.getElementById('batchEggsCount')?.value, 10) || 0;
+    const costInput = document.getElementById('batchEggCost');
+    if (src === 'farm' && costInput && (!costInput.value || Number(costInput.value) === 0)) {
+      costInput.value = (count * 0.350).toFixed(3);
+    }
+  },
+
+  handleIncubationMethodChange() {
+    const method = document.getElementById('batchMethod')?.value || 'machine';
+    const elecInput = document.getElementById('batchElectricityCost');
+    if (method === 'poule') {
+      if (elecInput) {
+        elecInput.value = '0';
+        elecInput.disabled = true;
+      }
+    } else {
+      if (elecInput) {
+        elecInput.disabled = false;
+        if (!elecInput.value) elecInput.placeholder = 'ex: 15.000 DT';
+      }
+    }
+  },
+
   handleSaveIncubationBatch(e) {
     e.preventDefault();
     const method = document.getElementById('batchMethod')?.value || 'machine';
@@ -8368,6 +8461,9 @@ const app = {
     const nameInput = document.getElementById('batchName')?.value.trim();
     const eggsCount = parseInt(document.getElementById('batchEggsCount')?.value, 10);
     const startDate = document.getElementById('batchStartDate')?.value;
+    const eggSource = document.getElementById('batchEggSource')?.value || 'purchased';
+    const eggCost = parseFloat(document.getElementById('batchEggCost')?.value) || 0;
+    const electricityCost = method === 'poule' ? 0 : (parseFloat(document.getElementById('batchElectricityCost')?.value) || 0);
     const temp = 37.7;
     const humidity = 48;
     const notes = document.getElementById('batchNotes')?.value.trim() || '';
@@ -8378,9 +8474,7 @@ const app = {
       return;
     }
 
-    // Race toujours optionnelle : '-' par défaut si non renseignée
     const breed = breedInput || '-';
-    // Nom de couvée optionnel : auto-généré si vide
     const autoBatchNum = (appState.incubatorBatches?.length || 0) + 1;
     const name = nameInput || `Couvée #${autoBatchNum}`;
 
@@ -8390,12 +8484,15 @@ const app = {
 
     const newBatch = {
       id: 'batch-' + Date.now().toString(36),
-      method, // 'poule' ou 'machine'
+      method,
       eggSpecies,
       speciesDurationDays: durationDays,
       breed,
       name,
       eggsCount,
+      eggSource,
+      eggCost,
+      electricityCost,
       startDate,
       hatchDate: hatch.toISOString().split('T')[0],
       temp: method === 'poule' ? 38.0 : temp,
@@ -8404,17 +8501,26 @@ const app = {
       status: 'incubating'
     };
 
-    appState.incubatorBatches.unshift(newBatch);
-
-    // Déduction automatique du stock d'œufs de la ferme si disponible
-    if (appState.eggStock && appState.eggStock > 0) {
-      const deducted = Math.min(appState.eggStock, eggsCount);
-      appState.eggStock = Math.max(0, appState.eggStock - deducted);
+    // Déduire du stock uniquement si ce sont les œufs de la ferme
+    if (eggSource === 'farm') {
+      const currentStock = Number(appState.eggStock) || 0;
+      appState.eggStock = Math.max(0, currentStock - eggsCount);
+    } else if (eggSource === 'purchased' && eggCost > 0) {
+      // Enregistrer automatiquement la dépense d'achat d'œufs
+      appState.expenses = appState.expenses || [];
+      appState.expenses.unshift({
+        id: 'exp-oac-' + Date.now().toString(36),
+        title: `Achat œufs fécondés (${eggsCount} œufs - ${name})`,
+        category: 'autre',
+        total: eggCost,
+        date: startDate,
+        notes: `Achat d'œufs à couver pour incubation ${name}`
+      });
     }
 
+    appState.incubatorBatches.unshift(newBatch);
     this.saveState();
 
-    // Planifier la notification mobile native pour l'éclosion
     if (window.MobileBridge) {
       window.MobileBridge.scheduleIncubatorNotification({
         id: newBatch.id + '-hatch',
@@ -8440,18 +8546,117 @@ const app = {
     document.getElementById('hatchPromptBatchTitle').textContent = `${this.t('hatch_alert_title')} : ${batch.name}${breedDisplay}`;
     const methodTxt = batch.method === 'poule' ? this.t('opt_method_hen') : this.t('opt_method_machine');
     document.getElementById('hatchPromptBatchDesc').textContent = `${this.t('lbl_eggs_count')}: ${batch.eggsCount} (${methodTxt}).`;
-    
+
+    // Pré-remplir les coûts réels depuis la couvée
+    const eggCostInput = document.getElementById('hatchEggCostActual');
+    if (eggCostInput) {
+      eggCostInput.value = (Number(batch.eggCost) || 0).toFixed(3);
+    }
+    const elecCostInput = document.getElementById('hatchElectricityCostActual');
+    if (elecCostInput) {
+      elecCostInput.value = (Number(batch.electricityCost) || 0).toFixed(3);
+    }
+
     // Proposer une estimation par défaut (80% des œufs)
-    document.getElementById('hatchLiveCount').value = Math.max(1, Math.round(batch.eggsCount * 0.8));
+    const liveInput = document.getElementById('hatchLiveCount');
+    if (liveInput) {
+      liveInput.value = Math.max(1, Math.round(batch.eggsCount * 0.8));
+    }
+
+    // Réinitialiser le sélecteur de destination
+    const targetSelect = document.getElementById('hatchTargetFlock');
+    if (targetSelect) targetSelect.value = 'new';
+    const existingGroup = document.getElementById('hatchExistingLotGroup');
+    if (existingGroup) existingGroup.style.display = 'none';
+
+    // Remplir la liste des lots existants
+    const existingSelect = document.getElementById('hatchExistingLotSelect');
+    if (existingSelect) {
+      existingSelect.innerHTML = '';
+      const lots = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
+      lots.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = `${l.name || l.id} (${l.currentQuantity} têtes - ${l.species || ''})`;
+        existingSelect.appendChild(opt);
+      });
+    }
+
+    this.updateHatchCalculationsPreview();
     this.openModal('modalHatchPrompt');
   },
 
-  // Valider la sortie de l'œuf : Ajoute AUTOMATIQUEMENT au cheptel et aux poulets !
+  handleHatchTargetFlockChange() {
+    const val = document.getElementById('hatchTargetFlock')?.value;
+    const group = document.getElementById('hatchExistingLotGroup');
+    if (group) {
+      group.style.display = val === 'existing' ? 'block' : 'none';
+    }
+  },
+
+  updateHatchCalculationsPreview() {
+    const batchId = document.getElementById('hatchPromptBatchId')?.value;
+    const batch = appState.incubatorBatches.find(b => b.id === batchId);
+    const card = document.getElementById('hatchSummaryCard');
+    if (!card) return;
+
+    const totalEggs = batch ? (Number(batch.eggsCount) || 1) : 1;
+    const liveCount = parseInt(document.getElementById('hatchLiveCount')?.value, 10) || 0;
+    const eggCost = parseFloat(document.getElementById('hatchEggCostActual')?.value) || 0;
+    const elecCost = parseFloat(document.getElementById('hatchElectricityCostActual')?.value) || 0;
+    const totalCost = eggCost + elecCost;
+
+    const hatchRate = Math.min(100, Math.round((liveCount / totalEggs) * 100));
+    const losses = Math.max(0, totalEggs - liveCount);
+    const costPerChick = liveCount > 0 ? (totalCost / liveCount) : 0;
+
+    const rateBadgeColor = hatchRate >= 70 ? 'var(--accent-emerald, #10b981)' : (hatchRate >= 50 ? '#f59e0b' : '#ef4444');
+
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.4rem;">
+        <span style="font-weight: 800; font-size: 0.88rem; color: var(--text-main);" data-i18n="lbl_hatch_calc_summary">
+          ${this.t('lbl_hatch_calc_summary') || 'Bilan Financier & Zootechnique'}
+        </span>
+        <span class="badge-pill" style="background: ${rateBadgeColor}; color: #ffffff; font-weight: 800; font-size: 0.76rem; padding: 0.15rem 0.55rem;">
+          ${hatchRate}% ${this.t('hatch_kpi_rate') || 'Taux d\'éclosion'}
+        </span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.65rem;">
+        <div style="background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+          <small class="text-muted" style="font-size: 0.72rem;" data-i18n="hatch_kpi_losses">${this.t('hatch_kpi_losses') || 'Pertes (non éclos)'}</small>
+          <div style="font-weight: 800; color: #f87171; font-size: 1.05rem;">
+            ${losses} <small style="font-size: 0.75rem; font-weight: normal;">œufs</small>
+          </div>
+        </div>
+        <div style="background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+          <small class="text-muted" style="font-size: 0.72rem;">Coût Total Couvée</small>
+          <div style="font-weight: 800; color: #38bdf8; font-size: 1.05rem;">
+            ${this.formatMoney(totalCost)}
+          </div>
+        </div>
+        <div style="background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1.5px solid var(--accent-emerald);">
+          <small class="text-muted" style="font-size: 0.72rem; font-weight: 700; color: var(--accent-emerald);" data-i18n="hatch_kpi_cost_per_chick">${this.t('hatch_kpi_cost_per_chick') || 'Coût de revient / poussin'}</small>
+          <div style="font-weight: 900; color: var(--accent-emerald); font-size: 1.15rem;">
+            ${this.formatMoney(costPerChick)} <small style="font-size: 0.72rem; font-weight: 600;">/ tête</small>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.35; background: rgba(0,0,0,0.15); padding: 0.4rem 0.6rem; border-radius: var(--radius-xs);" data-i18n="hatch_cost_absorption_note">
+        ${this.t('hatch_cost_absorption_note')}
+      </div>
+    `;
+  },
+
   handleConfirmHatch(e) {
     e.preventDefault();
     const batchId = document.getElementById('hatchPromptBatchId').value;
     const liveCount = parseInt(document.getElementById('hatchLiveCount').value, 10);
     const choice = document.getElementById('hatchTargetFlock').value;
+    const eggCost = parseFloat(document.getElementById('hatchEggCostActual')?.value) || 0;
+    const elecCost = parseFloat(document.getElementById('hatchElectricityCostActual')?.value) || 0;
+    const totalCost = eggCost + elecCost;
 
     const batch = appState.incubatorBatches.find(b => b.id === batchId);
     if (!batch) return;
@@ -8462,20 +8667,41 @@ const app = {
       return;
     }
 
+    const costPerChick = liveCount > 0 ? Number((totalCost / liveCount).toFixed(3)) : 0;
+    const hatchDate = batch.hatchDate || this.getTodayStr();
+
+    // Enregistrer la dépense d'électricité si renseignée (>0)
+    if (elecCost > 0) {
+      appState.expenses = appState.expenses || [];
+      appState.expenses.unshift({
+        id: 'exp-elec-' + Date.now().toString(36),
+        title: `Électricité couveuse (${batch.name})`,
+        category: 'autre',
+        total: elecCost,
+        date: hatchDate,
+        notes: `Électricité couveuse pour incubation de ${batch.eggsCount} œufs`
+      });
+    }
+
     if (liveCount > 0) {
-      if (choice === 'first_chick') {
-        // Chercher une bande de poussins ou poulets existante
-        const existingFlock = appState.animals.find(a => a.species === 'poussin' || a.species === 'poulet');
-        if (existingFlock) {
-          existingFlock.currentQuantity += liveCount;
-          existingFlock.initialQuantity += liveCount;
-          const hatchDate = batch.hatchDate || this.getTodayStr();
-          existingFlock.notes = (existingFlock.notes || '') + ` [Ajout +${liveCount} poussins nés le ${this.formatDateFR(hatchDate)} de ${batch.name}]`;
+      if (choice === 'existing') {
+        const targetLotId = document.getElementById('hatchExistingLotSelect')?.value;
+        const targetLot = (appState.animals || []).find(a => a.id === targetLotId);
+        if (targetLot) {
+          const prevQty = Number(targetLot.currentQuantity) || 0;
+          const prevCost = Number(targetLot.costPerHead) || 0;
+          const newQty = prevQty + liveCount;
+          const weightedCost = newQty > 0 ? ((prevQty * prevCost) + (liveCount * costPerChick)) / newQty : costPerChick;
+
+          targetLot.currentQuantity = newQty;
+          targetLot.initialQuantity = (Number(targetLot.initialQuantity) || prevQty) + liveCount;
+          targetLot.costPerHead = Number(weightedCost.toFixed(3));
+          targetLot.notes = (targetLot.notes || '') + ` [Ajout +${liveCount} poussins éclos de ${batch.name} (coût éclosion: ${this.formatMoney(costPerChick)}/tête)]`;
         } else {
-          this.createNewFlockFromHatch(batch, liveCount);
+          this.createNewFlockFromHatch(batch, liveCount, costPerChick, totalCost);
         }
       } else {
-        this.createNewFlockFromHatch(batch, liveCount);
+        this.createNewFlockFromHatch(batch, liveCount, costPerChick, totalCost);
       }
     }
 
@@ -8485,25 +8711,28 @@ const app = {
     this.saveState();
     this.closeModal('modalHatchPrompt');
     this.renderAll();
-    
+
     this.showToast(this.t('toast_hatch_confirmed', { n: liveCount }));
   },
 
-  createNewFlockFromHatch(batch, liveCount) {
+  createNewFlockFromHatch(batch, liveCount, costPerChick, totalCost) {
     const methodTag = batch.method === 'poule' ? 'Poule' : 'Machine';
     const hatchDate = batch.hatchDate || this.getTodayStr();
+    const finalCost = costPerChick !== undefined ? costPerChick : (batch.method === 'poule' ? 0.20 : 0.40);
+    const hatchRate = batch.eggsCount > 0 ? Math.round((liveCount / batch.eggsCount) * 100) : 0;
+
     const newFlock = {
       id: 'lot-chick-' + Date.now().toString(36),
-      species: batch.eggSpecies === 'poule' ? 'poussin' : (batch.eggSpecies === 'pintade' ? 'pintade' : ((batch.eggSpecies === 'canard' || batch.eggSpecies === 'canard_barbarie') ? 'canard' : 'autre')),
+      species: batch.eggSpecies === 'poule' ? 'poussin' : (batch.eggSpecies === 'pintade' ? 'pintade' : ((batch.eggSpecies === 'canard' || batch.eggSpecies === 'canard_barbarie') ? 'canard' : (batch.eggSpecies === 'caille' ? 'caille' : 'autre'))),
       breed: batch.breed || 'Beldi',
       name: `Génération Éclose (${batch.name} - ${methodTag})`,
       initialQuantity: liveCount,
       currentQuantity: liveCount,
       mortality: 0,
       birthDate: hatchDate,
-      costPerHead: batch.method === 'poule' ? 0.20 : 0.40,
+      costPerHead: Number(finalCost.toFixed(3)),
       stage: 'Démarrage',
-      notes: `Éclos le ${this.formatDateFR(hatchDate)} (${liveCount} poussins sortis de ${batch.eggsCount} œufs mis à couver via ${methodTag}).`
+      notes: `Éclos le ${this.formatDateFR(hatchDate)} : ${liveCount} poussins sur ${batch.eggsCount} œufs (Taux d'éclosion: ${hatchRate}%). Coût total engagé: ${this.formatMoney(totalCost || 0)} (${this.formatMoney(finalCost)}/poussin absorbant électricité et pertes).`
     };
     appState.animals.unshift(newFlock);
   },

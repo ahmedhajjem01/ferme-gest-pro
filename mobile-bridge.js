@@ -205,14 +205,14 @@ const MobileBridge = {
     const l = ['fr', 'ar', 'en'].includes(lang) ? lang : 'fr';
     if (typeof TRANSLATIONS !== 'undefined' && TRANSLATIONS[l]) {
       return {
-        title: TRANSLATIONS[l].notif_daily_eggs_title || "🥚 FermeGest Pro - Récolte du Jour",
-        body: TRANSLATIONS[l].notif_daily_eggs_body || "Combien d'œufs avez-vous collecté aujourd'hui ?"
+        title: TRANSLATIONS[l].notif_daily_eggs_title || "🥚🌾 FermeGest Pro - Récolte & Alimentation",
+        body: TRANSLATIONS[l].notif_daily_eggs_body || "17h00 : Avez-vous nourri les animaux et récolté les œufs du jour ?"
       };
     }
     const fallback = {
-      fr: { title: "🥚 FermeGest Pro - Récolte du Jour", body: "Combien d'œufs avez-vous collecté aujourd'hui ?" },
-      ar: { title: "🥚 فيرم-جست برو - جمع البيض اليومي", body: "كم بيضة قمت بجمعها اليوم؟" },
-      en: { title: "🥚 FermeGest Pro - Daily Egg Collection", body: "How many eggs did you collect today?" }
+      fr: { title: "🥚🌾 FermeGest Pro - Récolte & Alimentation", body: "17h00 : Avez-vous nourri les animaux et récolté les œufs du jour ?" },
+      ar: { title: "🥚🌾 فيرم-جست برو - جمع البيض والتغذية", body: "17:00 : هل قمت بتغذية الحيوانات وجمع بيض اليوم؟" },
+      en: { title: "🥚🌾 FermeGest Pro - Harvest & Feeding", body: "5:00 PM: Did you feed the animals and collect today's eggs?" }
     };
     return fallback[l] || fallback.fr;
   },
@@ -227,7 +227,55 @@ const MobileBridge = {
         const LocalNotifications = this.plugins.LocalNotifications;
         await this.requestNotificationPermissions();
 
-        // Cancel previous ID 1700 to update language
+        // High importance notification channel (Android 8+ heads-up popup like a message)
+        if (LocalNotifications.createChannel) {
+          try {
+            await LocalNotifications.createChannel({
+              id: 'fermegest_daily_alerts',
+              name: 'Rappels Quotidiens (17h)',
+              description: 'Alertes prioritaires pour la récolte des œufs et alimentation des animaux',
+              importance: 5, // IMPORTANCE_HIGH (pops up banner on screen with sound)
+              visibility: 1, // VISIBILITY_PUBLIC (shown on lock screen)
+              sound: 'beep.wav',
+              vibration: true,
+              lights: true,
+              lightColor: '#10b981'
+            });
+          } catch (channelErr) {
+            console.warn('[MobileBridge] Channel creation error:', channelErr);
+          }
+        }
+
+        // Register action buttons (Dismiss / Enter Harvest)
+        if (LocalNotifications.registerActionTypes) {
+          try {
+            const dismissTitle = currentLang === 'ar' ? 'حذف الإشعار' : (currentLang === 'en' ? 'Dismiss' : 'Supprimer');
+            const enterTitle = currentLang === 'ar' ? 'تسجيل البيض 🥚' : (currentLang === 'en' ? 'Record Harvest 🥚' : 'Saisir récolte 🥚');
+            await LocalNotifications.registerActionTypes({
+              types: [
+                {
+                  id: 'EGG_COLLECTION_ACTIONS',
+                  actions: [
+                    {
+                      id: 'dismiss_alert',
+                      title: dismissTitle,
+                      destructive: true
+                    },
+                    {
+                      id: 'enter_harvest',
+                      title: enterTitle,
+                      foreground: true
+                    }
+                  ]
+                }
+              ]
+            });
+          } catch (actionErr) {
+            console.warn('[MobileBridge] registerActionTypes error:', actionErr);
+          }
+        }
+
+        // Cancel previous ID 1700 to update language / text
         try {
           await LocalNotifications.cancel({ notifications: [{ id: 1700 }] });
         } catch (e) {}
@@ -239,6 +287,7 @@ const MobileBridge = {
               id: 1700,
               title: title,
               body: body,
+              channelId: 'fermegest_daily_alerts',
               schedule: {
                 on: {
                   hour: 17,
@@ -248,23 +297,30 @@ const MobileBridge = {
               },
               sound: 'beep.wav',
               smallIcon: 'ic_stat_icon_config_sample',
-              extra: { type: 'daily_egg_collection' }
+              extra: { type: 'daily_egg_collection' },
+              actionTypeId: 'EGG_COLLECTION_ACTIONS'
             }
           ]
         });
 
-        // Add action listener when tapped
+        // Add action listener when tapped or button clicked
         if (!this._notifListenerAttached && LocalNotifications.addListener) {
           this._notifListenerAttached = true;
           LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-            if (action && action.notification && action.notification.extra && action.notification.extra.type === 'daily_egg_collection') {
+            const actionId = action && action.actionId;
+            if (actionId === 'dismiss_alert') {
+              if (window.app && app.dismissDailyEggAlert) {
+                app.dismissDailyEggAlert();
+              }
+            } else {
+              // Clicked notification body or 'enter_harvest' action
               if (window.app && app.openDailyEggModal) {
                 app.openDailyEggModal();
               }
             }
           });
         }
-        console.log(`[MobileBridge] Native 17h egg notification active in (${currentLang})`);
+        console.log(`[MobileBridge] Native 17h egg & feed notification active in (${currentLang}) with high-priority channel`);
       } catch (err) {
         console.warn('[MobileBridge] scheduleDailyEggNotification native error:', err);
       }
@@ -285,6 +341,9 @@ const MobileBridge = {
     this._dailyEggInterval = setInterval(() => {
       const strings = this.getDailyEggStrings(typeof appState !== 'undefined' ? appState.lang : lang);
       this.checkAndTriggerDailyEggNotification(strings.title, strings.body);
+      if (window.app && app.checkDailyEggInAppAlert) {
+        app.checkDailyEggInAppAlert();
+      }
     }, 60000);
   },
 
@@ -298,9 +357,18 @@ const MobileBridge = {
       localStorage.setItem('fermegest_last_egg_notif_date', todayStr);
       this.showBrowserNotification(title, body);
     }
+
+    // Always update in-app alert banner
+    if (window.app && app.checkDailyEggInAppAlert) {
+      app.checkDailyEggInAppAlert();
+    }
   },
 
   showBrowserNotification(title, body) {
+    const lang = (typeof appState !== 'undefined' && appState.lang) || 'fr';
+    const dismissTitle = lang === 'ar' ? 'حذف الإشعار' : (lang === 'en' ? 'Dismiss' : 'Supprimer');
+    const enterTitle = lang === 'ar' ? 'تسجيل البيض 🥚' : (lang === 'en' ? 'Record Harvest 🥚' : 'Saisir récolte 🥚');
+
     // 1. Service Worker Notification (works in background & mobile Chrome)
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then((reg) => {
@@ -310,16 +378,20 @@ const MobileBridge = {
           badge: './icon-192.png',
           vibrate: [200, 100, 200],
           tag: 'daily-egg-collection',
-          data: { type: 'daily_egg_collection' }
+          data: { type: 'daily_egg_collection' },
+          actions: [
+            { action: 'dismiss', title: dismissTitle },
+            { action: 'record', title: enterTitle }
+          ]
         });
       }).catch(() => this.fallbackWebNotification(title, body));
     } else {
       this.fallbackWebNotification(title, body);
     }
 
-    // 2. In-App Toast & Interactive Banner
-    if (window.app && app.showToast) {
-      app.showToast(`🥚 ${body}`, 9000);
+    // 2. Refresh In-App interactive alert banner
+    if (window.app && app.checkDailyEggInAppAlert) {
+      app.checkDailyEggInAppAlert();
     }
   },
 
