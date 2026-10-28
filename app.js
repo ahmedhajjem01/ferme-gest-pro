@@ -1710,12 +1710,17 @@ const app = {
 
   onExpenseLotSelectChange(val) {
     const multiBlock = document.getElementById('expenseAddMultipleLotsBlock');
-    if (!multiBlock) return;
-    if (val === '__multiple__') {
-      multiBlock.style.display = 'block';
-      this.renderAddExpenseLotsList();
-    } else {
-      multiBlock.style.display = 'none';
+    if (multiBlock) {
+      if (val === '__multiple__') {
+        multiBlock.style.display = 'block';
+        this.renderAddExpenseLotsList();
+      } else {
+        multiBlock.style.display = 'none';
+      }
+    }
+    const cat = document.getElementById('expenseCategory')?.value;
+    if (cat === 'electricite_couveuse') {
+      this.updateIncubatorElecLiveCalc();
     }
   },
 
@@ -2540,6 +2545,7 @@ const app = {
         nourriture: this.t('exp_cat_food') || 'Aliments',
         veterinaire: this.t('exp_cat_vet') || 'Vétérinaire',
         electricite: this.t('exp_cat_elec') || 'Électricité',
+        electricite_couveuse: this.t('exp_cat_elec_incubator') || '⚡ Élec. Couveuse',
         eau: this.t('exp_cat_water') || 'Eau',
         salaire: this.t('exp_cat_sal') || 'Salaires',
         autre: this.t('exp_cat_other') || 'Autres'
@@ -2549,6 +2555,7 @@ const app = {
         nourriture: '#f59e0b',
         veterinaire: '#8b5cf6',
         electricite: '#06b6d4',
+        electricite_couveuse: '#f59e0b',
         eau: '#3b82f6',
         salaire: '#10b981',
         autre: '#64748b'
@@ -6576,7 +6583,7 @@ const app = {
       const t = Number(e.total) || 0;
       if (e.category === 'nourriture') feedTot += t;
       else if (e.category === 'veterinaire') vetTot += t;
-      else if (e.category === 'electricite' || e.category === 'eau') utilTot += t;
+      else if (e.category === 'electricite' || e.category === 'electricite_couveuse' || e.category === 'eau') utilTot += t;
       else if (e.category === 'salaire') salTot += t;
     });
 
@@ -6660,6 +6667,8 @@ const app = {
         } else {
           feedStockTag = `<div style="margin-top: 3px;"><button type="button" class="btn btn-xs btn-outline" style="color: var(--accent-emerald); border-color: rgba(16, 185, 129, 0.4); font-size: 0.68rem; padding: 1px 6px;" onclick="app.addExistingExpenseToFeedStock('${exp.id}')" title="Ajouter cette quantité dans le stock d'aliment en réserve">📦 ${this.t('btn_add_to_feed_stock') || 'Mettre en stock'}</button></div>`;
         }
+      } else if (exp.category === 'electricite_couveuse' && exp.addedCostPerHead) {
+        feedStockTag = `<div style="margin-top: 3px;"><span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">⚡ +${this.formatMoney(exp.addedCostPerHead)}/poussin au lot</span></div>`;
       }
 
       tr.innerHTML = `
@@ -6685,11 +6694,16 @@ const app = {
   },
 
   calcExpenseTotal() {
-    const q = parseFloat(document.getElementById('expenseQuantity').value) || 0;
-    const p = parseFloat(document.getElementById('expenseUnitPrice').value) || 0;
+    const q = parseFloat(document.getElementById('expenseQuantity')?.value) || 0;
+    const p = parseFloat(document.getElementById('expenseUnitPrice')?.value) || 0;
     const totalEl = document.getElementById('expenseTotalCalculated');
     const decimals = appState.currency === 'TND' ? 3 : 2;
     if (totalEl) totalEl.value = (q * p).toFixed(decimals);
+
+    const cat = document.getElementById('expenseCategory')?.value;
+    if (cat === 'electricite_couveuse') {
+      this.updateIncubatorElecLiveCalc();
+    }
   },
 
   handleExpenseCatChange() {
@@ -6704,25 +6718,107 @@ const app = {
     const expQty = document.getElementById('expenseQuantity');
     const expPrice = document.getElementById('expenseUnitPrice');
     const feedSuggRow = document.getElementById('expenseFeedSuggestionsRow');
+    const elecBox = document.getElementById('expenseIncubatorElecBox');
 
     if (cat === 'nourriture') {
       if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'block';
       if (standardRow) standardRow.style.display = 'none';
       if (feedSuggRow) feedSuggRow.style.display = 'block';
-      if (expQty) expQty.removeAttribute('required');
+      if (elecBox) elecBox.style.display = 'none';
+      if (expQty) {
+        expQty.removeAttribute('required');
+        expQty.removeAttribute('readonly');
+      }
       if (expPrice) expPrice.removeAttribute('required');
 
       this.populateExpenseFeedTypes();
       this.renderFeedExpenseSuggestions();
       this.setFeedPurchaseMode(appState.currentFeedPurchaseMode || 'sac');
+    } else if (cat === 'electricite_couveuse') {
+      if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'none';
+      if (standardRow) standardRow.style.display = 'flex';
+      if (feedSuggRow) feedSuggRow.style.display = 'none';
+      if (elecBox) elecBox.style.display = 'block';
+
+      if (expQty) {
+        expQty.value = '1';
+        expQty.setAttribute('readonly', 'readonly');
+        expQty.setAttribute('required', 'required');
+      }
+      if (expPrice) expPrice.setAttribute('required', 'required');
+
+      if (title && (!title.value || title.value === 'Dépense générale' || title.value === 'مصروف عام')) {
+        const isAr = appState.lang === 'ar';
+        const isEn = appState.lang === 'en';
+        title.value = isAr ? 'فاتورة كهرباء الفقاسة' : (isEn ? 'Incubator electricity bill' : 'Facture électricité couveuse');
+      }
+      this.calcExpenseTotal();
+      this.updateIncubatorElecLiveCalc();
     } else {
       if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'none';
       if (standardRow) standardRow.style.display = 'flex';
       if (feedSuggRow) feedSuggRow.style.display = 'none';
-      if (expQty) expQty.setAttribute('required', 'required');
+      if (elecBox) elecBox.style.display = 'none';
+      if (expQty) {
+        expQty.removeAttribute('readonly');
+        expQty.setAttribute('required', 'required');
+      }
       if (expPrice) expPrice.setAttribute('required', 'required');
       this.calcExpenseTotal();
     }
+  },
+
+  updateIncubatorElecLiveCalc() {
+    const box = document.getElementById('expenseIncubatorElecLiveCalc');
+    if (!box) return;
+
+    const total = parseFloat(document.getElementById('expenseTotalCalculated')?.value) || 
+                  (parseFloat(document.getElementById('expenseUnitPrice')?.value) || 0);
+    const selectedLotId = document.getElementById('expenseAnimalLot')?.value;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    if (!selectedLotId || selectedLotId === 'general' || selectedLotId === '__multiple__') {
+      box.innerHTML = `
+        <div style="color: #f59e0b; display: flex; align-items: center; gap: 0.45rem;">
+          <span style="font-size: 1.1rem;">⚠️</span>
+          <span>${isAr ? 'يرجى اختيار دفعة الفراخ المستفيدة أعلاه لإدراج الكهرباء في تكلفتها.' : (isEn ? 'Please select the specific chick flock above to allocate electricity.' : 'Veuillez sélectionner le lot de poussins bénéficiaire ci-dessus pour lui imputer l\'électricité.')}</span>
+        </div>
+      `;
+      return;
+    }
+
+    const lot = (appState.animals || []).find(a => a.id === selectedLotId);
+    if (!lot) return;
+
+    const initQty = Number(lot.initialQuantity) || Number(lot.currentQuantity) || 1;
+    const curQty = Number(lot.currentQuantity) || 0;
+    const currentCost = Number(lot.costPerHead) || 0;
+    const addPerHead = total > 0 ? (total / initQty) : 0;
+    const newCost = currentCost + addPerHead;
+
+    const chicksWord = isAr ? 'فرخ خرج حياً' : (isEn ? 'hatched chicks' : 'poussins éclos');
+    const remWord = isAr ? 'المتبقي حالياً' : (isEn ? 'current' : 'actuels');
+
+    box.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-subtle); padding-bottom: 0.35rem;">
+          <span style="font-weight: 800; color: var(--text-main);">🐣 ${lot.name || 'Lot'}</span>
+          <span class="text-muted" style="font-size: 0.76rem;">${initQty} ${chicksWord} (${curQty} ${remWord})</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 2px;">
+          <div>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">${isAr ? 'التكلفة المضافة للفرخ:' : (isEn ? 'Added cost / chick:' : 'Coût ajouté / poussin :')}</span>
+            <strong style="color: #f59e0b; margin-left: 4px; font-size: 0.95rem;">+${this.formatMoney(addPerHead)}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">${isAr ? 'التكلفة الجديدة للرأس:' : (isEn ? 'New cost / head:' : 'Nouveau coût / tête :')}</span>
+            <strong style="color: var(--accent-emerald, #10b981); margin-left: 4px; font-size: 1rem;">${this.formatMoney(newCost)}</strong>
+          </div>
+        </div>
+      </div>
+    `;
   },
 
   setFeedPurchaseMode(mode) {
@@ -7090,6 +7186,13 @@ const app = {
         }
       }
 
+      if (category === 'electricite_couveuse') {
+        if (!linkedLotId || linkedLotId === 'general' || linkedLotId === '__multiple__') {
+          this.showToast(isAr ? 'يرجى اختيار دفعة الفراخ التي ستتحمل فاتورة الكهرباء.' : (isEn ? 'Please select the specific chick flock that receives this electricity bill.' : 'Veuillez sélectionner le lot de poussins qui reçoit cette facture d\'électricité.'), 'warning');
+          return;
+        }
+      }
+
       const newExp = {
         id: 'exp-' + Date.now().toString(36),
         date,
@@ -7104,6 +7207,25 @@ const app = {
         feedTypeId
       };
 
+      if (category === 'electricite_couveuse') {
+        const targetLot = (appState.animals || []).find(a => a.id === linkedLotId);
+        if (targetLot) {
+          const initQty = Number(targetLot.initialQuantity) || Number(targetLot.currentQuantity) || 1;
+          const addCostPerChick = Number((total / initQty).toFixed(3));
+          const prevCost = Number(targetLot.costPerHead) || 0;
+          const newCost = Number((prevCost + addCostPerChick).toFixed(3));
+
+          targetLot.costPerHead = newCost;
+          const noteEntry = ` [⚡ Facture électricité couveuse du ${this.formatDateFR(date)} : +${this.formatMoney(total)} (+${this.formatMoney(addCostPerChick)}/poussin sur ${initQty} poussins sortis)]`;
+          targetLot.notes = (targetLot.notes || '') + noteEntry;
+
+          newExp.incubatorLotId = targetLot.id;
+          newExp.incubatorLotName = targetLot.name || targetLot.id;
+          newExp.addedCostPerHead = addCostPerChick;
+          newExp.incubatorInitQty = initQty;
+        }
+      }
+
       appState.expenses.unshift(newExp);
       this.saveState();
 
@@ -7116,7 +7238,14 @@ const app = {
       this.renderFeedStockAdjustModal();
 
       let toastMsg = this.t('toast_expense_saved', { amount: this.formatMoney(total) });
-      if (feedStockAddedKg > 0) {
+      if (category === 'electricite_couveuse' && newExp.addedCostPerHead && newExp.incubatorLotName) {
+        const targetLot = (appState.animals || []).find(a => a.id === linkedLotId);
+        toastMsg = this.t('toast_elec_incubator_applied', {
+          add: this.formatMoney(newExp.addedCostPerHead),
+          lot: newExp.incubatorLotName,
+          cost: this.formatMoney(targetLot ? targetLot.costPerHead : 0)
+        });
+      } else if (feedStockAddedKg > 0) {
         toastMsg += isAr 
           ? ` (+${feedStockAddedKg.toFixed(1)} كغ في مخزون الأعلاف)` 
           : ` (+${feedStockAddedKg.toFixed(1)} kg ajoutés au stock)`;
@@ -7127,7 +7256,10 @@ const app = {
       if (form) form.reset();
       const multiBlock = document.getElementById('expenseAddMultipleLotsBlock');
       if (multiBlock) multiBlock.style.display = 'none';
+      const elecBox = document.getElementById('expenseIncubatorElecBox');
+      if (elecBox) elecBox.style.display = 'none';
       const expQty = document.getElementById('expenseQuantity');
+      if (expQty) { expQty.value = ''; expQty.placeholder = ''; expQty.removeAttribute('readonly'); }
       const expPrice = document.getElementById('expenseUnitPrice');
       if (expQty) { expQty.value = ''; expQty.placeholder = ''; }
       if (expPrice) { expPrice.value = ''; expPrice.placeholder = ''; }
@@ -7152,6 +7284,13 @@ const app = {
       confirmText: isAr ? 'حذف' : 'Supprimer',
       onConfirm: () => {
         const exp = (appState.expenses || []).find(e => e.id === expId);
+        if (exp && exp.category === 'electricite_couveuse' && exp.incubatorLotId && exp.addedCostPerHead) {
+          const lot = (appState.animals || []).find(a => a.id === exp.incubatorLotId);
+          if (lot) {
+            lot.costPerHead = Math.max(0, Number(((Number(lot.costPerHead) || 0) - Number(exp.addedCostPerHead)).toFixed(3)));
+            lot.notes = (lot.notes || '') + ` [⚡ Annulation facture électricité couveuse (-${this.formatMoney(exp.addedCostPerHead)}/tête)]`;
+          }
+        }
         if (exp && exp.feedStockAddedKg && exp.feedTypeId) {
           const ft = (appState.feedTypes || []).find(f => f.id === exp.feedTypeId);
           // Ne jamais déduire automatiquement si l'éleveur a déclaré manuellement son inventaire physique en réserve
@@ -8750,7 +8889,7 @@ const app = {
       appState.expenses.unshift({
         id: 'exp-elec-' + Date.now().toString(36),
         title: `Électricité couveuse (${batch.name})`,
-        category: 'autre',
+        category: 'electricite_couveuse',
         total: elecCost,
         date: hatchDate,
         notes: `Électricité couveuse pour incubation de ${batch.eggsCount} œufs`
@@ -8888,6 +9027,8 @@ const app = {
 
     if (lang === 'ar') {
       let t = title;
+      t = t.replace(/Facture [eé]lectricit[eé] couveuse/gi, 'فاتورة كهرباء الفقاسة');
+      t = t.replace(/[EÉ]lectricit[eé] couveuse/gi, 'كهرباء الفقاسة');
       t = t.replace(/Achat aliment\s*:\s*/gi, 'شراء علف : ');
       t = t.replace(/Achat aliment\s*\/\s*Stock r[eé]serve/gi, 'شراء علف / مخزون احتياطي');
       t = t.replace(/Achat aliment/gi, 'شراء علف');
@@ -8900,6 +9041,8 @@ const app = {
 
     if (lang === 'en') {
       let t = title;
+      t = t.replace(/Facture [eé]lectricit[eé] couveuse/gi, 'Incubator electricity bill');
+      t = t.replace(/[EÉ]lectricit[eé] couveuse/gi, 'Incubator electricity');
       t = t.replace(/Achat aliment\s*:\s*/gi, 'Feed Purchase: ');
       t = t.replace(/Achat aliment\s*\/\s*Stock r[eé]serve/gi, 'Feed Purchase / Reserve Stock');
       t = t.replace(/Achat aliment/gi, 'Feed Purchase');
@@ -8908,6 +9051,8 @@ const app = {
     }
 
     let t = title;
+    t = t.replace(/فاتورة كهرباء الفقاسة/gi, 'Facture électricité couveuse');
+    t = t.replace(/كهرباء الفقاسة/gi, 'Électricité couveuse');
     t = t.replace(/شراء علف\s*:\s*/gi, 'Achat aliment : ');
     t = t.replace(/شراء علف\s*\/\s*مخزون احتياطي/gi, 'Achat aliment / Stock réserve');
     t = t.replace(/أكياس علف/gi, 'Sacs d\'alimentation');
@@ -10016,6 +10161,7 @@ const app = {
       case 'nourriture': return `<span class="badge-tag text-warning">${this.t('exp_cat_food')}</span>`;
       case 'veterinaire': return `<span class="badge-tag text-violet">${this.t('exp_cat_vet')}</span>`;
       case 'electricite': return `<span class="badge-tag text-cyan">${this.t('exp_cat_elec')}</span>`;
+      case 'electricite_couveuse': return `<span class="badge-tag" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 700;">⚡ ${this.t('exp_cat_elec_incubator')}</span>`;
       case 'eau': return `<span class="badge-tag text-cyan">${this.t('exp_cat_water')}</span>`;
       case 'salaire': return `<span class="badge-tag text-emerald">${this.t('exp_cat_sal')}</span>`;
       default: return `<span class="badge-tag text-muted">${this.t('exp_cat_other')}</span>`;

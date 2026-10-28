@@ -840,6 +840,7 @@
               <option value="nourriture" data-i18n="exp_cat_food">Nourriture & Aliments</option>
               <option value="veterinaire" data-i18n="exp_cat_vet">Médicaments & Vétérinaire</option>
               <option value="electricite" data-i18n="exp_cat_elec">Électricité</option>
+              <option value="electricite_couveuse" data-i18n="exp_cat_elec_incubator">⚡ Élec. Couveuse</option>
               <option value="eau" data-i18n="exp_cat_water">Eau</option>
               <option value="salaire" data-i18n="exp_cat_sal">Salaires Employés</option>
               <option value="autre" data-i18n="exp_cat_other">Autre / Équipement</option>
@@ -1684,6 +1685,7 @@
                 <option value="nourriture" data-i18n="opt_exp_food">Nourriture & Aliments (Sacs/kg)</option>
                 <option value="veterinaire" data-i18n="opt_exp_vet">Santé, Vaccins & Vétérinaire</option>
                 <option value="electricite" data-i18n="opt_exp_elec">Facture Électricité</option>
+                <option value="electricite_couveuse" data-i18n="opt_exp_elec_incubator">⚡ Électricité Couveuse (Facture après éclosion)</option>
                 <option value="eau" data-i18n="opt_exp_water">Consommation Eau</option>
                 <option value="salaire" data-i18n="opt_exp_sal">Salaire Ouvrier / Employé</option>
                 <option value="autre" data-i18n="opt_exp_other">Autre Charge / Entretien</option>
@@ -1851,6 +1853,20 @@
               </div>
               <div id="expenseAddLotsSummary" style="margin-top: 0.45rem; font-size: 0.74rem; font-weight: 700; color: var(--accent-emerald);">
                 <!-- Live summary -->
+              </div>
+            </div>
+
+            <!-- Interactive Live Allocation Box for Incubator Electricity -->
+            <div id="expenseIncubatorElecBox" style="display: none; margin-top: 0.65rem; background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 0.75rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <span style="font-size: 1.15rem;">⚡</span>
+                <strong style="font-size: 0.88rem; color: #f59e0b;" data-i18n="incubator_elec_box_title">Imputation Facture Électricité Couveuse</strong>
+              </div>
+              <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.5rem;" data-i18n="incubator_elec_box_desc">
+                Ce montant sera automatiquement réparti sur l'effectif initial éclos du lot sélectionné pour mettre à jour son coût de revient.
+              </p>
+              <div id="expenseIncubatorElecLiveCalc" style="background: var(--bg-card); padding: 0.55rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.82rem;">
+                <!-- Dynamically populated by app.updateIncubatorElecLiveCalc() -->
               </div>
             </div>
           </div>
@@ -2076,6 +2092,7 @@
             <div class="form-group flex-1">
               <label for="hatchElectricityCostActual" data-i18n="lbl_hatch_elec_cost">Coût électricité couveuse (DT)</label>
               <input type="number" id="hatchElectricityCostActual" class="input-field" step="0.001" min="0" oninput="app.updateHatchCalculationsPreview()">
+              <small style="display: block; margin-top: 4px; font-size: 0.72rem; color: var(--text-muted); line-height: 1.35;" data-i18n="hatch_elec_later_tip">💡 Facture pas encore reçue ? Laissez 0 DT : vous pourrez l'enregistrer plus tard dans les Dépenses en sélectionnant ce lot.</small>
             </div>
           </div>
 
