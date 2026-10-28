@@ -400,6 +400,26 @@ const SAMPLE_DATA = {
       humidity: 55,
       notes: 'Incubation 35 jours. Brumisation tiède et refroidissement quotidien dès J+14.'
     }
+  ],
+  feedStockKg: 290,
+  feedStockCostPerKg: 1.28,
+  feedTypes: [
+    {
+      id: 'feed-ble',
+      name: 'Blé',
+      stockKg: 150,
+      pricePerKg: 1.100,
+      texture: 'grain',
+      kgPerCan: 0.72
+    },
+    {
+      id: 'feed-bouchon',
+      name: 'Aliment ponte (Bouchon)',
+      stockKg: 140,
+      pricePerKg: 1.480,
+      texture: 'grain',
+      kgPerCan: 0.65
+    }
   ]
 };
 
@@ -2941,11 +2961,18 @@ const app = {
       !(ft.name || '').includes('علف رئيسي')
     );
 
-    // Remove legacy dummy 0kg placeholder feeds if the user hasn't recorded any feed stock or distribution yet
-    const hasDistributions = Array.isArray(appState.feedDistributions) && appState.feedDistributions.length > 0;
-    const hasFoodExpenses = Array.isArray(appState.expenses) && appState.expenses.some(e => e.category === 'nourriture');
-    if (!hasDistributions && !hasFoodExpenses) {
-      list = list.filter(ft => (Number(ft.stockKg) || 0) > 0);
+    // Auto-reconcile stock if global feedStockKg exists but feedTypes have 0 kg
+    const globalStock = Number(appState.feedStockKg) || 0;
+    const currentTotalStock = list.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+    if (globalStock > 0 && currentTotalStock === 0 && list.length > 0) {
+      if (list.length === 1) {
+        list[0].stockKg = globalStock;
+      } else {
+        const bleKg = Math.round(globalStock * 0.52);
+        const bouchonKg = globalStock - bleKg;
+        list[0].stockKg = bleKg;
+        list[1].stockKg = bouchonKg;
+      }
     }
 
     return list;
@@ -3012,18 +3039,6 @@ const app = {
     const ft = (appState.feedTypes || []).find(f => f.id === feedId);
     if (!ft) return;
 
-    // Déterminer les boîtes actuellement sélectionnées pour cet aliment
-    const input = document.getElementById(`distribKg_${feedId}`);
-    const activeBtn = document.querySelector(`.sicam-btn-${feedId}.active-sicam-btn`);
-    let currentCans = activeBtn ? parseFloat(activeBtn.getAttribute('data-cans')) : null;
-    if ((currentCans === null || isNaN(currentCans)) && input) {
-      const currentKg = parseFloat(String(input.value || '').replace(',', '.')) || 0;
-      const oldDensity = this.getFeedKgPerCan(ft);
-      if (currentKg > 0) {
-        currentCans = Math.round((currentKg / oldDensity) * 2) / 2;
-      }
-    }
-
     ft.texture = texture;
     const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id) || 'general';
     ft.kgPerCan = this.getFeedDefaultDensity(family, texture);
@@ -3031,14 +3046,65 @@ const app = {
     ft.updatedAt = Date.now();
     this.saveState();
 
-    this.renderFeedDistributionModal();
-    this.renderFeedStockAdjustModal();
+    const isGrain = texture !== 'moulu';
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'boîte');
+    const kgPerCan = this.getFeedKgPerCan(ft);
 
-    if (currentCans !== null && !isNaN(currentCans) && currentCans > 0) {
-      this.setFeedTypeDistribSicam(feedId, currentCans);
-    } else {
-      this.recalcDistribTotal();
+    // Mettre à jour immédiatement les boutons et l'équivalence dans le modal Distribution
+    const dBtnGrain = document.getElementById(`distribTextureBtnGrain_${feedId}`);
+    const dBtnMoulu = document.getElementById(`distribTextureBtnMoulu_${feedId}`);
+    const dDensity = document.getElementById(`distribDensityBadge_${feedId}`);
+    if (dBtnGrain && dBtnMoulu) {
+      if (isGrain) {
+        dBtnGrain.className = 'btn btn-xs btn-emerald';
+        dBtnGrain.style.fontWeight = '800';
+        dBtnMoulu.className = 'btn btn-xs btn-outline';
+        dBtnMoulu.style.fontWeight = '600';
+      } else {
+        dBtnGrain.className = 'btn btn-xs btn-outline';
+        dBtnGrain.style.fontWeight = '600';
+        dBtnMoulu.className = 'btn btn-xs btn-emerald';
+        dBtnMoulu.style.fontWeight = '800';
+      }
     }
+    if (dDensity) {
+      dDensity.innerHTML = `🥫 1 ${bteLabel} ≈ <strong>${kgPerCan.toFixed(2)} ${unitKg}</strong>`;
+    }
+
+    // Mettre à jour immédiatement les boutons et l'équivalence dans le modal Stock
+    const sBtnGrain = document.getElementById(`stockTextureBtnGrain_${feedId}`);
+    const sBtnMoulu = document.getElementById(`stockTextureBtnMoulu_${feedId}`);
+    const sDensity = document.getElementById(`stockDensityBadge_${feedId}`);
+    if (sBtnGrain && sBtnMoulu) {
+      if (isGrain) {
+        sBtnGrain.className = 'btn btn-xs btn-emerald';
+        sBtnGrain.style.fontWeight = '800';
+        sBtnMoulu.className = 'btn btn-xs btn-outline';
+        sBtnMoulu.style.fontWeight = '600';
+      } else {
+        sBtnGrain.className = 'btn btn-xs btn-outline';
+        sBtnGrain.style.fontWeight = '600';
+        sBtnMoulu.className = 'btn btn-xs btn-emerald';
+        sBtnMoulu.style.fontWeight = '800';
+      }
+    }
+    if (sDensity) {
+      sDensity.innerHTML = `🥫 1 ${isAr ? 'علبة' : 'bte'} ≈ <strong>${kgPerCan.toFixed(2)} ${unitKg}</strong>`;
+    }
+
+    // Si des boîtes sont sélectionnées, recalculer le poids kg avec la nouvelle densité
+    const activeBtn = document.querySelector(`.sicam-btn-${feedId}.active-sicam-btn`);
+    if (activeBtn) {
+      const cans = parseFloat(activeBtn.getAttribute('data-cans'));
+      if (!isNaN(cans) && cans > 0) {
+        this.setFeedTypeDistribSicam(feedId, cans);
+        return;
+      }
+    }
+    this.recalcDistribTotal();
   },
 
   onNewFeedTextureChange() {
@@ -3535,17 +3601,33 @@ const app = {
     const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
     const sicamCansLabel = isAr ? 'علبة سيكام' : (isEn ? 'Sicam can(s)' : 'boîte(s) Sicam');
 
-    // S'assurer que les aliments d'élevage existent
+    // S'assurer que les aliments d'élevage existent et sont cohérents avec le stock réserve
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       const hasFoodExpenses = (appState.expenses || []).some(e => e.category === 'nourriture');
       if (hasFoodExpenses) {
         this.reconcileFeedTypesFromExpenses();
       }
       if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+        const globalStock = Number(appState.feedStockKg) || 0;
+        const bleKg = globalStock > 0 ? Math.round(globalStock * 0.52) : 0;
+        const bouchonKg = globalStock > 0 ? (globalStock - bleKg) : 0;
         appState.feedTypes = [
-          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: 0, pricePerKg: 1.10 },
-          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: 0, pricePerKg: 1.50 }
+          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: bleKg, pricePerKg: 1.10, texture: 'grain', kgPerCan: 0.72 },
+          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: bouchonKg, pricePerKg: 1.48, texture: 'grain', kgPerCan: 0.65 }
         ];
+      }
+    } else {
+      const globalStock = Number(appState.feedStockKg) || 0;
+      const currentTotal = appState.feedTypes.reduce((s, f) => s + (Number(f.stockKg) || 0), 0);
+      if (globalStock > 0 && currentTotal === 0) {
+        if (appState.feedTypes.length === 1) {
+          appState.feedTypes[0].stockKg = globalStock;
+        } else {
+          const bleKg = Math.round(globalStock * 0.52);
+          const bouchonKg = globalStock - bleKg;
+          appState.feedTypes[0].stockKg = bleKg;
+          appState.feedTypes[1].stockKg = bouchonKg;
+        }
       }
     }
 
@@ -3597,15 +3679,15 @@ const app = {
             <div style="display: flex; align-items: center; gap: 0.35rem;">
               <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary);">${this.t('feed_texture_label')}</span>
               <div style="display: inline-flex; gap: 0.25rem;">
-                <button type="button" class="btn btn-xs ${isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; font-weight: ${isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'grain')">
+                <button type="button" id="distribTextureBtnGrain_${ft.id}" class="btn btn-xs ${isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; font-weight: ${isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'grain')">
                   🌾 ${this.t('feed_texture_grain')}
                 </button>
-                <button type="button" class="btn btn-xs ${!isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; font-weight: ${!isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'moulu')">
+                <button type="button" id="distribTextureBtnMoulu_${ft.id}" class="btn btn-xs ${!isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; font-weight: ${!isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'moulu')">
                   🥣 ${this.t('feed_texture_moulu')}
                 </button>
               </div>
             </div>
-            <div style="font-size: 0.74rem; color: var(--accent-emerald); font-weight: 700;">
+            <div id="distribDensityBadge_${ft.id}" style="font-size: 0.74rem; color: var(--accent-emerald); font-weight: 700;">
               🥫 1 ${bteLabel} ≈ <strong>${kgPerCan.toFixed(2)} ${unitKg}</strong>
             </div>
           </div>
@@ -3651,13 +3733,6 @@ const app = {
     });
 
     container.innerHTML = html;
-
-    const commentInput = document.getElementById('distribComment');
-    if (commentInput) {
-      const todayStr = this.getTodayStr();
-      const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
-      commentInput.value = todayDist?.comment || appState.feedNotes?.[todayStr] || '';
-    }
 
     // Pré-sélectionner intelligemment 1 boîte ou la routine favorite si pas de saisie en cours
     const hasExistingInput = Object.values(prevValues).some(v => parseFloat(v) > 0);
@@ -3866,23 +3941,14 @@ const app = {
       return;
     }
 
-    const commentInput = document.getElementById('distribComment');
-    const comment = commentInput ? commentInput.value.trim() : '';
-
     const distrib = {
       id: 'distrib-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
       date,
       totalKg: parseFloat(totalKg.toFixed(2)),
       totalCost: parseFloat(totalCost.toFixed(3)),
       cans: parseFloat(totalCans.toFixed(1)),
-      items,
-      comment: comment
+      items
     };
-
-    if (comment) {
-      if (!appState.feedNotes) appState.feedNotes = {};
-      appState.feedNotes[date] = comment;
-    }
 
     if (!Array.isArray(appState.feedDistributions)) {
       appState.feedDistributions = [];
@@ -3949,10 +4015,26 @@ const app = {
         this.reconcileFeedTypesFromExpenses();
       }
       if (!appState.feedTypes || appState.feedTypes.length === 0) {
+        const globalStock = Number(appState.feedStockKg) || 0;
+        const bleKg = globalStock > 0 ? Math.round(globalStock * 0.52) : 0;
+        const bouchonKg = globalStock > 0 ? (globalStock - bleKg) : 0;
         appState.feedTypes = [
-          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: 0, pricePerKg: 1.10 },
-          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: 0, pricePerKg: 1.50 }
+          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: bleKg, pricePerKg: 1.10, texture: 'grain', kgPerCan: 0.72 },
+          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: bouchonKg, pricePerKg: 1.48, texture: 'grain', kgPerCan: 0.65 }
         ];
+      }
+    } else {
+      const globalStock = Number(appState.feedStockKg) || 0;
+      const currentTotal = appState.feedTypes.reduce((s, f) => s + (Number(f.stockKg) || 0), 0);
+      if (globalStock > 0 && currentTotal === 0) {
+        if (appState.feedTypes.length === 1) {
+          appState.feedTypes[0].stockKg = globalStock;
+        } else {
+          const bleKg = Math.round(globalStock * 0.52);
+          const bouchonKg = globalStock - bleKg;
+          appState.feedTypes[0].stockKg = bleKg;
+          appState.feedTypes[1].stockKg = bouchonKg;
+        }
       }
     }
 
@@ -3988,15 +4070,15 @@ const app = {
             <div style="display: flex; align-items: center; gap: 0.3rem;">
               <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-secondary);">${this.t('feed_texture_label')}</span>
               <div style="display: inline-flex; gap: 0.25rem;">
-                <button type="button" class="btn btn-xs ${isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.2rem 0.5rem; font-size: 0.73rem; font-weight: ${isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'grain')">
+                <button type="button" id="stockTextureBtnGrain_${ft.id}" class="btn btn-xs ${isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.2rem 0.5rem; font-size: 0.73rem; font-weight: ${isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'grain')">
                   🌾 ${this.t('feed_texture_grain')}
                 </button>
-                <button type="button" class="btn btn-xs ${!isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.2rem 0.5rem; font-size: 0.73rem; font-weight: ${!isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'moulu')">
+                <button type="button" id="stockTextureBtnMoulu_${ft.id}" class="btn btn-xs ${!isGrain ? 'btn-emerald' : 'btn-outline'}" style="padding: 0.2rem 0.5rem; font-size: 0.73rem; font-weight: ${!isGrain ? '800' : '600'}; border-radius: var(--radius-sm);" onclick="app.setFeedTypeTexture('${ft.id}', 'moulu')">
                   🥣 ${this.t('feed_texture_moulu')}
                 </button>
               </div>
             </div>
-            <div style="font-size: 0.73rem; color: var(--accent-emerald); font-weight: 700;">
+            <div id="stockDensityBadge_${ft.id}" style="font-size: 0.73rem; color: var(--accent-emerald); font-weight: 700;">
               🥫 1 ${isAr ? 'علبة' : 'bte'} ≈ <strong>${kgPerCan.toFixed(2)} ${unitKg}</strong>
             </div>
           </div>
@@ -4375,9 +4457,6 @@ const app = {
             <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">${subText}</span>
           </div>
           <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn btn-sm btn-emerald bold" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;" onclick="app.openModal('modalFeedDistribution')">
-              ${btnDistribText}
-            </button>
             <button type="button" class="btn btn-sm btn-outline" style="padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
               ${btnStockText}
             </button>
@@ -4396,9 +4475,6 @@ const app = {
         <div style="grid-column: 1 / -1; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <span>${emptyMsg}</span>
           <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn btn-sm btn-emerald bold" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;" onclick="app.openModal('modalFeedDistribution')">
-              ${btnDistribText}
-            </button>
             <button type="button" class="btn btn-sm btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.76rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
               ${emptyBtn}
             </button>
@@ -4430,28 +4506,15 @@ const app = {
     const isEn = appState.lang === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
     const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
-    const btesLabel = isAr ? 'علب' : (isEn ? 'cans' : 'boîtes');
 
     const {
       totalLivingAnimals,
       totalFarmDailyGrams,
       todayDistributedKg,
-      todayDistributedCost,
-      todayDistributedCans,
-      feedStockRemainingKg,
-      feedPriceKg
+      feedStockRemainingKg
     } = data;
 
-    // 1. Calcul de la moyenne par sujet aujourd'hui (Average intake per animal today)
-    const todayGramsPerAnimal = (totalLivingAnimals > 0 && todayDistributedKg > 0)
-      ? Math.round((todayDistributedKg * 1000) / totalLivingAnimals)
-      : 0;
-
-    const reqAvgGramsPerAnimal = totalLivingAnimals > 0
-      ? Math.round(totalFarmDailyGrams / totalLivingAnimals)
-      : 115;
-
-    // 2. Calcul de la moyenne réelle sur 7 jours (7-day rolling average)
+    // Calcul de la moyenne réelle sur les distributions récentes (7 jours)
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
@@ -4459,462 +4522,58 @@ const app = {
     const dailyMap = {};
     (appState.feedDistributions || []).forEach(d => {
       if (d.date && d.date >= sevenDaysAgoStr) {
-        if (!dailyMap[d.date]) {
-          dailyMap[d.date] = { kg: 0, cost: 0, cans: 0 };
-        }
-        dailyMap[d.date].kg += Number(d.totalKg) || Number(d.quantityKg) || 0;
-        dailyMap[d.date].cost += Number(d.totalCost) || 0;
-        dailyMap[d.date].cans += Number(d.cans) || 0;
+        if (!dailyMap[d.date]) dailyMap[d.date] = 0;
+        dailyMap[d.date] += Number(d.totalKg) || Number(d.quantityKg) || 0;
       }
     });
 
     const activeDays = Object.keys(dailyMap);
-    let avg7dKg = 0;
-    let avg7dCans = 0;
-    let avg7dCost = 0;
-
+    let avgDailyKg = 0;
     if (activeDays.length > 0) {
-      const sumKg = activeDays.reduce((acc, dt) => acc + dailyMap[dt].kg, 0);
-      const sumCans = activeDays.reduce((acc, dt) => acc + dailyMap[dt].cans, 0);
-      const sumCost = activeDays.reduce((acc, dt) => acc + dailyMap[dt].cost, 0);
-      avg7dKg = sumKg / activeDays.length;
-      avg7dCans = sumCans / activeDays.length;
-      avg7dCost = sumCost / activeDays.length;
+      const sumKg = activeDays.reduce((acc, dt) => acc + dailyMap[dt], 0);
+      avgDailyKg = sumKg / activeDays.length;
     } else if (todayDistributedKg > 0) {
-      avg7dKg = todayDistributedKg;
-      avg7dCans = todayDistributedCans;
-      avg7dCost = todayDistributedCost;
-    } else {
-      // Estimation indicative si aucune distribution n'a encore été enregistrée
-      avg7dKg = totalFarmDailyGrams / 1000;
-      avg7dCans = avg7dKg / 0.65;
-      avg7dCost = avg7dKg * feedPriceKg;
+      avgDailyKg = todayDistributedKg;
+    } else if (totalFarmDailyGrams > 0) {
+      avgDailyKg = totalFarmDailyGrams / 1000;
     }
 
-    // 3. Calcul de l'autonomie restante en jours (Stock runway)
+    const avgDailyCans = avgDailyKg / 0.65;
+    const avgGramsPerAnimal = totalLivingAnimals > 0 ? Math.round((avgDailyKg * 1000) / totalLivingAnimals) : 115;
+
     let autonomyDays = 0;
-    if (feedStockRemainingKg > 0 && avg7dKg > 0) {
-      autonomyDays = Math.floor(feedStockRemainingKg / avg7dKg);
-    }
-
-    // 4. Dernier commentaire / remarque enregistrée
-    const todayStr = this.getTodayStr();
-    let todayComment = '';
-    const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
-    if (todayDist && todayDist.comment) {
-      todayComment = todayDist.comment;
-    } else if (appState.feedNotes && appState.feedNotes[todayStr]) {
-      todayComment = appState.feedNotes[todayStr];
-    }
-
-    let recentComment = todayComment;
-    if (!recentComment) {
-      const pastWithComment = (appState.feedDistributions || []).find(d => d.comment);
-      if (pastWithComment && pastWithComment.comment) {
-        recentComment = `${pastWithComment.comment} (${this.formatDateFR ? this.formatDateFR(pastWithComment.date) : pastWithComment.date})`;
-      }
-    }
-
-    // 5. Diagnostic & Conclusion Zootechnique
-    let conclusionBadge = '';
-    let conclusionText = '';
-    let conclusionStyle = '';
-
-    if (todayDistributedKg > 0) {
-      const ratio = reqAvgGramsPerAnimal > 0 ? (todayGramsPerAnimal / reqAvgGramsPerAnimal) : 1.0;
-      if (ratio >= 0.88 && ratio <= 1.15) {
-        conclusionStyle = 'background: rgba(16, 185, 129, 0.09); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--accent-emerald);';
-        conclusionBadge = isAr ? '✅ وجبة متوازنة وممتازة' : (isEn ? '✅ Optimal & Balanced Daily Ration' : '✅ Ration Optimale & Équilibrée');
-        conclusionText = isAr
-          ? `تلقى قطيعك اليوم معدل <strong>~${todayGramsPerAnimal} غ/طائر</strong> (المعيار الموصى به: ~${reqAvgGramsPerAnimal} غ). هذه الكمية تضمن كفاءة تحويل ممتازة وثبات ذروة إنتاج البيض دون هدر.`
-          : (isEn
-              ? `Your flock received an average of <strong>~${todayGramsPerAnimal} g/animal</strong> today (recommended standard: ~${reqAvgGramsPerAnimal} g). Perfect for consistent laying and weight stability.`
-              : `Vos volailles ont reçu aujourd'hui en moyenne <strong>~${todayGramsPerAnimal} g/sujet</strong> (norme conseillée : ~${reqAvgGramsPerAnimal} g). Parfait pour garantir un taux de ponte élevé et une santé robuste.`);
-      } else if (ratio < 0.88) {
-        conclusionStyle = 'background: rgba(245, 158, 11, 0.09); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-amber);';
-        conclusionBadge = isAr ? '⚠️ وجبة خفيفة دون المعيار' : (isEn ? '⚠️ Light Ration (Below Standard)' : '⚠️ Ration Légère (En Retrait)');
-        conclusionText = isAr
-          ? `المعدل الموزع اليوم بلغ <strong>~${todayGramsPerAnimal} غ/طائر</strong> (أقل من المعيار الموصى به: ~${reqAvgGramsPerAnimal} غ). إذا لم يكن لقطيعك مرعى أو بقايا خضار، يُنصح برفع الكمية لتجنب تراجع البيض.`
-          : (isEn
-              ? `Today's average is <strong>~${todayGramsPerAnimal} g/animal</strong> (below target of ~${reqAvgGramsPerAnimal} g). Ensure adequate supplemental foraging to avoid a drop in egg production.`
-              : `Moyenne distribuée à <strong>~${todayGramsPerAnimal} g/sujet</strong> (en dessous des ~${reqAvgGramsPerAnimal} g recommandés). Si le cheptel ne bénéficie pas d'herbe ou de restes, un complément évitera une baisse de ponte.`);
-      } else {
-        conclusionStyle = 'background: rgba(59, 130, 246, 0.09); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6;';
-        conclusionBadge = isAr ? 'ℹ️ وجبة وافرة ومغذية' : (isEn ? 'ℹ️ Generous Daily Ration' : 'ℹ️ Ration Généreuse');
-        conclusionText = isAr
-          ? `تم توزيع <strong>~${todayGramsPerAnimal} غ/طائر</strong> اليوم (أعلى من المعيار: ~${reqAvgGramsPerAnimal} غ). راقب المعالف للتأكد من عدم وجود بعثرة أو هدر للعلف.`
-          : (isEn
-              ? `Distributed <strong>~${todayGramsPerAnimal} g/animal</strong> today (above standard: ~${reqAvgGramsPerAnimal} g). Check feeders to ensure feed is not wasted or scattered.`
-              : `Ration généreuse de <strong>~${todayGramsPerAnimal} g/sujet</strong> (au-delà de ~${reqAvgGramsPerAnimal} g). Surveillez les mangeoires pour vérifier l'absence de refus ou de gaspillage.`);
-      }
-    } else {
-      conclusionStyle = 'background: var(--bg-surface); border: 1px dashed var(--border-subtle); color: var(--text-secondary);';
-      conclusionBadge = isAr ? '🥫 في انتظار توزيع اليوم' : (isEn ? '🥫 Awaiting Today\'s Feeding' : '🥫 En attente de distribution aujourd\'hui');
-      const needKg = (totalFarmDailyGrams / 1000).toFixed(2);
-      const needCans = (Number(needKg) / 0.65).toFixed(1);
-      conclusionText = isAr
-        ? `لم يُسجل توزيع اليوم بعد. الاحتياج التقديري لـ <strong>${totalLivingAnimals} طائر</strong> هو <strong>~${needKg} كغ (~${needCans} علبة)</strong> بمعدل <strong>~${reqAvgGramsPerAnimal} غ/طائر</strong>.`
-        : (isEn
-            ? `No feed logged today yet. Target requirement for <strong>${totalLivingAnimals} birds</strong> is <strong>~${needKg} kg (~${needCans} cans)</strong> at <strong>~${reqAvgGramsPerAnimal} g/bird</strong>.`
-            : `Aucun aliment distribué aujourd'hui pour l'instant. Le besoin estimé pour vos <strong>${totalLivingAnimals} sujets</strong> est de <strong>~${needKg} kg (~${needCans} boîtes)</strong> soit <strong>~${reqAvgGramsPerAnimal} g/sujet</strong>.`);
-    }
-
-    const kpiMoyTodayStr = todayGramsPerAnimal > 0
-      ? `<strong>${todayGramsPerAnimal}</strong> <small style="font-size:0.7rem; font-weight:600;">غ/طائر</small>`
-      : `<span style="font-size:0.88rem; color:var(--text-muted);">~${reqAvgGramsPerAnimal} g <small>(cible)</small></span>`;
-
-    const kpiMoy7dStr = `<strong>${avg7dKg.toFixed(2)}</strong> <small style="font-size:0.7rem; font-weight:600;">${unitKg}/j (~${avg7dCans.toFixed(1)} ${bteLabel})</small>`;
-    
-    const kpiAutonomyStr = autonomyDays > 0
-      ? `<strong style="color:var(--accent-emerald);">~${autonomyDays}</strong> <small style="font-size:0.7rem; font-weight:600;">${isAr ? 'يوم كفاية' : (isEn ? 'days left' : 'jours')}</small>`
-      : (feedStockRemainingKg > 0 ? `<strong>< 1</strong> <small style="font-size:0.7rem;">${isAr ? 'يوم' : 'jour'}</small>` : `<span style="color:var(--accent-rose); font-size:0.85rem; font-weight:700;">⚠️ ${isAr ? 'المخزن فارغ' : 'Stock vide'}</span>`);
-
-    // ==========================================
-    // MODULE COMMENTAIRE & CALCUL DE LA CONSOMMATION PAR JOURNÉE
-    // (Total nourriture ÷ Nombre de jours = Consommation/jour)
-    // STRICTEMENT SANS DIMINUTION DU STOCK (COMMENTAIRE PUR)
-    // ==========================================
-    let commentData = appState.feedConsumptionComment || null;
-    let calcTotalKg = 0;
-    let calcDays = 0;
-    let calcDailyKg = 0;
-    let calcDailyCans = 0;
-    let calcGramsPerAnimal = 0;
-    let calcNote = '';
-    let isCustomComment = false;
-
-    if (commentData && Number(commentData.totalKg) > 0 && Number(commentData.days) > 0) {
-      calcTotalKg = Number(commentData.totalKg);
-      calcDays = Math.max(1, Math.round(Number(commentData.days)));
-      calcDailyKg = parseFloat((calcTotalKg / calcDays).toFixed(2));
-      calcDailyCans = parseFloat((calcDailyKg / 0.65).toFixed(1));
-      calcGramsPerAnimal = totalLivingAnimals > 0 ? Math.round((calcDailyKg * 1000) / totalLivingAnimals) : (commentData.gramsPerAnimal || 0);
-      calcNote = commentData.note || '';
-      isCustomComment = true;
-    } else if (activeDays.length > 0) {
-      const sumKg = activeDays.reduce((acc, dt) => acc + dailyMap[dt].kg, 0);
-      calcTotalKg = parseFloat(sumKg.toFixed(1));
-      calcDays = activeDays.length;
-      calcDailyKg = parseFloat(avg7dKg.toFixed(2));
-      calcDailyCans = parseFloat(avg7dCans.toFixed(1));
-      calcGramsPerAnimal = totalLivingAnimals > 0 ? Math.round((calcDailyKg * 1000) / totalLivingAnimals) : 115;
-    } else if (todayDistributedKg > 0) {
-      calcDailyKg = parseFloat(todayDistributedKg.toFixed(2));
-      calcDays = 7;
-      calcTotalKg = parseFloat((calcDailyKg * 7).toFixed(1));
-      calcDailyCans = parseFloat((calcDailyKg / 0.65).toFixed(1));
-      calcGramsPerAnimal = totalLivingAnimals > 0 ? Math.round((calcDailyKg * 1000) / totalLivingAnimals) : 115;
-    } else {
-      calcDailyKg = parseFloat((totalFarmDailyGrams / 1000).toFixed(2));
-      calcDays = 10;
-      calcTotalKg = parseFloat((calcDailyKg * 10).toFixed(1));
-      calcDailyCans = parseFloat((calcDailyKg / 0.65).toFixed(1));
-      calcGramsPerAnimal = reqAvgGramsPerAnimal;
-    }
-
-    const commentBadgeText = isCustomComment
-      ? (isAr ? '✅ ملاحظة محفوظة' : (isEn ? '✅ Saved note' : '✅ Commentaire enregistré'))
-      : (isAr ? '💡 تقدير تلقائي' : (isEn ? '💡 Auto suggestion' : '💡 Calcul indicatif'));
-
-    let noteExtraHtml = '';
-    if (calcNote) {
-      noteExtraHtml = `
-        <div style="margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem; background: var(--bg-surface); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-subtle);">
-          <span>📝</span>
-          <span style="font-weight: 700; color: var(--text-secondary);">${this.t('feed_last_comment')}</span>
-          <span style="font-style: italic; color: var(--accent-emerald); font-weight: 600;">"${calcNote}"</span>
-        </div>
-      `;
-    } else if (recentComment) {
-      noteExtraHtml = `
-        <div style="margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem; background: var(--bg-surface); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-subtle);">
-          <span>📝</span>
-          <span style="font-weight: 700; color: var(--text-secondary);">${this.t('feed_last_comment')}</span>
-          <span style="font-style: italic; color: var(--accent-emerald); font-weight: 600;">"${recentComment}"</span>
-        </div>
-      `;
+    if (feedStockRemainingKg > 0 && avgDailyKg > 0) {
+      autonomyDays = Math.floor(feedStockRemainingKg / avgDailyKg);
     }
 
     container.innerHTML = `
-      <div class="feed-moy-conclusion-card" style="background: var(--bg-surface); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.95rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
-        
-        <!-- En-tête : Titre & Badge de sécurité Stock -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.4rem;">
-          <div style="display: flex; align-items: center; gap: 0.45rem;">
-            <span style="font-size: 1.15rem;">💬</span>
-            <div>
-              <strong style="font-size: 0.92rem; color: var(--text-main); display: block;">
-                ${this.t('feed_comment_calc_title')}
-              </strong>
-              <small style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">
-                ${this.t('feed_comment_calc_formula')}
-              </small>
-            </div>
-          </div>
-          <span class="badge-pill" style="font-size: 0.7rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.28);">
-            ${this.t('feed_comment_calc_badge_no_stock')}
+      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
+          <span style="font-size: 1.1rem;">📊</span>
+          <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-main);">
+            ${isAr ? 'المعدل اليومي :' : (isEn ? 'Daily average:' : 'Moyenne par journée :')}
+          </span>
+          <strong style="color: var(--accent-emerald); font-size: 1.05rem; font-weight: 800;">
+            ${avgDailyKg.toFixed(2)} ${unitKg}/j
+          </strong>
+          <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">
+            (~${avgDailyCans.toFixed(1)} ${bteLabel}/j${totalLivingAnimals > 0 ? ` • ~${avgGramsPerAnimal} g/sujet` : ''})
           </span>
         </div>
-
-        <!-- HERO BOX : Consommation calculée par jour (Total kg ÷ Nombre de jours) -->
-        <div style="background: var(--bg-card); border: 1.5px solid var(--accent-emerald); border-radius: var(--radius-md); padding: 0.8rem 0.95rem; margin-bottom: 0.75rem;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.35rem;">
-            <div>
-              <span style="font-size: 0.73rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">
-                ${this.t('feed_comment_calc_daily_rate')}
-              </span>
-              <div style="display: flex; align-items: baseline; gap: 0.4rem; margin-top: 2px;">
-                <span style="font-size: 1.6rem; font-weight: 900; color: var(--accent-emerald); letter-spacing: -0.5px;">
-                  ${calcDailyKg.toFixed(2)} ${unitKg}/j
-                </span>
-                <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);">
-                  (~${calcDailyCans.toFixed(1)} ${bteLabel}/j)
-                </span>
-              </div>
-            </div>
-
-            <div style="text-align: right;">
-              <span class="badge-pill" style="font-size: 0.68rem; font-weight: 700; background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-secondary); margin-bottom: 3px;">
-                ${commentBadgeText}
-              </span>
-              <div style="font-size: 0.88rem; font-weight: 800; color: var(--text-main);">
-                ${calcTotalKg.toFixed(1)} ${unitKg} ÷ ${calcDays} ${isAr ? 'أيام' : (isEn ? 'days' : 'jours')}
-              </div>
-              <div style="font-size: 0.76rem; font-weight: 800; color: var(--accent-amber);">
-                ~${calcGramsPerAnimal} غ/طائر/يوم
-              </div>
-            </div>
-          </div>
-
-          <!-- Note libre éleveur -->
-          ${noteExtraHtml}
-
-          <!-- Bouton Calculer / Modifier le Commentaire -->
-          <div style="margin-top: 0.65rem; display: flex; justify-content: flex-end; gap: 0.4rem; flex-wrap: wrap;">
-            <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.72rem; padding: 0.25rem 0.65rem; font-weight: 800; border-color: var(--accent-emerald); color: var(--accent-emerald);" onclick="app.openFeedConsumptionCommentModal()">
-              ${this.t('feed_comment_calc_btn_edit')}
-            </button>
-            <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;" onclick="app.promptEditTodayFeedComment()">
-              ✏️ ${isAr ? 'ملاحظة سريعة' : 'Note texte'}
-            </button>
-          </div>
-        </div>
-
-        <!-- 3 KPIs Complémentaires (Intake / Sujet, 7-day average, Stock Autonomy) -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.45rem; margin-bottom: 0.65rem;">
-          <div style="background: var(--bg-card); padding: 0.45rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
-            <span style="font-size: 0.68rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 2px;">
-              🍗 ${this.t('feed_moy_per_animal')}
-            </span>
-            <div style="font-size: 0.95rem; color: var(--accent-emerald);">
-              ${kpiMoyTodayStr}
-            </div>
-          </div>
-
-          <div style="background: var(--bg-card); padding: 0.45rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
-            <span style="font-size: 0.68rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 2px;">
-              📈 ${this.t('feed_moy_7d')}
-            </span>
-            <div style="font-size: 0.95rem; color: var(--accent-amber);">
-              ${kpiMoy7dStr}
-            </div>
-          </div>
-
-          <div style="background: var(--bg-card); padding: 0.45rem 0.55rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
-            <span style="font-size: 0.68rem; color: var(--text-secondary); display: block; font-weight: 700; margin-bottom: 2px;">
-              ⏳ ${this.t('feed_moy_autonomy')}
-            </span>
-            <div style="font-size: 0.95rem;">
-              ${kpiAutonomyStr}
-            </div>
-          </div>
-        </div>
-
-        <!-- Diagnostic & Conclusion Zootechnique -->
-        <div style="border-radius: var(--radius-sm); padding: 0.6rem 0.75rem; font-size: 0.78rem; line-height: 1.45; ${conclusionStyle}">
-          <div style="font-weight: 800; font-size: 0.82rem; margin-bottom: 0.25rem;">
-            ${conclusionBadge}
-          </div>
-          <div>
-            ${conclusionText}
-          </div>
-        </div>
+        ${autonomyDays > 0 ? `
+          <span class="badge-pill" style="font-size: 0.72rem; font-weight: 700; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
+            ⏳ ${isAr ? `المخزون يكفي: ~${autonomyDays} يوم` : (isEn ? `Runway: ~${autonomyDays} d` : `Autonomie: ~${autonomyDays} j`)}
+          </span>
+        ` : ''}
       </div>
     `;
   },
 
-  openFeedConsumptionCommentModal() {
-    const commentData = appState.feedConsumptionComment || {};
-    const inputTotalKg = document.getElementById('commentFeedTotalKg');
-    const inputDays = document.getElementById('commentFeedDays');
-    const inputNote = document.getElementById('commentFeedNote');
-
-    if (inputTotalKg) {
-      inputTotalKg.value = commentData.totalKg || 50;
-    }
-    if (inputDays) {
-      inputDays.value = commentData.days || 10;
-    }
-    if (inputNote) {
-      inputNote.value = commentData.note || appState.feedNotes?.[this.getTodayStr()] || '';
-    }
-
-    this.recalcCommentFeedPreview();
-    this.openModal('modalFeedConsumptionComment');
-  },
-
-  setCommentFeedQuickValues(kg, days) {
-    if (kg !== null && kg !== undefined) {
-      const input = document.getElementById('commentFeedTotalKg');
-      if (input) input.value = kg;
-    }
-    if (days !== null && days !== undefined) {
-      const input = document.getElementById('commentFeedDays');
-      if (input) input.value = days;
-    }
-    this.recalcCommentFeedPreview();
-  },
-
-  recalcCommentFeedPreview() {
-    const totalKg = parseFloat(document.getElementById('commentFeedTotalKg')?.value) || 0;
-    const days = Math.max(1, Math.round(parseFloat(document.getElementById('commentFeedDays')?.value) || 1));
-
-    const dailyKg = totalKg > 0 ? (totalKg / days) : 0;
-    const dailyCans = dailyKg / 0.65;
-
-    let totalLivingAnimals = 0;
-    if (Array.isArray(appState.animals)) {
-      appState.animals.forEach(a => {
-        const q = Number(a.currentQuantity) || 0;
-        if (q > 0) totalLivingAnimals += q;
-      });
-    }
-    const gramsPerAnimal = totalLivingAnimals > 0 ? Math.round((dailyKg * 1000) / totalLivingAnimals) : 0;
-
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
-    const unitKg = isAr ? 'كغ' : 'kg';
-    const bteLabel = isAr ? 'علبة' : (isEn ? 'can' : 'bte');
-
-    const formulaEl = document.getElementById('commentFeedFormulaTag');
-    const dailyKgEl = document.getElementById('commentFeedDailyKgDisplay');
-    const dailyCansEl = document.getElementById('commentFeedDailyCansDisplay');
-    const animalGramsEl = document.getElementById('commentFeedAnimalGramsDisplay');
-
-    if (formulaEl) formulaEl.textContent = `${totalKg.toFixed(1)} ${unitKg} ÷ ${days} ${isAr ? 'أيام' : (isEn ? 'days' : 'jours')}`;
-    if (dailyKgEl) dailyKgEl.textContent = `${dailyKg.toFixed(2)} ${unitKg}/j`;
-    if (dailyCansEl) dailyCansEl.textContent = `(~${dailyCans.toFixed(1)} ${bteLabel}/j)`;
-    if (animalGramsEl) {
-      animalGramsEl.textContent = totalLivingAnimals > 0
-        ? `~${gramsPerAnimal} ${isAr ? 'غ/طائر/يوم' : 'g/sujet/j'} (${totalLivingAnimals} ${isAr ? 'طائر' : 'sujets'})`
-        : `~${gramsPerAnimal} g/j`;
-    }
-  },
-
-  handleSaveFeedConsumptionComment(e) {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-
-    const isAr = appState.lang === 'ar';
-    const totalKg = parseFloat(document.getElementById('commentFeedTotalKg')?.value) || 0;
-    const days = Math.max(1, Math.round(parseFloat(document.getElementById('commentFeedDays')?.value) || 1));
-    const note = document.getElementById('commentFeedNote')?.value?.trim() || '';
-
-    if (totalKg <= 0 || days <= 0) {
-      this.showToast(isAr ? 'يرجى إدخال كمية صحيحة وعدد أيام صحيح.' : 'Veuillez saisir une quantité et un nombre de jours valides.', 'warning');
-      return;
-    }
-
-    const dailyKg = parseFloat((totalKg / days).toFixed(2));
-    const dailyCans = parseFloat((dailyKg / 0.65).toFixed(1));
-
-    let totalLivingAnimals = 0;
-    if (Array.isArray(appState.animals)) {
-      appState.animals.forEach(a => {
-        const q = Number(a.currentQuantity) || 0;
-        if (q > 0) totalLivingAnimals += q;
-      });
-    }
-    const gramsPerAnimal = totalLivingAnimals > 0 ? Math.round((dailyKg * 1000) / totalLivingAnimals) : 0;
-
-    // Sauvegarde en tant que commentaire de consommation (PURE COMMENT - STRICTEMENT AUCUNE DÉDUCTION DE STOCK)
-    appState.feedConsumptionComment = {
-      totalKg,
-      days,
-      dailyKg,
-      dailyCans,
-      gramsPerAnimal,
-      note,
-      updatedAt: Date.now(),
-      date: this.getTodayStr()
-    };
-
-    if (note) {
-      if (!appState.feedNotes) appState.feedNotes = {};
-      appState.feedNotes[this.getTodayStr()] = note;
-    }
-
-    this.saveState();
-    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
-      window.appAuth.pushData(false, true);
-    }
-
-    this.closeModal('modalFeedConsumptionComment');
-    this.renderFarmFeedSummary();
-
-    const successMsg = isAr
-      ? `✅ تم حفظ ملاحظة الاستهلاك: ${dailyKg.toFixed(2)} كغ/يوم (${totalKg} كغ على ${days} أيام). المخزون لم يتغير!`
-      : `✅ Commentaire enregistré : ${dailyKg.toFixed(2)} kg/jour (${totalKg} kg sur ${days} jours). Le stock reste intact !`;
-
-    this.showToast(successMsg);
-  },
-
-  promptEditTodayFeedComment() {
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
-    const todayStr = this.getTodayStr();
-
-    let currentVal = '';
-    if (appState.feedConsumptionComment && appState.feedConsumptionComment.note) {
-      currentVal = appState.feedConsumptionComment.note;
-    } else {
-      const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr && d.comment);
-      if (todayDist && todayDist.comment) {
-        currentVal = todayDist.comment;
-      } else if (appState.feedNotes && appState.feedNotes[todayStr]) {
-        currentVal = appState.feedNotes[todayStr];
-      }
-    }
-
-    const title = isAr ? 'تدوين ملاحظة يومية عن التغذية' : (isEn ? 'Record daily feed note' : 'Enregistrer une remarque alimentation');
-    const msg = isAr 
-      ? 'أدخل ملاحظتك اليومية حول إقبال الدواجن، نشاطها، أو إضافات العلف (فيتامين، ثوم، خضار...):'
-      : (isEn ? 'Enter your daily feeding note (appetite, activity, supplements):' : 'Indiquez votre remarque sur l\'appétit du cheptel, la météo ou les compléments (vitamines, herbe...) :');
-
-    const input = prompt(msg, currentVal);
-    if (input === null) return;
-
-    const clean = input.trim();
-    if (!appState.feedNotes) {
-      appState.feedNotes = {};
-    }
-    appState.feedNotes[todayStr] = clean;
-
-    if (appState.feedConsumptionComment) {
-      appState.feedConsumptionComment.note = clean;
-    }
-
-    const todayDist = (appState.feedDistributions || []).find(d => d.date === todayStr);
-    if (todayDist) {
-      todayDist.comment = clean;
-    }
-
-    this.saveState();
-    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
-      window.appAuth.pushData(false, true);
-    }
-    this.renderFarmFeedSummary();
-    this.showToast(isAr ? '✅ تم حفظ الملاحظة بنجاح' : '✅ Remarque enregistrée avec succès');
-  },
+  openFeedConsumptionCommentModal() {},
+  setCommentFeedQuickValues() {},
+  recalcCommentFeedPreview() {},
+  handleSaveFeedConsumptionComment() {},
+  promptEditTodayFeedComment() {},
 
   // ==========================================
   // ANIMALS (CHEPTEL & RACES) MODULE
@@ -8816,6 +8475,10 @@ const app = {
         appState.expenses = JSON.parse(JSON.stringify(SAMPLE_DATA.expenses));
         appState.sales = JSON.parse(JSON.stringify(SAMPLE_DATA.sales));
         appState.incubatorBatches = JSON.parse(JSON.stringify(SAMPLE_DATA.incubatorBatches));
+        appState.feedTypes = JSON.parse(JSON.stringify(SAMPLE_DATA.feedTypes));
+        appState.feedStockKg = Number(SAMPLE_DATA.feedStockKg) || 290;
+        appState.feedStockCostPerKg = Number(SAMPLE_DATA.feedStockCostPerKg) || 1.28;
+        appState.feedStockDate = this.getTodayStr();
         this.saveState();
         this.closeModal('modalDataOptions');
         this.renderAll();
