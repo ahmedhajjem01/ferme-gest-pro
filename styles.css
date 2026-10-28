@@ -908,6 +908,83 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   }
 }
 
+/* Egg Production Statistics & Line Chart Panel */
+.egg-chart-panel {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s;
+}
+.egg-chart-panel:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.egg-chart-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem 0.25rem 0.85rem;
+}
+.egg-chart-metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+}
+.egg-chart-metric-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.egg-chart-metric-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-top: 0.15rem;
+  line-height: 1.2;
+}
+.egg-period-btn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.egg-period-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+.egg-period-btn.active {
+  background: var(--accent-emerald);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+.egg-chart-svg {
+  width: 100%;
+  height: auto;
+  min-height: 190px;
+  display: block;
+}
+.egg-chart-dot {
+  transition: r 0.2s ease, stroke-width 0.2s ease;
+}
+.egg-chart-dot:hover, .egg-chart-dot:active {
+  r: 8px;
+  stroke-width: 3.5px;
+}
+.egg-point-badge {
+  pointer-events: none;
+}
+
 /* Incubation Alert Banner */
 .incubation-banner {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
@@ -1075,25 +1152,83 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   background-color: var(--bg-card);
 }
 
+/* Animal Controls Toolbar */
+.animal-controls-toolbar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+}
+@media (max-width: 768px) {
+  .animal-controls-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.6rem;
+    gap: 0.5rem;
+  }
+  .animal-controls-toolbar .toolbar-search {
+    width: 100%;
+    min-width: 100% !important;
+  }
+  .animal-controls-toolbar .toolbar-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .animal-controls-toolbar .toolbar-filters .filter-group {
+    flex: 1 1 calc(50% - 0.4rem);
+    min-width: 130px;
+  }
+  .animal-controls-toolbar .toolbar-filters .filter-group select {
+    width: 100% !important;
+    font-size: 0.76rem !important;
+  }
+  .animal-controls-toolbar .toolbar-reset-btn {
+    flex: 1 1 100%;
+    justify-content: center;
+    text-align: center;
+    margin-top: 0.2rem;
+  }
+}
+
 /* Filter Chips Row */
 .filter-chips-row {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
   overflow-x: auto;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1.25rem;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.45rem;
+  margin-bottom: 1.15rem;
+}
+.filter-chips-row::-webkit-scrollbar {
+  height: 4px;
+}
+.filter-chips-row::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
 }
 .chip {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  padding: 0.45rem 0.9rem;
+  padding: 0.38rem 0.75rem;
   border-radius: var(--radius-pill);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 .chip:hover {
   border-color: var(--primary);

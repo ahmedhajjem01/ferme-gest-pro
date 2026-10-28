@@ -16,6 +16,7 @@ const appState = {
   saleSortOrder: 'desc',
   eggStock: 0,
   eggHarvests: [],
+  eggChartPeriod: '7d',
   feedStockKg: null,
   feedStockDate: null,
   feedStockCostPerKg: 1.0,
@@ -238,6 +239,7 @@ const app = {
         theme: appState.theme,
         eggStock: Number(appState.eggStock) || 0,
         eggHarvests: appState.eggHarvests || [],
+        eggChartPeriod: appState.eggChartPeriod || '7d',
         feedStockKg: appState.feedStockKg !== undefined ? appState.feedStockKg : null,
         feedStockDate: appState.feedStockDate || null,
         feedStockCostPerKg: appState.feedStockCostPerKg || 1.0,
@@ -275,6 +277,7 @@ const app = {
         appState.theme = parsed.theme || 'dark';
         appState.eggStock = Number(parsed.eggStock) || 0;
         appState.eggHarvests = Array.isArray(parsed.eggHarvests) ? parsed.eggHarvests : [];
+        appState.eggChartPeriod = parsed.eggChartPeriod || '7d';
         appState.feedStockKg = parsed.feedStockKg !== undefined ? parsed.feedStockKg : null;
         appState.feedStockDate = parsed.feedStockDate || null;
         appState.feedStockCostPerKg = parsed.feedStockCostPerKg ? Number(parsed.feedStockCostPerKg) : 1.0;
@@ -938,6 +941,10 @@ const app = {
   openDailyEggModal() {
     this.openModal('modalDailyEggs');
     const input = document.getElementById('dailyEggCount');
+    const dateInput = document.getElementById('dailyEggDate');
+    if (dateInput) {
+      dateInput.value = this.getTodayStr();
+    }
     if (input) {
       input.value = '';
       input.placeholder = '';
@@ -980,23 +987,367 @@ const app = {
       return;
     }
 
-    const todayStr = this.getTodayStr();
+    const dateInput = document.getElementById('dailyEggDate');
+    const harvestDate = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
+
     appState.eggStock = (Number(appState.eggStock) || 0) + count;
     appState.eggHarvests = appState.eggHarvests || [];
     appState.eggHarvests.unshift({
       id: 'harvest-' + Date.now().toString(36),
-      date: todayStr,
+      date: harvestDate,
       count: count
     });
 
-    localStorage.setItem('fermegest_last_egg_notif_date', todayStr);
+    localStorage.setItem('fermegest_last_egg_notif_date', harvestDate);
 
     this.saveState();
     this.closeModal('modalDailyEggs');
     this.renderEggStock();
+    this.renderEggProductionChart();
     this.showToast(this.t('daily_eggs_toast_success', { count: count, total: appState.eggStock }));
 
     if (countInput) countInput.value = '';
+  },
+
+  // ==========================================
+  // EGG PRODUCTION STATISTICS & LINE CHART
+  // ==========================================
+  setEggChartPeriod(period) {
+    appState.eggChartPeriod = period || '7d';
+    this.saveState();
+    const card = document.getElementById('eggProductionChartCard');
+    if (card) {
+      card.querySelectorAll('.egg-period-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-period') === appState.eggChartPeriod);
+      });
+    }
+    this.renderEggProductionChart();
+  },
+
+  renderEggProductionChart() {
+    const card = document.getElementById('eggProductionChartCard');
+    const strip = document.getElementById('eggChartMetricsStrip');
+    const chartBox = document.getElementById('eggChartContainer');
+    if (!card || !chartBox) return;
+
+    const period = appState.eggChartPeriod || '7d';
+
+    // Synchroniser l'état actif des boutons de période
+    card.querySelectorAll('.egg-period-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-period') === period);
+    });
+
+    const harvests = Array.isArray(appState.eggHarvests) ? appState.eggHarvests : [];
+
+    // Agréger les récoltes par date (somme si plusieurs ramassages le même jour)
+    const dailyMap = {};
+    harvests.forEach(h => {
+      if (!h || !h.date) return;
+      const d = String(h.date).trim().split('T')[0];
+      if (d) {
+        dailyMap[d] = (dailyMap[d] || 0) + (Number(h.count) || 0);
+      }
+    });
+
+    const allHarvestDates = Object.keys(dailyMap).sort();
+    const hasAnyHarvest = allHarvestDates.length > 0;
+
+    // Déterminer la liste chronologique continue des dates pour la période choisie
+    const todayStr = this.getTodayStr();
+    const todayParts = todayStr.split('-').map(Number);
+    const todayDate = new Date(todayParts[0], todayParts[1] - 1, todayParts[2], 12, 0, 0);
+
+    let datesList = [];
+
+    if (period === 'all') {
+      if (allHarvestDates.length === 0) {
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(todayDate);
+          d.setDate(d.getDate() - i);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          datesList.push(`${y}-${m}-${day}`);
+        }
+      } else {
+        const firstStr = allHarvestDates[0];
+        const lastStr = allHarvestDates[allHarvestDates.length - 1] > todayStr ? allHarvestDates[allHarvestDates.length - 1] : todayStr;
+        const fp = firstStr.split('-').map(Number);
+        const lp = lastStr.split('-').map(Number);
+        const cur = new Date(fp[0], fp[1] - 1, fp[2], 12, 0, 0);
+        const end = new Date(lp[0], lp[1] - 1, lp[2], 12, 0, 0);
+
+        if (cur.getTime() === end.getTime()) {
+          cur.setDate(cur.getDate() - 3);
+          end.setDate(end.getDate() + 3);
+        }
+
+        while (cur <= end) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const day = String(cur.getDate()).padStart(2, '0');
+          datesList.push(`${y}-${m}-${day}`);
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    } else {
+      const numDays = period === '30d' ? 30 : (period === '14d' ? 14 : 7);
+      for (let i = numDays - 1; i >= 0; i--) {
+        const d = new Date(todayDate);
+        d.setDate(d.getDate() - i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        datesList.push(`${y}-${m}-${day}`);
+      }
+    }
+
+    // Points de données avec format d'axe X demandé (JJ/MM ex: 12/01)
+    const points = datesList.map((dt, idx) => {
+      const count = dailyMap[dt] || 0;
+      const parts = dt.split('-');
+      const label = (parts.length === 3) ? `${parts[2]}/${parts[1]}` : dt;
+      return {
+        date: dt,
+        label: label,
+        count: count,
+        index: idx
+      };
+    });
+
+    // Métriques clés de production
+    const totalHarvested = points.reduce((sum, p) => sum + p.count, 0);
+    const daysCount = points.length || 1;
+    const avgDaily = (totalHarvested / daysCount).toFixed(1);
+
+    let peakCount = 0;
+    let peakDateLabel = '-';
+    points.forEach(p => {
+      if (p.count > peakCount) {
+        peakCount = p.count;
+        peakDateLabel = p.label;
+      }
+    });
+
+    // Taux de ponte basé sur les poules pondeuses actives
+    const layingFemales = (appState.animals || [])
+      .filter(a => {
+        if (!a || (Number(a.currentQuantity) || 0) <= 0) return false;
+        const sp = String(a.species || '').toLowerCase();
+        const brd = String(a.breed || '').toLowerCase();
+        const stg = String(a.stage || '').toLowerCase();
+        return sp === 'pondeuse' || brd.includes('ponte') || stg.includes('ponte') || stg.includes('lay') || (sp === 'poulet' && (a.gender === 'femelle' || a.gender === 'female'));
+      })
+      .reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+
+    const lang = appState.lang || 'fr';
+    const unitDaysShort = lang === 'ar' ? 'يوم' : (lang === 'en' ? 'd' : 'j');
+    let layRateStr = '-';
+    if (layingFemales > 0) {
+      const ratePct = Math.min(100, Math.round((Number(avgDaily) / layingFemales) * 100));
+      layRateStr = `${ratePct}% (${layingFemales} ${this.t('chip_pondeuse') || 'pondeuses'})`;
+    } else {
+      const activeDays = points.filter(p => p.count > 0).length;
+      layRateStr = `${activeDays}/${daysCount} ${unitDaysShort}`;
+    }
+
+    // Affichage du bandeau de métriques
+    if (strip) {
+      const unitEggs = this.t('unit_eggs') || 'œufs';
+      strip.innerHTML = `
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_total">${this.t('egg_chart_total')}</span>
+          <span class="egg-chart-metric-val" style="color: var(--accent-emerald);">
+            ${totalHarvested.toLocaleString()} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs}</small>
+          </span>
+        </div>
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_avg">${this.t('egg_chart_avg')}</span>
+          <span class="egg-chart-metric-val" style="color: #38bdf8;">
+            ${avgDaily} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs}/${unitDaysShort}</small>
+          </span>
+        </div>
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_peak">${this.t('egg_chart_peak')}</span>
+          <span class="egg-chart-metric-val" style="color: #f59e0b;">
+            ${peakCount > 0 ? peakCount.toLocaleString() : 0} 
+            ${peakCount > 0 ? `<small style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">(${peakDateLabel})</small>` : ''}
+          </span>
+        </div>
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_rate">${this.t('egg_chart_rate')}</span>
+          <span class="egg-chart-metric-val" style="color: #a855f7; font-size: 0.95rem;">
+            ${layRateStr}
+          </span>
+        </div>
+      `;
+    }
+
+    // Si aucune récolte dans la base
+    if (!hasAnyHarvest) {
+      chartBox.innerHTML = `
+        <div style="text-align: center; padding: 2.2rem 1rem;">
+          <div style="font-size: 2.6rem; margin-bottom: 0.6rem;">🥚</div>
+          <div style="font-weight: 800; font-size: 1.05rem; margin-bottom: 0.35rem; color: var(--text-main);" data-i18n="egg_chart_empty_title">${this.t('egg_chart_empty_title')}</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 440px; margin: 0 auto 1.25rem; line-height: 1.45;" data-i18n="egg_chart_empty_desc">${this.t('egg_chart_empty_desc')}</p>
+          <button type="button" class="btn btn-emerald" onclick="app.openDailyEggModal()" style="font-weight: 700; padding: 0.45rem 1.1rem; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 0.4rem;">
+            <span>➕</span> <span data-i18n="daily_eggs_btn_save">${this.t('daily_eggs_btn_save')}</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    // Génération du SVG Line Chart (ViewBox 680 x 230)
+    const svgW = 680;
+    const svgH = 230;
+    const padL = 46;
+    const padR = 25;
+    const padT = 28;
+    const padB = 42;
+    const chartW = svgW - padL - padR;
+    const chartH = svgH - padT - padB;
+
+    // Échelle axe Y (nombre d'œufs)
+    const maxVal = Math.max(...points.map(p => p.count), 0);
+    let yMax = 10;
+    if (maxVal > 0) {
+      yMax = Math.max(10, Math.ceil((maxVal * 1.25) / 5) * 5);
+    }
+
+    const n = points.length;
+    points.forEach((p, i) => {
+      p.cx = n <= 1 ? padL + chartW / 2 : padL + (i / (n - 1)) * chartW;
+      p.cy = padT + chartH - (p.count / yMax) * chartH;
+    });
+
+    // Lignes de grille horizontales
+    let gridLinesSvg = '';
+    const gridSteps = 4;
+    for (let s = 0; s <= gridSteps; s++) {
+      const ratio = s / gridSteps;
+      const yVal = Math.round(ratio * yMax);
+      const yPos = padT + chartH - (ratio * chartH);
+      gridLinesSvg += `
+        <line x1="${padL}" y1="${yPos.toFixed(1)}" x2="${padL + chartW}" y2="${yPos.toFixed(1)}" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" />
+        <text x="${padL - 8}" y="${(yPos + 4).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="600" fill="var(--text-muted, #94a3b8)">${yVal}</text>
+      `;
+    }
+
+    // Courbe lissée Bézier
+    let linePath = '';
+    if (points.length === 1) {
+      linePath = `M ${points[0].cx} ${points[0].cy} L ${points[0].cx + 1} ${points[0].cy}`;
+    } else {
+      linePath = `M ${points[0].cx.toFixed(1)} ${points[0].cy.toFixed(1)}`;
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i > 0 ? points[i - 1] : points[i];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i < points.length - 2 ? points[i + 2] : p2;
+        const cp1x = p1.cx + (p2.cx - p0.cx) / 6;
+        const cp1y = p1.cy + (p2.cy - p0.cy) / 6;
+        const cp2x = p2.cx - (p3.cx - p1.cx) / 6;
+        const cp2y = p2.cy - (p3.cy - p1.cy) / 6;
+        linePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.cx.toFixed(1)} ${p2.cy.toFixed(1)}`;
+      }
+    }
+
+    // Remplissage sous la courbe (Area Gradient)
+    const baselineY = padT + chartH;
+    const areaPath = `${linePath} L ${points[points.length - 1].cx.toFixed(1)} ${baselineY} L ${points[0].cx.toFixed(1)} ${baselineY} Z`;
+
+    // Graduations Axe X (JJ/MM, ex : 12/01)
+    let xLabelsSvg = '';
+    let step = 1;
+    if (n > 20) step = 4;
+    else if (n > 12) step = 2;
+
+    points.forEach((p, i) => {
+      const isFirst = i === 0;
+      const isLast = i === n - 1;
+      const shouldShow = (i % step === 0) || isFirst || isLast;
+      if (shouldShow) {
+        xLabelsSvg += `
+          <text x="${p.cx.toFixed(1)}" y="${(baselineY + 20).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text-muted, #94a3b8)">${p.label}</text>
+        `;
+      }
+    });
+
+    // Points interactifs & pastilles de valeur
+    let dotsSvg = '';
+    points.forEach((p, i) => {
+      const isZero = p.count === 0;
+      const dotColor = isZero ? '#64748b' : '#10b981';
+      const r = isZero ? 3.5 : 5.5;
+
+      dotsSvg += `
+        <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="14" fill="transparent" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
+      `;
+
+      dotsSvg += `
+        <circle class="egg-chart-dot" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${r}" fill="${dotColor}" stroke="#ffffff" stroke-width="2" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
+      `;
+
+      if (p.count > 0 && (n <= 14 || p.count === peakCount)) {
+        dotsSvg += `
+          <g class="egg-point-badge">
+            <rect x="${(p.cx - 14).toFixed(1)}" y="${(p.cy - 22).toFixed(1)}" width="28" height="15" rx="3.5" fill="rgba(16, 185, 129, 0.9)" />
+            <text x="${p.cx.toFixed(1)}" y="${(p.cy - 11).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#ffffff">${p.count}</text>
+          </g>
+        `;
+      }
+    });
+
+    chartBox.innerHTML = `
+      <div style="position: relative; width: 100%;">
+        <svg class="egg-chart-svg" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="eggAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#10b981" stop-opacity="0.38"/>
+              <stop offset="85%" stop-color="#10b981" stop-opacity="0.04"/>
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+            </linearGradient>
+            <filter id="eggLineGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#10b981" flood-opacity="0.35"/>
+            </filter>
+          </defs>
+
+          <!-- Axes et Grille -->
+          <line x1="${padL}" y1="${baselineY}" x2="${padL + chartW}" y2="${baselineY}" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5" />
+          <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${baselineY}" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5" />
+          ${gridLinesSvg}
+          ${xLabelsSvg}
+
+          <!-- Remplissage dégradé -->
+          <path d="${areaPath}" fill="url(#eggAreaGrad)" />
+
+          <!-- Ligne de courbe -->
+          <path d="${linePath}" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#eggLineGlow)" />
+
+          <!-- Points et valeurs -->
+          ${dotsSvg}
+        </svg>
+      </div>
+    `;
+  },
+
+  showEggPointTooltip(idx, count, dateLabel, fullDate) {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitEggs = this.t('unit_eggs') || 'œufs';
+    const haras = (count / 4).toFixed(1);
+    const plates = (count / 30).toFixed(1);
+
+    let msg = '';
+    if (isAr) {
+      msg = `📅 ${dateLabel} (${fullDate || ''}) : ${count} ${unitEggs} (~${haras} حارة • ~${plates} طبق)`;
+    } else if (isEn) {
+      msg = `📅 ${dateLabel} (${fullDate || ''}): ${count} ${unitEggs} (~${haras} Haras • ~${plates} Trays)`;
+    } else {
+      msg = `📅 ${dateLabel} (${fullDate || ''}) : ${count} ${unitEggs} (~${haras} Haras • ~${plates} Plateaux)`;
+    }
+    this.showToast(msg, 'info');
   },
 
   openSellEggsModal() {
@@ -1097,15 +1448,17 @@ const app = {
     if (format === 'hara') totalEggs = q * 4;
     else if (format === 'plateau') totalEggs = q * 30;
 
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
     if (totalEggs <= 0) {
-      this.showToast('Veuillez saisir une quantité valide.');
+      this.showToast(isAr ? 'يرجى إدخال كمية صحيحة.' : (isEn ? 'Please enter a valid quantity.' : 'Veuillez saisir une quantité valide.'));
       return;
     }
     if (totalEggs > stock) {
-      const isAr = appState.lang === 'ar';
       this.showToast(isAr 
         ? `الكمية المراد بيعها (${totalEggs} بيضة) تتجاوز الرصيد المتوفر (${stock} بيضة)` 
-        : `La quantité à vendre (${totalEggs} œufs) dépasse votre stock disponible (${stock} œufs).`, 'warning');
+        : (isEn ? `The quantity to sell (${totalEggs} eggs) exceeds available stock (${stock} eggs).` : `La quantité à vendre (${totalEggs} œufs) dépasse votre stock disponible (${stock} œufs).`), 'warning');
       return;
     }
 
@@ -1156,7 +1509,9 @@ const app = {
   openConsumeEggsModal() {
     const stock = Number(appState.eggStock) || 0;
     if (stock <= 0) {
-      this.showToast('⚠️ Aucun œuf en stock.');
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      const isEn = (appState.lang || this.currentLang) === 'en';
+      this.showToast(isAr ? '⚠️ لا يوجد بيض في المخزون.' : (isEn ? '⚠️ No eggs in stock.' : '⚠️ Aucun œuf en stock.'));
       return;
     }
     this.openModal('modalConsumeEggStock');
@@ -1823,6 +2178,7 @@ const app = {
   renderAll() {
     try { this.renderDashboard(); } catch (e) { console.warn('renderDashboard error:', e); }
     try { this.renderEggStock(); } catch (e) { console.warn('renderEggStock error:', e); }
+    try { this.renderEggProductionChart(); } catch (e) { console.warn('renderEggProductionChart error:', e); }
     try { this.renderFarmFeedSummary(); } catch (e) { console.warn('renderFarmFeedSummary error:', e); }
     try { this.renderAnimals(); } catch (e) { console.warn('renderAnimals error:', e); }
     try { this.renderExpenses(); } catch (e) { console.warn('renderExpenses error:', e); }
@@ -2148,45 +2504,99 @@ const app = {
     const stg = (stage || '').toLowerCase();
     const brd = (breed || '').toLowerCase();
 
-    // 1. CANARD / PALMIPÈDES (Table officielle)
+    // 1. CANARD DE BARBARIE / PALMIPÈDES (Table zootechnique officielle)
     if (sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck')) {
-      if (d <= 21) return 40;   // 0 à 3 sem (J1–J21): ~40 g (Ci 1.3)
-      if (d <= 49) return 90;   // 4 à 7 sem (J22–J49): ~90 g (Ci 3.0)
-      if (d <= 84) return 140;  // 8 à 12 sem (J50–J84): ~140 g (Ci 4.7)
-      if (d <= 112) return 170; // 13 à 16 sem (J85–J112): ~170 g (Ci 5.7)
-      
+      if (d <= 7)   return 22;  // Sem 1: ~22 g/j (Ci 0.73)
+      if (d <= 14)  return 40;  // Sem 2: ~40 g/j (Ci 1.33)
+      if (d <= 21)  return 58;  // Sem 3: ~58 g/j (Ci 1.93)
+      if (d <= 35)  return 80;  // Sem 4-5: ~80 g/j (Ci 2.67)
+      if (d <= 49)  return 100; // Sem 6-7: ~100 g/j (Ci 3.33)
+      if (d <= 70)  return 132; // Sem 8-10: ~132 g/j (Ci 4.40)
+      if (d <= 84)  return 150; // Sem 11-12: ~150 g/j (Ci 5.00)
+      if (d <= 112) return 170; // Sem 13-16: ~170 g/j (Ci 5.67)
+
       // Adulte (> 112j / > 16 sem / > 4 mois)
       const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكر') || brd.includes('mâle') || brd.includes('male');
       const isFemale = stg.includes('femelle') || stg.includes('female') || stg.includes('أنثى') || stg.includes('canne') || brd.includes('canne');
-      if (isMale) return 170;   // Canard adulte mâle: ~170 g (Ci 5.7)
-      if (isFemale) return 130; // Canne adulte femelle: ~130 g (Ci 4.3)
-      return 150;               // Moyenne adulte mixte: ~150 g (Ci 5.0)
+      if (isMale) return 170;   // Canard de Barbarie adulte mâle (5 kg): ~170 g (Ci 5.67)
+      if (isFemale) return 130; // Canne adulte femelle (2.5-3 kg ponte): ~130 g (Ci 4.33)
+      return 150;               // Moyenne adulte mixte: ~150 g (Ci 5.00)
     }
 
-    // 2. PINTADE
+    // 2. PINTADE (Numida meleagris - Table zootechnique)
     if (sp === 'pintade' || sp.includes('guinea')) {
-      if (d <= 28) return 26.5;
-      if (d <= 84) return 62.5;
-      return 107.5;
+      if (d <= 7)   return 15;  // Sem 1: ~15 g/j (Ci 0.50)
+      if (d <= 14)  return 22;  // Sem 2: ~22 g/j (Ci 0.73)
+      if (d <= 21)  return 28;  // Sem 3: ~28 g/j (Ci 0.93)
+      if (d <= 28)  return 35;  // Sem 4: ~35 g/j (Ci 1.17)
+      if (d <= 42)  return 50;  // Sem 5-6: ~50 g/j (Ci 1.67)
+      if (d <= 56)  return 60;  // Sem 7-8: ~60 g/j (Ci 2.00)
+      if (d <= 70)  return 72;  // Sem 9-10: ~72 g/j (Ci 2.40)
+      if (d <= 84)  return 80;  // Sem 11-12: ~80 g/j (Ci 2.67)
+      if (d <= 112) return 95;  // Sem 13-16: ~95 g/j (Ci 3.17)
+      if (d <= 140) return 110; // Sem 17-20: ~110 g/j (Ci 3.67)
+
+      // Adulte (> 140j / > 20 sem)
+      const isLaying = stg.includes('ponte') || stg.includes('lay') || brd.includes('ponte');
+      if (isLaying) return 130; // Pintade pondeuse en production: ~130 g (Ci 4.33)
+      return 115;               // Pintade adulte chair / entretien: ~115 g (Ci 3.83)
     }
 
-    // 3. AUTRE VOLAILLE (Dinde, etc.)
-    if (sp === 'autre' || sp === 'dinde' || sp.includes('turkey')) {
-      if (d <= 28) return 35;
-      if (d <= 84) return 75;
+    // 3. CAILLE (Coturnix japonica - Cycle très rapide, ponte à 42j)
+    if (sp === 'caille' || sp.includes('quail')) {
+      if (d <= 7)  return 6;   // Sem 1: ~6 g/j (Ci 0.20)
+      if (d <= 14) return 10;  // Sem 2: ~10 g/j (Ci 0.33)
+      if (d <= 21) return 14;  // Sem 3: ~14 g/j (Ci 0.47)
+      if (d <= 35) return 18;  // Sem 4-5: ~18 g/j (Ci 0.60)
+      const isLaying = stg.includes('ponte') || stg.includes('lay') || brd.includes('ponte');
+      if (isLaying) return 25; // Caille pondeuse adulte: ~25 g/j (Ci 0.83)
+      return 22;               // Caille adulte chair: ~22 g/j (Ci 0.73)
+    }
+
+    // 4. DINDE (Meleagris gallopavo)
+    if (sp === 'dinde' || sp.includes('turkey')) {
+      if (d <= 14)  return 40;  // Sem 1-2: ~40 g/j (Ci 1.33)
+      if (d <= 28)  return 70;  // Sem 3-4: ~70 g/j (Ci 2.33)
+      if (d <= 56)  return 130; // Sem 5-8: ~130 g/j (Ci 4.33)
+      if (d <= 84)  return 180; // Sem 9-12: ~180 g/j (Ci 6.00)
+      if (d <= 112) return 220; // Sem 13-16: ~220 g/j (Ci 7.33)
+      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكر');
+      if (isMale) return 320;   // Dindon mâle adulte (18 kg): ~320 g/j (Ci 10.67)
+      return 250;               // Dinde femelle adulte: ~250 g/j (Ci 8.33)
+    }
+
+    // 5. OIE (Anser anser)
+    if (sp === 'oie' || sp.includes('goose')) {
+      if (d <= 21) return 60;
+      if (d <= 60) return 150;
+      return 220;
+    }
+
+    // 6. AUTRE VOLAILLE générique
+    if (sp === 'autre') {
+      if (d <= 28)  return 30;
+      if (d <= 84)  return 65;
+      if (d <= 154) return 95;
       return 120;
     }
 
-    // 4. POULE & POULET / GALLINACÉS (Table officielle)
-    if (d <= 28) return 30;   // 0 à 4 sem (J1–J28): ~30 g (Ci 1.0)
-    if (d <= 70) return 60;   // 5 à 10 sem (J29–J70): ~60 g (Ci 2.0)
-    if (d <= 112) return 80;  // 11 à 16 sem (J71–J112): ~80 g (Ci 2.7)
-    if (d <= 154) return 95;  // 17 à 22 sem (J113–J154): ~95 g (Ci 3.2)
+    // 7. POULE & POULET / GALLINACÉS (Table zootechnique officielle)
+    if (d <= 7)   return 14;  // Sem 1: ~14 g/j (Ci 0.47)
+    if (d <= 14)  return 22;  // Sem 2: ~22 g/j (Ci 0.73)
+    if (d <= 21)  return 28;  // Sem 3: ~28 g/j (Ci 0.93)
+    if (d <= 28)  return 34;  // Sem 4: ~34 g/j (Ci 1.13)
+    if (d <= 42)  return 50;  // Sem 5-6: ~50 g/j (Ci 1.67)
+    if (d <= 56)  return 65;  // Sem 7-8: ~65 g/j (Ci 2.17)
+    if (d <= 70)  return 75;  // Sem 9-10: ~75 g/j (Ci 2.50)
+    if (d <= 84)  return 82;  // Sem 11-12: ~82 g/j (Ci 2.73)
+    if (d <= 112) return 90;  // Sem 13-16: ~90 g/j (Ci 3.00)
+    if (d <= 140) return 100; // Sem 17-20: ~100 g/j (Ci 3.33)
+    if (d <= 154) return 108; // Sem 21-22: ~108 g/j (Ci 3.60)
 
     // Adulte (> 154j / > 22 sem / > 5 mois)
     const isRooster = stg.includes('coq') || stg.includes('rooster') || stg.includes('سردوك') || stg.includes('فحل') || brd.includes('coq');
-    if (isRooster) return 130; // Coq adulte: ~130 g (Ci 4.3)
-    return 115;                // Poule pondeuse adulte: ~115 g (Ci 3.8)
+    if (isRooster) return 130; // Coq adulte: ~130 g (Ci 4.33)
+    return 115;                // Poule pondeuse adulte: ~115 g (Ci 3.83)
   },
 
   getAgronomicFeedData(species = 'poulet', ageDays = 30, stage = '', breed = '') {
@@ -2195,65 +2605,70 @@ const app = {
     const brd = (breed || '').toLowerCase();
     const days = Math.max(1, Math.round(Number(ageDays) || 1));
 
+    // ── 1. CANARD DE BARBARIE / PALMIPÈDES (Barème zootechnique) ──────────────
     if (sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck')) {
+      if (days <= 7) {
+        return {
+          minGrams: 18, maxGrams: 26, avgGrams: 22, dailyGrams: 22, ci: 0.73,
+          stageKey: 'duck_starter_1',
+          labelFr: 'Caneton J1–J7', labelAr: 'فراخ بط الأسبوع الأول', labelEn: 'Duckling day 1-7',
+          notesFr: 'Miettes haute protéine (21-22%)', notesAr: 'علف ابتدائي 21-22% بروتين'
+        };
+      }
+      if (days <= 14) {
+        return {
+          minGrams: 34, maxGrams: 46, avgGrams: 40, dailyGrams: 40, ci: 1.33,
+          stageKey: 'duck_starter_2',
+          labelFr: 'Caneton J8–J14', labelAr: 'فراخ بط الأسبوع الثاني', labelEn: 'Duckling day 8-14',
+          notesFr: 'Démarrage actif', notesAr: 'نمو بادي نشط'
+        };
+      }
       if (days <= 21) {
         return {
-          minGrams: 35,
-          maxGrams: 45,
-          avgGrams: 40,
-          dailyGrams: 40,
-          ci: 1.3,
-          stageKey: 'duck_starter',
-          labelFr: 'Caneton démarrage',
-          labelAr: 'فراخ بط بداية',
-          labelEn: 'Duckling starter',
-          notesFr: 'Miettes démarrage',
-          notesAr: 'حبيبات بداية'
+          minGrams: 52, maxGrams: 64, avgGrams: 58, dailyGrams: 58, ci: 1.93,
+          stageKey: 'duck_starter_3',
+          labelFr: 'Caneton J15–J21', labelAr: 'فراخ بط الأسبوع الثالث', labelEn: 'Duckling day 15-21',
+          notesFr: 'Fin de démarrage', notesAr: 'نهاية مرحلة البداية'
+        };
+      }
+      if (days <= 35) {
+        return {
+          minGrams: 70, maxGrams: 90, avgGrams: 80, dailyGrams: 80, ci: 2.67,
+          stageKey: 'duck_grower_early',
+          labelFr: 'Caneton croissance (J22–J35)', labelAr: 'بط نمو مبكر', labelEn: 'Duckling early grower',
+          notesFr: 'Croissance osseuse rapide', notesAr: 'نمو عظمي وهيكلي سريع'
         };
       }
       if (days <= 49) {
         return {
-          minGrams: 80,
-          maxGrams: 100,
-          avgGrams: 90,
-          dailyGrams: 90,
-          ci: 3.0,
-          stageKey: 'duck_grower_1',
-          labelFr: 'Caneton croissance',
-          labelAr: 'بط نمو',
-          labelEn: 'Duckling grower',
-          notesFr: 'Croissance osseuse rapide',
-          notesAr: 'نمو عظمي سريع'
+          minGrams: 90, maxGrams: 110, avgGrams: 100, dailyGrams: 100, ci: 3.33,
+          stageKey: 'duck_grower_mid',
+          labelFr: 'Canard croissance (J36–J49)', labelAr: 'بط نمو متوسط', labelEn: 'Duck mid grower',
+          notesFr: 'Développement musculaire soutenu', notesAr: 'تطور عضلي نشط'
+        };
+      }
+      if (days <= 70) {
+        return {
+          minGrams: 120, maxGrams: 145, avgGrams: 132, dailyGrams: 132, ci: 4.40,
+          stageKey: 'duck_grower_late',
+          labelFr: 'Jeune canard croissance (J50–J70)', labelAr: 'بط نمو متقدم', labelEn: 'Young duck grower',
+          notesFr: 'Pic d\'appétit et plumage', notesAr: 'ذروة الشهية واكتمال الريش'
         };
       }
       if (days <= 84) {
         return {
-          minGrams: 125,
-          maxGrams: 155,
-          avgGrams: 140,
-          dailyGrams: 140,
-          ci: 4.7,
-          stageKey: 'duck_grower_2',
-          labelFr: 'Jeune canard croissance',
-          labelAr: 'بط نمو',
-          labelEn: 'Young duck grower',
-          notesFr: 'Pic d\'appétit / plumage',
-          notesAr: 'ذروة الشهية واكتمال الريش'
+          minGrams: 140, maxGrams: 160, avgGrams: 150, dailyGrams: 150, ci: 5.00,
+          stageKey: 'duck_grower_fin',
+          labelFr: 'Canard en transition (J71–J84)', labelAr: 'بط مرحلة انتقالية', labelEn: 'Duck transition',
+          notesFr: 'Finition progressive', notesAr: 'تسمين تدريجي'
         };
       }
       if (days <= 112) {
         return {
-          minGrams: 155,
-          maxGrams: 185,
-          avgGrams: 170,
-          dailyGrams: 170,
-          ci: 5.7,
+          minGrams: 155, maxGrams: 185, avgGrams: 170, dailyGrams: 170, ci: 5.67,
           stageKey: 'duck_finishing',
-          labelFr: 'Canard en finition',
-          labelAr: 'بط مرحلة تسمين نهائي',
-          labelEn: 'Duck finishing',
-          notesFr: 'Prise de gras et masse',
-          notesAr: 'اكتساب الوزن واللحم'
+          labelFr: 'Canard en finition (J85–J112)', labelAr: 'بط تسمين نهائي', labelEn: 'Duck finishing',
+          notesFr: 'Prise de gras et masse corporelle', notesAr: 'اكتساب الوزن واللحم'
         };
       }
       
@@ -2261,178 +2676,379 @@ const app = {
       const isFemale = stg.includes('femelle') || stg.includes('female') || stg.includes('أنثى') || stg.includes('canne') || brd.includes('canne');
       if (isMale) {
         return {
-          minGrams: 160,
-          maxGrams: 180,
-          avgGrams: 170,
-          dailyGrams: 170,
-          ci: 5.7,
+          minGrams: 160, maxGrams: 180, avgGrams: 170, dailyGrams: 170, ci: 5.67,
           stageKey: 'duck_adult_male',
-          labelFr: 'Canard adulte mâle',
-          labelAr: 'ذكر بط بالغ',
-          labelEn: 'Adult Drake',
-          notesFr: 'Pèse souvent le double',
-          notesAr: 'يزن غالباً ضعف الأنثى'
+          labelFr: 'Canard adulte mâle (>112j)', labelAr: 'ذكر بط بالغ', labelEn: 'Adult Drake',
+          notesFr: 'Reproducteur lourd (4.5–5.5 kg)', notesAr: 'فحل تلقيح يزن 4.5-5.5 كغ'
         };
       }
       if (isFemale) {
         return {
-          minGrams: 120,
-          maxGrams: 140,
-          avgGrams: 130,
-          dailyGrams: 130,
-          ci: 4.3,
+          minGrams: 120, maxGrams: 140, avgGrams: 130, dailyGrams: 130, ci: 4.33,
           stageKey: 'duck_adult_female',
-          labelFr: 'Canne adulte femelle',
-          labelAr: 'أنثى بط بالغة',
-          labelEn: 'Adult Female Duck',
-          notesFr: 'Plus légère que le mâle (ponte)',
-          notesAr: 'أخف وزناً من الذكر (إنتاج بيض)'
+          labelFr: 'Canne adulte femelle (>112j)', labelAr: 'أنثى بط بالغة (بياضة)', labelEn: 'Adult Female Duck',
+          notesFr: 'Canne pondeuse (2.5–3 kg)', notesAr: 'أنثى بياضة تزن 2.5-3 كغ'
         };
       }
       return {
-        minGrams: 135,
-        maxGrams: 165,
-        avgGrams: 150,
-        dailyGrams: 150,
-        ci: 5.0,
+        minGrams: 135, maxGrams: 165, avgGrams: 150, dailyGrams: 150, ci: 5.00,
         stageKey: 'duck_adult_mixed',
-        labelFr: 'Canard adulte',
-        labelAr: 'بط بالغ',
-        labelEn: 'Adult duck',
-        notesFr: 'Si mâles et femelles mélangés',
-        notesAr: 'في حالة خلط الذكور والإناث معاً'
+        labelFr: 'Canard adulte mixte (>112j)', labelAr: 'بط بالغ مختلط', labelEn: 'Adult duck (mixed)',
+        notesFr: 'Troupeau mixte mâles et femelles', notesAr: 'قطيع مختلط ذكور وإناث'
       };
     }
 
+    // ── 2. PINTADE (Numida meleagris - Barème zootechnique) ───────────────────
     if (sp === 'pintade' || sp.includes('guinea')) {
+      if (days <= 7) {
+        return {
+          minGrams: 12, maxGrams: 18, avgGrams: 15, dailyGrams: 15, ci: 0.50,
+          stageKey: 'pintade_keet_1',
+          labelFr: 'Pintadeaux J1–J7', labelAr: 'كتاكيت الوادي الأسبوع 1', labelEn: 'Guinea keet day 1-7',
+          notesFr: 'Miettes démarrage 24% protéine', notesAr: 'علف ابتدائي 24% بروتين'
+        };
+      }
+      if (days <= 14) {
+        return {
+          minGrams: 18, maxGrams: 26, avgGrams: 22, dailyGrams: 22, ci: 0.73,
+          stageKey: 'pintade_keet_2',
+          labelFr: 'Pintadeaux J8–J14', labelAr: 'كتاكيت الوادي الأسبوع 2', labelEn: 'Guinea keet day 8-14',
+          notesFr: 'Haute sensibilité thermique', notesAr: 'حساسية عالية للحرارة'
+        };
+      }
+      if (days <= 21) {
+        return {
+          minGrams: 24, maxGrams: 32, avgGrams: 28, dailyGrams: 28, ci: 0.93,
+          stageKey: 'pintade_keet_3',
+          labelFr: 'Pintadeaux J15–J21', labelAr: 'كتاكيت الوادي الأسبوع 3', labelEn: 'Guinea keet day 15-21',
+          notesFr: 'Croissance osseuse', notesAr: 'نمو هيكلي متسارع'
+        };
+      }
       if (days <= 28) {
         return {
-          minGrams: 20, maxGrams: 32, avgGrams: 26.5, dailyGrams: 26.5, ci: 0.9,
-          stageKey: 'pintade_chick',
-          labelFr: 'Pintadeaux démarrage',
-          labelAr: 'كتاكيت دجاج الوادي',
-          labelEn: 'Guinea Keets'
+          minGrams: 30, maxGrams: 40, avgGrams: 35, dailyGrams: 35, ci: 1.17,
+          stageKey: 'pintade_keet_4',
+          labelFr: 'Pintadeaux J22–J28', labelAr: 'كتاكيت الوادي الأسبوع 4', labelEn: 'Guinea keet day 22-28',
+          notesFr: 'Fin de démarrage', notesAr: 'نهاية مرحلة البداية'
+        };
+      }
+      if (days <= 42) {
+        return {
+          minGrams: 45, maxGrams: 55, avgGrams: 50, dailyGrams: 50, ci: 1.67,
+          stageKey: 'pintade_grower_1',
+          labelFr: 'Pintades croissance 1 (J29–J42)', labelAr: 'دجاج الوادي نمو مبكر', labelEn: 'Guinea grower 1',
+          notesFr: 'Aliment croissance 19-20%', notesAr: 'علف نمو 19-20% بروتين'
+        };
+      }
+      if (days <= 56) {
+        return {
+          minGrams: 55, maxGrams: 68, avgGrams: 60, dailyGrams: 60, ci: 2.00,
+          stageKey: 'pintade_grower_2',
+          labelFr: 'Pintades croissance 2 (J43–J56)', labelAr: 'دجاج الوادي نمو متوسط', labelEn: 'Guinea grower 2',
+          notesFr: 'Croissance vive', notesAr: 'نمو نشط واكتمال ريش'
+        };
+      }
+      if (days <= 70) {
+        return {
+          minGrams: 65, maxGrams: 78, avgGrams: 72, dailyGrams: 72, ci: 2.40,
+          stageKey: 'pintade_grower_3',
+          labelFr: 'Pintades croissance 3 (J57–J70)', labelAr: 'دجاج الوادي نمو متقدم', labelEn: 'Guinea grower 3',
+          notesFr: 'Aliment 18% protéine', notesAr: 'علف نمو 18% بروتين'
         };
       }
       if (days <= 84) {
         return {
-          minGrams: 50, maxGrams: 75, avgGrams: 62.5, dailyGrams: 62.5, ci: 2.1,
-          stageKey: 'pintade_grower',
-          labelFr: 'Pintades croissance',
-          labelAr: 'دجاج الوادي نمو',
-          labelEn: 'Growing Guinea'
+          minGrams: 75, maxGrams: 88, avgGrams: 80, dailyGrams: 80, ci: 2.67,
+          stageKey: 'pintade_grower_4',
+          labelFr: 'Pintades croissance 4 (J71–J84)', labelAr: 'دجاج الوادي نمو متأخر', labelEn: 'Guinea grower 4',
+          notesFr: 'Bonne conformation', notesAr: 'بنية جسدية ممتازة'
+        };
+      }
+      if (days <= 112) {
+        return {
+          minGrams: 85, maxGrams: 105, avgGrams: 95, dailyGrams: 95, ci: 3.17,
+          stageKey: 'pintade_sub_adult',
+          labelFr: 'Pintade finition chair (J85–J112)', labelAr: 'دجاج الوادي تسمين', labelEn: 'Guinea finisher',
+          notesFr: 'Finition pour abattage ou élevage', notesAr: 'تسمين للذبح أو تربية'
+        };
+      }
+      if (days <= 140) {
+        return {
+          minGrams: 100, maxGrams: 120, avgGrams: 110, dailyGrams: 110, ci: 3.67,
+          stageKey: 'pintade_prelay',
+          labelFr: 'Pintade pré-ponte (J113–J140)', labelAr: 'دجاج الوادي قبل البيض', labelEn: 'Pre-laying guinea',
+          notesFr: 'Enrichi en calcium et minéraux', notesAr: 'غني بالكالسيوم والمعادن'
+        };
+      }
+
+      const isLaying = stg.includes('ponte') || stg.includes('lay') || brd.includes('ponte');
+      if (isLaying) {
+        return {
+          minGrams: 120, maxGrams: 140, avgGrams: 130, dailyGrams: 130, ci: 4.33,
+          stageKey: 'pintade_laying',
+          labelFr: 'Pintade pondeuse adulte (>140j)', labelAr: 'دجاج الوادي بياضة بالغة', labelEn: 'Laying guinea fowl',
+          notesFr: 'Ponte saisonnière (80–120 œufs/an)', notesAr: 'إنتاج بيض موسمي 80-120 بيضة/سنة'
         };
       }
       return {
-        minGrams: 95, maxGrams: 120, avgGrams: 107.5, dailyGrams: 107.5, ci: 3.6,
+        minGrams: 105, maxGrams: 125, avgGrams: 115, dailyGrams: 115, ci: 3.83,
         stageKey: 'pintade_adult',
-        labelFr: 'Pintades adultes',
-        labelAr: 'دجاج الوادي بالغ',
-        labelEn: 'Adult Guinea'
+        labelFr: 'Pintade adulte chair (>140j)', labelAr: 'دجاج الوادي بالغ (لحم)', labelEn: 'Adult guinea fowl (meat)',
+        notesFr: 'Adulte 1.5–2 kg vif', notesAr: 'بالغ لحم يزن 1.5-2 كغ'
       };
     }
 
-    if (sp === 'autre' || sp === 'dinde' || sp.includes('turkey')) {
-      if (days <= 28) {
-        return { minGrams: 25, maxGrams: 45, avgGrams: 35, dailyGrams: 35, ci: 1.2, stageKey: 'other_start', labelFr: 'Démarrage', labelAr: 'بداية', labelEn: 'Starter' };
+    // ── 3. CAILLE (Coturnix japonica - Cycle très court) ──────────────────────
+    if (sp === 'caille' || sp.includes('quail')) {
+      if (days <= 7) {
+        return {
+          minGrams: 4, maxGrams: 8, avgGrams: 6, dailyGrams: 6, ci: 0.20,
+          stageKey: 'quail_starter_1',
+          labelFr: 'Cailleteau J1–J7', labelAr: 'فرخ السمان الأسبوع 1', labelEn: 'Quail chick day 1-7',
+          notesFr: 'Miettes fines 28% protéine', notesAr: 'علف بادي دقيق 28% بروتين'
+        };
       }
-      if (days <= 84) {
-        return { minGrams: 60, maxGrams: 90, avgGrams: 75, dailyGrams: 75, ci: 2.5, stageKey: 'other_grow', labelFr: 'Croissance', labelAr: 'نمو', labelEn: 'Grower' };
+      if (days <= 14) {
+        return {
+          minGrams: 8, maxGrams: 12, avgGrams: 10, dailyGrams: 10, ci: 0.33,
+          stageKey: 'quail_starter_2',
+          labelFr: 'Cailleteau J8–J14', labelAr: 'فرخ السمان الأسبوع 2', labelEn: 'Quail chick day 8-14',
+          notesFr: 'Croissance rapide 24% protéine', notesAr: 'نمو سريع 24% بروتين'
+        };
       }
-      return { minGrams: 100, maxGrams: 140, avgGrams: 120, dailyGrams: 120, ci: 4.0, stageKey: 'other_adult', labelFr: 'Adulte', labelAr: 'بالغ', labelEn: 'Adult' };
+      if (days <= 21) {
+        return {
+          minGrams: 12, maxGrams: 16, avgGrams: 14, dailyGrams: 14, ci: 0.47,
+          stageKey: 'quail_grower',
+          labelFr: 'Jeune caille (J15–J21)', labelAr: 'سمان شاب', labelEn: 'Young quail',
+          notesFr: 'Développement vigoureux', notesAr: 'تطور سريع وترييش'
+        };
+      }
+      if (days <= 35) {
+        return {
+          minGrams: 16, maxGrams: 20, avgGrams: 18, dailyGrams: 18, ci: 0.60,
+          stageKey: 'quail_finisher',
+          labelFr: 'Caille pré-ponte / finition (J22–J35)', labelAr: 'سمان تحضير البيض/تسمين', labelEn: 'Quail pre-layer / finisher',
+          notesFr: 'Transition maturité sexuelle', notesAr: 'مرحلة البلوغ الجنسي السريع'
+        };
+      }
+
+      const isLaying = stg.includes('ponte') || stg.includes('lay') || brd.includes('ponte');
+      if (isLaying) {
+        return {
+          minGrams: 23, maxGrams: 27, avgGrams: 25, dailyGrams: 25, ci: 0.83,
+          stageKey: 'quail_layer',
+          labelFr: 'Caille pondeuse adulte (>J35)', labelAr: 'سمان بياضة بالغة', labelEn: 'Adult laying quail',
+          notesFr: 'Plein pic de ponte (250–300 œufs/an)', notesAr: 'ذروة إنتاج البيض 250-300 بيضة/سنة'
+        };
+      }
+      return {
+        minGrams: 20, maxGrams: 24, avgGrams: 22, dailyGrams: 22, ci: 0.73,
+        stageKey: 'quail_adult_meat',
+        labelFr: 'Caille adulte chair (>J35)', labelAr: 'سمان بالغ (لحم)', labelEn: 'Adult meat quail',
+        notesFr: 'Poids adulte 160–200 g', notesAr: 'وزن بالغ 160-200 غرام'
+      };
     }
 
-    // POULE & POULET / GALLINACÉS (Table officielle de l'éleveur)
+    // ── 4. DINDE (Meleagris gallopavo - Grande volaille) ─────────────────────
+    if (sp === 'dinde' || sp.includes('turkey')) {
+      if (days <= 14) {
+        return {
+          minGrams: 30, maxGrams: 50, avgGrams: 40, dailyGrams: 40, ci: 1.33,
+          stageKey: 'turkey_starter_1',
+          labelFr: 'Dindonneau démarrage (J1–J14)', labelAr: 'ديك رومي بداية', labelEn: 'Turkey poult starter',
+          notesFr: 'Démarrage haute protéine (28%)', notesAr: 'علف بادي 28% بروتين'
+        };
+      }
+      if (days <= 28) {
+        return {
+          minGrams: 60, maxGrams: 80, avgGrams: 70, dailyGrams: 70, ci: 2.33,
+          stageKey: 'turkey_starter_2',
+          labelFr: 'Dindonneau 2e stade (J15–J28)', labelAr: 'ديك رومي صغير', labelEn: 'Turkey poult 2',
+          notesFr: 'Aliment démarrage 24%', notesAr: 'علف نمو 24% بروتين'
+        };
+      }
+      if (days <= 56) {
+        return {
+          minGrams: 110, maxGrams: 150, avgGrams: 130, dailyGrams: 130, ci: 4.33,
+          stageKey: 'turkey_grower_1',
+          labelFr: 'Dindonneau croissance 1 (J29–J56)', labelAr: 'ديك رومي نمو مبكر', labelEn: 'Turkey grower 1',
+          notesFr: 'Forte ossification', notesAr: 'بناء عظمي ضخم'
+        };
+      }
+      if (days <= 84) {
+        return {
+          minGrams: 160, maxGrams: 200, avgGrams: 180, dailyGrams: 180, ci: 6.00,
+          stageKey: 'turkey_grower_2',
+          labelFr: 'Dindonneau croissance 2 (J57–J84)', labelAr: 'ديك رومي نمو متقدم', labelEn: 'Turkey grower 2',
+          notesFr: 'Aliment 20% protéine', notesAr: 'علف نمو 20% بروتين'
+        };
+      }
+      if (days <= 112) {
+        return {
+          minGrams: 200, maxGrams: 240, avgGrams: 220, dailyGrams: 220, ci: 7.33,
+          stageKey: 'turkey_finisher',
+          labelFr: 'Dindon finition (J85–J112)', labelAr: 'ديك رومي تسمين', labelEn: 'Turkey finisher',
+          notesFr: 'Engraissement final', notesAr: 'تسمين نهائي واكتساب وزن'
+        };
+      }
+
+      const isMale = stg.includes('mâle') || stg.includes('male') || stg.includes('ذكر');
+      if (isMale) {
+        return {
+          minGrams: 300, maxGrams: 340, avgGrams: 320, dailyGrams: 320, ci: 10.67,
+          stageKey: 'turkey_adult_male',
+          labelFr: 'Dindon adulte mâle (>112j)', labelAr: 'ديك رومي فحل بالغ', labelEn: 'Adult Tom Turkey',
+          notesFr: 'Reproducteur lourd (15–20 kg)', notesAr: 'فحل تلقيح يزن 15-20 كغ'
+        };
+      }
+      return {
+        minGrams: 230, maxGrams: 270, avgGrams: 250, dailyGrams: 250, ci: 8.33,
+        stageKey: 'turkey_adult_female',
+        labelFr: 'Dinde adulte femelle (>112j)', labelAr: 'دجاج رومي أنثى بالغة', labelEn: 'Adult Hen Turkey',
+        notesFr: 'Femelle reproductrice (8–12 kg)', notesAr: 'أنثى للتفريخ تزن 8-12 كغ'
+      };
+    }
+
+    // ── 5. AUTRE VOLAILLE générique ──────────────────────────────────────────
+    if (sp === 'autre') {
+      if (days <= 28) {
+        return {
+          minGrams: 25, maxGrams: 35, avgGrams: 30, dailyGrams: 30, ci: 1.00,
+          stageKey: 'other_starter',
+          labelFr: 'Démarrage (J1–J28)', labelAr: 'مرحلة البداية', labelEn: 'Starter (d1-28)',
+          notesFr: 'Aliment premier âge', notesAr: 'علف بادي'
+        };
+      }
+      if (days <= 84) {
+        return {
+          minGrams: 55, maxGrams: 75, avgGrams: 65, dailyGrams: 65, ci: 2.17,
+          stageKey: 'other_grower',
+          labelFr: 'Croissance (J29–J84)', labelAr: 'مرحلة النمو', labelEn: 'Grower (d29-84)',
+          notesFr: 'Aliment croissance standard', notesAr: 'علف نمو قياسي'
+        };
+      }
+      if (days <= 154) {
+        return {
+          minGrams: 85, maxGrams: 105, avgGrams: 95, dailyGrams: 95, ci: 3.17,
+          stageKey: 'other_finisher',
+          labelFr: 'Finition / Développement (J85–J154)', labelAr: 'تسمين وبلوغ', labelEn: 'Finisher / Development',
+          notesFr: 'Transition adulte', notesAr: 'مرحلة البلوغ'
+        };
+      }
+      return {
+        minGrams: 110, maxGrams: 130, avgGrams: 120, dailyGrams: 120, ci: 4.00,
+        stageKey: 'other_adult',
+        labelFr: 'Volaille adulte (>154j)', labelAr: 'طيور بالغة', labelEn: 'Adult poultry',
+        notesFr: 'Maintien adulte', notesAr: 'تغذية صيانة وبلوغ'
+      };
+    }
+
+    // ── 6. POULE & POULET / GALLINACÉS (Barème zootechnique officiel) ───────────
+    if (days <= 7) {
+      return {
+        minGrams: 11, maxGrams: 17, avgGrams: 14, dailyGrams: 14, ci: 0.47,
+        stageKey: 'chicken_day1_7',
+        labelFr: 'Poussin J1–J7', labelAr: 'كتكوت الأسبوع 1', labelEn: 'Chick day 1-7',
+        notesFr: 'Miettes démarrage 22% protéine', notesAr: 'علف ابتدائي 22% بروتين'
+      };
+    }
+    if (days <= 14) {
+      return {
+        minGrams: 18, maxGrams: 26, avgGrams: 22, dailyGrams: 22, ci: 0.73,
+        stageKey: 'chicken_day8_14',
+        labelFr: 'Poussin J8–J14', labelAr: 'كتكوت الأسبوع 2', labelEn: 'Chick day 8-14',
+        notesFr: 'Démarrage actif', notesAr: 'بداية نشطة واكتمال ترييش'
+      };
+    }
+    if (days <= 21) {
+      return {
+        minGrams: 24, maxGrams: 32, avgGrams: 28, dailyGrams: 28, ci: 0.93,
+        stageKey: 'chicken_day15_21',
+        labelFr: 'Poussin J15–J21', labelAr: 'كتكوت الأسبوع 3', labelEn: 'Chick day 15-21',
+        notesFr: 'Croissance rapide', notesAr: 'نمو سريع'
+      };
+    }
     if (days <= 28) {
       return {
-        minGrams: 25,
-        maxGrams: 35,
-        avgGrams: 30,
-        dailyGrams: 30,
-        ci: 1.0,
+        minGrams: 30, maxGrams: 38, avgGrams: 34, dailyGrams: 34, ci: 1.13,
         stageKey: 'chicken_starter',
-        labelFr: 'Poussin démarrage',
-        labelAr: 'كتكوت بداية',
-        labelEn: 'Chick starter',
-        notesFr: 'Miettes / démarrage (protéines 20-22%)',
-        notesAr: 'علف بادي 20-22% بروتين'
+        labelFr: 'Poussin J22–J28', labelAr: 'كتكوت الأسبوع 4', labelEn: 'Chick day 22-28',
+        notesFr: 'Fin de phase démarrage', notesAr: 'نهاية مرحلة البداية'
+      };
+    }
+    if (days <= 42) {
+      return {
+        minGrams: 44, maxGrams: 56, avgGrams: 50, dailyGrams: 50, ci: 1.67,
+        stageKey: 'chicken_grower_early',
+        labelFr: 'Poulet croissance précoce (J29–J42)', labelAr: 'دجاج نمو مبكر', labelEn: 'Early grower chicken',
+        notesFr: 'Aliment croissance 19% protéine', notesAr: 'علف نمو 19% بروتين'
+      };
+    }
+    if (days <= 56) {
+      return {
+        minGrams: 58, maxGrams: 72, avgGrams: 65, dailyGrams: 65, ci: 2.17,
+        stageKey: 'chicken_grower_mid',
+        labelFr: 'Poulet croissance milieu (J43–J56)', labelAr: 'دجاج نمو متوسط', labelEn: 'Mid grower chicken',
+        notesFr: 'Développement vigoureux (18% protéine)', notesAr: 'نمو نشط 18% بروتين'
       };
     }
     if (days <= 70) {
       return {
-        minGrams: 50,
-        maxGrams: 70,
-        avgGrams: 60,
-        dailyGrams: 60,
-        ci: 2.0,
+        minGrams: 68, maxGrams: 82, avgGrams: 75, dailyGrams: 75, ci: 2.50,
         stageKey: 'chicken_grower',
-        labelFr: 'Poulet croissance',
-        labelAr: 'دجاج نمو',
-        labelEn: 'Growing chicken',
-        notesFr: 'Croissance soutenue',
-        notesAr: 'نمو هيكلي سريع وترييش'
+        labelFr: 'Poulet croissance (J57–J70)', labelAr: 'دجاج نمو', labelEn: 'Grower chicken',
+        notesFr: 'Aliment croissance soutenue (17% protéine)', notesAr: 'علف نمو 17% بروتين'
+      };
+    }
+    if (days <= 84) {
+      return {
+        minGrams: 74, maxGrams: 90, avgGrams: 82, dailyGrams: 82, ci: 2.73,
+        stageKey: 'chicken_young',
+        labelFr: 'Jeune poulet (J71–J84)', labelAr: 'دجاج شاب', labelEn: 'Young chicken',
+        notesFr: 'Transition pré-adulte (16% protéine)', notesAr: 'مرحلة تحضير البلوغ 16% بروتين'
       };
     }
     if (days <= 112) {
       return {
-        minGrams: 70,
-        maxGrams: 90,
-        avgGrams: 80,
-        dailyGrams: 80,
-        ci: 2.7,
-        stageKey: 'chicken_young',
-        labelFr: 'Poulet croissance',
-        labelAr: 'دجاج نمو',
-        labelEn: 'Young chicken',
-        notesFr: 'Transition vers ponte / engraissement',
-        notesAr: 'مرحلة البلوغ الأولي والتحضير'
+        minGrams: 82, maxGrams: 98, avgGrams: 90, dailyGrams: 90, ci: 3.00,
+        stageKey: 'chicken_sub_adult',
+        labelFr: 'Poulet sub-adulte (J85–J112)', labelAr: 'دجاج شبه بالغ', labelEn: 'Sub-adult chicken',
+        notesFr: 'Finition chair ou élevage', notesAr: 'تسمين أو تحضير إنتاج'
+      };
+    }
+    if (days <= 140) {
+      return {
+        minGrams: 90, maxGrams: 110, avgGrams: 100, dailyGrams: 100, ci: 3.33,
+        stageKey: 'chicken_transition',
+        labelFr: 'Poulette transition (J113–J140)', labelAr: 'بشاير انتقال', labelEn: 'Transition pullet',
+        notesFr: 'Transition ponte (16% protéine)', notesAr: 'انتقال للبيض 16% بروتين'
       };
     }
     if (days <= 154) {
       return {
-        minGrams: 85,
-        maxGrams: 105,
-        avgGrams: 95,
-        dailyGrams: 95,
-        ci: 3.2,
+        minGrams: 100, maxGrams: 116, avgGrams: 108, dailyGrams: 108, ci: 3.60,
         stageKey: 'chicken_prelay',
-        labelFr: 'Poulette finition',
-        labelAr: 'بشاير مقبلة على البيض',
-        labelEn: 'Pre-layer',
-        notesFr: 'Aliment pré-ponte riche en calcium',
-        notesAr: 'علف غني بالكالسيوم والبروتين'
+        labelFr: 'Poulette pré-ponte (J141–J154)', labelAr: 'بشاير مقبلة على البيض', labelEn: 'Pre-layer pullet',
+        notesFr: 'Aliment pré-ponte riche en calcium', notesAr: 'علف غني بالكالسيوم لبدء البيض'
       };
     }
 
     const isRooster = stg.includes('coq') || stg.includes('rooster') || stg.includes('سردوك') || stg.includes('فحل') || brd.includes('coq');
     if (isRooster) {
       return {
-        minGrams: 120,
-        maxGrams: 140,
-        avgGrams: 130,
-        dailyGrams: 130,
-        ci: 4.3,
+        minGrams: 120, maxGrams: 140, avgGrams: 130, dailyGrams: 130, ci: 4.33,
         stageKey: 'chicken_rooster',
-        labelFr: 'Coq adulte',
-        labelAr: 'سردوك بالغ',
-        labelEn: 'Adult rooster',
-        notesFr: 'Maintien de condition reproducteur',
-        notesAr: 'فحول مخصبة للتلقيح'
+        labelFr: 'Coq adulte (>154j)', labelAr: 'سردوك بالغ', labelEn: 'Adult rooster',
+        notesFr: 'Maintien de condition reproducteur', notesAr: 'فحول مخصبة للتلقيح'
       };
     }
 
     return {
-      minGrams: 110,
-      maxGrams: 120,
-      avgGrams: 115,
-      dailyGrams: 115,
-      ci: 3.8,
+      minGrams: 110, maxGrams: 120, avgGrams: 115, dailyGrams: 115, ci: 3.83,
       stageKey: 'chicken_adult_layer',
-      labelFr: 'Poule pondeuse',
-      labelAr: 'دجاجة بياضة',
-      labelEn: 'Laying hen',
-      notesFr: 'Plein pic de ponte (bouchon ponte)',
-      notesAr: 'إنتاج البيض اليومي المستمر'
+      labelFr: 'Poule pondeuse adulte (>154j)', labelAr: 'دجاجة بياضة', labelEn: 'Laying hen',
+      notesFr: 'Plein pic de ponte (bouchon ponte)', notesAr: 'إنتاج البيض اليومي المستمر'
     };
   },
 
@@ -3240,8 +3856,11 @@ const app = {
       }
     });
 
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
     if (totalKg <= 0) {
-      this.showToast('Veuillez indiquer les quantités distribuées avant de mémoriser.', 'warning');
+      this.showToast(isAr ? 'يرجى تحديد الكميات الموزعة قبل الحفظ.' : (isEn ? 'Please specify distributed quantities before saving.' : 'Veuillez indiquer les quantités distribuées avant de mémoriser.'), 'warning');
       return;
     }
 
@@ -3251,7 +3870,9 @@ const app = {
     };
     this.saveState();
     this.renderSmartFeedPresets();
-    this.showToast(`⭐ Routine favorite mémorisée : ${totalKg.toFixed(2)} kg/j !`);
+    this.showToast(isAr 
+      ? `⭐ تم حفظ الروتين المفضل : ${totalKg.toFixed(2)} كغ/يوم !` 
+      : (isEn ? `⭐ Favorite routine saved: ${totalKg.toFixed(2)} kg/day!` : `⭐ Routine favorite mémorisée : ${totalKg.toFixed(2)} kg/j !`));
   },
 
   renderFeedSuggestions() {
@@ -3682,8 +4303,13 @@ const app = {
     this.renderFeedDistributionModal();
     this.renderFeedStockAdjustModal();
 
-    const details = items.map(it => `${it.kg}kg ${this.getFeedDisplayName(it).split(' ')[0]}`).join(' + ');
-    this.showToast(`🌾 Distribution enregistrée : ${details} (Total ${totalKg.toFixed(1)} kg) !`);
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    const details = items.map(it => `${it.kg}${unitKg} ${this.getFeedDisplayName(it).split(' ')[0]}`).join(' + ');
+    this.showToast(isAr 
+      ? `🌾 تم تسجيل التوزيع: ${details} (المجموع ${totalKg.toFixed(1)} ${unitKg}) !` 
+      : (isEn ? `🌾 Distribution saved: ${details} (Total ${totalKg.toFixed(1)} kg)!` : `🌾 Distribution enregistrée : ${details} (Total ${totalKg.toFixed(1)} kg) !`));
   },
 
   renderFeedStockAdjustModal() {
@@ -3871,7 +4497,12 @@ const app = {
 
     this.closeModal('modalAdjustFeedStock');
     this.renderAll();
-    this.showToast(`✅ Stocks magasins mis à jour : ${totalKg.toFixed(1)} kg au total (~${this.formatMoney(totalVal)})`);
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    this.showToast(isAr 
+      ? `✅ تم تحديث مخزون المستودع: ${totalKg.toFixed(1)} ${unitKg} إجمالاً (~${this.formatMoney(totalVal)})` 
+      : (isEn ? `✅ Feed stocks updated: ${totalKg.toFixed(1)} ${unitKg} in total (~${this.formatMoney(totalVal)})` : `✅ Stocks magasins mis à jour : ${totalKg.toFixed(1)} kg au total (~${this.formatMoney(totalVal)})`));
   },
 
   handleSaveNewFeedType(e) {
@@ -3943,7 +4574,12 @@ const app = {
     this.renderFeedStockAdjustModal();
     this.renderAll();
 
-    this.showToast(`✅ Nouvel aliment "${name}" ajouté avec succès (${stockKg} kg en stock) !`);
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    this.showToast(isAr 
+      ? `✅ تمت إضافة العلف "${name}" بنجاح (${stockKg} ${unitKg} في المخزون) !` 
+      : (isEn ? `✅ New feed "${name}" added successfully (${stockKg} ${unitKg} in stock)!` : `✅ Nouvel aliment "${name}" ajouté avec succès (${stockKg} kg en stock) !`));
   },
 
   deleteFeedType(id) {
@@ -4001,7 +4637,7 @@ const app = {
         this.renderFeedDistributionModal();
         this.renderExpensesTable();
         this.renderAll();
-        this.showToast(`Aliment "${displayName}" supprimé.`);
+        this.showToast(isAr ? `تم حذف العلف "${displayName}".` : (isEn ? `Feed "${displayName}" deleted.` : `Aliment "${displayName}" supprimé.`));
       }
     });
   },
@@ -4219,24 +4855,29 @@ const app = {
       feedStockRemainingKg
     } = data;
 
-    // Calcul de la moyenne réelle sur les distributions récentes (7 jours)
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    // Calcul de la moyenne réelle depuis le début du projet (première distribution)
+    const allDistributions = appState.feedDistributions || [];
 
     const dailyMap = {};
-    (appState.feedDistributions || []).forEach(d => {
-      if (d.date && d.date >= sevenDaysAgoStr) {
+    allDistributions.forEach(d => {
+      if (d.date) {
         if (!dailyMap[d.date]) dailyMap[d.date] = 0;
         dailyMap[d.date] += Number(d.totalKg) || Number(d.quantityKg) || 0;
       }
     });
 
-    const activeDays = Object.keys(dailyMap);
+    // Trouver la première date de distribution (début du projet)
+    const allDates = Object.keys(dailyMap).sort();
     let avgDailyKg = 0;
-    if (activeDays.length > 0) {
-      const sumKg = activeDays.reduce((acc, dt) => acc + dailyMap[dt], 0);
-      avgDailyKg = sumKg / activeDays.length;
+
+    if (allDates.length > 0) {
+      const sumKg = allDates.reduce((acc, dt) => acc + dailyMap[dt], 0);
+      // Diviser par nombre de jours réels depuis la première distribution jusqu'à aujourd'hui
+      const firstDate = allDates[0];
+      const todayStr = this.getTodayStr();
+      const totalCalendarDays = Math.max(1, this.calculateDaysBetween(firstDate, todayStr) + 1);
+      // Utiliser le nombre de jours calendaires pour la moyenne globale
+      avgDailyKg = sumKg / totalCalendarDays;
     } else if (todayDistributedKg > 0) {
       avgDailyKg = todayDistributedKg;
     } else if (totalFarmDailyGrams > 0) {
@@ -4249,6 +4890,18 @@ const app = {
     let autonomyDays = 0;
     if (feedStockRemainingKg > 0 && avgDailyKg > 0) {
       autonomyDays = Math.floor(feedStockRemainingKg / avgDailyKg);
+    }
+
+    // Nombre de jours depuis le début du projet pour affichage
+    const allDatesForDisplay = Object.keys(dailyMap).sort();
+    let projectDaysLabel = '';
+    if (allDatesForDisplay.length > 0) {
+      const firstDate = allDatesForDisplay[0];
+      const todayStr2 = this.getTodayStr();
+      const projectDays = this.calculateDaysBetween(firstDate, todayStr2) + 1;
+      projectDaysLabel = isAr 
+        ? `(${projectDays} يوم منذ البداية)` 
+        : (isEn ? `(${projectDays} days since start)` : `(${projectDays} j depuis le début)`);
     }
 
     container.innerHTML = `
@@ -4264,6 +4917,7 @@ const app = {
           <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">
             (~${avgDailyCans.toFixed(1)} ${bteLabel}/j${totalLivingAnimals > 0 ? ` • ~${avgGramsPerAnimal} g/sujet` : ''})
           </span>
+          ${projectDaysLabel ? `<span style="font-size: 0.73rem; color: var(--text-muted);">${projectDaysLabel}</span>` : ''}
         </div>
         ${autonomyDays > 0 ? `
           <span class="badge-pill" style="font-size: 0.72rem; font-weight: 700; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
@@ -4776,6 +5430,10 @@ const app = {
         subtitleItems.push(lotIdentifierLabel);
       }
       subtitleItems.push(`<span class="text-muted">${agronomicStageLabel}</span>`);
+      if (feedData && feedData.avgGrams) {
+        const ciLabel = isAr ? 'معامل' : (isEn ? 'Ci Coeff' : 'Coeff Ci');
+        subtitleItems.push(`<span class="badge-pill" style="font-size: 0.69rem; font-weight: 700; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">🌾 ${feedData.avgGrams} g/j &bull; ${ciLabel}: ${feedData.ci}</span>`);
+      }
       const cardSubtitle = subtitleItems.join(' &bull; ');
 
       const card = document.createElement('div');
@@ -5075,7 +5733,10 @@ const app = {
       }
     } catch (err) {
       console.error('handleSaveEditAnimal failed:', err);
-      this.showToast('Erreur: ' + err.message, 'danger');
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      const isEn = (appState.lang || this.currentLang) === 'en';
+      const errPrefix = isAr ? 'خطأ: ' : (isEn ? 'Error: ' : 'Erreur : ');
+      this.showToast(errPrefix + err.message, 'danger');
     }
   },
 
@@ -5206,7 +5867,7 @@ const app = {
         {
           key: 'caneton_demarrage',
           days: 0,
-          label: isAr ? '🐣 فراخ بط بداية' : (isEn ? '🐣 Duckling starter' : '🐣 Caneton démarrage')
+          label: isAr ? '🐣 فراخ بط بداية (J1–J21)' : (isEn ? '🐣 Duckling starter (d1-21)' : '🐣 Caneton démarrage (J1–J21)')
         },
         {
           key: 'canard_croissance',
@@ -5214,9 +5875,14 @@ const app = {
           label: isAr ? '🦆 بط نمو (~1 شهر)' : (isEn ? '🦆 Growing duck (~1 mo)' : '🦆 Canard croissance (~1 mois)')
         },
         {
-          key: 'canard_adulte',
-          days: 180,
-          label: isAr ? '🦆 بط بالغ (~6 أشهر)' : (isEn ? '🦆 Adult duck (~6 mos)' : '🦆 Canard adulte (~6 mois)')
+          key: 'canard_adulte_mâle',
+          days: 150,
+          label: isAr ? '🦆 ذكر بط بالغ (فحل)' : (isEn ? '🦆 Adult Drake (male)' : '🦆 Canard adulte mâle (5kg)')
+        },
+        {
+          key: 'canard_ponte',
+          days: 150,
+          label: isAr ? '🦆 أنثى بط بالغة (بياضة)' : (isEn ? '🦆 Adult Female Duck (layer)' : '🦆 Canne adulte femelle (ponte)')
         }
       ];
     } else if (sp === 'pintade') {
@@ -5224,7 +5890,7 @@ const app = {
         {
           key: 'pintadeau',
           days: 0,
-          label: isAr ? '🐣 كتاكيت دجاج الوادي' : (isEn ? '🐣 Guinea keets' : '🐣 Pintadeau démarrage')
+          label: isAr ? '🐣 كتاكيت دجاج الوادي (J1–J28)' : (isEn ? '🐣 Guinea keets (d1-28)' : '🐣 Pintadeau démarrage (J1–J28)')
         },
         {
           key: 'pintade_croissance',
@@ -5232,9 +5898,55 @@ const app = {
           label: isAr ? '🪶 دجاج الوادي نمو (~1 شهر)' : (isEn ? '🪶 Growing guinea (~1 mo)' : '🪶 Pintade croissance (~1 mois)')
         },
         {
-          key: 'pintade_adulte',
+          key: 'pintade_ponte',
           days: 180,
-          label: isAr ? '🪶 دجاج الوادي بالغ (~6 أشهر)' : (isEn ? '🪶 Adult guinea (~6 mos)' : '🪶 Pintade adulte (~6 mois)')
+          label: isAr ? '🪶 دجاج الوادي بياضة (~6 أشهر)' : (isEn ? '🪶 Laying guinea fowl (~6 mos)' : '🪶 Pintade pondeuse (~6 mois)')
+        },
+        {
+          key: 'pintade_adulte',
+          days: 150,
+          label: isAr ? '🪶 دجاج الوادي بالغ لحم (~5 أشهر)' : (isEn ? '🪶 Adult guinea meat (~5 mos)' : '🪶 Pintade adulte chair (~5 mois)')
+        }
+      ];
+    } else if (sp === 'caille') {
+      options = [
+        {
+          key: 'cailleteau',
+          days: 0,
+          label: isAr ? '🐣 فرخ السمان بداية (J1–J14)' : (isEn ? '🐣 Quail chick (d1-14)' : '🐣 Cailleteau démarrage (J1–J14)')
+        },
+        {
+          key: 'caille_croissance',
+          days: 15,
+          label: isAr ? '🐦 سمان نمو (~2 أسبوع)' : (isEn ? '🐦 Growing quail (~2 wks)' : '🐦 Caille croissance (~2 sem)')
+        },
+        {
+          key: 'caille_ponte',
+          days: 45,
+          label: isAr ? '🥚 سمان بياضة بالغة (~1.5 شهر)' : (isEn ? '🥚 Laying quail (~1.5 mos)' : '🥚 Caille pondeuse (~1.5 mois)')
+        },
+        {
+          key: 'caille_adulte',
+          days: 45,
+          label: isAr ? '🐦 سمان بالغ لحم (~1.5 شهر)' : (isEn ? '🐦 Adult meat quail (~1.5 mos)' : '🐦 Caille adulte chair (~1.5 mois)')
+        }
+      ];
+    } else if (sp === 'dinde') {
+      options = [
+        {
+          key: 'dindonneau',
+          days: 0,
+          label: isAr ? '🐣 كتكوت رومي بداية' : (isEn ? '🐣 Turkey poult starter' : '🐣 Dindonneau démarrage')
+        },
+        {
+          key: 'dinde_croissance',
+          days: 30,
+          label: isAr ? '🦃 ديك رومي نمو (~1 شهر)' : (isEn ? '🦃 Growing turkey (~1 mo)' : '🦃 Dinde croissance (~1 mois)')
+        },
+        {
+          key: 'dinde_adulte',
+          days: 150,
+          label: isAr ? '🦃 ديك رومي بالغ (~5 أشهر)' : (isEn ? '🦃 Adult turkey (~5 mos)' : '🦃 Dinde adulte (~5 mois)')
         }
       ];
     } else if (sp === 'autre') {
@@ -5295,23 +6007,29 @@ const app = {
     let defaultDays = 0;
     let stageName = 'Croissance';
 
-    if (presetKey === 'poussin' || presetKey === 'caneton_demarrage' || (presetKey && presetKey.includes('demarrage')) || presetKey === 'pintadeau') {
+    if (presetKey === 'poussin' || presetKey === 'caneton_demarrage' || presetKey === 'cailleteau' || presetKey === 'dindonneau' || (presetKey && presetKey.includes('demarrage')) || presetKey === 'pintadeau') {
       defaultDays = 0;
       stageName = 'Démarrage';
+    } else if (presetKey === 'caille_croissance') {
+      defaultDays = 15;
+      stageName = 'Croissance';
+    } else if (presetKey === 'caille_ponte') {
+      defaultDays = 45;
+      stageName = 'Ponte';
+    } else if (presetKey === 'caille_adulte') {
+      defaultDays = 45;
+      stageName = 'Adulte';
     } else if (presetKey === 'croissance' || (presetKey && presetKey.includes('croissance'))) {
       defaultDays = 30;
       stageName = 'Croissance';
-    } else if (presetKey === 'canard_croissance') {
-      defaultDays = 30;
-      stageName = 'Croissance';
-    } else if (presetKey === 'pondeuse') {
-      defaultDays = 180; // 6 mois
+    } else if (presetKey === 'pondeuse' || presetKey === 'pintade_ponte' || presetKey === 'canard_ponte') {
+      defaultDays = 180;
       stageName = 'Ponte';
     } else if (presetKey === 'coq') {
-      defaultDays = 210; // 7 mois
+      defaultDays = 210;
       stageName = 'Adulte';
-    } else if (presetKey === 'canard_adulte' || presetKey === 'pintade_adulte' || presetKey === 'autre_adulte') {
-      defaultDays = 180; // 6 mois
+    } else if (presetKey === 'canard_adulte' || presetKey === 'canard_adulte_mâle' || presetKey === 'pintade_adulte' || presetKey === 'dinde_adulte' || presetKey === 'autre_adulte') {
+      defaultDays = 180;
       stageName = 'Adulte';
     } else {
       defaultDays = 180;
@@ -5427,7 +6145,12 @@ const app = {
       if (arrAgeVal) { arrAgeVal.value = ''; arrAgeVal.placeholder = ''; }
     } catch (err) {
       console.error('handleSaveAnimal failed:', err);
-      this.showToast('Erreur lors de l\'enregistrement du lot: ' + err.message, 'danger');
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      const isEn = (appState.lang || this.currentLang) === 'en';
+      const errMsg = isAr 
+        ? 'خطأ أثناء تسجيل الدفعة: ' 
+        : (isEn ? 'Error while saving batch: ' : 'Erreur lors de l\'enregistrement du lot : ');
+      this.showToast(errMsg + err.message, 'danger');
     }
   },
 
@@ -5581,12 +6304,16 @@ const app = {
     const lot = appState.animals.find(a => a.id === idEl.value);
     if (!lot) return;
     const count = parseInt(countInput.value, 10);
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
     if (isNaN(count) || count <= 0) {
-      this.showToast('Veuillez entrer un nombre positif valide', 'error');
+      this.showToast(isAr ? 'يرجى إدخال عدد إيجابي صحيح' : (isEn ? 'Please enter a valid positive number' : 'Veuillez entrer un nombre positif valide'), 'error');
       return;
     }
     if (count > lot.currentQuantity) {
-      this.showToast(`Impossible : ${count} dépasse l'effectif (${lot.currentQuantity})`, 'error');
+      this.showToast(isAr 
+        ? `غير ممكن: ${count} يتجاوز العدد الحالي (${lot.currentQuantity})` 
+        : (isEn ? `Impossible: ${count} exceeds flock count (${lot.currentQuantity})` : `Impossible : ${count} dépasse l'effectif (${lot.currentQuantity})`), 'error');
       return;
     }
     lot.currentQuantity -= count;
@@ -5664,7 +6391,9 @@ const app = {
     if (!lot) return;
     const count = parseInt(countInput.value, 10);
     if (isNaN(count) || count <= 0) {
-      this.showToast('Veuillez entrer une quantité positive', 'error');
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      const isEn = (appState.lang || this.currentLang) === 'en';
+      this.showToast(isAr ? 'يرجى إدخال كمية إيجابية' : (isEn ? 'Please enter a positive quantity' : 'Veuillez entrer une quantité positive'), 'error');
       return;
     }
     const unitPrice = Math.max(0, parseFloat(priceInput?.value) || 0);
@@ -5902,6 +6631,21 @@ const app = {
     }
   },
 
+  updateQuickWeightButtonsState(activeWeight) {
+    [50, 25, 10].forEach(val => {
+      const btn = document.getElementById(`quickWeightBtn_${val}`);
+      if (btn) {
+        if (Number(activeWeight) === val) {
+          btn.classList.remove('btn-outline');
+          btn.classList.add('btn-emerald');
+        } else {
+          btn.classList.add('btn-outline');
+          btn.classList.remove('btn-emerald');
+        }
+      }
+    });
+  },
+
   setFeedBoiteCountQuick(c) {
     const input = document.getElementById('feedBoiteCount');
     if (input) {
@@ -5925,6 +6669,7 @@ const app = {
       const bagCount = parseFloat(document.getElementById('feedBagCount')?.value) || 0;
       const bagWeight = parseFloat(document.getElementById('feedBagWeight')?.value) || 50;
       const bagPrice = parseFloat(document.getElementById('feedBagPrice')?.value) || 0;
+      this.updateQuickWeightButtonsState(bagWeight);
 
       total = bagCount * bagPrice;
       addedKg = bagCount * bagWeight;
@@ -6265,7 +7010,12 @@ const app = {
       this.calcExpenseTotal();
     } catch (err) {
       console.error('handleSaveExpense failed:', err);
-      this.showToast('Erreur lors de l\'enregistrement de la dépense: ' + err.message, 'danger');
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      const isEn = (appState.lang || this.currentLang) === 'en';
+      const errMsg = isAr 
+        ? 'خطأ أثناء تسجيل المصروف: ' 
+        : (isEn ? 'Error while saving expense: ' : 'Erreur lors de l\'enregistrement de la dépense : ');
+      this.showToast(errMsg + err.message, 'danger');
     }
   },
 
@@ -6379,7 +7129,11 @@ const app = {
 
         this.saveState();
         this.renderAll();
-        this.showToast(`✅ +${addedKg.toFixed(1)} ${unitKg} ajoutés au stock (${this.getFeedDisplayName(ft)}) !`);
+        const isAr = (appState.lang || this.currentLang) === 'ar';
+        const isEn = (appState.lang || this.currentLang) === 'en';
+        this.showToast(isAr 
+          ? `✅ +${addedKg.toFixed(1)} ${unitKg} تمت إضافتها إلى المخزون (${this.getFeedDisplayName(ft)}) !` 
+          : (isEn ? `✅ +${addedKg.toFixed(1)} ${unitKg} added to stock (${this.getFeedDisplayName(ft)})!` : `✅ +${addedKg.toFixed(1)} ${unitKg} ajoutés au stock (${this.getFeedDisplayName(ft)}) !`));
       }
     });
   },
@@ -6387,7 +7141,11 @@ const app = {
   quickImportFoodExpensesToStock() {
     const uncredited = (appState.expenses || []).filter(e => e.category === 'nourriture' && !e.feedStockAddedKg);
     if (uncredited.length === 0) {
-      this.showToast('Tous les achats d\'aliments sont déjà comptabilisés dans le stock !');
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      const isEn = (appState.lang || this.currentLang) === 'en';
+      this.showToast(isAr 
+        ? 'جميع مشتريات الأعلاف مسجلة بالفعل في المخزون !' 
+        : (isEn ? 'All feed purchases are already accounted for in stock!' : 'Tous les achats d\'aliments sont déjà comptabilisés dans le stock !'));
       return;
     }
 
@@ -6451,7 +7209,12 @@ const app = {
     if (document.getElementById('modalAdjustFeedStock') && !document.getElementById('modalAdjustFeedStock').classList.contains('hidden')) {
       this.renderFeedStockAdjustModal();
     }
-    this.showToast(`✅ +${totalAdded.toFixed(1)} kg ajoutés avec succès dans vos stocks d'aliments en réserve !`);
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const unitKg = isAr ? 'كغ' : 'kg';
+    this.showToast(isAr 
+      ? `✅ +${totalAdded.toFixed(1)} ${unitKg} تمت إضافتها بنجاح إلى مخزون الأعلاف بالاحتياط !` 
+      : (isEn ? `✅ +${totalAdded.toFixed(1)} ${unitKg} added successfully to your feed reserve stock!` : `✅ +${totalAdded.toFixed(1)} kg ajoutés avec succès dans vos stocks d'aliments en réserve !`));
   },
 
   // ==========================================
@@ -6689,11 +7452,11 @@ const app = {
 
     if (calcNoteEl) {
       if (lang === 'ar') {
-        calcNoteEl.textContent = `💡 الجدول العلمي: معدل الاستهلاك اليومي ${feedData.avgGrams} غ/يوم (${feedData.minGrams}-${feedData.maxGrams}غ). التراكمي: ${cumulFeedKg.toFixed(2)} كغ/طائر (~${this.formatMoney(feedCostPerHead)} علف).`;
+        calcNoteEl.textContent = `💡 الجدول العلمي: معدل الاستهلاك اليومي ${feedData.avgGrams} غ/يوم (${feedData.minGrams}-${feedData.maxGrams}غ) • معامل Ci: ${feedData.ci}. التراكمي: ${cumulFeedKg.toFixed(2)} كغ/طائر (~${this.formatMoney(feedCostPerHead)} علف).`;
       } else if (lang === 'en') {
-        calcNoteEl.textContent = `💡 Agronomic rate: ${feedData.avgGrams} g/day (${feedData.minGrams}-${feedData.maxGrams}g). Cumulative: ${cumulFeedKg.toFixed(2)} kg/head (~${this.formatMoney(feedCostPerHead)} feed).`;
+        calcNoteEl.textContent = `💡 Agronomic rate: ${feedData.avgGrams} g/day (${feedData.minGrams}-${feedData.maxGrams}g) • Ci Coeff: ${feedData.ci}. Cumulative: ${cumulFeedKg.toFixed(2)} kg/head (~${this.formatMoney(feedCostPerHead)} feed).`;
       } else {
-        calcNoteEl.textContent = `💡 Table agronomique : ${feedData.avgGrams} g/j (${feedData.minGrams}-${feedData.maxGrams}g). Cumul mangé : ${cumulFeedKg.toFixed(2)} kg/sujet (~${this.formatMoney(feedCostPerHead)} aliment).`;
+        calcNoteEl.textContent = `💡 Table agronomique : ${feedData.avgGrams} g/j (${feedData.minGrams}-${feedData.maxGrams}g) • Coeff Ci : ${feedData.ci}. Cumul mangé : ${cumulFeedKg.toFixed(2)} kg/sujet (~${this.formatMoney(feedCostPerHead)} aliment).`;
       }
     }
   },
@@ -8725,10 +9488,14 @@ const app = {
       case 'poulet': return '🍗';
       case 'pondeuse': return '🥚';
       case 'poussin': return '🐣';
+      case 'coq':
       case 'adulte': return '🐓';
       case 'pintade': return '🪶';
       case 'canard':
       case 'canard_barbarie': return '🦆';
+      case 'caille': return '🐦';
+      case 'dinde': return '🦃';
+      case 'oie': return '🪿';
       default: return '🐤';
     }
   },
@@ -8747,6 +9514,8 @@ const app = {
       if (sp === 'pintade') return 'دجاج الوادي';
       if (sp === 'canard' || sp === 'canard_barbarie') return 'بط';
       if (sp === 'caille') return 'سمان';
+      if (sp === 'dinde') return 'ديك رومي';
+      if (sp === 'oie') return 'إوز';
       return 'دواجن';
     }
 
@@ -8758,6 +9527,8 @@ const app = {
       if (sp === 'pintade') return 'Guinea fowl';
       if (sp === 'canard' || sp === 'canard_barbarie') return 'Duck';
       if (sp === 'caille') return 'Quail';
+      if (sp === 'dinde') return 'Turkey';
+      if (sp === 'oie') return 'Goose';
       return 'Poultry';
     }
 
@@ -8769,6 +9540,8 @@ const app = {
     if (sp === 'pintade') return 'Pintade';
     if (sp === 'canard' || sp === 'canard_barbarie') return 'Canard';
     if (sp === 'caille') return 'Caille';
+    if (sp === 'dinde') return 'Dinde';
+    if (sp === 'oie') return 'Oie';
     return 'Volaille';
   },
 
@@ -8788,7 +9561,6 @@ const app = {
 
     // 1. Poulets / Gallinacés / Poules
     if (sp === 'poulet' || sp === 'coq' || sp === 'pondeuse' || sp === 'adulte' || sp === 'poussin') {
-      // Règle biologique intelligente : à partir de 6 mois (>= 180 jours), la croissance est définitivement terminée -> ADULTE !
       if (ageDays >= 180) {
         if (isLaying && (stg.includes('ponte') || brd.includes('pondeuse') || notes.includes('pondeuse') || sp === 'pondeuse')) {
           return 'Ponte';
@@ -8809,21 +9581,28 @@ const app = {
       return 'Démarrage';
     }
 
-    // 3. Pintades (Adulte à 6 mois / 180 jours)
+    // 3. Pintades (Adulte à 5-6 mois / 150-180 jours)
     if (sp === 'pintade') {
-      if (ageDays >= 180) return isLaying ? 'Ponte' : 'Adulte';
+      if (ageDays >= 150) return isLaying ? 'Ponte' : 'Adulte';
       if (ageDays >= 28) return 'Croissance';
       return 'Démarrage';
     }
 
-    // 4. Cailles (Adulte à 45 jours / 1.5 mois)
+    // 4. Cailles (Adulte ponte très précoce à 45 jours / 1.5 mois)
     if (sp === 'caille') {
       if (ageDays >= 45) return isLaying ? 'Ponte' : 'Adulte';
-      if (ageDays >= 21) return 'Croissance';
+      if (ageDays >= 14) return 'Croissance';
       return 'Démarrage';
     }
 
-    // 5. Autre volaille
+    // 5. Dindes (Adulte à 5 mois / 150 jours)
+    if (sp === 'dinde') {
+      if (ageDays >= 150) return isLaying ? 'Ponte' : 'Adulte';
+      if (ageDays >= 28) return 'Croissance';
+      return 'Démarrage';
+    }
+
+    // 6. Autre volaille
     if (ageDays >= 180) return isLaying ? 'Ponte' : 'Adulte';
     if (ageDays >= 30) return 'Croissance';
     return 'Démarrage';

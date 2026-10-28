@@ -174,7 +174,7 @@
             <span id="headerUserInitial">U</span>
             <span id="userSyncDot" class="user-status-dot online"></span>
           </div>
-          <span id="headerUserText" class="user-pill-name">Utilisateur</span>
+          <span id="headerUserText" class="user-pill-name" data-i18n="default_user_name">Utilisateur</span>
         </button>
 
         <!-- Quick Data Modal Trigger -->
@@ -250,7 +250,7 @@
             </label>
             <button id="mobileThemeToggleBtn" type="button" class="btn btn-outline btn-full drawer-btn" onclick="app.toggleTheme()">
               <span id="mobileThemeIcon">☀️</span>
-              <span id="mobileThemeText">Mode Sombre Activé</span>
+              <span id="mobileThemeText" data-i18n="mode_dark_active">Mode Sombre Activé</span>
             </button>
           </div>
 
@@ -258,7 +258,7 @@
           <div class="drawer-group">
             <label class="drawer-label">
               <span class="drawer-icon">📊</span>
-              <span>Tableaux & Données</span>
+              <span data-i18n="nav_reports_label">Tableaux & Données</span>
             </label>
             <button type="button" class="btn btn-emerald btn-full drawer-btn" onclick="app.closeMobileMenu(); app.exportExcel();">
               <span>📊</span>
@@ -484,6 +484,39 @@
             </div>
           </div>
 
+          <!-- Statistiques & Courbe de Récolte des Œufs (Line Chart) -->
+          <div id="eggProductionChartCard" class="panel-card egg-chart-panel">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.3rem;">📈</span>
+                <div>
+                  <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800;" data-i18n="egg_chart_title">Statistiques & Courbe des Œufs</h3>
+                  <small class="text-muted" data-i18n="egg_chart_sub">Évolution journalière de la récolte (Axe X : Date &bull; Axe Y : Nombre d'œufs)</small>
+                </div>
+              </div>
+
+              <!-- Filtres de période : 7j, 14j, 30j, Tout -->
+              <div class="egg-chart-period-filters" style="display: inline-flex; gap: 0.25rem; background: var(--bg-card); padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <button type="button" class="egg-period-btn active" data-period="7d" onclick="app.setEggChartPeriod('7d')" data-i18n="egg_chart_period_7d">7j</button>
+                <button type="button" class="egg-period-btn" data-period="14d" onclick="app.setEggChartPeriod('14d')" data-i18n="egg_chart_period_14d">14j</button>
+                <button type="button" class="egg-period-btn" data-period="30d" onclick="app.setEggChartPeriod('30d')" data-i18n="egg_chart_period_30d">30j</button>
+                <button type="button" class="egg-period-btn" data-period="all" onclick="app.setEggChartPeriod('all')" data-i18n="egg_chart_period_all">Tout</button>
+              </div>
+            </div>
+
+            <!-- Bandeau Métriques Clés (Total, Moyenne/j, Record Pic, Taux de ponte) -->
+            <div class="egg-chart-metrics-strip" id="eggChartMetricsStrip">
+              <!-- Rempli dynamiquement -->
+            </div>
+
+            <!-- Conteneur du Graphique Vectoriel (SVG Line Chart) -->
+            <div class="panel-body" style="padding: 0.75rem 0.65rem 0.5rem 0.65rem; overflow-x: auto;">
+              <div id="eggChartContainer" style="width: 100%; min-width: 300px; position: relative;">
+                <!-- Rendu dynamique du graphique -->
+              </div>
+            </div>
+          </div>
+
           <!-- Farm Daily Feed & Ration Card (Table Agronomique Réelle) -->
           <div id="farmFeedSummaryCard" class="farm-feed-summary-card">
             
@@ -674,52 +707,52 @@
           </div>
 
           <!-- Toolbar: Tri & Filtres par Âge et Nombre -->
-          <div class="animal-controls-toolbar" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 0.85rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; justify-content: space-between;">
+          <div class="animal-controls-toolbar">
             <!-- Recherche rapide -->
-            <div style="flex: 1; min-width: 170px;">
+            <div class="toolbar-search" style="flex: 1; min-width: 170px;">
               <input type="text" id="animalSearchInput" class="input-field" placeholder="🔍 Rechercher lot, race, bande..." data-i18n-placeholder="animal_search_placeholder" style="padding: 0.4rem 0.7rem; font-size: 0.82rem; margin: 0;" oninput="app.handleAnimalFilterChange()">
             </div>
 
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <div class="toolbar-filters" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
               <!-- Tri par Âge / Nombre -->
-              <div style="display: inline-flex; align-items: center; gap: 0.35rem;">
-                <label for="animalSortSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_sort_by">Trier par :</label>
+              <div class="filter-group" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                <label for="animalSortSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_sort_by">Trier :</label>
                 <select id="animalSortSelect" class="input-field" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; width: auto; font-weight: 600; margin: 0;" onchange="app.handleAnimalFilterChange()">
-                  <option value="default" data-i18n="sort_default">🕒 Date d'ajout (Par défaut)</option>
-                  <option value="age_asc" data-i18n="sort_age_asc">🐣 Âge croissant (Plus jeunes)</option>
-                  <option value="age_desc" data-i18n="sort_age_desc">🐔 Âge décroissant (Plus âgés)</option>
-                  <option value="qty_desc" data-i18n="sort_qty_desc">📈 Nombre décroissant (Plus nombreux)</option>
-                  <option value="qty_asc" data-i18n="sort_qty_asc">📉 Nombre croissant (Moins nombreux)</option>
+                  <option value="default" data-i18n="sort_default">🕒 Date d'ajout</option>
+                  <option value="age_asc" data-i18n="sort_age_asc">🐣 Plus jeunes</option>
+                  <option value="age_desc" data-i18n="sort_age_desc">🐔 Plus âgés</option>
+                  <option value="qty_desc" data-i18n="sort_qty_desc">📈 Plus nombreux</option>
+                  <option value="qty_asc" data-i18n="sort_qty_asc">📉 Moins nombreux</option>
                   <option value="name_asc" data-i18n="sort_name_asc">🔤 Nom (A → Z)</option>
                 </select>
               </div>
 
               <!-- Filtre par tranche d'âge -->
-              <div style="display: inline-flex; align-items: center; gap: 0.35rem;">
+              <div class="filter-group" style="display: inline-flex; align-items: center; gap: 0.35rem;">
                 <label for="animalAgeFilterSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_filter_age">Âge :</label>
                 <select id="animalAgeFilterSelect" class="input-field" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; width: auto; font-weight: 600; margin: 0;" onchange="app.handleAnimalFilterChange()">
                   <option value="all" data-i18n="filter_age_all">Tous les âges</option>
-                  <option value="chick" data-i18n="filter_age_chick">🐣 Poussins (&lt; 1 mois)</option>
-                  <option value="growing" data-i18n="filter_age_growing">🍗 Croissance (1 à 6 mois)</option>
-                  <option value="adult" data-i18n="filter_age_adult">🐔 Adultes (&gt; 6 mois)</option>
+                  <option value="chick" data-i18n="filter_age_chick">🐣 Poussins (&lt; 1 m)</option>
+                  <option value="growing" data-i18n="filter_age_growing">🍗 Croissance (1-6 m)</option>
+                  <option value="adult" data-i18n="filter_age_adult">🐔 Adultes (&gt; 6 m)</option>
                 </select>
               </div>
 
               <!-- Filtre par effectif -->
-              <div style="display: inline-flex; align-items: center; gap: 0.35rem;">
+              <div class="filter-group" style="display: inline-flex; align-items: center; gap: 0.35rem;">
                 <label for="animalQtyFilterSelect" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap;" data-i18n="lbl_filter_qty">Effectif :</label>
                 <select id="animalQtyFilterSelect" class="input-field" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; width: auto; font-weight: 600; margin: 0;" onchange="app.handleAnimalFilterChange()">
-                  <option value="active" data-i18n="filter_qty_active" selected>Lots actifs uniquement</option>
-                  <option value="all" data-i18n="filter_qty_all">Tous effectifs (Actifs + Clôturés)</option>
-                  <option value="closed" data-i18n="filter_qty_closed">📦 Lots clôturés / vendus (0 tête)</option>
-                  <option value="large" data-i18n="filter_qty_large">Grands lots (&gt; 50)</option>
-                  <option value="medium" data-i18n="filter_qty_medium">Lots moyens (10 - 50)</option>
-                  <option value="small" data-i18n="filter_qty_small">Petits lots (&lt; 10)</option>
+                  <option value="active" data-i18n="filter_qty_active" selected>Lots actifs</option>
+                  <option value="all" data-i18n="filter_qty_all">Tous les lots</option>
+                  <option value="closed" data-i18n="filter_qty_closed">📦 Clôturés (0 tête)</option>
+                  <option value="large" data-i18n="filter_qty_large">Grands (&gt; 50)</option>
+                  <option value="medium" data-i18n="filter_qty_medium">Moyens (10-50)</option>
+                  <option value="small" data-i18n="filter_qty_small">Petits (&lt; 10)</option>
                 </select>
               </div>
 
               <!-- Bouton Réinitialiser -->
-              <button type="button" class="btn btn-xs btn-outline" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; font-weight: 700;" onclick="app.resetAnimalFilters()" data-i18n="btn_reset_filters" title="Réinitialiser filtres et tri">
+              <button type="button" class="btn btn-xs btn-outline toolbar-reset-btn" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; font-weight: 700;" onclick="app.resetAnimalFilters()" data-i18n="btn_reset_filters" title="Réinitialiser filtres et tri">
                 🔄 Réinitialiser
               </button>
             </div>
@@ -728,12 +761,12 @@
           <!-- Filter Chips -->
           <div class="filter-chips-row">
             <button class="chip active" data-filter-animal="all"><span data-i18n="chip_all">Tous</span> (<span id="chipAllCount">0</span>)</button>
-            <button class="chip" data-filter-animal="poulet"><span data-i18n="chip_poulet">🍗 Poulets (1 à 6 mois)</span> (<span id="chipPouletCount">0</span>)</button>
-            <button class="chip" data-filter-animal="pondeuse"><span data-i18n="chip_pondeuse">🥚 Poules Pondeuses</span> (<span id="chipPondeuseCount">0</span>)</button>
-            <button class="chip" data-filter-animal="poussin"><span data-i18n="chip_poussin">🐣 Poussins (1j & démarrés)</span> (<span id="chipPoussinCount">0</span>)</button>
-            <button class="chip" data-filter-animal="adulte"><span data-i18n="chip_poulet_adulte">🐓 Coqs Adultes</span> (<span id="chipAdulteCount">0</span>)</button>
+            <button class="chip" data-filter-animal="poulet"><span data-i18n="chip_poulet">🍗 Poulets</span> (<span id="chipPouletCount">0</span>)</button>
+            <button class="chip" data-filter-animal="pondeuse"><span data-i18n="chip_pondeuse">🥚 Pondeuses</span> (<span id="chipPondeuseCount">0</span>)</button>
+            <button class="chip" data-filter-animal="poussin"><span data-i18n="chip_poussin">🐣 Poussins</span> (<span id="chipPoussinCount">0</span>)</button>
+            <button class="chip" data-filter-animal="adulte"><span data-i18n="chip_poulet_adulte">🐓 Coqs</span> (<span id="chipAdulteCount">0</span>)</button>
             <button class="chip" data-filter-animal="pintade"><span data-i18n="chip_pintade">🪶 Pintades</span> (<span id="chipPintadeCount">0</span>)</button>
-            <button class="chip" data-filter-animal="canard"><span data-i18n="chip_canard">🦆 Canards de Barbarie</span> (<span id="chipCanardCount">0</span>)</button>
+            <button class="chip" data-filter-animal="canard"><span data-i18n="chip_canard">🦆 Canards</span> (<span id="chipCanardCount">0</span>)</button>
           </div>
 
           <!-- Cards Grid for Animals -->
@@ -1197,7 +1230,9 @@
                 <option value="poulet" selected data-i18n="opt_species_poulet">🐔 Poulet / Coq</option>
                 <option value="canard" data-i18n="opt_species_canard">🦆 Canard</option>
                 <option value="pintade" data-i18n="opt_species_pintade">🪶 Pintade</option>
-                <option value="autre" data-i18n="opt_species_other">🦃 Autre volaille</option>
+                <option value="caille" data-i18n="opt_species_caille">🐦 Caille</option>
+                <option value="dinde" data-i18n="opt_species_dinde">🦃 Dinde</option>
+                <option value="autre" data-i18n="opt_species_other">🌾 Autre volaille</option>
               </select>
             </div>
             <div class="form-group flex-1">
@@ -1293,7 +1328,9 @@
                 <option value="poulet" data-i18n="opt_species_poulet">🐔 Poulet / Coq</option>
                 <option value="canard" data-i18n="opt_species_canard">🦆 Canard</option>
                 <option value="pintade" data-i18n="opt_species_pintade">🪶 Pintade</option>
-                <option value="autre" data-i18n="opt_species_other">🦃 Autre volaille</option>
+                <option value="caille" data-i18n="opt_species_caille">🐦 Caille</option>
+                <option value="dinde" data-i18n="opt_species_dinde">🦃 Dinde</option>
+                <option value="autre" data-i18n="opt_species_other">🌾 Autre volaille</option>
               </select>
             </div>
             <div class="form-group flex-1">
@@ -1475,10 +1512,10 @@
               Mode de répartition de cette dépense :
             </label>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
-              <button type="button" id="reassignModeGeneralBtn" class="btn btn-sm btn-outline" style="padding: 0.55rem 0.4rem; font-weight: 700; font-size: 0.78rem;" onclick="app.setReassignExpenseMode('general')">
+              <button type="button" id="reassignModeGeneralBtn" class="btn btn-sm btn-outline" style="padding: 0.55rem 0.4rem; font-weight: 700; font-size: 0.78rem;" onclick="app.setReassignExpenseMode('general')" data-i18n="btn_reassign_general">
                 🏢 Tous les lots (Général)
               </button>
-              <button type="button" id="reassignModeSpecificBtn" class="btn btn-sm btn-outline" style="padding: 0.55rem 0.4rem; font-weight: 700; font-size: 0.78rem;" onclick="app.setReassignExpenseMode('specific')">
+              <button type="button" id="reassignModeSpecificBtn" class="btn btn-sm btn-outline" style="padding: 0.55rem 0.4rem; font-weight: 700; font-size: 0.78rem;" onclick="app.setReassignExpenseMode('specific')" data-i18n="btn_reassign_specific">
                 🎯 Sélectionner des lots
               </button>
             </div>
@@ -1487,12 +1524,12 @@
           <!-- Checklist Multi-Lots (Affichée en mode spécifique) -->
           <div id="reassignSpecificLotsBlock" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
-              <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted);">
-                Cochez 1, 2 ou 3 lots bénéficiaires :
+              <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted);" data-i18n="lbl_reassign_check_hint">
+                Cochez les lots bénéficiaires :
               </span>
               <div style="display: flex; gap: 0.35rem;">
-                <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllReassignLots(true)" style="font-size: 0.68rem; padding: 2px 7px;">Tout cocher</button>
-                <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllReassignLots(false)" style="font-size: 0.68rem; padding: 2px 7px;">Décocher</button>
+                <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllReassignLots(true)" style="font-size: 0.68rem; padding: 2px 7px;" data-i18n="btn_check_all">Tout cocher</button>
+                <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllReassignLots(false)" style="font-size: 0.68rem; padding: 2px 7px;" data-i18n="btn_uncheck_all">Décocher</button>
               </div>
             </div>
 
@@ -1544,7 +1581,7 @@
               <button type="button" class="btn btn-secondary" onclick="app.stepMortalityInput(1)" style="font-size: 1.2rem; width: 44px; height: 44px; font-weight: 900; padding: 0;">+</button>
             </div>
             <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap;">
-              <button type="button" class="btn-quick-tag highlight" onclick="app.setMortalityCount(1)">+1 perte</button>
+              <button type="button" class="btn-quick-tag highlight" onclick="app.setMortalityCount(1)" data-i18n="quick_mortality_1">+1 perte</button>
               <button type="button" class="btn-quick-tag" onclick="app.setMortalityCount(2)">+2</button>
               <button type="button" class="btn-quick-tag" onclick="app.setMortalityCount(5)">+5</button>
               <button type="button" class="btn-quick-tag" onclick="app.setMortalityCount(10)">+10</button>
@@ -1672,7 +1709,7 @@
 
             <!-- Subform 1: Par Sac -->
             <div id="subformFeedSac" style="display: block;">
-              <div class="form-row" style="margin-bottom: 0.4rem; gap: 0.5rem;">
+              <div class="form-row" style="margin-bottom: 0.65rem; gap: 0.5rem; align-items: flex-start;">
                 <div class="form-group flex-1" style="margin-bottom: 0;">
                   <label for="feedBagCount" style="font-size: 0.74rem; font-weight: 700;" data-i18n="lbl_bag_count">Nombre de sacs</label>
                   <input type="number" id="feedBagCount" class="input-field" step="0.5" min="0.5" value="1" oninput="app.calcFeedPurchaseFields()">
@@ -1680,17 +1717,16 @@
                 <div class="form-group flex-1" style="margin-bottom: 0;">
                   <label for="feedBagWeight" style="font-size: 0.74rem; font-weight: 700;" data-i18n="lbl_bag_weight">Poids du sac (kg)</label>
                   <input type="number" id="feedBagWeight" class="input-field" step="1" min="1" value="50" oninput="app.calcFeedPurchaseFields()">
+                  <div style="display: flex; gap: 0.25rem; margin-top: 0.35rem; align-items: center; justify-content: center;">
+                    <button type="button" id="quickWeightBtn_50" class="btn btn-xs btn-emerald" style="font-size: 0.68rem; padding: 2px 6px; font-weight: 700;" onclick="app.setFeedBagWeightQuick(50)" data-i18n="quick_50kg">50 kg</button>
+                    <button type="button" id="quickWeightBtn_25" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 6px; font-weight: 700;" onclick="app.setFeedBagWeightQuick(25)" data-i18n="quick_25kg">25 kg</button>
+                    <button type="button" id="quickWeightBtn_10" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 6px; font-weight: 700;" onclick="app.setFeedBagWeightQuick(10)" data-i18n="quick_10kg">10 kg</button>
+                  </div>
                 </div>
                 <div class="form-group flex-1" style="margin-bottom: 0;">
                   <label for="feedBagPrice" style="font-size: 0.74rem; font-weight: 700;"><span data-i18n="lbl_bag_price">Prix du sac</span> (<span class="currency-label">DT</span>)</label>
                   <input type="number" id="feedBagPrice" class="input-field" step="0.01" min="0" oninput="app.calcFeedPurchaseFields()">
                 </div>
-              </div>
-              <div style="display: flex; gap: 0.35rem; margin-bottom: 0.65rem; align-items: center;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">Poids rapides :</span>
-                <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 1px 6px;" onclick="app.setFeedBagWeightQuick(50)">50 kg</button>
-                <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 1px 6px;" onclick="app.setFeedBagWeightQuick(25)">25 kg</button>
-                <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 1px 6px;" onclick="app.setFeedBagWeightQuick(10)">10 kg</button>
               </div>
             </div>
 
@@ -1710,22 +1746,21 @@
 
             <!-- Subform 3: Par Boîte de tomate (Sicam) -->
             <div id="subformFeedBoite" style="display: none;">
-              <div class="form-row" style="margin-bottom: 0.4rem; gap: 0.5rem;">
+              <div class="form-row" style="margin-bottom: 0.45rem; gap: 0.5rem; align-items: flex-start;">
                 <div class="form-group flex-1" style="margin-bottom: 0;">
                   <label for="feedBoiteCount" style="font-size: 0.74rem; font-weight: 700;" data-i18n="lbl_boite_count">Nombre de boîtes (🥫)</label>
                   <input type="number" id="feedBoiteCount" class="input-field" step="1" min="1" value="4" oninput="app.calcFeedPurchaseFields()">
+                  <div style="display: flex; gap: 0.25rem; margin-top: 0.35rem; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBoiteCountQuick(1)" data-i18n="quick_1can">1 bte</button>
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBoiteCountQuick(2)" data-i18n="quick_2cans">2 bte</button>
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBoiteCountQuick(4)" data-i18n="quick_4cans">4 bte</button>
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBoiteCountQuick(6)" data-i18n="quick_6cans">6 bte</button>
+                  </div>
                 </div>
                 <div class="form-group flex-1" style="margin-bottom: 0;">
                   <label for="feedBoiteTotalPrice" style="font-size: 0.74rem; font-weight: 700;"><span data-i18n="lbl_boite_total_price">Prix TOTAL payé</span> (<span class="currency-label">DT</span>)</label>
                   <input type="number" id="feedBoiteTotalPrice" class="input-field bold" step="0.01" min="0" oninput="app.calcFeedPurchaseFields()">
                 </div>
-              </div>
-              <div style="display: flex; gap: 0.35rem; align-items: center; margin-bottom: 0.4rem; flex-wrap: wrap;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">Raccourcis :</span>
-                <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 1px 6px;" onclick="app.setFeedBoiteCountQuick(1)">1 boîte</button>
-                <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 1px 6px;" onclick="app.setFeedBoiteCountQuick(2)">2 boîtes</button>
-                <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 1px 6px;" onclick="app.setFeedBoiteCountQuick(4)">4 boîtes</button>
-                <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.7rem; padding: 1px 6px;" onclick="app.setFeedBoiteCountQuick(6)">6 boîtes</button>
               </div>
               <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.65rem;" data-i18n="hint_sicam_weight">
                 🥫 1 boîte de tomate standard (Sicam) pleine ≈ 0.67 kg de grain ou granulés.
@@ -1786,10 +1821,10 @@
             <!-- Collapsible Multi-Lot Checklist for modalAddExpense -->
             <div id="expenseAddMultipleLotsBlock" style="display: none; margin-top: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.75rem;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Cochez les lots qui consomment cet achat :</span>
+                <span data-i18n="lbl_expense_checklist_hint" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Cochez les lots qui consomment cet achat :</span>
                 <div style="display: flex; gap: 0.3rem;">
-                  <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllAddExpenseLots(true)" style="font-size: 0.68rem; padding: 2px 6px;">Tout</button>
-                  <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllAddExpenseLots(false)" style="font-size: 0.68rem; padding: 2px 6px;">Aucun</button>
+                  <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllAddExpenseLots(true)" style="font-size: 0.68rem; padding: 2px 6px;" data-i18n="btn_all">Tout</button>
+                  <button type="button" class="btn btn-xs btn-outline" onclick="app.toggleAllAddExpenseLots(false)" style="font-size: 0.68rem; padding: 2px 6px;" data-i18n="btn_none">Aucun</button>
                 </div>
               </div>
               <div id="expenseAddLotsList" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem; padding-right: 2px;">
@@ -2023,13 +2058,19 @@
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 1.15rem;">
-            <label for="dailyEggCount" class="form-label" data-i18n="daily_eggs_input_lbl" style="font-weight: 700;">
-              Nombre d'œufs récoltés aujourd'hui
-            </label>
-            <div style="position: relative;">
-              <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" required oninput="app.updateDailyEggPreview()" style="font-size: 1.45rem; font-weight: 800; padding: 0.75rem 1rem; color: var(--primary); letter-spacing: 0.05em;">
-              <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted);" data-i18n="unit_eggs">🥚 Œufs</span>
+          <div class="form-row" style="margin-bottom: 1.15rem;">
+            <div class="form-group flex-1">
+              <label for="dailyEggDate" class="form-label" data-i18n="daily_eggs_date_lbl" style="font-weight: 700;">Date de la récolte</label>
+              <input type="date" id="dailyEggDate" class="input-field" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="dailyEggCount" class="form-label" data-i18n="daily_eggs_input_lbl" style="font-weight: 700;">
+                Nombre d'œufs récoltés
+              </label>
+              <div style="position: relative;">
+                <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" required oninput="app.updateDailyEggPreview()" style="font-size: 1.35rem; font-weight: 800; padding: 0.65rem 0.85rem; color: var(--primary); letter-spacing: 0.03em;">
+                <span style="position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted); font-size: 0.85rem;" data-i18n="unit_eggs">🥚 Œufs</span>
+              </div>
             </div>
           </div>
 
@@ -2299,7 +2340,7 @@
               <input type="number" id="newFeedTypeStockKg" class="input-field" step="0.5" min="0" required>
             </div>
             <div class="form-group flex-1">
-              <label for="newFeedTypePriceKg" class="form-label" style="font-weight: 700;">Prix au kg (<span class="currency-label">DT</span>/kg)</label>
+              <label for="newFeedTypePriceKg" class="form-label" style="font-weight: 700;"><span data-i18n="lbl_feed_price_kg">Prix au kg</span> (<span class="currency-label">DT</span>/kg)</label>
               <input type="number" id="newFeedTypePriceKg" class="input-field" step="0.01" min="0" required>
             </div>
           </div>
