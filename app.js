@@ -65,362 +65,15 @@ const CURRENCY_SYMBOLS = {
   }
 };
 
-// Initial Demo Dataset (Authentic & Realistic)
+// Clean Initial Empty Dataset (Fresh application state)
 const SAMPLE_DATA = {
-  animals: [
-    {
-      id: 'lot-p-01',
-      species: 'poulet',
-      breed: 'Sasso XL Fermier',
-      name: 'Bande Poulet Chair #12',
-      initialQuantity: 250,
-      currentQuantity: 242,
-      mortality: 8,
-      birthDate: '2026-09-07', // 35 jours
-      costPerHead: 1.800,
-      stage: 'Finition',
-      notes: 'Bâtiment Sud. Excellente croissance, poids moyen 2.1kg.'
-    },
-    {
-      id: 'lot-p-02',
-      species: 'pondeuse',
-      breed: 'Lohmann Brown',
-      name: 'Bande Pondeuses #03',
-      initialQuantity: 120,
-      currentQuantity: 118,
-      mortality: 2,
-      birthDate: '2026-04-15', // ~6 mois
-      costPerHead: 14.500,
-      stage: 'Ponte',
-      notes: 'Ponte quotidienne moyenne: 105 œufs/jour (Taux 89%).'
-    },
-    {
-      id: 'lot-p-03',
-      species: 'poussin',
-      breed: 'Cou Nu Goliath',
-      name: 'Lot Poussins Éleveuse #08',
-      initialQuantity: 100,
-      currentQuantity: 98,
-      mortality: 2,
-      birthDate: '2026-10-04', // 8 jours
-      costPerHead: 1.400,
-      stage: 'Démarrage',
-      notes: 'Sous lampe chauffante 32°C. Vitamines anti-stress administrées.'
-    },
-    {
-      id: 'lot-p-04',
-      species: 'adulte',
-      breed: 'Coqs Beldi Reproducteurs',
-      name: 'Bande Coqs Adultes Reproducteurs',
-      initialQuantity: 45,
-      currentQuantity: 44,
-      mortality: 1,
-      birthDate: '2026-03-01', // ~7 mois
-      costPerHead: 22.000,
-      stage: 'Reproduction',
-      notes: 'Parc plein air, coqs reproducteurs vigoureux (> 6 mois).'
-    },
-    {
-      id: 'lot-p-05',
-      species: 'poussin',
-      breed: 'Poussins 1 jour Éclosion',
-      name: 'Bande Poussins 1J Couveuse',
-      initialQuantity: 150,
-      currentQuantity: 148,
-      mortality: 2,
-      birthDate: '2026-10-12', // 1 jour
-      costPerHead: 1.200,
-      stage: 'Démarrage',
-      notes: 'Poussins éclos hier, sous éleveuse chauffée à 33°C.'
-    },
-    {
-      id: 'lot-p-06',
-      species: 'pintade',
-      breed: 'Pintade Numida Meleagris (Beldi)',
-      name: 'Bande Pintades Fermières #01',
-      initialQuantity: 60,
-      currentQuantity: 58,
-      mortality: 2,
-      birthDate: '2026-06-15', // ~4 mois
-      costPerHead: 4.500,
-      stage: 'Finition',
-      notes: 'Pintades robustes, élevage plein air mixte, plumage perlé.'
-    },
-    {
-      id: 'lot-p-07',
-      species: 'canard',
-      breed: 'Canard de Barbarie Fermier',
-      name: 'Bande Canards de Barbarie #01',
-      initialQuantity: 40,
-      currentQuantity: 39,
-      mortality: 1,
-      birthDate: '2026-07-01', // ~3.5 mois
-      costPerHead: 6.000,
-      stage: 'Finition',
-      notes: 'Canards de Barbarie rustiques, plumage noir & blanc, croissance rapide.'
-    }
-  ],
-
-  expenses: [
-    {
-      id: 'exp-01',
-      date: '2026-09-08',
-      category: 'nourriture',
-      title: '10 Sacs Aliment Démarrage Poulet (50kg)',
-      quantity: 10,
-      unitPrice: 75.000,
-      total: 750.000,
-      linkedLotId: 'lot-p-01'
-    },
-    {
-      id: 'exp-02',
-      date: '2026-09-22',
-      category: 'nourriture',
-      title: '15 Sacs Aliment Croissance / Finition (50kg)',
-      quantity: 15,
-      unitPrice: 72.000,
-      total: 1080.000,
-      linkedLotId: 'lot-p-01'
-    },
-    {
-      id: 'exp-03',
-      date: '2026-09-25',
-      category: 'nourriture',
-      title: 'Aliment Pondeuse Granulés Spécial Ponte',
-      quantity: 8,
-      unitPrice: 68.000,
-      total: 544.000,
-      linkedLotId: 'lot-p-02'
-    },
-    {
-      id: 'exp-04',
-      date: '2026-09-12',
-      category: 'veterinaire',
-      title: 'Vaccin Newcastle + Gumboro (1000 doses)',
-      quantity: 1,
-      unitPrice: 55.000,
-      total: 55.000,
-      linkedLotId: 'lot-p-01'
-    },
-    {
-      id: 'exp-05',
-      date: '2026-10-01',
-      category: 'electricite',
-      title: 'Facture Électricité STEG Exploitation',
-      quantity: 1,
-      unitPrice: 220.000,
-      total: 220.000,
-      linkedLotId: 'general'
-    },
-    {
-      id: 'exp-06',
-      date: '2026-10-01',
-      category: 'eau',
-      title: 'Facture Eau SONEDE Abreuvoirs & Nettoyage',
-      quantity: 1,
-      unitPrice: 65.000,
-      total: 65.000,
-      linkedLotId: 'general'
-    },
-    {
-      id: 'exp-07',
-      date: '2026-09-30',
-      category: 'salaire',
-      title: 'Salaire Ouvrier Agricole (Mois de Septembre)',
-      quantity: 1,
-      unitPrice: 750.000,
-      total: 750.000,
-      linkedLotId: 'general'
-    },
-    {
-      id: 'exp-08',
-      date: '2026-10-05',
-      category: 'autre',
-      title: 'Litière de copeaux & Chauffage éleveuse poussins',
-      quantity: 5,
-      unitPrice: 18.000,
-      total: 90.000,
-      linkedLotId: 'lot-p-05'
-    }
-  ],
-
-  sales: [
-    {
-      id: 'sale-01',
-      date: '2026-09-28',
-      productType: 'oeufs',
-      description: 'Vente 50 Plateaux d\'œufs frais (Marché de Gros)',
-      format: 'plateau',
-      quantity: 50,
-      unitPrice: 13.500,
-      total: 675.000,
-      linkedLotId: 'lot-p-02'
-    },
-    {
-      id: 'sale-02',
-      date: '2026-10-06',
-      productType: 'oeufs',
-      description: 'Vente 15 Haras d\'œufs frais (60 œufs au marché)',
-      format: 'hara',
-      quantity: 15,
-      unitPrice: 2.000,
-      total: 30.000,
-      linkedLotId: 'lot-p-02'
-    },
-    {
-      id: 'sale-03',
-      date: '2026-10-08',
-      productType: 'oeufs',
-      description: 'Vente 12 œufs à l\'unité (3 Haras)',
-      format: 'oeuf-unite',
-      quantity: 12,
-      unitPrice: 0.500,
-      total: 6.000,
-      linkedLotId: 'lot-p-02'
-    },
-    {
-      id: 'sale-04',
-      date: '2026-10-09',
-      productType: 'poulet-croissance',
-      description: 'Vente 25 Poulets fermiers (âge 3 mois - par sujet)',
-      format: 'unite',
-      quantity: 25,
-      unitPrice: 18.500,
-      total: 462.500,
-      linkedLotId: 'lot-p-01'
-    },
-    {
-      id: 'sale-05',
-      date: '2026-10-10',
-      productType: 'poussin-1j',
-      description: 'Vente 40 Poussins 1 jour éclos (par sujet)',
-      format: 'unite',
-      quantity: 40,
-      unitPrice: 2.200,
-      total: 88.000,
-      linkedLotId: 'lot-p-05'
-    },
-    {
-      id: 'sale-06',
-      date: '2026-10-11',
-      productType: 'poulet-adulte',
-      description: 'Vente 6 Coqs adultes reproducteurs (> 6 mois - par tête)',
-      format: 'unite',
-      quantity: 6,
-      unitPrice: 28.000,
-      total: 168.000,
-      linkedLotId: 'lot-p-04'
-    },
-    {
-      id: 'sale-07',
-      date: '2026-10-12',
-      productType: 'pintade',
-      description: 'Vente 10 Pintades fermières prêtes à cuire (par sujet)',
-      format: 'unite',
-      quantity: 10,
-      unitPrice: 24.000,
-      total: 240.000,
-      linkedLotId: 'lot-p-06'
-    },
-    {
-      id: 'sale-08',
-      date: '2026-10-12',
-      productType: 'canard',
-      description: 'Vente 5 Canards de Barbarie fermiers (par tête)',
-      format: 'unite',
-      quantity: 5,
-      unitPrice: 35.000,
-      total: 175.000,
-      linkedLotId: 'lot-p-07'
-    }
-  ],
-
-  incubatorBatches: [
-    {
-      id: 'batch-01',
-      eggSpecies: 'poule',
-      speciesDurationDays: 21,
-      breed: 'Sasso XL & Fermière',
-      name: 'Couvée Poussins Automne #03',
-      eggsCount: 150,
-      startDate: '2026-10-02', // Mis en couveuse il y a 10 jours
-      hatchDate: '2026-10-23', // Éclosion prévue le 23 Octobre
-      candling1Date: '2026-10-09',
-      candling2Date: '2026-10-16',
-      lockdownDate: '2026-10-20',
-      temp: 37.7,
-      humidity: 48,
-      notes: '1er mirage effectué à J+7 : 142 œufs fertiles confirmés (94.6% fertilité).'
-    },
-    {
-      id: 'batch-02',
-      eggSpecies: 'caille',
-      speciesDurationDays: 17,
-      breed: 'Caille du Japon',
-      name: 'Couvée Cailleteaux #01',
-      eggsCount: 80,
-      startDate: '2026-09-28', // Mis il y a 14 jours
-      hatchDate: '2026-10-15', // Éclosion dans 3 jours !
-      candling1Date: '2026-10-04',
-      candling2Date: '2026-10-11',
-      lockdownDate: '2026-10-13',
-      temp: 37.6,
-      humidity: 55,
-      notes: 'Transfert à l\'éclosoir fait. Arrêt du retournement automatique.'
-    },
-    {
-      id: 'batch-03',
-      eggSpecies: 'pintade',
-      speciesDurationDays: 27,
-      breed: 'Pintade Commune Perlée',
-      name: 'Couvée Œufs Pintade #01',
-      eggsCount: 45,
-      startDate: '2026-10-05',
-      hatchDate: '2026-11-01',
-      candling1Date: '2026-10-14',
-      candling2Date: '2026-10-23',
-      lockdownDate: '2026-10-29',
-      temp: 37.5,
-      humidity: 50,
-      notes: 'Œufs à coquille très dure, mirage prévu à J+9.'
-    },
-    {
-      id: 'batch-04',
-      eggSpecies: 'canard_barbarie',
-      speciesDurationDays: 35,
-      breed: 'Canard de Barbarie Blanc & Pie',
-      name: 'Couvée Œufs Canard Barbarie #01',
-      eggsCount: 30,
-      startDate: '2026-09-25',
-      hatchDate: '2026-10-30',
-      candling1Date: '2026-10-05',
-      candling2Date: '2026-10-19',
-      lockdownDate: '2026-10-27',
-      temp: 37.5,
-      humidity: 55,
-      notes: 'Incubation 35 jours. Brumisation tiède et refroidissement quotidien dès J+14.'
-    }
-  ],
-  feedStockKg: 290,
-  feedStockCostPerKg: 1.28,
-  feedTypes: [
-    {
-      id: 'feed-ble',
-      name: 'Blé',
-      stockKg: 150,
-      pricePerKg: 1.100,
-      texture: 'grain',
-      kgPerCan: 0.72
-    },
-    {
-      id: 'feed-bouchon',
-      name: 'Aliment ponte (Bouchon)',
-      stockKg: 140,
-      pricePerKg: 1.480,
-      texture: 'grain',
-      kgPerCan: 0.65
-    }
-  ]
+  animals: [],
+  expenses: [],
+  sales: [],
+  incubatorBatches: [],
+  feedStockKg: 0,
+  feedStockCostPerKg: 1.0,
+  feedTypes: []
 };
 
 // Application Controller Object
@@ -665,17 +318,28 @@ const app = {
           });
         }
 
-        // Strict aviculture sanitization (remove any bovine / ovine / milk residues)
+        // Strict aviculture sanitization & purge legacy simulation data
+        const legacySimLotIds = new Set(['lot-p-01', 'lot-p-02', 'lot-p-03', 'lot-p-04', 'lot-p-05', 'lot-p-06', 'lot-p-07']);
+        const legacySimBatchIds = new Set(['batch-01', 'batch-02', 'batch-03', 'batch-04']);
+        const legacySimExpIds = new Set(['exp-01', 'exp-02', 'exp-03', 'exp-04', 'exp-05', 'exp-06', 'exp-07', 'exp-08']);
+        const legacySimSaleIds = new Set(['sale-01', 'sale-02', 'sale-03', 'sale-04', 'sale-05', 'sale-06', 'sale-07', 'sale-08']);
+
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
-        appState.animals = rawAnimals.filter(a => a.species !== 'bovin' && a.species !== 'ovin');
+        appState.animals = rawAnimals.filter(a => a.species !== 'bovin' && a.species !== 'ovin' && !legacySimLotIds.has(a.id));
 
         const rawSales = Array.isArray(parsed.sales) ? parsed.sales : [];
-        appState.sales = rawSales.filter(s => s.productType !== 'lait' && s.productType !== 'bovin' && s.productType !== 'ovin');
+        appState.sales = rawSales.filter(s => s.productType !== 'lait' && s.productType !== 'bovin' && s.productType !== 'ovin' && !legacySimSaleIds.has(s.id) && !legacySimLotIds.has(s.linkedLotId));
 
         const rawExpenses = Array.isArray(parsed.expenses) ? parsed.expenses : [];
-        appState.expenses = rawExpenses.filter(e => e.linkedLotId !== 'lot-b-01' && e.linkedLotId !== 'lot-o-01');
+        appState.expenses = rawExpenses.filter(e => e.linkedLotId !== 'lot-b-01' && e.linkedLotId !== 'lot-o-01' && !legacySimExpIds.has(e.id) && !legacySimLotIds.has(e.linkedLotId));
 
-        appState.incubatorBatches = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches : [];
+        const rawBatches = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches : [];
+        appState.incubatorBatches = rawBatches.filter(b => !legacySimBatchIds.has(b.id));
+
+        if (appState.feedStockKg === 290) {
+          appState.feedStockKg = null;
+          appState.feedTypes = [];
+        }
 
         appState._zeroInitialized = true;
 
@@ -2965,14 +2629,16 @@ const app = {
     const globalStock = Number(appState.feedStockKg) || 0;
     const currentTotalStock = list.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
     if (globalStock > 0 && currentTotalStock === 0 && list.length > 0) {
-      if (list.length === 1) {
-        list[0].stockKg = globalStock;
-      } else {
-        const bleKg = Math.round(globalStock * 0.52);
-        const bouchonKg = globalStock - bleKg;
-        list[0].stockKg = bleKg;
-        list[1].stockKg = bouchonKg;
-      }
+      const perFeed = Math.round((globalStock / list.length) * 10) / 10;
+      let runningTotal = 0;
+      list.forEach((f, idx) => {
+        if (idx === list.length - 1) {
+          f.stockKg = Math.max(0, Math.round((globalStock - runningTotal) * 10) / 10);
+        } else {
+          f.stockKg = perFeed;
+          runningTotal += perFeed;
+        }
+      });
     }
 
     return list;
@@ -3039,14 +2705,15 @@ const app = {
     const ft = (appState.feedTypes || []).find(f => f.id === feedId);
     if (!ft) return;
 
-    ft.texture = texture;
+    const normalizedTexture = texture === 'moulu' ? 'moulu' : 'grain';
+    ft.texture = normalizedTexture;
     const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id) || 'general';
-    ft.kgPerCan = this.getFeedDefaultDensity(family, texture);
+    ft.kgPerCan = this.getFeedDefaultDensity(family, normalizedTexture);
     ft.manuallyAdjusted = true;
     ft.updatedAt = Date.now();
     this.saveState();
 
-    const isGrain = texture !== 'moulu';
+    const isGrain = normalizedTexture === 'grain';
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
@@ -3060,14 +2727,28 @@ const app = {
     if (dBtnGrain && dBtnMoulu) {
       if (isGrain) {
         dBtnGrain.className = 'btn btn-xs btn-emerald';
+        dBtnGrain.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        dBtnGrain.style.color = '#ffffff';
         dBtnGrain.style.fontWeight = '800';
+        dBtnGrain.style.border = '1px solid #10b981';
+
         dBtnMoulu.className = 'btn btn-xs btn-outline';
+        dBtnMoulu.style.background = 'transparent';
+        dBtnMoulu.style.color = 'var(--text-main)';
         dBtnMoulu.style.fontWeight = '600';
+        dBtnMoulu.style.border = '1px solid var(--border-color)';
       } else {
         dBtnGrain.className = 'btn btn-xs btn-outline';
+        dBtnGrain.style.background = 'transparent';
+        dBtnGrain.style.color = 'var(--text-main)';
         dBtnGrain.style.fontWeight = '600';
+        dBtnGrain.style.border = '1px solid var(--border-color)';
+
         dBtnMoulu.className = 'btn btn-xs btn-emerald';
+        dBtnMoulu.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        dBtnMoulu.style.color = '#ffffff';
         dBtnMoulu.style.fontWeight = '800';
+        dBtnMoulu.style.border = '1px solid #10b981';
       }
     }
     if (dDensity) {
@@ -3081,14 +2762,28 @@ const app = {
     if (sBtnGrain && sBtnMoulu) {
       if (isGrain) {
         sBtnGrain.className = 'btn btn-xs btn-emerald';
+        sBtnGrain.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        sBtnGrain.style.color = '#ffffff';
         sBtnGrain.style.fontWeight = '800';
+        sBtnGrain.style.border = '1px solid #10b981';
+
         sBtnMoulu.className = 'btn btn-xs btn-outline';
+        sBtnMoulu.style.background = 'transparent';
+        sBtnMoulu.style.color = 'var(--text-main)';
         sBtnMoulu.style.fontWeight = '600';
+        sBtnMoulu.style.border = '1px solid var(--border-color)';
       } else {
         sBtnGrain.className = 'btn btn-xs btn-outline';
+        sBtnGrain.style.background = 'transparent';
+        sBtnGrain.style.color = 'var(--text-main)';
         sBtnGrain.style.fontWeight = '600';
+        sBtnGrain.style.border = '1px solid var(--border-color)';
+
         sBtnMoulu.className = 'btn btn-xs btn-emerald';
+        sBtnMoulu.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        sBtnMoulu.style.color = '#ffffff';
         sBtnMoulu.style.fontWeight = '800';
+        sBtnMoulu.style.border = '1px solid #10b981';
       }
     }
     if (sDensity) {
@@ -3107,11 +2802,25 @@ const app = {
     this.recalcDistribTotal();
   },
 
+  selectNewFeedTexture(texture) {
+    const grainRadio = document.querySelector('input[name="newFeedTexture"][value="grain"]');
+    const mouluRadio = document.querySelector('input[name="newFeedTexture"][value="moulu"]');
+    if (texture === 'moulu') {
+      if (grainRadio) grainRadio.checked = false;
+      if (mouluRadio) mouluRadio.checked = true;
+    } else {
+      if (grainRadio) grainRadio.checked = true;
+      if (mouluRadio) mouluRadio.checked = false;
+    }
+    this.onNewFeedTextureChange();
+  },
+
   onNewFeedTextureChange() {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
-    const grainRadio = document.querySelector('input[name="newFeedTexture"][value="grain"]');
-    const isGrain = grainRadio ? grainRadio.checked : true;
+    const mouluRadio = document.querySelector('input[name="newFeedTexture"][value="moulu"]');
+    const isMoulu = mouluRadio ? mouluRadio.checked : false;
+    const isGrain = !isMoulu;
     const texture = isGrain ? 'grain' : 'moulu';
 
     // Style des boutons radio
@@ -3120,10 +2829,14 @@ const app = {
     if (lblGrain && lblMoulu) {
       if (isGrain) {
         lblGrain.style.border = '2px solid var(--accent-emerald)';
+        lblGrain.style.background = 'rgba(16, 185, 129, 0.12)';
         lblMoulu.style.border = '1.5px solid var(--border-subtle)';
+        lblMoulu.style.background = 'var(--bg-card)';
       } else {
         lblGrain.style.border = '1.5px solid var(--border-subtle)';
+        lblGrain.style.background = 'var(--bg-card)';
         lblMoulu.style.border = '2px solid var(--accent-emerald)';
+        lblMoulu.style.background = 'rgba(16, 185, 129, 0.12)';
       }
     }
 
@@ -3609,25 +3322,24 @@ const app = {
       }
       if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
         const globalStock = Number(appState.feedStockKg) || 0;
-        const bleKg = globalStock > 0 ? Math.round(globalStock * 0.52) : 0;
-        const bouchonKg = globalStock > 0 ? (globalStock - bleKg) : 0;
         appState.feedTypes = [
-          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: bleKg, pricePerKg: 1.10, texture: 'grain', kgPerCan: 0.72 },
-          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: bouchonKg, pricePerKg: 1.48, texture: 'grain', kgPerCan: 0.65 }
+          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: globalStock, pricePerKg: Number(appState.feedStockCostPerKg) || 1.0, texture: 'grain', kgPerCan: 0.72 }
         ];
       }
     } else {
       const globalStock = Number(appState.feedStockKg) || 0;
       const currentTotal = appState.feedTypes.reduce((s, f) => s + (Number(f.stockKg) || 0), 0);
-      if (globalStock > 0 && currentTotal === 0) {
-        if (appState.feedTypes.length === 1) {
-          appState.feedTypes[0].stockKg = globalStock;
-        } else {
-          const bleKg = Math.round(globalStock * 0.52);
-          const bouchonKg = globalStock - bleKg;
-          appState.feedTypes[0].stockKg = bleKg;
-          appState.feedTypes[1].stockKg = bouchonKg;
-        }
+      if (globalStock > 0 && currentTotal === 0 && appState.feedTypes.length > 0) {
+        const perFeed = Math.round((globalStock / appState.feedTypes.length) * 10) / 10;
+        let runningTotal = 0;
+        appState.feedTypes.forEach((f, idx) => {
+          if (idx === appState.feedTypes.length - 1) {
+            f.stockKg = Math.max(0, Math.round((globalStock - runningTotal) * 10) / 10);
+          } else {
+            f.stockKg = perFeed;
+            runningTotal += perFeed;
+          }
+        });
       }
     }
 
@@ -4016,25 +3728,24 @@ const app = {
       }
       if (!appState.feedTypes || appState.feedTypes.length === 0) {
         const globalStock = Number(appState.feedStockKg) || 0;
-        const bleKg = globalStock > 0 ? Math.round(globalStock * 0.52) : 0;
-        const bouchonKg = globalStock > 0 ? (globalStock - bleKg) : 0;
         appState.feedTypes = [
-          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: bleKg, pricePerKg: 1.10, texture: 'grain', kgPerCan: 0.72 },
-          { id: 'feed-bouchon', name: isAr ? 'علف بياضة (بوشون)' : (isEn ? 'Layer Feed (Pellets)' : 'Aliment ponte (Bouchon)'), stockKg: bouchonKg, pricePerKg: 1.48, texture: 'grain', kgPerCan: 0.65 }
+          { id: 'feed-ble', name: isAr ? 'قمح' : (isEn ? 'Wheat' : 'Blé'), stockKg: globalStock, pricePerKg: Number(appState.feedStockCostPerKg) || 1.0, texture: 'grain', kgPerCan: 0.72 }
         ];
       }
     } else {
       const globalStock = Number(appState.feedStockKg) || 0;
       const currentTotal = appState.feedTypes.reduce((s, f) => s + (Number(f.stockKg) || 0), 0);
-      if (globalStock > 0 && currentTotal === 0) {
-        if (appState.feedTypes.length === 1) {
-          appState.feedTypes[0].stockKg = globalStock;
-        } else {
-          const bleKg = Math.round(globalStock * 0.52);
-          const bouchonKg = globalStock - bleKg;
-          appState.feedTypes[0].stockKg = bleKg;
-          appState.feedTypes[1].stockKg = bouchonKg;
-        }
+      if (globalStock > 0 && currentTotal === 0 && appState.feedTypes.length > 0) {
+        const perFeed = Math.round((globalStock / appState.feedTypes.length) * 10) / 10;
+        let runningTotal = 0;
+        appState.feedTypes.forEach((f, idx) => {
+          if (idx === appState.feedTypes.length - 1) {
+            f.stockKg = Math.max(0, Math.round((globalStock - runningTotal) * 10) / 10);
+          } else {
+            f.stockKg = perFeed;
+            runningTotal += perFeed;
+          }
+        });
       }
     }
 
@@ -4404,11 +4115,10 @@ const app = {
           : (isEn ? `✅ Distributed today: ${todayDistributedKg.toFixed(2)} kg (${todayDistributedCans.toFixed(1)} cans)` : `✅ Distribué aujourd'hui : ${todayDistributedKg.toFixed(2)} kg (${todayDistributedCans.toFixed(1)} boîtes)`);
         statusHintEl.style.color = 'var(--accent-emerald)';
       } else {
-        const estNeedKg = (totalFarmDailyGrams / 1000).toFixed(1);
         statusHintEl.textContent = isAr 
-          ? `🥫 لم يتم التوزيع اليوم (حاجة تقريبية: ~${estNeedKg} كغ) — اضغط للتوزيع` 
-          : (isEn ? `🥫 Not distributed yet (est. need: ~${estNeedKg} kg) — Click to log` : `🥫 Non distribué aujourd'hui (besoin estimé : ~${estNeedKg} kg) — Cliquer pour distribuer`);
-        statusHintEl.style.color = 'var(--accent-amber)';
+          ? '🥫 توزيع اليوم: اضغط لتسجيل العلف' 
+          : (isEn ? '🥫 Today distribution: Click to log' : '🥫 Distribution du jour : Cliquer pour enregistrer');
+        statusHintEl.style.color = 'var(--text-secondary)';
       }
     }
 
@@ -4446,15 +4156,10 @@ const app = {
       const stockBadgeEn = `📦 Warehouse feed stock in reserve: ~${this.formatMoney(feedStockRemaining)} (~${feedStockRemainingKg.toFixed(1)} kg)${typesBreakdown ? ' &bull; ' + typesBreakdown : ''}`;
       const stockLabel = isAr ? stockBadgeAr : (isEn ? stockBadgeEn : stockBadgeFr);
 
-      const subText = isAr 
-        ? '(غير محتسب على الكتاكيت حتى يتم استهلاكه)' 
-        : (isEn ? '(Not charged to chicks until consumed)' : '(Non imputé aux poussins tant que non consommé)');
-
       lotsHtml += `
         <div style="grid-column: 1 / -1; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; color: var(--accent-emerald); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
             <span>${stockLabel}</span>
-            <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500;">${subText}</span>
           </div>
           <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
             <button type="button" class="btn btn-sm btn-outline" style="padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 800;" onclick="app.openModal('modalAdjustFeedStock')">
@@ -8118,19 +7823,11 @@ const app = {
     if (lang === 'ar') {
       let t = title;
       t = t.replace(/Achat aliment\s*:\s*/gi, 'شراء علف : ');
-      t = t.replace(/Achat aliment\s*\/\s*Stock r[eé]serve/gi, 'شراء علف / مخزون احتياطي بالمستودع');
+      t = t.replace(/Achat aliment\s*\/\s*Stock r[eé]serve/gi, 'شراء علف / مخزون احتياطي');
       t = t.replace(/Achat aliment/gi, 'شراء علف');
-      t = t.replace(/Stock r[eé]serve/gi, 'مخزون المستودع');
-      t = t.replace(/(\d+)\s*Sacs?\s*Aliment Croissance\s*\/\s*Finition\s*\(50kg\)/gi, '$1 أكياس علف نمو وتسمين (50 كغ)');
+      t = t.replace(/Stock r[eé]serve/gi, 'مخزون احتياطي');
       t = t.replace(/sacs?\s*d['\s]?alimentation/gi, 'أكياس علف');
       t = t.replace(/sac\s*d['\s]?aliment/gi, 'كيس علف');
-      t = t.replace(/Aliment Pondeuse Granul[eé]s Sp[eé]cial Ponte/gi, 'علف دجاج بياض حبيبات (خاص بالإنتاج)');
-      t = t.replace(/Aliment D[eé]marrage Poussins\s*\(Miettes 1er [AÂ]ge\)/gi, 'علف بادي كتاكيت (مفتت مرحلة أولى)');
-      t = t.replace(/Vaccin Newcastle\s*\+\s*Gumboro\s*\(1000 doses\)/gi, 'تلقيح نيوكاسل + غومبورو (1000 جرعة)');
-      t = t.replace(/Facture [EÉ]lectricit[eé] STEG Exploitation/gi, 'فاتورة كهرباء الستاغ (STEG) للمزرعة');
-      t = t.replace(/Facture Eau SONEDE Abreuvoirs\s*&\s*Nettoyage/gi, 'فاتورة مياه الصوناد (SONEDE) للمزرعة');
-      t = t.replace(/Salaire Ouvrier Agricole\s*\(Mois de Septembre\)/gi, 'أجر عامل فلاحي (شهر سبتمبر)');
-      t = t.replace(/Liti[eè]re de copeaux\s*&\s*Chauffage [eé]leveuse poussins/gi, 'فرشة نشارة وتدفئة حاضنة الكتاكيت');
       t = t.replace(/(\d+(?:\.\d+)?)\s*kg/gi, '$1 كغ');
       return t;
     }
@@ -8141,69 +7838,23 @@ const app = {
       t = t.replace(/Achat aliment\s*\/\s*Stock r[eé]serve/gi, 'Feed Purchase / Reserve Stock');
       t = t.replace(/Achat aliment/gi, 'Feed Purchase');
       t = t.replace(/sacs?\s*d['\s]?alimentation/gi, 'feed bags');
-      t = t.replace(/Aliment Pondeuse Granul[eé]s Sp[eé]cial Ponte/gi, 'Laying Pellet Feed Special Production');
-      t = t.replace(/Aliment D[eé]marrage Poussins/gi, 'Chick Starter Crumble');
-      t = t.replace(/Facture [EÉ]lectricit[eé] STEG Exploitation/gi, 'STEG Electricity Bill');
-      t = t.replace(/Facture Eau SONEDE Abreuvoirs\s*&\s*Nettoyage/gi, 'SONEDE Water Bill');
-      t = t.replace(/Salaire Ouvrier Agricole/gi, 'Farm Worker Salary');
-      t = t.replace(/Liti[eè]re de copeaux\s*&\s*Chauffage/gi, 'Wood Shavings Bedding & Brooder Heating');
       return t;
     }
 
     let t = title;
     t = t.replace(/شراء علف\s*:\s*/gi, 'Achat aliment : ');
-    t = t.replace(/شراء علف\s*\/\s*مخزون احتياطي بالمستودع/gi, 'Achat aliment / Stock réserve');
+    t = t.replace(/شراء علف\s*\/\s*مخزون احتياطي/gi, 'Achat aliment / Stock réserve');
     t = t.replace(/أكياس علف/gi, 'Sacs d\'alimentation');
     t = t.replace(/(\d+(?:\.\d+)?)\s*كغ/gi, '$1 kg');
     return t;
   },
 
   getTranslatedSaleDescription(desc) {
-    if (!desc) return '';
-    const lang = appState.lang || 'fr';
-
-    if (lang === 'ar') {
-      let d = desc;
-      d = d.replace(/Vente 50 Plateaux d['’]œufs frais\s*\(March[eé] de Gros\)/gi, 'بيع 50 طبق بيض طازج (سوق الجملة)');
-      d = d.replace(/Vente 35 Poulets fermiers pr[eê]ts [aà] l['’]abattage\s*\(3\.5 mois\)/gi, 'بيع 35 دجاجة لحم بلدية جاهزة للذبح (3.5 أشهر)');
-      d = d.replace(/Vente 80 Poussins d[eé]marr[eé]s 21 jours vaccin[eé]s/gi, 'بيع 80 كتكوت بادي 21 يوماً ملقحة');
-      d = d.replace(/Vente 6 Coqs adultes reproducteurs\s*\(>\s*6 mois\s*-\s*par t[eê]te\)/gi, 'بيع 6 ديوك بالغة أمهات (> 6 أشهر - بالرأس)');
-      d = d.replace(/Vente 6 Poulets adultes reproducteurs\s*\(>\s*6 mois\s*-\s*par t[eê]te\)/gi, 'بيع 6 ديوك بالغة أمهات (> 6 أشهر - بالرأس)');
-      d = d.replace(/Vente\s+/gi, 'بيع ');
-      d = d.replace(/Plateau(?:x)? d['’]œufs/gi, 'طبق بيض');
-      d = d.replace(/par t[eê]te/gi, 'بالرأس');
-      return d;
-    }
-
-    if (lang === 'en') {
-      let d = desc;
-      d = d.replace(/Vente 50 Plateaux d['’]œufs frais\s*\(March[eé] de Gros\)/gi, 'Sale of 50 fresh egg trays (Wholesale)');
-      d = d.replace(/Vente 35 Poulets fermiers/gi, 'Sale of 35 farm broilers');
-      d = d.replace(/Vente 80 Poussins d[eé]marr[eé]s/gi, 'Sale of 80 started chicks');
-      d = d.replace(/Vente 6 Coqs adultes/gi, 'Sale of 6 adult roosters');
-      d = d.replace(/Vente\s+/gi, 'Sale of ');
-      return d;
-    }
-
-    return desc;
+    return desc || '';
   },
 
   getTranslatedLotName(name) {
-    if (!name) return '';
-    const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
-    const lang = isArabic ? 'ar' : (appState.lang || 'fr');
-    if (lang === 'ar') {
-      let n = name;
-      n = n.replace(/Bande Poussins 1J Couveuse/gi, 'دفعة كتاكيت عمر 1 يوم فقاسة');
-      n = n.replace(/Bande Poussins D[eé]marr[eé]s #01/gi, 'دفعة كتاكيت بادئة #01');
-      n = n.replace(/Bande Poulets Fermiers Croissance/gi, 'دفعة دجاج بلدي مرحلة النمو');
-      n = n.replace(/Bande Pondeuses #03/gi, 'دفعة دجاج بياض #03');
-      n = n.replace(/Bande Coqs Adultes Reproducteurs/gi, 'دفعة ديوك بالغة أمهات');
-      n = n.replace(/Bande Poulets Adultes Reproducteurs/gi, 'دفعة ديوك بالغة أمهات');
-      n = n.replace(/Bande\s+/gi, 'دفعة ');
-      return n;
-    }
-    return name;
+    return name || '';
   },
 
   getTranslatedAgeText(ageText) {
@@ -8466,23 +8117,29 @@ const app = {
   loadSampleData() {
     const isAr = appState.lang === 'ar';
     this.confirmDialog({
-      title: isAr ? 'بيانات توضيحية' : 'Données Démo',
-      message: this.t('modal_settings_desc') || 'Voulez-vous charger les données de démonstration ?',
+      title: isAr ? 'تهيئة مزرعة جديدة' : 'Nouvelle Ferme Vierge',
+      message: isAr 
+        ? 'هل ترغب في تهيئة التطبيق بحالة نظيفة وفارغة تماماً لبدء مزرعتك الخاصة؟' 
+        : 'Voulez-vous initialiser une ferme neuve et propre avec toutes les données à zéro ?',
       isDanger: false,
-      confirmText: isAr ? 'تحميل' : 'Charger',
+      confirmText: isAr ? 'تأكيد' : 'Initialiser',
       onConfirm: () => {
-        appState.animals = JSON.parse(JSON.stringify(SAMPLE_DATA.animals));
-        appState.expenses = JSON.parse(JSON.stringify(SAMPLE_DATA.expenses));
-        appState.sales = JSON.parse(JSON.stringify(SAMPLE_DATA.sales));
-        appState.incubatorBatches = JSON.parse(JSON.stringify(SAMPLE_DATA.incubatorBatches));
-        appState.feedTypes = JSON.parse(JSON.stringify(SAMPLE_DATA.feedTypes));
-        appState.feedStockKg = Number(SAMPLE_DATA.feedStockKg) || 290;
-        appState.feedStockCostPerKg = Number(SAMPLE_DATA.feedStockCostPerKg) || 1.28;
-        appState.feedStockDate = this.getTodayStr();
+        appState.animals = [];
+        appState.expenses = [];
+        appState.sales = [];
+        appState.incubatorBatches = [];
+        appState.feedTypes = [];
+        appState.feedDistributions = [];
+        appState.feedStockKg = null;
+        appState.feedStockCostPerKg = 1.0;
+        appState.feedStockDate = null;
+        appState.eggStock = 0;
+        appState.eggHarvests = [];
+        appState._zeroInitialized = true;
         this.saveState();
         this.closeModal('modalDataOptions');
         this.renderAll();
-        this.showToast(this.t('toast_demo_loaded') || 'Données de démonstration chargées !');
+        this.showToast(isAr ? 'تم تهيئة المزرعة بنجاح !' : 'Application initialisée à zéro avec succès !');
       }
     });
   },
