@@ -1330,11 +1330,11 @@ const app = {
       const r = isZero ? 3.5 : 5.5;
 
       dotsSvg += `
-        <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="14" fill="transparent" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
+        <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="16" fill="transparent" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" onmouseenter="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
       `;
 
       dotsSvg += `
-        <circle class="egg-chart-dot" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${r}" fill="${dotColor}" stroke="#ffffff" stroke-width="2" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
+        <circle id="eggDot_${i}" class="egg-chart-dot" data-idx="${i}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${r}" fill="${dotColor}" stroke="#ffffff" stroke-width="2" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" onmouseenter="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
       `;
 
       if (p.count > 0 && (n <= 14 || p.count === peakCount)) {
@@ -1373,29 +1373,103 @@ const app = {
           <!-- Ligne de courbe -->
           <path d="${linePath}" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#eggLineGlow)" />
 
+          <!-- Ligne repère verticale active -->
+          <line id="eggChartActiveLine" x1="0" y1="${padT}" x2="0" y2="${baselineY}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3,3" stroke-opacity="0.5" style="display: none; transition: x1 0.2s ease, x2 0.2s ease;" />
+
           <!-- Points et valeurs -->
           ${dotsSvg}
         </svg>
+
+        <!-- Détails interactifs sous le graphique (sans toast) -->
+        <div id="eggChartPointDetails" class="egg-chart-point-details"></div>
       </div>
     `;
+
+    // Mémorisation des points pour les interactions et sélection par défaut du dernier jour
+    this._eggChartPoints = points;
+    if (points && points.length > 0) {
+      const lastIdx = points.length - 1;
+      this.showEggPointTooltip(lastIdx, points[lastIdx].count, points[lastIdx].label, points[lastIdx].date);
+    }
   },
 
   showEggPointTooltip(idx, count, dateLabel, fullDate) {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
-    const unitEggs = this.t('unit_eggs') || 'œufs';
+    const unitEggs = this.t('unit_eggs') || (isAr ? 'بيضة' : (isEn ? 'eggs' : 'œufs'));
+    const harasLabel = this.t('egg_chart_hara_unit') || (isAr ? 'حارة (×4)' : (isEn ? 'Haras (×4)' : 'Haras (×4)'));
+    const platesLabel = this.t('egg_chart_tray_unit') || (isAr ? 'أطباق (×30)' : (isEn ? 'Trays (×30)' : 'Plateaux (×30)'));
+    const zeroLabel = this.t('egg_chart_zero_harvest') || (isAr ? 'لا يوجد بيض تم جمعه' : (isEn ? 'No eggs harvested' : 'Aucun œuf récolté'));
+
     const haras = (count / 4).toFixed(1);
     const plates = (count / 30).toFixed(1);
 
-    let msg = '';
-    if (isAr) {
-      msg = `📅 ${dateLabel} (${fullDate || ''}) : ${count} ${unitEggs} (~${haras} حارة • ~${plates} طبق)`;
-    } else if (isEn) {
-      msg = `📅 ${dateLabel} (${fullDate || ''}): ${count} ${unitEggs} (~${haras} Haras • ~${plates} Trays)`;
-    } else {
-      msg = `📅 ${dateLabel} (${fullDate || ''}) : ${count} ${unitEggs} (~${haras} Haras • ~${plates} Plateaux)`;
+    // 1. Mise à jour de la surbrillance des points dans le SVG
+    const dots = document.querySelectorAll('.egg-chart-dot');
+    dots.forEach(d => d.classList.remove('active-dot'));
+    const activeDot = document.getElementById('eggDot_' + idx);
+    if (activeDot) {
+      activeDot.classList.add('active-dot');
     }
-    this.showToast(msg, 'info');
+
+    // 2. Positionner la ligne verticale de repère
+    const activeLine = document.getElementById('eggChartActiveLine');
+    if (activeLine && this._eggChartPoints && this._eggChartPoints[idx]) {
+      const pt = this._eggChartPoints[idx];
+      activeLine.setAttribute('x1', pt.cx.toFixed(1));
+      activeLine.setAttribute('x2', pt.cx.toFixed(1));
+      activeLine.style.display = 'block';
+    }
+
+    // 3. Formatage de la date conviviale
+    let dateDisplay = fullDate || dateLabel;
+    try {
+      if (fullDate) {
+        const parts = fullDate.split('-');
+        if (parts.length === 3) {
+          const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          const locale = isAr ? 'ar-TN' : (isEn ? 'en-US' : 'fr-FR');
+          dateDisplay = dateObj.toLocaleDateString(locale, {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          });
+        }
+      }
+    } catch (e) {
+      dateDisplay = fullDate || dateLabel;
+    }
+
+    // 4. Affichage inline dans le conteneur du graphique
+    const detailsEl = document.getElementById('eggChartPointDetails');
+    if (!detailsEl) return;
+
+    if (count <= 0) {
+      detailsEl.innerHTML = `
+        <div class="egg-chart-point-details-left">
+          <span style="font-size: 1.15rem;">📅</span>
+          <span class="egg-chart-point-date-badge">${dateLabel}</span>
+          <span class="egg-chart-point-date-full">${dateDisplay}</span>
+        </div>
+        <div class="egg-chart-point-details-right">
+          <span class="egg-chart-pill pill-eggs-zero">🥚 0 ${unitEggs} (${zeroLabel})</span>
+        </div>
+      `;
+    } else {
+      detailsEl.innerHTML = `
+        <div class="egg-chart-point-details-left">
+          <span style="font-size: 1.15rem;">📅</span>
+          <span class="egg-chart-point-date-badge">${dateLabel}</span>
+          <span class="egg-chart-point-date-full">${dateDisplay}</span>
+        </div>
+        <div class="egg-chart-point-details-right">
+          <span class="egg-chart-pill pill-eggs">🥚 <strong>${count}</strong> ${unitEggs}</span>
+          <span class="egg-chart-pill pill-haras">~<strong>${haras}</strong> ${harasLabel}</span>
+          <span class="egg-chart-pill pill-plates">~<strong>${plates}</strong> ${platesLabel}</span>
+        </div>
+      `;
+    }
   },
 
   openSellEggsModal() {

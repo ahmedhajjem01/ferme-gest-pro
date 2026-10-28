@@ -975,14 +975,131 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   display: block;
 }
 .egg-chart-dot {
-  transition: r 0.2s ease, stroke-width 0.2s ease;
+  transition: r 0.2s ease, stroke-width 0.2s ease, stroke 0.2s ease, fill 0.2s ease;
 }
-.egg-chart-dot:hover, .egg-chart-dot:active {
-  r: 8px;
-  stroke-width: 3.5px;
+.egg-chart-dot:hover {
+  r: 7.5px;
+  stroke-width: 3px;
+}
+.egg-chart-dot.active-dot {
+  r: 8.5px !important;
+  stroke: #10b981 !important;
+  stroke-width: 3.5px !important;
+  fill: #ffffff !important;
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.75));
 }
 .egg-point-badge {
   pointer-events: none;
+}
+
+/* Inline Point Details inside Chart Panel (Replaces Top Toast Notification) */
+.egg-chart-point-details {
+  margin-top: 0.6rem;
+  background: var(--bg-card);
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  transition: all 0.25s ease-out;
+  animation: fadeInPoint 0.25s ease-out;
+}
+
+@keyframes fadeInPoint {
+  from {
+    opacity: 0.7;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-theme="dark"] .egg-chart-point-details {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.egg-chart-point-details-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.egg-chart-point-date-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald, #10b981);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-xs, 4px);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.egg-chart-point-date-full {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: capitalize;
+}
+
+.egg-chart-point-details-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.egg-chart-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-xs, 5px);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.egg-chart-pill.pill-eggs {
+  background: var(--accent-emerald, #10b981);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.egg-chart-pill.pill-eggs-zero {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-muted, #94a3b8);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.egg-chart-pill.pill-haras {
+  background: rgba(56, 189, 248, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+[data-theme="dark"] .egg-chart-pill.pill-haras {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.egg-chart-pill.pill-plates {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+[data-theme="dark"] .egg-chart-pill.pill-plates {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
 }
 
 /* Incubation Alert Banner */
