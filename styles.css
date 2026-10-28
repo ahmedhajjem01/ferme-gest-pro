@@ -823,6 +823,91 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   width: fit-content;
 }
 
+/* Egg Stock & Reserve Dashboard Card (2x2 Grid Buttons) */
+.egg-stock-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08));
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.15rem;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.egg-stock-card:hover {
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.15);
+}
+.egg-stock-info-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 200px;
+}
+.egg-stock-icon-bubble {
+  font-size: 2.2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1.5px solid rgba(16, 185, 129, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px var(--primary-glow);
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+.egg-stock-card:hover .egg-stock-icon-bubble {
+  transform: scale(1.06);
+}
+.egg-stock-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(125px, 1fr));
+  gap: 0.55rem;
+  width: 100%;
+  max-width: 310px;
+}
+.egg-stock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.52rem 0.8rem;
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+  min-height: 40px;
+  transition: var(--transition);
+  cursor: pointer;
+  width: 100%;
+}
+.egg-stock-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.egg-stock-btn:active {
+  transform: scale(0.97);
+}
+@media (max-width: 680px) {
+  .egg-stock-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+    gap: 0.9rem;
+  }
+  .egg-stock-actions-grid {
+    max-width: 100%;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+}
+
 /* Incubation Alert Banner */
 .incubation-banner {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
