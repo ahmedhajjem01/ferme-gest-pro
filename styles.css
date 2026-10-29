@@ -1242,9 +1242,11 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
 .table-responsive {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .data-table {
   width: 100%;
+  min-width: 680px;
   border-collapse: collapse;
   font-size: 0.875rem;
   text-align: left;
@@ -1254,10 +1256,11 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   background-color: var(--bg-card);
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 .data-table td {
   padding: 0.85rem 0.9rem;

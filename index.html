@@ -859,7 +859,7 @@
                   <th onclick="app.toggleExpenseSort('title')" style="cursor: pointer; user-select: none;">
                     <span data-i18n="table_col_item">Intitulé / Article</span> <span id="sortArrowExpTitle" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
                   </th>
-                  <th data-i18n="table_col_lot">Affecté à</th>
+                  <th data-i18n="table_col_exp_lot">Effectuée à</th>
                   <th onclick="app.toggleExpenseSort('qty')" style="cursor: pointer; user-select: none;">
                     <span data-i18n="table_col_qty">Quantité</span> <span id="sortArrowExpQty" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
                   </th>
@@ -934,7 +934,7 @@
                   <th onclick="app.toggleSaleSort('total')" style="cursor: pointer; user-select: none;">
                     <span data-i18n="table_col_sold_total">Total Vendu</span> <span id="sortArrowSaleTotal" style="color: var(--text-muted); font-size: 0.8rem;">↕</span>
                   </th>
-                  <th data-i18n="table_col_lot">Lot Lié</th>
+                  <th data-i18n="table_col_sale_lot">Lot Lié</th>
                   <th data-i18n="table_col_margin_est">Marge Estimée</th>
                   <th data-i18n="table_col_action">Action</th>
                 </tr>
@@ -2266,7 +2266,7 @@
         <h3 id="adjustFeedStockModalTitle" data-i18n="modal_adjust_feed_title">📦 Stocks d'Aliments en Réserve</h3>
         <button class="modal-close" onclick="app.closeModal('modalAdjustFeedStock')">&times;</button>
       </div>
-      <form id="formAdjustFeedStock" onsubmit="app.handleSaveFeedStockAdjustment(event)">
+      <form id="formAdjustFeedStock" novalidate onsubmit="app.handleSaveFeedStockAdjustment(event)">
         <div class="modal-body">
           <!-- Container des stocks par type d'aliment -->
           <div id="feedStockTypesContainer" style="margin-bottom: 0.85rem;">
@@ -2370,7 +2370,7 @@
         <h3 data-i18n="modal_add_feed_title">🌾 Ajouter un Nouveau Type d'Aliment</h3>
         <button class="modal-close" onclick="app.closeModal('modalAddFeedType')">&times;</button>
       </div>
-      <form id="formAddFeedType" onsubmit="app.handleSaveNewFeedType(event)">
+      <form id="formAddFeedType" novalidate onsubmit="app.handleSaveNewFeedType(event)">
         <div class="modal-body">
           <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 0.85rem;">
             <p style="font-size: 0.82rem; color: var(--text-main); margin: 0; line-height: 1.4;" data-i18n="modal_add_feed_desc">
@@ -2410,7 +2410,7 @@
               <span id="newFeedDensityHint" class="text-muted">🥫 1 boîte Sicam ≈ 0.72 kg (Grain entier)</span>
               <span style="display: flex; align-items: center; gap: 0.25rem;">
                 <span data-i18n="feed_can_density_info" class="text-secondary">Poids 1 boîte :</span>
-                <input type="number" id="newFeedKgPerCan" step="0.01" min="0.1" value="0.72" style="width: 65px; padding: 2px 4px; font-size: 0.75rem; font-weight: 700; border-radius: 4px; border: 1px solid var(--border-subtle); text-align: center; color: var(--accent-emerald);">
+                <input type="number" id="newFeedKgPerCan" step="any" min="0.1" value="0.72" style="width: 65px; padding: 2px 4px; font-size: 0.75rem; font-weight: 700; border-radius: 4px; border: 1px solid var(--border-subtle); text-align: center; color: var(--accent-emerald);">
                 <span class="text-muted">kg</span>
               </span>
             </div>
@@ -2419,11 +2419,11 @@
           <div class="form-row" style="margin-bottom: 0.85rem;">
             <div class="form-group flex-1">
               <label for="newFeedTypeStockKg" class="form-label" style="font-weight: 700;" data-i18n="lbl_feed_stock_purchased">Stock acheté (kg) *</label>
-              <input type="number" id="newFeedTypeStockKg" class="input-field" step="0.5" min="0" required>
+              <input type="number" id="newFeedTypeStockKg" class="input-field" step="any" min="0" required>
             </div>
             <div class="form-group flex-1">
               <label for="newFeedTypePriceKg" class="form-label" style="font-weight: 700;"><span data-i18n="lbl_feed_price_kg">Prix au kg</span> (<span class="currency-label">DT</span>/kg)</label>
-              <input type="number" id="newFeedTypePriceKg" class="input-field" step="0.01" min="0" required>
+              <input type="number" id="newFeedTypePriceKg" class="input-field" step="any" min="0" required>
             </div>
           </div>
 
@@ -2574,7 +2574,7 @@
           <!-- Section A: Quand l'utilisateur est Propriétaire -->
           <div id="teamOwnerSection">
             <p class="team-owner-desc" data-i18n="team_owner_desc">
-              Partagez ce code avec votre frère ou associé pour travailler ensemble en synchronisation directe :
+              Partagez ce code pour synchroniser votre élevage en direct sur plusieurs appareils ou avec vos associés :
             </p>
             <div class="team-code-box">
               <span class="team-code-lbl" data-i18n="team_share_code_lbl">CODE DE PARTAGE</span>

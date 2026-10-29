@@ -48,7 +48,13 @@
     getDeletedIds() {
       try {
         const raw = localStorage.getItem('fermegest_deleted_ids');
-        if (raw) return new Set(JSON.parse(raw));
+        if (raw) {
+          const list = JSON.parse(raw);
+          // Protect feed family IDs from being permanently tombstoned
+          const staticFeedIds = ['feed-ble', 'feed-bouchon', 'feed-mais', 'feed-son', 'feed-demarrage', 'feed-feverole', 'feed-orge', 'feed-tournesol', 'feed-melange', 'feed-soja', 'feed-concentre', 'feed-croissance'];
+          const filtered = list.filter(id => !staticFeedIds.includes(id));
+          return new Set(filtered);
+        }
       } catch (e) {}
       return new Set();
     },
@@ -61,6 +67,18 @@
         let arr = Array.from(set);
         if (arr.length > 500) arr = arr.slice(-300);
         localStorage.setItem('fermegest_deleted_ids', JSON.stringify(arr));
+      } catch (e) {}
+    },
+
+    removeDeletedId(id) {
+      if (!id) return;
+      try {
+        const raw = localStorage.getItem('fermegest_deleted_ids');
+        if (raw) {
+          const list = JSON.parse(raw);
+          const filtered = list.filter(item => String(item) !== String(id));
+          localStorage.setItem('fermegest_deleted_ids', JSON.stringify(filtered));
+        }
       } catch (e) {}
     },
 
