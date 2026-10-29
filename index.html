@@ -391,7 +391,13 @@
                 <div class="daily-egg-alert-desc" data-i18n="daily_feed_banner_body">16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas d'enregistrer la ration distribuée !</div>
               </div>
             </div>
-            <div class="daily-egg-alert-actions">
+            <div class="daily-egg-alert-actions" style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <button type="button" class="btn btn-sm btn-outline" onclick="MobileBridge.testPhoneFeedNotificationNow()" data-i18n="daily_feed_btn_test" title="Tester le rappel sur le téléphone dans 5 secondes">
+                🔔 Tester sur mon téléphone (5s)
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="MobileBridge.setPhoneAlarm(16, 0)" data-i18n="daily_feed_btn_alarm" title="Régler l'alarme réveil du téléphone à 16h00">
+                ⏰ Régler alarme réveil (16h)
+              </button>
               <button type="button" class="btn btn-sm btn-outline egg-alert-btn-dismiss" onclick="app.dismissDailyFeedAlert()" data-i18n="daily_feed_banner_btn_dismiss" title="Supprimer cette alerte">
                 Supprimer
               </button>

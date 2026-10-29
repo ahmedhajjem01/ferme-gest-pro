@@ -674,6 +674,130 @@ const MobileBridge = {
     return false;
   },
 
+  async testPhoneFeedNotificationNow() {
+    const currentLang = (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
+    const { title, body } = this.getDailyFeedStrings(currentLang);
+    const testTitle = `🔔 ${title}`;
+    const testBody = `[16h00] ${body}`;
+
+    if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
+      try {
+        await this.requestNotificationPermissions();
+        const fireAt = new Date(Date.now() + 5000); // 5 secondes
+        await this.plugins.LocalNotifications.schedule({
+          notifications: [
+            {
+              id: 9916,
+              title: testTitle,
+              body: testBody,
+              channelId: 'fermegest_daily_feed_alerts',
+              schedule: {
+                at: fireAt,
+                allowWhileIdle: true
+              },
+              sound: 'beep.wav',
+              smallIcon: 'ic_stat_icon_config_sample',
+              extra: { type: 'daily_feed_reminder' },
+              actionTypeId: 'FEED_DISTRIBUTION_ACTIONS'
+            }
+          ]
+        });
+        if (window.app && app.showToast) {
+          app.showToast(currentLang === 'ar' 
+            ? '🔔 تم إرسال الإشعار التجريبي! سيظهر على شاشة هاتفك بعد 5 ثوانٍ (يمكنك قفل الشاشة للتجربة).' 
+            : (currentLang === 'en' 
+                ? '🔔 Test notification scheduled: it will pop up on your phone screen in 5 seconds! You can lock your screen now.' 
+                : '🔔 Alerte test programmée : elle apparaîtra sur l\'écran de votre téléphone dans 5 secondes ! Vous pouvez verrouiller votre téléphone pour tester.'));
+        }
+      } catch (err) {
+        console.warn('[MobileBridge] test notification error:', err);
+      }
+    } else {
+      setTimeout(() => {
+        this.showBrowserFeedNotification(testTitle, testBody);
+      }, 5000);
+      if (window.app && app.showToast) {
+        app.showToast(currentLang === 'ar' 
+          ? '🔔 سيظهر إشعار تجريبي على جهازك بعد 5 ثوانٍ...' 
+          : '🔔 Alerte test envoyée sur votre appareil dans 5 secondes...');
+      }
+    }
+  },
+
+  setPhoneAlarm(hour = 16, minute = 0, customLabel = null) {
+    const currentLang = (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
+    const label = customLabel || (currentLang === 'ar' ? '🌾 إطعام الحيوانات - فيرم-جست' : '🌾 Nourrir les animaux - FermeGest');
+    try {
+      // Android Clock Intent
+      const intentUrl = `intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.HOUR=${hour};i.android.intent.extra.MINUTES=${minute};S.android.intent.extra.MESSAGE=${encodeURIComponent(label)};B.android.intent.extra.SKIP_UI=false;end`;
+      window.location.href = intentUrl;
+      if (window.app && app.showToast) {
+        app.showToast(currentLang === 'ar' ? '⏰ فتح تطبيق منبه الهاتف...' : '⏰ Ouverture de l\'application Horloge / Alarme du téléphone...');
+      }
+    } catch (e) {
+      console.warn('[MobileBridge] setPhoneAlarm error:', e);
+    }
+  },
+
+  addToPhoneCalendar(hour = 16, minute = 0) {
+    const currentLang = (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
+    const title = currentLang === 'ar' ? '🌾 إطعام الحيوانات (فيرم-جست برو)' : '🌾 Nourrir les animaux (FermeGest Pro)';
+    const description = currentLang === 'ar' 
+      ? '16:00 : هل وضعت العلف للحيوانات؟ تذكير بتوزيع وجبة العصر وتسجيلها في التطبيق !' 
+      : "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas d'enregistrer la ration distribuée !";
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const hStr = pad(hour);
+    const mStr = pad(minute);
+    const endHStr = pad(hour + (minute + 15 >= 60 ? 1 : 0));
+    const endMStr = pad((minute + 15) % 60);
+
+    const now = new Date();
+    const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//FermeGest Pro//Daily Feed Alert//FR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:feed-reminder-16h-${Date.now()}@fermegestpro`,
+      `SUMMARY:${title}`,
+      `DESCRIPTION:${description}`,
+      'RRULE:FREQ=DAILY',
+      `DTSTART:${ymd}T${hStr}${mStr}00`,
+      `DTEND:${ymd}T${endHStr}${endMStr}00`,
+      'BEGIN:VALARM',
+      'TRIGGER:-PT0M',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${title}`,
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    try {
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'rappel-nourriture-16h.ics');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+      if (window.app && app.showToast) {
+        app.showToast(currentLang === 'ar' 
+          ? '📅 تم تجهيز ملف التذكير لتقويم الهاتف! افتحه لحفظ التذكير اليومي.' 
+          : '📅 Fichier de rappel téléchargé ! Ouvrez-le pour ajouter l\'alarme quotidienne dans votre calendrier de téléphone.');
+      }
+    } catch (e) {
+      console.warn('[MobileBridge] Calendar ICS error:', e);
+    }
+  },
+
   hashCode(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
