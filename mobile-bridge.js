@@ -28,9 +28,9 @@ const MobileBridge = {
     this.attachHapticsToUI();
     this.observeThemeChanges();
 
-    // Schedule daily 17h egg collection notification in active language
+    // Schedule daily notifications (16h feed & 17h eggs) in active language
     const currentLang = (typeof appState !== 'undefined' && appState.lang) || localStorage.getItem('fermegest_lang') || 'fr';
-    await this.scheduleDailyEggNotification(currentLang);
+    await this.scheduleAllDailyReminders(currentLang);
   },
 
   // 1. Status Bar Sync
@@ -183,7 +183,7 @@ const MobileBridge = {
     }
   },
 
-  // 5. Local Notifications & Daily 17h Egg Collection Alert
+  // 5. Local Notifications & Daily 16h Feed / 17h Egg Collection Alerts
   async requestNotificationPermissions() {
     try {
       if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
@@ -199,6 +199,22 @@ const MobileBridge = {
     } catch (e) {
       console.warn('[MobileBridge] Notification permission request error:', e);
     }
+  },
+
+  getDailyFeedStrings(lang) {
+    const l = ['fr', 'ar', 'en'].includes(lang) ? lang : 'fr';
+    if (typeof TRANSLATIONS !== 'undefined' && TRANSLATIONS[l]) {
+      return {
+        title: TRANSLATIONS[l].notif_daily_feed_title || "🌾 FermeGest Pro - Alimentation des animaux",
+        body: TRANSLATIONS[l].notif_daily_feed_body || "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas de distribuer la ration !"
+      };
+    }
+    const fallback = {
+      fr: { title: "🌾 FermeGest Pro - Alimentation des animaux", body: "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas de distribuer la ration !" },
+      ar: { title: "🌾 فيرم-جست برو - تغذية الحيوانات", body: "16:00 : هل وضعت العلف للحيوانات؟ تذكير بتوزيع وجبة العصر !" },
+      en: { title: "🌾 FermeGest Pro - Animal Feeding", body: "4:00 PM: Did you put food for the animals? Don't forget their afternoon feed!" }
+    };
+    return fallback[l] || fallback.fr;
   },
 
   getDailyEggStrings(lang) {
@@ -217,6 +233,186 @@ const MobileBridge = {
     return fallback[l] || fallback.fr;
   },
 
+  async scheduleAllDailyReminders(lang) {
+    const currentLang = lang || (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
+    await this.scheduleDailyFeedNotification(currentLang);
+    await this.scheduleDailyEggNotification(currentLang);
+  },
+
+  async scheduleDailyFeedNotification(lang) {
+    const currentLang = lang || (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
+    const { title, body } = this.getDailyFeedStrings(currentLang);
+
+    // A) Native Capacitor Local Notifications (Android APK & iOS)
+    if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
+      try {
+        const LocalNotifications = this.plugins.LocalNotifications;
+        await this.requestNotificationPermissions();
+
+        // High importance notification channel (Android 8+ heads-up popup like a message)
+        if (LocalNotifications.createChannel) {
+          try {
+            await LocalNotifications.createChannel({
+              id: 'fermegest_daily_feed_alerts',
+              name: 'Rappels Alimentation (16h)',
+              description: 'Alertes prioritaires quotidiennes à 16h00 pour la nourriture des animaux',
+              importance: 5, // IMPORTANCE_HIGH (pops up banner on screen with sound)
+              visibility: 1, // VISIBILITY_PUBLIC (shown on lock screen)
+              sound: 'beep.wav',
+              vibration: true,
+              lights: true,
+              lightColor: '#f59e0b'
+            });
+          } catch (channelErr) {
+            console.warn('[MobileBridge] Channel creation error:', channelErr);
+          }
+        }
+
+        // Register action buttons (Dismiss / Enter Feed)
+        if (LocalNotifications.registerActionTypes) {
+          try {
+            const dismissTitle = currentLang === 'ar' ? 'حذف الإشعار' : (currentLang === 'en' ? 'Dismiss' : 'Supprimer');
+            const enterFeedTitle = currentLang === 'ar' ? 'تسجيل العلف 🌾' : (currentLang === 'en' ? 'Log Feeding 🌾' : 'Enregistrer l\'aliment 🌾');
+            await LocalNotifications.registerActionTypes({
+              types: [
+                {
+                  id: 'FEED_DISTRIBUTION_ACTIONS',
+                  actions: [
+                    {
+                      id: 'dismiss_feed_alert',
+                      title: dismissTitle,
+                      destructive: true
+                    },
+                    {
+                      id: 'enter_feed',
+                      title: enterFeedTitle,
+                      foreground: true
+                    }
+                  ]
+                }
+              ]
+            });
+          } catch (actionErr) {
+            console.warn('[MobileBridge] registerActionTypes feed error:', actionErr);
+          }
+        }
+
+        // Cancel previous ID 1600 to update language / text
+        try {
+          await LocalNotifications.cancel({ notifications: [{ id: 1600 }] });
+        } catch (e) {}
+
+        // Schedule daily recurring at 16:00 (4:00 PM)
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: 1600,
+              title: title,
+              body: body,
+              channelId: 'fermegest_daily_feed_alerts',
+              schedule: {
+                on: {
+                  hour: 16,
+                  minute: 0
+                },
+                allowWhileIdle: true
+              },
+              sound: 'beep.wav',
+              smallIcon: 'ic_stat_icon_config_sample',
+              extra: { type: 'daily_feed_reminder' },
+              actionTypeId: 'FEED_DISTRIBUTION_ACTIONS'
+            }
+          ]
+        });
+
+        this.ensureNotificationListenerAttached();
+        console.log(`[MobileBridge] Native 16h feed notification active in (${currentLang})`);
+      } catch (err) {
+        console.warn('[MobileBridge] scheduleDailyFeedNotification native error:', err);
+      }
+    }
+
+    // B) Web & PWA Browser Notification Scheduling
+    this.scheduleWebDailyFeedNotification(currentLang, title, body);
+  },
+
+  scheduleWebDailyFeedNotification(lang, title, body) {
+    if (typeof window === 'undefined') return;
+
+    this.checkAndTriggerDailyFeedNotification(title, body);
+
+    if (this._dailyFeedInterval) clearInterval(this._dailyFeedInterval);
+    this._dailyFeedInterval = setInterval(() => {
+      const strings = this.getDailyFeedStrings(typeof appState !== 'undefined' ? appState.lang : lang);
+      this.checkAndTriggerDailyFeedNotification(strings.title, strings.body);
+      if (window.app && app.checkDailyFeedInAppAlert) {
+        app.checkDailyFeedInAppAlert();
+      }
+    }, 60000);
+  },
+
+  checkAndTriggerDailyFeedNotification(title, body) {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const lastNotifiedDate = localStorage.getItem('fermegest_last_feed_notif_date');
+
+    // Trigger at 16:00 or if opened after 16:00 and not yet notified today
+    if (now.getHours() >= 16 && lastNotifiedDate !== todayStr) {
+      localStorage.setItem('fermegest_last_feed_notif_date', todayStr);
+      this.showBrowserFeedNotification(title, body);
+    }
+
+    if (window.app && app.checkDailyFeedInAppAlert) {
+      app.checkDailyFeedInAppAlert();
+    }
+  },
+
+  showBrowserFeedNotification(title, body) {
+    const lang = (typeof appState !== 'undefined' && appState.lang) || 'fr';
+    const dismissTitle = lang === 'ar' ? 'حذف الإشعار' : (lang === 'en' ? 'Dismiss' : 'Supprimer');
+    const enterTitle = lang === 'ar' ? 'تسجيل العلف 🌾' : (lang === 'en' ? 'Log Feeding 🌾' : 'Enregistrer l\'aliment 🌾');
+
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification(title, {
+          body: body,
+          icon: './icon-192.png',
+          badge: './icon-192.png',
+          vibrate: [200, 100, 200],
+          tag: 'daily-feed-distribution',
+          data: { type: 'daily_feed_distribution' },
+          actions: [
+            { action: 'dismiss', title: dismissTitle },
+            { action: 'record_feed', title: enterTitle }
+          ]
+        });
+      }).catch(() => this.fallbackWebFeedNotification(title, body));
+    } else {
+      this.fallbackWebFeedNotification(title, body);
+    }
+
+    if (window.app && app.checkDailyFeedInAppAlert) {
+      app.checkDailyFeedInAppAlert();
+    }
+  },
+
+  fallbackWebFeedNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        const notif = new Notification(title, {
+          body: body,
+          icon: './icon-192.png'
+        });
+        notif.onclick = () => {
+          window.focus();
+          if (window.app && app.openModal) {
+            app.openModal('modalFeedDistribution');
+          }
+        };
+      } catch (e) {}
+    }
+  },
+
   async scheduleDailyEggNotification(lang) {
     const currentLang = lang || (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
     const { title, body } = this.getDailyEggStrings(currentLang);
@@ -233,7 +429,7 @@ const MobileBridge = {
             await LocalNotifications.createChannel({
               id: 'fermegest_daily_alerts',
               name: 'Rappels Quotidiens (17h)',
-              description: 'Alertes prioritaires pour la récolte des œufs et alimentation des animaux',
+              description: 'Alertes prioritaires pour la récolte des œufs et soins du troupeau',
               importance: 5, // IMPORTANCE_HIGH (pops up banner on screen with sound)
               visibility: 1, // VISIBILITY_PUBLIC (shown on lock screen)
               sound: 'beep.wav',
@@ -303,24 +499,8 @@ const MobileBridge = {
           ]
         });
 
-        // Add action listener when tapped or button clicked
-        if (!this._notifListenerAttached && LocalNotifications.addListener) {
-          this._notifListenerAttached = true;
-          LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-            const actionId = action && action.actionId;
-            if (actionId === 'dismiss_alert') {
-              if (window.app && app.dismissDailyEggAlert) {
-                app.dismissDailyEggAlert();
-              }
-            } else {
-              // Clicked notification body or 'enter_harvest' action
-              if (window.app && app.openDailyEggModal) {
-                app.openDailyEggModal();
-              }
-            }
-          });
-        }
-        console.log(`[MobileBridge] Native 17h egg & feed notification active in (${currentLang}) with high-priority channel`);
+        this.ensureNotificationListenerAttached();
+        console.log(`[MobileBridge] Native 17h egg notification active in (${currentLang}) with high-priority channel`);
       } catch (err) {
         console.warn('[MobileBridge] scheduleDailyEggNotification native error:', err);
       }
@@ -333,10 +513,8 @@ const MobileBridge = {
   scheduleWebDailyEggNotification(lang, title, body) {
     if (typeof window === 'undefined') return;
 
-    // Check immediately if we need to trigger for today (if current hour >= 17)
     this.checkAndTriggerDailyEggNotification(title, body);
 
-    // Setup periodic 60-second check
     if (this._dailyEggInterval) clearInterval(this._dailyEggInterval);
     this._dailyEggInterval = setInterval(() => {
       const strings = this.getDailyEggStrings(typeof appState !== 'undefined' ? appState.lang : lang);
@@ -358,7 +536,6 @@ const MobileBridge = {
       this.showBrowserNotification(title, body);
     }
 
-    // Always update in-app alert banner
     if (window.app && app.checkDailyEggInAppAlert) {
       app.checkDailyEggInAppAlert();
     }
@@ -369,7 +546,6 @@ const MobileBridge = {
     const dismissTitle = lang === 'ar' ? 'حذف الإشعار' : (lang === 'en' ? 'Dismiss' : 'Supprimer');
     const enterTitle = lang === 'ar' ? 'تسجيل البيض 🥚' : (lang === 'en' ? 'Record Harvest 🥚' : 'Saisir récolte 🥚');
 
-    // 1. Service Worker Notification (works in background & mobile Chrome)
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then((reg) => {
         reg.showNotification(title, {
@@ -389,7 +565,6 @@ const MobileBridge = {
       this.fallbackWebNotification(title, body);
     }
 
-    // 2. Refresh In-App interactive alert banner
     if (window.app && app.checkDailyEggInAppAlert) {
       app.checkDailyEggInAppAlert();
     }
@@ -410,6 +585,37 @@ const MobileBridge = {
         };
       } catch (e) {}
     }
+  },
+
+  ensureNotificationListenerAttached() {
+    if (this._notifListenerAttached) return;
+    const LocalNotifications = this.plugins && this.plugins.LocalNotifications;
+    if (!LocalNotifications || !LocalNotifications.addListener) return;
+
+    this._notifListenerAttached = true;
+    LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+      const actionId = action && action.actionId;
+      const notifId = action && action.notification && action.notification.id;
+      const notifType = action && action.notification && action.notification.extra && action.notification.extra.type;
+
+      if (actionId === 'dismiss_feed_alert' || (actionId === 'dismiss_alert' && (notifId === 1600 || notifType === 'daily_feed_reminder'))) {
+        if (window.app && app.dismissDailyFeedAlert) {
+          app.dismissDailyFeedAlert();
+        }
+      } else if (actionId === 'dismiss_alert') {
+        if (window.app && app.dismissDailyEggAlert) {
+          app.dismissDailyEggAlert();
+        }
+      } else if (actionId === 'enter_feed' || notifId === 1600 || notifType === 'daily_feed_reminder') {
+        if (window.app && app.openModal) {
+          app.openModal('modalFeedDistribution');
+        }
+      } else {
+        if (window.app && app.openDailyEggModal) {
+          app.openDailyEggModal();
+        }
+      }
+    });
   },
 
   async scheduleIncubatorNotification({ id, title, body, scheduleDate }) {

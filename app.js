@@ -130,8 +130,10 @@ const app = {
     this.renderAll();
     this.calcHatchPreview();
 
-    // Reschedule daily 17h egg notification in the selected language
-    if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
+    // Reschedule daily reminders (16h feed & 17h eggs) in the selected language
+    if (window.MobileBridge && window.MobileBridge.scheduleAllDailyReminders) {
+      window.MobileBridge.scheduleAllDailyReminders(newLang);
+    } else if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
       window.MobileBridge.scheduleDailyEggNotification(newLang);
     }
 
@@ -206,15 +208,19 @@ const app = {
     this.renderAll();
     document.querySelectorAll('#animalPortionBanner, [id*="PortionBanner"]').forEach(el => el.remove());
 
-    // Schedule 17h daily egg collection notification in active language
-    if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
+    // Schedule daily notifications (16h feed & 17h egg collection) in active language
+    if (window.MobileBridge && window.MobileBridge.scheduleAllDailyReminders) {
+      window.MobileBridge.scheduleAllDailyReminders(appState.lang || 'fr');
+    } else if (window.MobileBridge && window.MobileBridge.scheduleDailyEggNotification) {
       window.MobileBridge.scheduleDailyEggNotification(appState.lang || 'fr');
     }
 
     // Listen for Service Worker notification clicks (PWA / Web)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.action === 'open_daily_eggs') {
+        if (event.data && event.data.action === 'open_feed_distribution') {
+          this.openModal('modalFeedDistribution');
+        } else if (event.data && event.data.action === 'open_daily_eggs') {
           this.openDailyEggModal();
         }
       });
@@ -223,16 +229,23 @@ const app = {
     // Deep link or action parameter from notification click
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('action') === 'daily_eggs') {
+      if (urlParams.get('action') === 'feed_distribution') {
+        setTimeout(() => this.openModal('modalFeedDistribution'), 600);
+      } else if (urlParams.get('action') === 'daily_eggs') {
         setTimeout(() => this.openDailyEggModal(), 600);
       }
     } catch (e) {}
 
-    // Check Daily 17h In-App Notification alert banner
+    // Check Daily 16h Feed & 17h Egg In-App Notification alert banners
+    this.checkDailyFeedInAppAlert();
     this.checkDailyEggInAppAlert();
-    window.addEventListener('focus', () => this.checkDailyEggInAppAlert());
+    window.addEventListener('focus', () => {
+      this.checkDailyFeedInAppAlert();
+      this.checkDailyEggInAppAlert();
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
+        this.checkDailyFeedInAppAlert();
         this.checkDailyEggInAppAlert();
       }
     });
@@ -1011,6 +1024,42 @@ const app = {
     } else {
       banner.style.display = 'none';
     }
+  },
+
+  checkDailyFeedInAppAlert() {
+    const banner = document.getElementById('dailyFeedAlertBanner');
+    if (!banner) return;
+    const now = new Date();
+    const todayStr = this.getTodayStr();
+    const isAfter16 = now.getHours() >= 16;
+    const isDismissed = localStorage.getItem('fermegest_feed_banner_dismissed') === todayStr;
+    const todayDistributions = (appState.feedDistributions || []).filter(d => d && (d.date === todayStr || (d.date && String(d.date).split('T')[0] === todayStr)));
+    const alreadyFedToday = todayDistributions.reduce((s, d) => s + (Number(d.totalKg) || Number(d.quantityKg) || 0), 0) > 0;
+
+    if (isAfter16 && !isDismissed && !alreadyFedToday) {
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  },
+
+  dismissDailyFeedAlert() {
+    const banner = document.getElementById('dailyFeedAlertBanner');
+    if (banner) {
+      banner.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      banner.style.opacity = '0';
+      banner.style.transform = 'translateY(-10px) scale(0.98)';
+      setTimeout(() => {
+        banner.style.display = 'none';
+        banner.style.opacity = '1';
+        banner.style.transform = 'none';
+      }, 300);
+    }
+    const todayStr = this.getTodayStr();
+    localStorage.setItem('fermegest_feed_banner_dismissed', todayStr);
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    this.showToast(isAr ? 'تم إخفاء تذكير العلف لليوم.' : (isEn ? 'Daily feed reminder dismissed for today.' : 'Rappel nourriture masqué pour aujourd\'hui.'));
   },
 
   updateDailyEggPreview() {
@@ -2342,6 +2391,7 @@ const app = {
   // DASHBOARD RENDERING & CALCULATIONS
   // ==========================================
   renderDashboard() {
+    this.checkDailyFeedInAppAlert();
     this.checkDailyEggInAppAlert();
 
     // Financial calculations
@@ -4693,6 +4743,7 @@ const app = {
       window.appAuth.pushData(false, true);
     }
     this.closeModal('modalFeedDistribution');
+    this.checkDailyFeedInAppAlert();
     this.renderAll();
     this.renderFeedDistributionModal();
     this.renderFeedStockAdjustModal();

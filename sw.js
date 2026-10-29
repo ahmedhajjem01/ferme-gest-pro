@@ -1,5 +1,5 @@
 // Service Worker for FermeGest PRO (100% Offline-First Agrarian Management)
-const CACHE_NAME = 'fermegest-v148';
+const CACHE_NAME = 'fermegest-v149';
 const ASSETS = [
   './',
   './index.html',
@@ -65,23 +65,27 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
-// Handle Daily 17h Egg Collection Notification clicks
+// Handle Daily 16h Feed & 17h Egg Collection Notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   if (event.action === 'dismiss') {
     return;
   }
+  const isFeed = (event.notification.data && event.notification.data.type === 'daily_feed_distribution') || (event.action === 'record_feed');
+  const targetAction = isFeed ? 'open_feed_distribution' : 'open_daily_eggs';
+  const targetUrl = isFeed ? './?action=feed_distribution' : './?action=daily_eggs';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
           client.focus();
-          client.postMessage({ action: 'open_daily_eggs' });
+          client.postMessage({ action: targetAction });
           return;
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('./?action=daily_eggs');
+        return clients.openWindow(targetUrl);
       }
     })
   );

@@ -3671,6 +3671,12 @@ label {
   box-shadow: 0 4px 18px rgba(16, 185, 129, 0.14);
   animation: slideDownBanner 0.35s ease-out;
 }
+.daily-feed-alert-banner {
+  border-left-color: #f59e0b !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(16, 185, 129, 0.12)) !important;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.14) !important;
+}
 @keyframes slideDownBanner {
   from {
     opacity: 0;

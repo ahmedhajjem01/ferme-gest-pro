@@ -598,6 +598,14 @@ const TRANSLATIONS = {
     mobile_btn_share_apk: "📲 Partager le lien APK (WhatsApp / Famille)",
     mobile_share_toast_copied: "Lien de téléchargement APK copié dans le presse-papiers !",
 
+    // Daily 16h Feed Notification
+    notif_daily_feed_title: "🌾 FermeGest Pro - Alimentation des animaux",
+    notif_daily_feed_body: "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas de distribuer la ration !",
+    daily_feed_banner_title: "🌾 Alimentation des Animaux (16h00)",
+    daily_feed_banner_body: "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas d'enregistrer la ration distribuée !",
+    daily_feed_banner_btn_dismiss: "Supprimer",
+    daily_feed_banner_btn_record: "Enregistrer l'aliment 🌾",
+
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚🌾 FermeGest Pro - Récolte & Alimentation",
     notif_daily_eggs_body: "17h00 : Avez-vous nourri les animaux et récolté les œufs du jour ?",
@@ -1283,6 +1291,14 @@ const TRANSLATIONS = {
     mobile_btn_share_apk: "📲 مشاركة رابط التحميل (واتساب / العائلة)",
     mobile_share_toast_copied: "تم نسخ رابط تحميل التطبيق في الحافظة!",
 
+    // Daily 16h Feed Notification
+    notif_daily_feed_title: "🌾 فيرم-جست برو - تغذية الحيوانات",
+    notif_daily_feed_body: "16:00 : هل وضعت العلف للحيوانات؟ تذكير بتوزيع وجبة العصر !",
+    daily_feed_banner_title: "🌾 وجبة العصر والأعلاف (16:00)",
+    daily_feed_banner_body: "16:00 : هل وضعت العلف للحيوانات؟ لا تنسَ تسجيل توزيع الوجبة !",
+    daily_feed_banner_btn_dismiss: "حذف الإشعار",
+    daily_feed_banner_btn_record: "تسجيل العلف 🌾",
+
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚🌾 فيرم-جست برو - جمع البيض والتغذية",
     notif_daily_eggs_body: "17:00 : هل قمت بتغذية الحيوانات وجمع بيض اليوم؟",
@@ -1967,6 +1983,14 @@ const TRANSLATIONS = {
     mobile_btn_download_apk: "📥 Download Direct APK",
     mobile_btn_share_apk: "📲 Share APK Link (WhatsApp / Family)",
     mobile_share_toast_copied: "APK download link copied to clipboard!",
+
+    // Daily 16h Feed Notification
+    notif_daily_feed_title: "🌾 FermeGest Pro - Animal Feeding",
+    notif_daily_feed_body: "4:00 PM: Did you put food for the animals? Don't forget their afternoon feed!",
+    daily_feed_banner_title: "🌾 Animal Feeding (4:00 PM)",
+    daily_feed_banner_body: "4:00 PM: Did you put food for the animals? Don't forget to log their feed distribution!",
+    daily_feed_banner_btn_dismiss: "Dismiss",
+    daily_feed_banner_btn_record: "Log Feeding 🌾",
 
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚🌾 FermeGest Pro - Harvest & Feeding",

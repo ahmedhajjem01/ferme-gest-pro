@@ -382,6 +382,25 @@
         <!-- ============================================== -->
         <section id="tab-dashboard" class="content-tab active">
           
+          <!-- Daily 16h In-App Notification Banner (Animal Feeding Alert) -->
+          <div id="dailyFeedAlertBanner" class="daily-egg-alert-banner daily-feed-alert-banner" style="display: none;">
+            <div class="daily-egg-alert-content">
+              <div class="daily-egg-alert-icon">🌾</div>
+              <div class="daily-egg-alert-text">
+                <div class="daily-egg-alert-title" data-i18n="daily_feed_banner_title">🌾 Alimentation des Animaux (16h00)</div>
+                <div class="daily-egg-alert-desc" data-i18n="daily_feed_banner_body">16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas d'enregistrer la ration distribuée !</div>
+              </div>
+            </div>
+            <div class="daily-egg-alert-actions">
+              <button type="button" class="btn btn-sm btn-outline egg-alert-btn-dismiss" onclick="app.dismissDailyFeedAlert()" data-i18n="daily_feed_banner_btn_dismiss" title="Supprimer cette alerte">
+                Supprimer
+              </button>
+              <button type="button" class="btn btn-sm btn-emerald bold egg-alert-btn-record" onclick="app.openModal('modalFeedDistribution')" data-i18n="daily_feed_banner_btn_record" title="Enregistrer l'aliment">
+                Enregistrer l'aliment 🌾
+              </button>
+            </div>
+          </div>
+
           <!-- Daily 17h In-App Notification Banner (Harvest & Feed Care) -->
           <div id="dailyEggAlertBanner" class="daily-egg-alert-banner" style="display: none;">
             <div class="daily-egg-alert-content">
