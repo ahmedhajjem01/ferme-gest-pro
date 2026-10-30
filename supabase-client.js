@@ -1484,9 +1484,10 @@
       const farmerNameEl = document.getElementById('profileModalFarmerName');
       if (farmerNameEl) farmerNameEl.textContent = farmerName;
 
+      const yearsText = window.app && typeof app.t === 'function' ? (app.t('onboarding_preview_years') || 'ans') : 'ans';
       const ageAndRoleEl = document.getElementById('profileModalAgeAndRole');
       if (ageAndRoleEl) {
-        ageAndRoleEl.textContent = age ? `${age} ans • ${roleText} 🌾` : `${roleText} 🌾`;
+        ageAndRoleEl.textContent = age ? `${age} ${yearsText} • ${roleText} 🌾` : `${roleText} 🌾`;
       }
 
       if (avatarEl) {

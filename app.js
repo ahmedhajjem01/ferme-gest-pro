@@ -856,6 +856,47 @@ const app = {
       .replace(/'/g, '&#039;');
   },
 
+  calculateAge(birthDateStr) {
+    if (!birthDateStr) return null;
+    const birth = new Date(birthDateStr);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  },
+
+  handleBirthDateChange(dateVal) {
+    const badge = document.getElementById('onboardingCalculatedAge');
+    const age = this.calculateAge(dateVal);
+    if (badge) {
+      if (age !== null && age >= 5 && age <= 120) {
+        const yearsText = this.t('onboarding_preview_years') || 'ans';
+        badge.textContent = `(${age} ${yearsText})`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+  },
+
+  handleEditProfileBirthDateChange(dateVal) {
+    const badge = document.getElementById('editProfileCalculatedAge');
+    const age = this.calculateAge(dateVal);
+    if (badge) {
+      if (age !== null && age >= 5 && age <= 120) {
+        const yearsText = this.t('onboarding_preview_years') || 'ans';
+        badge.textContent = `(${age} ${yearsText})`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+  },
+
   openOnboardingModal() {
     const modal = document.getElementById('modalOnboarding');
     if (!modal) return;
@@ -865,16 +906,25 @@ const app = {
     })();
 
     const nameInput = document.getElementById('onboardingNameInput');
-    const ageInput = document.getElementById('onboardingAgeInput');
+    const birthInput = document.getElementById('onboardingBirthDateInput');
     const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
 
     const defaultAvatar = existingProfile ? (existingProfile.avatar || 'avatar-m1') : 'avatar-m1';
     if (nameInput) nameInput.value = existingProfile ? (existingProfile.name || '') : '';
-    if (ageInput) ageInput.value = existingProfile ? (existingProfile.age || '') : '';
+    if (birthInput) {
+      if (existingProfile && existingProfile.birthDate) {
+        birthInput.value = existingProfile.birthDate;
+      } else if (existingProfile && existingProfile.age) {
+        const estYear = new Date().getFullYear() - existingProfile.age;
+        birthInput.value = `${estYear}-01-01`;
+      } else {
+        birthInput.value = '';
+      }
+      this.handleBirthDateChange(birthInput.value);
+    }
     if (hiddenAvatar) hiddenAvatar.value = defaultAvatar;
 
     this.filterOnboardingAvatars('all', defaultAvatar);
-    this.updateOnboardingPreview();
     modal.classList.remove('hidden');
 
     setTimeout(() => {
@@ -918,55 +968,22 @@ const app = {
         }
       });
     }
-
-    this.updateOnboardingPreview();
-  },
-
-  updateOnboardingPreview() {
-    const nameInput = document.getElementById('onboardingNameInput');
-    const ageInput = document.getElementById('onboardingAgeInput');
-    const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
-
-    const rawName = (nameInput?.value || '').trim();
-    const rawAge = parseInt(ageInput?.value, 10);
-    const avatarId = hiddenAvatar?.value || 'avatar-m1';
-
-    const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
-    const defaultName = avatar ? avatar.defaultName : 'Ahmed';
-    const isFemale = avatar ? avatar.gender === 'female' : false;
-
-    const previewAvatar = document.getElementById('onboardingPreviewAvatar');
-    const previewName = document.getElementById('onboardingPreviewName');
-    const previewDetails = document.getElementById('onboardingPreviewDetails');
-
-    if (previewAvatar && window.AppAvatars) {
-      previewAvatar.innerHTML = window.AppAvatars.getSvg(avatarId, 64);
-    }
-
-    if (previewName) {
-      previewName.textContent = rawName || defaultName;
-    }
-
-    if (previewDetails) {
-      const role = this.t(avatar ? avatar.roleKey : (isFemale ? 'avatar_w1_role' : 'avatar_m1_role')) || (isFemale ? 'Éleveuse' : 'Éleveur');
-      const ageStr = (!isNaN(rawAge) && rawAge > 0) ? `${rawAge} ${this.t('onboarding_preview_years') || 'ans'} • ` : '';
-      previewDetails.textContent = `${ageStr}${role} 🌾`;
-    }
   },
 
   handleOnboardingSubmit(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
     const nameInput = document.getElementById('onboardingNameInput');
-    const ageInput = document.getElementById('onboardingAgeInput');
+    const birthInput = document.getElementById('onboardingBirthDateInput');
     const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
 
     const name = (nameInput?.value || '').trim();
-    const age = parseInt(ageInput?.value, 10);
+    const birthDate = birthInput?.value || '';
+    const age = this.calculateAge(birthDate);
     const avatarId = hiddenAvatar?.value || 'avatar-m1';
 
     const errName = document.getElementById('onboardingNameError');
-    const errAge = document.getElementById('onboardingAgeError');
+    const errBirth = document.getElementById('onboardingBirthDateError');
 
     let hasError = false;
     if (!name || name.length < 2) {
@@ -977,12 +994,12 @@ const app = {
       if (errName) errName.classList.add('hidden');
     }
 
-    if (isNaN(age) || age < 10 || age > 100) {
-      if (errAge) errAge.classList.remove('hidden');
-      if (!hasError && ageInput) ageInput.focus();
+    if (!birthDate || age === null || age < 10 || age > 100) {
+      if (errBirth) errBirth.classList.remove('hidden');
+      if (!hasError && birthInput) birthInput.focus();
       hasError = true;
     } else {
-      if (errAge) errAge.classList.add('hidden');
+      if (errBirth) errBirth.classList.add('hidden');
     }
 
     if (hasError) return;
@@ -990,6 +1007,7 @@ const app = {
     const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
     const profile = {
       name: name,
+      birthDate: birthDate,
       age: age,
       avatar: avatarId,
       gender: avatar ? avatar.gender : 'male',
@@ -1062,13 +1080,23 @@ const app = {
     })();
 
     const nameInput = document.getElementById('editProfileNameInput');
-    const ageInput = document.getElementById('editProfileAgeInput');
+    const birthInput = document.getElementById('editProfileBirthDateInput');
     const hiddenAvatar = document.getElementById('editProfileSelectedAvatar');
     const grid = document.getElementById('editProfileAvatarGrid');
 
     const curAvatar = profile ? (profile.avatar || 'avatar-m1') : 'avatar-m1';
     if (nameInput) nameInput.value = profile ? (profile.name || '') : '';
-    if (ageInput) ageInput.value = profile ? (profile.age || '') : '';
+    if (birthInput) {
+      if (profile && profile.birthDate) {
+        birthInput.value = profile.birthDate;
+      } else if (profile && profile.age) {
+        const estYear = new Date().getFullYear() - profile.age;
+        birthInput.value = `${estYear}-01-01`;
+      } else {
+        birthInput.value = '';
+      }
+      this.handleEditProfileBirthDateChange(birthInput.value);
+    }
     if (hiddenAvatar) hiddenAvatar.value = curAvatar;
 
     if (grid && window.AppAvatars) {
@@ -1083,12 +1111,13 @@ const app = {
               ${window.AppAvatars.getSvg(a.id, 52)}
               <div class="avatar-card-check">✓</div>
             </div>
-            <div class="avatar-card-name">${a.defaultName}</div>
+            <div class="avatar-card-name" data-i18n="${a.nameKey}">${a.defaultName}</div>
           </div>
         `;
       }).join('');
     }
 
+    this.applyTranslations();
     modal.classList.remove('hidden');
   },
 
@@ -1112,21 +1141,28 @@ const app = {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
     const nameInput = document.getElementById('editProfileNameInput');
-    const ageInput = document.getElementById('editProfileAgeInput');
+    const birthInput = document.getElementById('editProfileBirthDateInput');
     const hiddenAvatar = document.getElementById('editProfileSelectedAvatar');
 
     const name = (nameInput?.value || '').trim();
-    const age = parseInt(ageInput?.value, 10);
+    const birthDate = birthInput?.value || '';
+    const age = this.calculateAge(birthDate);
     const avatarId = hiddenAvatar?.value || 'avatar-m1';
 
-    if (!name || isNaN(age) || age < 10 || age > 100) {
-      this.showToast('Veuillez renseigner un nom et un âge valide.');
+    if (!name || !birthDate || age === null || age < 10 || age > 100) {
+      const isAr = appState.lang === 'ar';
+      const isEn = appState.lang === 'en';
+      const msg = isAr 
+        ? 'الرجاء إدخال اسم وتاريخ ميلاد صحيح (بين 10 و 100 سنة).' 
+        : (isEn ? 'Please enter a valid name and date of birth (between 10 and 100).' : 'Veuillez renseigner un nom et une date de naissance valide.');
+      this.showToast(msg);
       return;
     }
 
     const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
     const profile = {
       name: name,
+      birthDate: birthDate,
       age: age,
       avatar: avatarId,
       gender: avatar ? avatar.gender : 'male',
@@ -1152,7 +1188,8 @@ const app = {
     }
 
     const isAr = appState.lang === 'ar';
-    this.showToast(isAr ? '✅ تم تحديث بياناتك بنجاح !' : '✅ Profil mis à jour avec succès !');
+    const isEn = appState.lang === 'en';
+    this.showToast(isAr ? '✅ تم تحديث بياناتك بنجاح !' : (isEn ? '✅ Profile updated successfully!' : '✅ Profil mis à jour avec succès !'));
   },
 
   updateUserHeaderUI() {

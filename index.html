@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=73">
+  <link rel="stylesheet" href="styles.css?v=74">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -2569,9 +2569,9 @@
         <div class="profile-user-card">
           <div class="user-avatar" id="profileModalAvatar">👤</div>
           <div class="profile-user-details">
-            <div id="profileModalFarmerName" class="profile-name-text" style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 2px;">Ahmed</div>
-            <div id="profileModalAgeAndRole" class="profile-meta-text" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">32 ans &bull; Éleveur</div>
-            <div id="profileModalEmail" class="profile-email-text">email@domaine.com</div>
+            <div id="profileModalFarmerName" class="profile-name-text" style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 2px;">---</div>
+            <div id="profileModalAgeAndRole" class="profile-meta-text" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;"></div>
+            <div id="profileModalEmail" class="profile-email-text">---</div>
             <div class="profile-sync-badge">
               <span class="sync-dot-live"></span>
               <span data-i18n="profile_sync_live">Synchronisé en direct</span>
@@ -2706,38 +2706,29 @@
         <p class="onboarding-subtitle" data-i18n="onboarding_subtitle">Configurez votre profil d'éleveur pour commencer la gestion de votre ferme</p>
       </div>
 
-      <!-- Live Profile Avatar & Name Preview -->
-      <div class="onboarding-preview-box">
-        <div id="onboardingPreviewAvatar" class="onboarding-preview-avatar"></div>
-        <div class="onboarding-preview-info">
-          <div id="onboardingPreviewName" class="onboarding-preview-name">Ahmed</div>
-          <div id="onboardingPreviewDetails" class="onboarding-preview-details">30 ans &bull; Éleveur 🌾</div>
-        </div>
-      </div>
-
       <form id="onboardingForm" onsubmit="app.handleOnboardingSubmit(event)">
         <!-- 1. Farmer Name Input -->
         <div class="form-group onboarding-field">
           <label for="onboardingNameInput" class="form-label bold">
-            <span>👤</span>
+            <span class="label-icon">👤</span>
             <span data-i18n="onboarding_name_lbl">Nom de l'éleveur / Nom complet :</span>
           </label>
-          <input type="text" id="onboardingNameInput" class="form-control form-control-lg" 
-                 placeholder="Ex: Ahmed Ben Ali" required autocomplete="name" maxlength="50"
-                 oninput="app.updateOnboardingPreview()">
+          <input type="text" id="onboardingNameInput" class="form-control form-control-lg onboarding-input-field" 
+                 required autocomplete="name" maxlength="50">
           <div id="onboardingNameError" class="onboarding-error-msg hidden" data-i18n="onboarding_err_name">Veuillez saisir votre nom.</div>
         </div>
 
-        <!-- 2. Age Input -->
+        <!-- 2. Date of Birth Calendar Input -->
         <div class="form-group onboarding-field">
-          <label for="onboardingAgeInput" class="form-label bold">
-            <span>🎂</span>
-            <span data-i18n="onboarding_age_lbl">Âge :</span>
+          <label for="onboardingBirthDateInput" class="form-label bold">
+            <span class="label-icon">📅</span>
+            <span data-i18n="onboarding_birthdate_lbl">Date de naissance :</span>
+            <span id="onboardingCalculatedAge" class="onboarding-calculated-age-badge hidden"></span>
           </label>
-          <input type="number" id="onboardingAgeInput" class="form-control form-control-lg" 
-                 placeholder="Ex: 32" min="10" max="100" required
-                 oninput="app.updateOnboardingPreview()">
-          <div id="onboardingAgeError" class="onboarding-error-msg hidden" data-i18n="onboarding_err_age">Veuillez saisir un âge valide (entre 10 et 100 ans).</div>
+          <input type="date" id="onboardingBirthDateInput" class="form-control form-control-lg onboarding-input-field" 
+                 min="1920-01-01" max="2016-12-31" required
+                 onchange="app.handleBirthDateChange(this.value)">
+          <div id="onboardingBirthDateError" class="onboarding-error-msg hidden" data-i18n="onboarding_err_birthdate">Veuillez sélectionner votre date de naissance.</div>
         </div>
 
         <!-- 3. Avatar Selection (10 Avatars: 5 Men, 5 Women) -->
@@ -2868,13 +2859,22 @@
       </div>
       <div class="modal-body">
         <form id="editProfileForm" onsubmit="app.handleSaveProfileEdit(event)">
-          <div class="form-group">
-            <label for="editProfileNameInput" class="form-label" data-i18n="onboarding_name_lbl">Nom de l'éleveur :</label>
-            <input type="text" id="editProfileNameInput" class="form-control" required maxlength="50">
+          <div class="form-group onboarding-field">
+            <label for="editProfileNameInput" class="form-label">
+              <span class="label-icon">👤</span>
+              <span data-i18n="onboarding_name_lbl">Nom de l'éleveur / Nom complet :</span>
+            </label>
+            <input type="text" id="editProfileNameInput" class="form-control onboarding-input-field" required maxlength="50">
           </div>
-          <div class="form-group">
-            <label for="editProfileAgeInput" class="form-label" data-i18n="onboarding_age_lbl">Âge :</label>
-            <input type="number" id="editProfileAgeInput" class="form-control" min="10" max="100" required>
+          <div class="form-group onboarding-field">
+            <label for="editProfileBirthDateInput" class="form-label">
+              <span class="label-icon">📅</span>
+              <span data-i18n="onboarding_birthdate_lbl">Date de naissance :</span>
+              <span id="editProfileCalculatedAge" class="onboarding-calculated-age-badge hidden"></span>
+            </label>
+            <input type="date" id="editProfileBirthDateInput" class="form-control onboarding-input-field" 
+                   min="1920-01-01" max="2016-12-31" required
+                   onchange="app.handleEditProfileBirthDateChange(this.value)">
           </div>
           <div class="form-group">
             <label class="form-label" data-i18n="onboarding_avatar_lbl">Choisir un Avatar (10 profils) :</label>
@@ -2894,11 +2894,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="mobile-bridge.js"></script>
-  <script src="avatars.js"></script>
+  <script src="avatars.js?v=110"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=109"></script>
-  <script src="translations.js?v=109"></script>
-  <script src="app.js?v=109"></script>
+  <script src="supabase-client.js?v=110"></script>
+  <script src="translations.js?v=110"></script>
+  <script src="app.js?v=110"></script>
 </body>
 </html>

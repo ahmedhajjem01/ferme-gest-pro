@@ -15,7 +15,7 @@
       gender: 'male',
       nameKey: 'avatar_m1_name',
       roleKey: 'avatar_m1_role',
-      defaultName: 'Ahmed',
+      defaultName: 'Éleveur 1',
       emoji: '👨‍🌾',
       bgGradient: ['#10b981', '#047857'],
       svg: `
@@ -69,7 +69,7 @@
       gender: 'male',
       nameKey: 'avatar_m2_name',
       roleKey: 'avatar_m2_role',
-      defaultName: 'Karim',
+      defaultName: 'Éleveur 2',
       emoji: '🧔‍♂️',
       bgGradient: ['#3b82f6', '#1d4ed8'],
       svg: `
@@ -116,7 +116,7 @@
       gender: 'male',
       nameKey: 'avatar_m3_name',
       roleKey: 'avatar_m3_role',
-      defaultName: 'Sami',
+      defaultName: 'Éleveur 3',
       emoji: '🧑‍🌾',
       bgGradient: ['#8b5cf6', '#6d28d9'],
       svg: `
@@ -162,7 +162,7 @@
       gender: 'male',
       nameKey: 'avatar_m4_name',
       roleKey: 'avatar_m4_role',
-      defaultName: 'Youssef',
+      defaultName: 'Éleveur 4',
       emoji: '👨‍💼',
       bgGradient: ['#f59e0b', '#d97706'],
       svg: `
@@ -205,7 +205,7 @@
       gender: 'male',
       nameKey: 'avatar_m5_name',
       roleKey: 'avatar_m5_role',
-      defaultName: 'Hassen',
+      defaultName: 'Éleveur 5',
       emoji: '👴',
       bgGradient: ['#0d9488', '#115e59'],
       svg: `
@@ -247,7 +247,7 @@
       gender: 'female',
       nameKey: 'avatar_w1_name',
       roleKey: 'avatar_w1_role',
-      defaultName: 'Amira',
+      defaultName: 'Éleveuse 1',
       emoji: '👩‍🌾',
       bgGradient: ['#ec4899', '#be185d'],
       svg: `
@@ -302,7 +302,7 @@
       gender: 'female',
       nameKey: 'avatar_w2_name',
       roleKey: 'avatar_w2_role',
-      defaultName: 'Fatma',
+      defaultName: 'Éleveuse 2',
       emoji: '👩‍🔬',
       bgGradient: ['#06b6d4', '#0891b2'],
       svg: `
@@ -347,7 +347,7 @@
       gender: 'female',
       nameKey: 'avatar_w3_name',
       roleKey: 'avatar_w3_role',
-      defaultName: 'Salma',
+      defaultName: 'Éleveuse 3',
       emoji: '👱‍♀️',
       bgGradient: ['#f43f5e', '#be123c'],
       svg: `
@@ -388,7 +388,7 @@
       gender: 'female',
       nameKey: 'avatar_w4_name',
       roleKey: 'avatar_w4_role',
-      defaultName: 'Mounira',
+      defaultName: 'Éleveuse 4',
       emoji: '🧕',
       bgGradient: ['#8b5cf6', '#7c3aed'],
       svg: `
@@ -433,7 +433,7 @@
       gender: 'female',
       nameKey: 'avatar_w5_name',
       roleKey: 'avatar_w5_role',
-      defaultName: 'Leila',
+      defaultName: 'Éleveuse 5',
       emoji: '👩‍💼',
       bgGradient: ['#14b8a6', '#0f766e'],
       svg: `
