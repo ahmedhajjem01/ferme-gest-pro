@@ -731,7 +731,9 @@ const TRANSLATIONS = {
     onboarding_btn_next: "Suivant ➡️",
     onboarding_err_name: "Veuillez saisir votre nom.",
     onboarding_err_birthdate: "Veuillez sélectionner votre date de naissance.",
-    onboarding_err_age: "Veuillez saisir un âge valide (entre 10 et 100 ans).",
+    onboarding_err_under18: "Vous devez avoir au moins 18 ans pour créer et gérer un élevage.",
+    onboarding_err_age: "Âge invalide. L'âge minimum requis est de 18 ans.",
+    onboarding_age_under18_badge: "Moins de 18 ans",
     onboarding_preview_years: "ans",
 
     // Auth & Backup Prompt
@@ -1501,7 +1503,9 @@ const TRANSLATIONS = {
     onboarding_btn_next: "التالي ➡️",
     onboarding_err_name: "الرجاء إدخال اسمك.",
     onboarding_err_birthdate: "الرجاء تحديد تاريخ ميلادك.",
-    onboarding_err_age: "الرجاء إدخال عمر صحيح (بين 10 و 100 سنة).",
+    onboarding_err_under18: "يجب أن يكون عمرك 18 عاماً على الأقل لإنشاء وإدارة المزرعة.",
+    onboarding_err_age: "عمر غير صالح. الحد الأدنى للعمر هو 18 عاماً.",
+    onboarding_age_under18_badge: "أقل من 18 عاماً",
     onboarding_preview_years: "سنة",
 
     // Auth & Backup Prompt
@@ -2271,7 +2275,9 @@ const TRANSLATIONS = {
     onboarding_btn_next: "Next ➡️",
     onboarding_err_name: "Please enter your name.",
     onboarding_err_birthdate: "Please select your date of birth.",
-    onboarding_err_age: "Please enter a valid age (between 10 and 100).",
+    onboarding_err_under18: "You must be at least 18 years old to create and manage a farm.",
+    onboarding_err_age: "Invalid age. The minimum required age is 18 years.",
+    onboarding_age_under18_badge: "Under 18",
     onboarding_preview_years: "yo",
 
     // Auth & Backup Prompt

@@ -860,30 +860,106 @@ const app = {
       .replace(/'/g, '&#039;');
   },
 
+  parseBirthDate(birthDateStr) {
+    if (!birthDateStr || typeof birthDateStr !== 'string') return null;
+    const s = birthDateStr.trim();
+    // 1. ISO YYYY-MM-DD
+    let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (m) {
+      const y = parseInt(m[1], 10);
+      const mo = parseInt(m[2], 10);
+      const d = parseInt(m[3], 10);
+      return {
+        year: y,
+        month: mo,
+        day: d,
+        iso: `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      };
+    }
+    // 2. DD/MM/YYYY or DD-MM-YYYY
+    m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (m) {
+      const y = parseInt(m[3], 10);
+      const mo = parseInt(m[2], 10);
+      const d = parseInt(m[1], 10);
+      return {
+        year: y,
+        month: mo,
+        day: d,
+        iso: `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      };
+    }
+    return null;
+  },
+
   calculateAge(birthDateStr) {
-    if (!birthDateStr) return null;
-    const birth = new Date(birthDateStr);
-    if (isNaN(birth.getTime())) return null;
+    const parsed = this.parseBirthDate(birthDateStr);
+    if (!parsed) return null;
+    const { year, month, day } = parsed;
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
     const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    const curYear = today.getFullYear();
+    const curMonth = today.getMonth() + 1; // 1-12
+    const curDay = today.getDate();
+
+    let age = curYear - year;
+    if (curMonth < month || (curMonth === month && curDay < day)) {
       age--;
     }
     return age;
   },
 
+  getMaxAdultBirthDate() {
+    const today = new Date();
+    const maxYear = today.getFullYear() - 18;
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${maxYear}-${m}-${d}`;
+  },
+
   handleBirthDateChange(dateVal) {
     const badge = document.getElementById('onboardingCalculatedAge');
+    const errBirth = document.getElementById('onboardingBirthDateError');
+    const errUnder18 = document.getElementById('onboardingUnder18Error');
     const age = this.calculateAge(dateVal);
-    if (badge) {
-      if (age !== null && age >= 5 && age <= 120) {
-        const yearsText = this.t('onboarding_preview_years') || 'ans';
+
+    if (!dateVal) {
+      if (badge) badge.classList.add('hidden');
+      if (errBirth) errBirth.classList.add('hidden');
+      if (errUnder18) errUnder18.classList.add('hidden');
+      return;
+    }
+
+    if (age === null) {
+      if (badge) badge.classList.add('hidden');
+      return;
+    }
+
+    const yearsText = this.t('onboarding_preview_years') || 'ans';
+
+    if (age < 18) {
+      if (badge) {
+        const under18Note = this.t('onboarding_age_under18_badge') || 'Moins de 18 ans';
+        badge.textContent = `(${age} ${yearsText} - ⚠️ ${under18Note})`;
+        badge.classList.remove('hidden');
+        badge.classList.add('under-18');
+      }
+      if (errBirth) errBirth.classList.add('hidden');
+      if (errUnder18) errUnder18.classList.remove('hidden');
+    } else if (age > 120) {
+      if (badge) badge.classList.add('hidden');
+      if (errBirth) errBirth.classList.remove('hidden');
+      if (errUnder18) errUnder18.classList.add('hidden');
+    } else {
+      if (badge) {
         badge.textContent = `(${age} ${yearsText})`;
         badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
+        badge.classList.remove('under-18');
       }
+      if (errBirth) errBirth.classList.add('hidden');
+      if (errUnder18) errUnder18.classList.add('hidden');
     }
   },
 
@@ -891,10 +967,16 @@ const app = {
     const badge = document.getElementById('editProfileCalculatedAge');
     const age = this.calculateAge(dateVal);
     if (badge) {
-      if (age !== null && age >= 5 && age <= 120) {
-        const yearsText = this.t('onboarding_preview_years') || 'ans';
+      const yearsText = this.t('onboarding_preview_years') || 'ans';
+      if (age !== null && age >= 18 && age <= 120) {
         badge.textContent = `(${age} ${yearsText})`;
         badge.classList.remove('hidden');
+        badge.classList.remove('under-18');
+      } else if (age !== null && age < 18) {
+        const under18Note = this.t('onboarding_age_under18_badge') || 'Moins de 18 ans';
+        badge.textContent = `(${age} ${yearsText} - ⚠️ ${under18Note})`;
+        badge.classList.remove('hidden');
+        badge.classList.add('under-18');
       } else {
         badge.classList.add('hidden');
       }
@@ -912,6 +994,12 @@ const app = {
     const nameInput = document.getElementById('onboardingNameInput');
     const birthInput = document.getElementById('onboardingBirthDateInput');
     const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
+
+    // Dynamically enforce 18 years old maximum date limit
+    if (birthInput) {
+      birthInput.max = this.getMaxAdultBirthDate();
+      birthInput.min = '1920-01-01';
+    }
 
     const defaultAvatar = existingProfile ? (existingProfile.avatar || 'avatar-m1') : 'avatar-m1';
     if (nameInput) nameInput.value = existingProfile ? (existingProfile.name || '') : '';
@@ -982,12 +1070,15 @@ const app = {
     const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
 
     const name = (nameInput?.value || '').trim();
-    const birthDate = birthInput?.value || '';
+    const birthDateRaw = (birthInput?.value || '').trim();
+    const parsed = this.parseBirthDate(birthDateRaw);
+    const birthDate = parsed ? parsed.iso : birthDateRaw;
     const age = this.calculateAge(birthDate);
     const avatarId = hiddenAvatar?.value || 'avatar-m1';
 
     const errName = document.getElementById('onboardingNameError');
     const errBirth = document.getElementById('onboardingBirthDateError');
+    const errUnder18 = document.getElementById('onboardingUnder18Error');
 
     let hasError = false;
     if (!name || name.length < 2) {
@@ -998,12 +1089,24 @@ const app = {
       if (errName) errName.classList.add('hidden');
     }
 
-    if (!birthDate || age === null || age < 10 || age > 100) {
+    if (!birthDate) {
       if (errBirth) errBirth.classList.remove('hidden');
+      if (errUnder18) errUnder18.classList.add('hidden');
+      if (!hasError && birthInput) birthInput.focus();
+      hasError = true;
+    } else if (age === null || age < 18) {
+      if (errBirth) errBirth.classList.add('hidden');
+      if (errUnder18) errUnder18.classList.remove('hidden');
+      if (!hasError && birthInput) birthInput.focus();
+      hasError = true;
+    } else if (age > 120) {
+      if (errBirth) errBirth.classList.remove('hidden');
+      if (errUnder18) errUnder18.classList.add('hidden');
       if (!hasError && birthInput) birthInput.focus();
       hasError = true;
     } else {
       if (errBirth) errBirth.classList.add('hidden');
+      if (errUnder18) errUnder18.classList.add('hidden');
     }
 
     if (hasError) return;
@@ -1208,6 +1311,8 @@ const app = {
     const curAvatar = profile ? (profile.avatar || 'avatar-m1') : 'avatar-m1';
     if (nameInput) nameInput.value = profile ? (profile.name || '') : '';
     if (birthInput) {
+      birthInput.max = this.getMaxAdultBirthDate();
+      birthInput.min = '1920-01-01';
       if (profile && profile.birthDate) {
         birthInput.value = profile.birthDate;
       } else if (profile && profile.age) {
@@ -1274,17 +1379,42 @@ const app = {
     const hiddenAvatar = document.getElementById('editProfileSelectedAvatar');
 
     const name = (nameInput?.value || '').trim();
-    const birthDate = birthInput?.value || '';
+    const birthDateRaw = (birthInput?.value || '').trim();
+    const parsed = this.parseBirthDate(birthDateRaw);
+    const birthDate = parsed ? parsed.iso : birthDateRaw;
     const age = this.calculateAge(birthDate);
     const avatarId = hiddenAvatar?.value || 'avatar-m1';
 
-    if (!name || !birthDate || age === null || age < 10 || age > 100) {
-      const isAr = appState.lang === 'ar';
-      const isEn = appState.lang === 'en';
-      const msg = isAr 
-        ? 'الرجاء إدخال اسم وتاريخ ميلاد صحيح (بين 10 و 100 سنة).' 
-        : (isEn ? 'Please enter a valid name and date of birth (between 10 and 100).' : 'Veuillez renseigner un nom et une date de naissance valide.');
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    if (!name || name.length < 2) {
+      const msg = isAr ? 'الرجاء إدخال اسمك.' : (isEn ? 'Please enter your name.' : 'Veuillez saisir votre nom.');
       this.showToast(msg);
+      if (nameInput) nameInput.focus();
+      return;
+    }
+
+    if (!birthDate) {
+      const msg = isAr ? 'الرجاء تحديد تاريخ ميلادك.' : (isEn ? 'Please select your date of birth.' : 'Veuillez sélectionner votre date de naissance.');
+      this.showToast(msg);
+      if (birthInput) birthInput.focus();
+      return;
+    }
+
+    if (age === null || age < 18) {
+      const msg = isAr 
+        ? 'يجب أن يكون عمرك 18 عاماً على الأقل لإنشاء وإدارة المزرعة.' 
+        : (isEn ? 'You must be at least 18 years old to create and manage a farm.' : 'Vous devez avoir au moins 18 ans pour créer et gérer un élevage.');
+      this.showToast(msg);
+      if (birthInput) birthInput.focus();
+      return;
+    }
+
+    if (age > 120) {
+      const msg = isAr ? 'عمر غير صالح. الحد الأدنى للعمر هو 18 عاماً.' : (isEn ? 'Invalid age. The minimum required age is 18 years.' : 'Âge invalide. L\'âge minimum requis est de 18 ans.');
+      this.showToast(msg);
+      if (birthInput) birthInput.focus();
       return;
     }
 
@@ -1316,8 +1446,6 @@ const app = {
       }
     }
 
-    const isAr = appState.lang === 'ar';
-    const isEn = appState.lang === 'en';
     this.showToast(isAr ? '✅ تم تحديث بياناتك بنجاح !' : (isEn ? '✅ Profile updated successfully!' : '✅ Profil mis à jour avec succès !'));
   },
 
