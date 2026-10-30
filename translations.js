@@ -605,9 +605,6 @@ const TRANSLATIONS = {
     daily_feed_banner_body: "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas d'enregistrer la ration distribuée !",
     daily_feed_banner_btn_dismiss: "Supprimer",
     daily_feed_banner_btn_record: "Enregistrer l'aliment 🌾",
-    daily_feed_btn_test: "🔔 Tester sur mon téléphone (5s)",
-    daily_feed_btn_alarm: "⏰ Régler alarme réveil (16h)",
-    daily_feed_btn_calendar: "📅 Calendrier du téléphone",
 
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚🌾 FermeGest Pro - Récolte & Alimentation",
@@ -1301,9 +1298,6 @@ const TRANSLATIONS = {
     daily_feed_banner_body: "16:00 : هل وضعت العلف للحيوانات؟ لا تنسَ تسجيل توزيع الوجبة !",
     daily_feed_banner_btn_dismiss: "حذف الإشعار",
     daily_feed_banner_btn_record: "تسجيل العلف 🌾",
-    daily_feed_btn_test: "🔔 تجربة الإشعار على الهاتف (5 ث)",
-    daily_feed_btn_alarm: "⏰ ضبط منبه الهاتف (16:00)",
-    daily_feed_btn_calendar: "📅 تقويم الهاتف",
 
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚🌾 فيرم-جست برو - جمع البيض والتغذية",
@@ -1997,9 +1991,6 @@ const TRANSLATIONS = {
     daily_feed_banner_body: "4:00 PM: Did you put food for the animals? Don't forget to log their feed distribution!",
     daily_feed_banner_btn_dismiss: "Dismiss",
     daily_feed_banner_btn_record: "Log Feeding 🌾",
-    daily_feed_btn_test: "🔔 Test on my phone (5s)",
-    daily_feed_btn_alarm: "⏰ Set phone alarm (4 PM)",
-    daily_feed_btn_calendar: "📅 Phone calendar",
 
     // Daily 17h Egg Collection Notification & Egg Stock
     notif_daily_eggs_title: "🥚🌾 FermeGest Pro - Harvest & Feeding",
