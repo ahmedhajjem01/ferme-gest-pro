@@ -3775,16 +3775,54 @@ label {
 /* ========================================================
    ONBOARDING & 10 AVATARS & CLOUD PROMPT STYLES
    ======================================================== */
+#modalOnboarding.modal-overlay {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 1.5rem 1rem 2.5rem !important;
+}
+
 .onboarding-modal-card {
-  max-width: 580px !important;
-  width: 95% !important;
+  max-width: 640px !important;
+  width: 96% !important;
+  margin: auto !important;
   border-radius: 20px !important;
   background: var(--bg-surface, #1e293b) !important;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5) !important;
-  padding: 1.75rem !important;
+  padding: 1.75rem 1.5rem 2rem !important;
   overflow-y: auto !important;
-  max-height: 90vh !important;
+  max-height: calc(100vh - 3.5rem) !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.5) rgba(15, 23, 42, 0.4);
+}
+
+.onboarding-modal-card::-webkit-scrollbar {
+  width: 6px;
+}
+.onboarding-modal-card::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 8px;
+}
+.onboarding-modal-card::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.5);
+  border-radius: 8px;
+}
+.onboarding-modal-card::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
+}
+
+/* Ensure the onboarding form expands naturally and does NOT clip content */
+.onboarding-modal-card form,
+#onboardingForm {
+  display: block !important;
+  overflow: visible !important;
+  flex: none !important;
+  height: auto !important;
+  min-height: auto !important;
 }
 
 .onboarding-header {
@@ -3968,26 +4006,32 @@ label {
 /* Avatar Grid */
 .onboarding-avatar-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.65rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 2px;
 }
 .onboarding-avatar-grid.compact {
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.5rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 2px;
 }
 
 .avatar-card-item {
   position: relative;
   background: rgba(255, 255, 255, 0.03);
-  border: 2px solid transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  padding: 0.55rem 0.35rem 0.45rem;
+  padding: 0.5rem 0.25rem 0.45rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .avatar-card-item:hover {
   background: rgba(255, 255, 255, 0.08);
@@ -4002,18 +4046,21 @@ label {
 
 .avatar-card-svg-wrap {
   position: relative;
-  width: 58px;
-  height: 58px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.35rem;
+  margin: 0 auto 0.35rem auto;
+  flex-shrink: 0;
 }
 .avatar-card-svg-wrap svg {
-  width: 100%;
-  height: 100%;
+  width: 48px !important;
+  height: 48px !important;
+  max-width: 100%;
   border-radius: 50%;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  display: block;
 }
 
 .avatar-card-check {
@@ -4038,26 +4085,34 @@ label {
 }
 
 .avatar-card-name {
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: var(--text-primary, #ffffff);
+  color: #e2e8f0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  width: 100%;
+  padding: 0 2px;
+  box-sizing: border-box;
 }
 .avatar-card-role {
-  font-size: 0.66rem;
-  color: var(--text-muted, #94a3b8);
+  font-size: 0.64rem;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  width: 100%;
+  padding: 0 2px;
+  box-sizing: border-box;
 }
 .avatar-card-item.selected .avatar-card-role {
   color: #34d399;
 }
 
+.onboarding-actions {
+  margin-top: 1.25rem;
+  padding-bottom: 0.5rem;
+}
 .onboarding-next-btn {
   font-size: 1.05rem !important;
   font-weight: 800 !important;
@@ -4198,18 +4253,31 @@ label {
   gap: 0.65rem;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 540px) {
   .onboarding-avatar-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
   }
   .onboarding-avatar-grid.compact {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.4rem !important;
   }
   .avatar-card-svg-wrap {
-    width: 48px;
-    height: 48px;
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .avatar-card-svg-wrap svg {
+    width: 44px !important;
+    height: 44px !important;
   }
   .onboarding-modal-card {
-    padding: 1.25rem !important;
+    padding: 1.25rem 1rem 1.75rem !important;
+    width: 96% !important;
+  }
+}
+
+@media (max-width: 370px) {
+  .onboarding-avatar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

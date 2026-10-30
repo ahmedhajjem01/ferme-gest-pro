@@ -1108,7 +1108,7 @@ const app = {
                onclick="app.selectEditProfileAvatar('${a.id}')"
                title="${a.defaultName}">
             <div class="avatar-card-svg-wrap">
-              ${window.AppAvatars.getSvg(a.id, 52)}
+              ${window.AppAvatars.getSvg(a.id, 48)}
               <div class="avatar-card-check">✓</div>
             </div>
             <div class="avatar-card-name" data-i18n="${a.nameKey}">${a.defaultName}</div>
