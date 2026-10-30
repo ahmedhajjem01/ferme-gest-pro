@@ -212,7 +212,7 @@ const app = {
     // First-time User Onboarding check
     const onboardingDone = localStorage.getItem('fermegest_onboarding_completed') === 'true';
     if (!onboardingDone) {
-      setTimeout(() => this.openOnboardingModal(), 350);
+      this.openOnboardingModal();
     } else {
       this.updateUserHeaderUI();
     }
