@@ -694,7 +694,66 @@ const TRANSLATIONS = {
     nav_reports_label: "Tableaux & Données",
     lbl_feed_price_kg: "Prix au kg",
     lbl_expense_checklist_hint: "Cochez les lots qui consomment cet achat :",
-    btn_validate: "Valider"
+    btn_validate: "Valider",
+
+    // 10 Farmer Avatars
+    avatar_m1_name: "Ahmed",
+    avatar_m1_role: "Éleveur",
+    avatar_m2_name: "Karim",
+    avatar_m2_role: "Chef d'élevage",
+    avatar_m3_name: "Sami",
+    avatar_m3_role: "Vétérinaire",
+    avatar_m4_name: "Youssef",
+    avatar_m4_role: "Agronome",
+    avatar_m5_name: "Hassen",
+    avatar_m5_role: "Maître éleveur",
+    avatar_w1_name: "Amira",
+    avatar_w1_role: "Éleveuse",
+    avatar_w2_name: "Fatma",
+    avatar_w2_role: "Vétérinaire aviaire",
+    avatar_w3_name: "Salma",
+    avatar_w3_role: "Responsable ponte",
+    avatar_w4_name: "Mounira",
+    avatar_w4_role: "Éleveuse fermière",
+    avatar_w5_name: "Leila",
+    avatar_w5_role: "Directrice d'élevage",
+
+    // Onboarding New User
+    onboarding_title: "🌾 Bienvenue sur FermeGest PRO",
+    onboarding_subtitle: "Configurez votre profil d'éleveur pour commencer la gestion de votre ferme",
+    onboarding_name_lbl: "Nom de l'éleveur / Nom complet :",
+    onboarding_age_lbl: "Âge :",
+    onboarding_avatar_lbl: "Choisissez votre Avatar (10 profils) :",
+    onboarding_tab_all: "Tous (10)",
+    onboarding_tab_men: "👨 Hommes (5)",
+    onboarding_tab_women: "👩 Femmes (5)",
+    onboarding_btn_next: "Suivant ➡️",
+    onboarding_err_name: "Veuillez saisir votre nom.",
+    onboarding_err_age: "Veuillez saisir un âge valide (entre 10 et 100 ans).",
+    onboarding_preview_years: "ans",
+
+    // Auth & Backup Prompt
+    auth_prompt_title: "Sécurisez votre Élevage ☁️",
+    auth_prompt_welcome: "Ravi de vous compter parmi nous, <strong>{name}</strong> ! Pour ne jamais perdre vos données et synchroniser votre ferme sur tous vos téléphones et PC :",
+    auth_benefit_multidevice: "Synchronisation instantanée sur tous vos téléphones & PC",
+    auth_benefit_backup: "Sauvegarde automatique continue dans le Cloud sécurisé",
+    auth_benefit_recover: "Récupération immédiate de vos animaux si vous changez de téléphone",
+    auth_or_guest: "ou sans compte",
+    auth_continue_as_guest: "Continuer en tant qu'Invité (Mode Local)",
+
+    // Guest Warning
+    guest_warn_title: "⚠️ Attention : Risque de perte de vos données !",
+    guest_warn_msg: "En continuant en tant qu'invité, toutes les données de votre élevage (animaux, comptabilité, récolte des œufs, stock d'aliments) sont enregistrées <strong>uniquement sur la mémoire de ce téléphone</strong>.<br><br>⚠️ <strong>Si vous perdez, cassez ou changez de téléphone, ou si le cache est effacé, votre ferme risque d'être définitivement supprimée !</strong>",
+    guest_warn_tip: "Astuce : La connexion avec Google est 100% gratuite et prend 2 secondes pour protéger tout votre travail.",
+    guest_warn_btn_secure: "🔒 Sécuriser avec Google (Recommandé)",
+    guest_warn_btn_continue: "J'ai compris le risque, continuer en invité",
+
+    // Profile Edit
+    profile_edit_title: "Modifier mon Profil Éleveur",
+    profile_btn_edit: "✏️ Modifier Profil",
+    profile_guest_badge: "👤 Mode Invité (Non synchronisé)",
+    profile_guest_warning_box: "⚠️ Vous êtes en mode invité. Vos données ne sont pas sauvegardées en ligne.",
+    profile_btn_connect_cloud: "☁️ Lier mon compte pour sauvegarder"
   },
 
   ar: {
@@ -1387,7 +1446,66 @@ const TRANSLATIONS = {
     nav_reports_label: "الجداول والبيانات",
     lbl_feed_price_kg: "السعر للكغ",
     lbl_expense_checklist_hint: "حدد الدفعات التي تستهلك هذا الشراء :",
-    btn_validate: "تأكيد"
+    btn_validate: "تأكيد",
+
+    // 10 Farmer Avatars
+    avatar_m1_name: "أحمد",
+    avatar_m1_role: "مربي دواجن",
+    avatar_m2_name: "كريم",
+    avatar_m2_role: "مسؤول مزرعة",
+    avatar_m3_name: "سامي",
+    avatar_m3_role: "طبيب بيطري",
+    avatar_m4_name: "يوسف",
+    avatar_m4_role: "مهندس فلاحي",
+    avatar_m5_name: "حسن",
+    avatar_m5_role: "فلاح خبير",
+    avatar_w1_name: "أميرة",
+    avatar_w1_role: "مربية دواجن",
+    avatar_w2_name: "فاطمة",
+    avatar_w2_role: "بيطرية طيور",
+    avatar_w3_name: "سلمى",
+    avatar_w3_role: "مسؤولة إنتاج",
+    avatar_w4_name: "منيرة",
+    avatar_w4_role: "فلاحة ريفية",
+    avatar_w5_name: "ليلى",
+    avatar_w5_role: "مديرة مزرعة",
+
+    // Onboarding New User
+    onboarding_title: "🌾 مرحباً بك في فيرم-جست برو",
+    onboarding_subtitle: "قم بإعداد ملفك الفلاحي لبدء إدارة وتتبع مزرعتك",
+    onboarding_name_lbl: "اسم الفلاح / الاسم الكامل :",
+    onboarding_age_lbl: "العمر :",
+    onboarding_avatar_lbl: "اختر صورتك الرمزية (10 شخصيات) :",
+    onboarding_tab_all: "الكل (10)",
+    onboarding_tab_men: "👨 رجال (5)",
+    onboarding_tab_women: "👩 نساء (5)",
+    onboarding_btn_next: "التالي ➡️",
+    onboarding_err_name: "الرجاء إدخال اسمك.",
+    onboarding_err_age: "الرجاء إدخال عمر صحيح (بين 10 و 100 سنة).",
+    onboarding_preview_years: "سنة",
+
+    // Auth & Backup Prompt
+    auth_prompt_title: "احمِ بيانات مزرعتك سحابياً ☁️",
+    auth_prompt_welcome: "سعداء بانضمامك إلينا، <strong>{name}</strong> ! لضمان عدم ضياع بياناتك ومزامنة مزرعتك على جميع أجهزتك :",
+    auth_benefit_multidevice: "مزامنة فورية على جميع هواتفك وحاسوبك",
+    auth_benefit_backup: "نسخ احتياطي تلقائي مستمر في السحابة الآمنة",
+    auth_benefit_recover: "استرجاع فوري لطيورك وحساباتك إذا غيّرت هاتفك",
+    auth_or_guest: "أو بدون حساب",
+    auth_continue_as_guest: "الاستمرار كضيف (الوضع المحلي)",
+
+    // Guest Warning
+    guest_warn_title: "⚠️ تنبيه هام : خطر فقدان بيانات مزرعتك !",
+    guest_warn_msg: "في وضع الضيف، يتم حفظ جميع بيانات مزرعتك (الطيور، الحسابات، جمع البيض، ومخزون العلف) <strong>محلياً فقط على ذاكرة هذا الهاتف</strong>.<br><br>⚠️ <strong>إذا ضاع هاتفك أو تعرض للتلف أو قمت بتغييره أو مسح بيانات المتصفح، قد تُحذف مزرعتك نهائياً دون إمكانية استرجاعها !</strong>",
+    guest_warn_tip: "نصيحة : تسجيل الدخول بحساب جوجل مجاني 100% ويستغرق ثانيتين فقط لحماية كل مجهودك.",
+    guest_warn_btn_secure: "🔒 حماية المزرعة بجوجل (موصى به)",
+    guest_warn_btn_continue: "فهمت المخاطر، المتابعة كضيف",
+
+    // Profile Edit
+    profile_edit_title: "تعديل الملف الفلاحي",
+    profile_btn_edit: "✏️ تعديل الملف",
+    profile_guest_badge: "👤 وضع الضيف (غير متزامن)",
+    profile_guest_warning_box: "⚠️ أنت تعمل في وضع الضيف. بياناتك غير محفوظة في السحابة.",
+    profile_btn_connect_cloud: "☁️ ربط حسابي لحفظ المزرعة"
   },
 
   en: {
@@ -2080,7 +2198,66 @@ const TRANSLATIONS = {
     nav_reports_label: "Tables & Data",
     lbl_feed_price_kg: "Price per kg",
     lbl_expense_checklist_hint: "Check lots consuming this purchase:",
-    btn_validate: "Submit"
+    btn_validate: "Submit",
+
+    // 10 Farmer Avatars
+    avatar_m1_name: "Ahmed",
+    avatar_m1_role: "Farmer",
+    avatar_m2_name: "Karim",
+    avatar_m2_role: "Farm Manager",
+    avatar_m3_name: "Sami",
+    avatar_m3_role: "Veterinarian",
+    avatar_m4_name: "Youssef",
+    avatar_m4_role: "Agronomist",
+    avatar_m5_name: "Hassen",
+    avatar_m5_role: "Master Breeder",
+    avatar_w1_name: "Amira",
+    avatar_w1_role: "Farmer",
+    avatar_w2_name: "Fatma",
+    avatar_w2_role: "Avian Vet",
+    avatar_w3_name: "Salma",
+    avatar_w3_role: "Layer Manager",
+    avatar_w4_name: "Mounira",
+    avatar_w4_role: "Country Breeder",
+    avatar_w5_name: "Leila",
+    avatar_w5_role: "Farm Director",
+
+    // Onboarding New User
+    onboarding_title: "🌾 Welcome to FermeGest PRO",
+    onboarding_subtitle: "Set up your farmer profile to start managing your farm",
+    onboarding_name_lbl: "Farmer Name / Full Name:",
+    onboarding_age_lbl: "Age:",
+    onboarding_avatar_lbl: "Choose your Avatar (10 profiles):",
+    onboarding_tab_all: "All (10)",
+    onboarding_tab_men: "👨 Men (5)",
+    onboarding_tab_women: "👩 Women (5)",
+    onboarding_btn_next: "Next ➡️",
+    onboarding_err_name: "Please enter your name.",
+    onboarding_err_age: "Please enter a valid age (between 10 and 100).",
+    onboarding_preview_years: "yo",
+
+    // Auth & Backup Prompt
+    auth_prompt_title: "Secure your Farm Data ☁️",
+    auth_prompt_welcome: "Welcome aboard, <strong>{name}</strong>! To make sure you never lose your data and sync your farm across all your devices:",
+    auth_benefit_multidevice: "Instant synchronization on all your phones & PC",
+    auth_benefit_backup: "Continuous automatic backup in the secure Cloud",
+    auth_benefit_recover: "Instant recovery of your livestock if you change phones",
+    auth_or_guest: "or without account",
+    auth_continue_as_guest: "Continue as Guest (Local Mode)",
+
+    // Guest Warning
+    guest_warn_title: "⚠️ Warning: Risk of losing your farm data!",
+    guest_warn_msg: "In guest mode, all your farm data (livestock, finances, harvests, feed stock) is stored <strong>only on this phone's local memory</strong>.<br><br>⚠️ <strong>If you lose, break, or change your phone, or if cache is cleared, your farm data will probably be permanently deleted!</strong>",
+    guest_warn_tip: "Tip: Connecting with Google is 100% free and takes 2 seconds to protect all your hard work.",
+    guest_warn_btn_secure: "🔒 Secure with Google (Recommended)",
+    guest_warn_btn_continue: "I understand the risk, continue as guest",
+
+    // Profile Edit
+    profile_edit_title: "Edit Farmer Profile",
+    profile_btn_edit: "✏️ Edit Profile",
+    profile_guest_badge: "👤 Guest Mode (Not synced)",
+    profile_guest_warning_box: "⚠️ You are in guest mode. Your data is not backed up online.",
+    profile_btn_connect_cloud: "☁️ Link account to backup"
   }
 };
 

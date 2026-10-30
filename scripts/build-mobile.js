@@ -7,6 +7,7 @@ const WWW_DIR = path.resolve(ROOT_DIR, 'www');
 // List of assets to copy into www
 const ASSETS = [
   'index.html',
+  'avatars.js',
   'app.js',
   'supabase-client.js',
   'mobile-bridge.js',

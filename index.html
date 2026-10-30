@@ -2569,6 +2569,8 @@
         <div class="profile-user-card">
           <div class="user-avatar" id="profileModalAvatar">👤</div>
           <div class="profile-user-details">
+            <div id="profileModalFarmerName" class="profile-name-text" style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 2px;">Ahmed</div>
+            <div id="profileModalAgeAndRole" class="profile-meta-text" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">32 ans &bull; Éleveur</div>
             <div id="profileModalEmail" class="profile-email-text">email@domaine.com</div>
             <div class="profile-sync-badge">
               <span class="sync-dot-live"></span>
@@ -2576,6 +2578,25 @@
             </div>
             <div class="profile-sync-time">
               <span data-i18n="profile_last_sync_lbl">Dernière synchro :</span> <span id="profileModalLastSync">À l'instant</span>
+            </div>
+            <div style="margin-top: 8px;">
+              <button type="button" class="btn btn-xs btn-outline profile-edit-btn" onclick="app.openEditProfileModal()" data-i18n="profile_btn_edit">
+                ✏️ Modifier Profil
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guest Mode Alert Box inside Profile (if in Guest mode) -->
+        <div id="profileGuestWarningBanner" class="profile-guest-warning-box hidden" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 12px; margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.3rem;">⚠️</span>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 0.85rem; color: #f59e0b;" data-i18n="profile_guest_badge">👤 Mode Invité (Non synchronisé)</div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 3px;" data-i18n="profile_guest_warning_box">⚠️ Vous êtes en mode invité. Vos données ne sont pas sauvegardées en ligne.</div>
+              <button type="button" class="btn btn-sm btn-primary" onclick="appAuth.closeProfileModal(); app.openAuthPromptModal();" style="margin-top: 8px; font-weight: 600;" data-i18n="profile_btn_connect_cloud">
+                ☁️ Lier mon compte pour sauvegarder
+              </button>
             </div>
           </div>
         </div>
@@ -2670,14 +2691,214 @@
     </div>
   </div>
 
+  <!-- ============================================== -->
+  <!-- ONBOARDING & CLOUD BACKUP MODALS -->
+  <!-- ============================================== -->
+
+  <!-- Modal 1: Onboarding Nouvel Utilisateur (Nom, Âge, Choix d'Avatar 5H/5F) -->
+  <div id="modalOnboarding" class="modal-overlay hidden" data-backdrop="static">
+    <div class="modal-card onboarding-modal-card">
+      <div class="onboarding-header">
+        <div class="onboarding-logo-badge">
+          <img src="logo.png" alt="FermeGest PRO" class="onboarding-logo-img">
+        </div>
+        <h2 class="onboarding-title" data-i18n="onboarding_title">🌾 Bienvenue sur FermeGest PRO</h2>
+        <p class="onboarding-subtitle" data-i18n="onboarding_subtitle">Configurez votre profil d'éleveur pour commencer la gestion de votre ferme</p>
+      </div>
+
+      <!-- Live Profile Avatar & Name Preview -->
+      <div class="onboarding-preview-box">
+        <div id="onboardingPreviewAvatar" class="onboarding-preview-avatar"></div>
+        <div class="onboarding-preview-info">
+          <div id="onboardingPreviewName" class="onboarding-preview-name">Ahmed</div>
+          <div id="onboardingPreviewDetails" class="onboarding-preview-details">30 ans &bull; Éleveur 🌾</div>
+        </div>
+      </div>
+
+      <form id="onboardingForm" onsubmit="app.handleOnboardingSubmit(event)">
+        <!-- 1. Farmer Name Input -->
+        <div class="form-group onboarding-field">
+          <label for="onboardingNameInput" class="form-label bold">
+            <span>👤</span>
+            <span data-i18n="onboarding_name_lbl">Nom de l'éleveur / Nom complet :</span>
+          </label>
+          <input type="text" id="onboardingNameInput" class="form-control form-control-lg" 
+                 placeholder="Ex: Ahmed Ben Ali" required autocomplete="name" maxlength="50"
+                 oninput="app.updateOnboardingPreview()">
+          <div id="onboardingNameError" class="onboarding-error-msg hidden" data-i18n="onboarding_err_name">Veuillez saisir votre nom.</div>
+        </div>
+
+        <!-- 2. Age Input -->
+        <div class="form-group onboarding-field">
+          <label for="onboardingAgeInput" class="form-label bold">
+            <span>🎂</span>
+            <span data-i18n="onboarding_age_lbl">Âge :</span>
+          </label>
+          <input type="number" id="onboardingAgeInput" class="form-control form-control-lg" 
+                 placeholder="Ex: 32" min="10" max="100" required
+                 oninput="app.updateOnboardingPreview()">
+          <div id="onboardingAgeError" class="onboarding-error-msg hidden" data-i18n="onboarding_err_age">Veuillez saisir un âge valide (entre 10 et 100 ans).</div>
+        </div>
+
+        <!-- 3. Avatar Selection (10 Avatars: 5 Men, 5 Women) -->
+        <div class="form-group onboarding-field">
+          <div class="onboarding-avatar-header">
+            <label class="form-label bold" style="margin-bottom: 0;">
+              <span>🎨</span>
+              <span data-i18n="onboarding_avatar_lbl">Choisissez votre Avatar (10 profils) :</span>
+            </label>
+            <!-- Gender Filter Tabs -->
+            <div class="onboarding-gender-tabs">
+              <button type="button" class="gender-tab-btn active" id="genderTabAll" onclick="app.filterOnboardingAvatars('all')" data-i18n="onboarding_tab_all">Tous (10)</button>
+              <button type="button" class="gender-tab-btn" id="genderTabMale" onclick="app.filterOnboardingAvatars('male')" data-i18n="onboarding_tab_men">👨 Hommes (5)</button>
+              <button type="button" class="gender-tab-btn" id="genderTabFemale" onclick="app.filterOnboardingAvatars('female')" data-i18n="onboarding_tab_women">👩 Femmes (5)</button>
+            </div>
+          </div>
+
+          <!-- Avatar Grid Container -->
+          <div id="onboardingAvatarGrid" class="onboarding-avatar-grid"></div>
+          <input type="hidden" id="onboardingSelectedAvatar" value="avatar-m1">
+        </div>
+
+        <!-- Next Button -->
+        <div class="onboarding-actions">
+          <button type="submit" id="onboardingSubmitBtn" class="btn btn-primary btn-lg btn-full bold onboarding-next-btn">
+            <span data-i18n="onboarding_btn_next">Suivant ➡️</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Sauvegarde Cloud & Connexion après Onboarding -->
+  <div id="modalAuthPrompt" class="modal-overlay hidden" data-backdrop="static">
+    <div class="modal-card auth-prompt-modal-card">
+      <div class="auth-prompt-header">
+        <div class="auth-prompt-icon-badge">☁️🔒</div>
+        <h2 class="auth-prompt-title" data-i18n="auth_prompt_title">Sécurisez votre Élevage ☁️</h2>
+        <p id="authPromptSubtitle" class="auth-prompt-subtitle" data-i18n="auth_prompt_welcome">
+          Pour ne jamais perdre vos données et synchroniser votre ferme sur tous vos téléphones et PC :
+        </p>
+      </div>
+
+      <div class="auth-prompt-body">
+        <div class="auth-benefits-box">
+          <div class="benefit-item">
+            <span class="benefit-icon">📱💻</span>
+            <span class="benefit-text" data-i18n="auth_benefit_multidevice">Synchronisation instantanée sur tous vos téléphones & PC</span>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">🛡️</span>
+            <span class="benefit-text" data-i18n="auth_benefit_backup">Sauvegarde automatique continue dans le Cloud sécurisé</span>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">🔄</span>
+            <span class="benefit-text" data-i18n="auth_benefit_recover">Récupération immédiate de vos animaux si vous changez de téléphone</span>
+          </div>
+        </div>
+
+        <!-- Google OAuth Button -->
+        <button type="button" class="google-auth-btn auth-prompt-social-btn" onclick="appAuth.signInWithGoogle()">
+          <svg viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span data-i18n="auth_continue_google">Continuer avec Google / Gmail</span>
+        </button>
+
+        <!-- Facebook OAuth Button -->
+        <button type="button" class="facebook-auth-btn auth-prompt-social-btn" onclick="appAuth.signInWithFacebook()">
+          <svg viewBox="0 0 24 24">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+          <span data-i18n="auth_continue_facebook">Continuer avec Facebook</span>
+        </button>
+
+        <div class="auth-divider">
+          <span data-i18n="auth_or_guest">ou sans compte</span>
+        </div>
+
+        <!-- Continue as Guest Button -->
+        <button type="button" class="btn btn-outline btn-full auth-guest-btn" onclick="app.showGuestWarningConfirmation()">
+          <span>👤</span>
+          <span data-i18n="auth_continue_as_guest">Continuer en tant qu'Invité (Mode Local)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Avertissement Perte de Données en Mode Invité -->
+  <div id="modalGuestWarning" class="modal-overlay hidden" style="z-index: 10005;">
+    <div class="modal-card guest-warning-card">
+      <div class="guest-warning-header">
+        <div class="guest-warning-icon">⚠️</div>
+        <h3 class="guest-warning-title text-danger" data-i18n="guest_warn_title">Attention : Risque de perte de vos données !</h3>
+      </div>
+      <div class="guest-warning-body">
+        <p class="guest-warning-text" data-i18n="guest_warn_msg">
+          En continuant en tant qu'invité, toutes les données de votre élevage (animaux, comptabilité, récolte des œufs, stock d'aliments) sont enregistrées <strong>uniquement sur la mémoire de ce téléphone</strong>.<br><br>
+          ⚠️ <strong>Si vous perdez, cassez ou changez de téléphone, ou si le cache est effacé, votre ferme risque d'être définitivement supprimée !</strong>
+        </p>
+        <div class="guest-warning-box">
+          <div class="guest-warning-advice">
+            <span>💡</span>
+            <span data-i18n="guest_warn_tip">Astuce : La connexion avec Google est 100% gratuite et prend 2 secondes pour protéger tout votre travail.</span>
+          </div>
+        </div>
+      </div>
+      <div class="guest-warning-actions">
+        <button type="button" class="btn btn-primary btn-full bold" onclick="appAuth.signInWithGoogle()" data-i18n="guest_warn_btn_secure">
+          🔒 Sécuriser avec Google (Recommandé)
+        </button>
+        <button type="button" class="btn btn-subtle btn-full" onclick="app.confirmGuestMode()" data-i18n="guest_warn_btn_continue">
+          J'ai compris le risque, continuer en invité
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Modifier mon Profil Éleveur -->
+  <div id="modalEditProfile" class="modal-overlay hidden" style="z-index: 10006;">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 data-i18n="profile_edit_title">Modifier mon Profil Éleveur</h3>
+        <button class="modal-close" onclick="app.closeModal('modalEditProfile')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editProfileForm" onsubmit="app.handleSaveProfileEdit(event)">
+          <div class="form-group">
+            <label for="editProfileNameInput" class="form-label" data-i18n="onboarding_name_lbl">Nom de l'éleveur :</label>
+            <input type="text" id="editProfileNameInput" class="form-control" required maxlength="50">
+          </div>
+          <div class="form-group">
+            <label for="editProfileAgeInput" class="form-label" data-i18n="onboarding_age_lbl">Âge :</label>
+            <input type="number" id="editProfileAgeInput" class="form-control" min="10" max="100" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="onboarding_avatar_lbl">Choisir un Avatar (10 profils) :</label>
+            <div id="editProfileAvatarGrid" class="onboarding-avatar-grid compact"></div>
+            <input type="hidden" id="editProfileSelectedAvatar" value="avatar-m1">
+          </div>
+          <div class="modal-actions" style="margin-top: 1.25rem;">
+            <button type="button" class="btn btn-outline" onclick="app.closeModal('modalEditProfile')" data-i18n="btn_cancel">Annuler</button>
+            <button type="submit" class="btn btn-emerald bold" data-i18n="btn_save">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="mobile-bridge.js"></script>
+  <script src="avatars.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=108"></script>
-  <script src="translations.js?v=108"></script>
-  <script src="app.js?v=108"></script>
+  <script src="supabase-client.js?v=109"></script>
+  <script src="translations.js?v=109"></script>
+  <script src="app.js?v=109"></script>
 </body>
 </html>

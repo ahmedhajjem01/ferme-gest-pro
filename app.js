@@ -32,7 +32,8 @@ const appState = {
   sales: [],
   incubatorBatches: [],
   dismissedSaleAlerts: [],
-  savedFavoriteFeedRoutine: null
+  savedFavoriteFeedRoutine: null,
+  userProfile: null
 };
 
 // Expose appState on global window for multi-device sync
@@ -208,6 +209,14 @@ const app = {
     this.renderAll();
     document.querySelectorAll('#animalPortionBanner, [id*="PortionBanner"]').forEach(el => el.remove());
 
+    // First-time User Onboarding check
+    const onboardingDone = localStorage.getItem('fermegest_onboarding_completed') === 'true';
+    if (!onboardingDone) {
+      setTimeout(() => this.openOnboardingModal(), 350);
+    } else {
+      this.updateUserHeaderUI();
+    }
+
     // Schedule daily notifications (16h feed & 17h egg collection) in active language
     if (window.MobileBridge && window.MobileBridge.scheduleAllDailyReminders) {
       window.MobileBridge.scheduleAllDailyReminders(appState.lang || 'fr');
@@ -277,6 +286,7 @@ const app = {
         incubatorBatches: appState.incubatorBatches,
         dismissedSaleAlerts: Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : [],
         savedFavoriteFeedRoutine: appState.savedFavoriteFeedRoutine || null,
+        userProfile: appState.userProfile || null,
         _zeroInitialized: true
       }));
     } catch (e) {
@@ -338,6 +348,15 @@ const app = {
           });
         }
         appState.savedFavoriteFeedRoutine = parsed.savedFavoriteFeedRoutine || null;
+
+        if (parsed.userProfile) {
+          appState.userProfile = parsed.userProfile;
+        } else {
+          try {
+            const rawProf = localStorage.getItem('fermegest_user_profile');
+            if (rawProf) appState.userProfile = JSON.parse(rawProf);
+          } catch (e) {}
+        }
 
         // Nettoyer tout timestamp dans le futur
         const now = Date.now();
@@ -821,6 +840,350 @@ const app = {
       if (feedSuggRow) feedSuggRow.style.display = 'none';
       const multiBlock = document.getElementById('expenseAddMultipleLotsBlock');
       if (multiBlock) multiBlock.style.display = 'none';
+    }
+  },
+
+  // ==========================================
+  // ONBOARDING & USER PROFILE FLOW
+  // ==========================================
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  },
+
+  openOnboardingModal() {
+    const modal = document.getElementById('modalOnboarding');
+    if (!modal) return;
+
+    const existingProfile = appState.userProfile || (function() {
+      try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+    })();
+
+    const nameInput = document.getElementById('onboardingNameInput');
+    const ageInput = document.getElementById('onboardingAgeInput');
+    const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
+
+    const defaultAvatar = existingProfile ? (existingProfile.avatar || 'avatar-m1') : 'avatar-m1';
+    if (nameInput) nameInput.value = existingProfile ? (existingProfile.name || '') : '';
+    if (ageInput) ageInput.value = existingProfile ? (existingProfile.age || '') : '';
+    if (hiddenAvatar) hiddenAvatar.value = defaultAvatar;
+
+    this.filterOnboardingAvatars('all', defaultAvatar);
+    this.updateOnboardingPreview();
+    modal.classList.remove('hidden');
+
+    setTimeout(() => {
+      if (nameInput) nameInput.focus();
+    }, 200);
+  },
+
+  filterOnboardingAvatars(gender = 'all', currentSelected = null) {
+    const grid = document.getElementById('onboardingAvatarGrid');
+    if (!grid || !window.AppAvatars) return;
+
+    const selected = currentSelected || document.getElementById('onboardingSelectedAvatar')?.value || 'avatar-m1';
+    grid.innerHTML = window.AppAvatars.renderGridHtml(selected, gender);
+
+    // Update gender tab buttons active state
+    ['All', 'Male', 'Female'].forEach(g => {
+      const btn = document.getElementById('genderTab' + g);
+      if (btn) {
+        if ((gender === 'all' && g === 'All') || (gender === 'male' && g === 'Male') || (gender === 'female' && g === 'Female')) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }
+    });
+
+    this.applyTranslations();
+  },
+
+  selectOnboardingAvatar(avatarId) {
+    const hidden = document.getElementById('onboardingSelectedAvatar');
+    if (hidden) hidden.value = avatarId;
+
+    const grid = document.getElementById('onboardingAvatarGrid');
+    if (grid) {
+      grid.querySelectorAll('.avatar-card-item').forEach(el => {
+        if (el.getAttribute('data-avatar-id') === avatarId) {
+          el.classList.add('selected');
+        } else {
+          el.classList.remove('selected');
+        }
+      });
+    }
+
+    this.updateOnboardingPreview();
+  },
+
+  updateOnboardingPreview() {
+    const nameInput = document.getElementById('onboardingNameInput');
+    const ageInput = document.getElementById('onboardingAgeInput');
+    const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
+
+    const rawName = (nameInput?.value || '').trim();
+    const rawAge = parseInt(ageInput?.value, 10);
+    const avatarId = hiddenAvatar?.value || 'avatar-m1';
+
+    const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
+    const defaultName = avatar ? avatar.defaultName : 'Ahmed';
+    const isFemale = avatar ? avatar.gender === 'female' : false;
+
+    const previewAvatar = document.getElementById('onboardingPreviewAvatar');
+    const previewName = document.getElementById('onboardingPreviewName');
+    const previewDetails = document.getElementById('onboardingPreviewDetails');
+
+    if (previewAvatar && window.AppAvatars) {
+      previewAvatar.innerHTML = window.AppAvatars.getSvg(avatarId, 64);
+    }
+
+    if (previewName) {
+      previewName.textContent = rawName || defaultName;
+    }
+
+    if (previewDetails) {
+      const role = this.t(avatar ? avatar.roleKey : (isFemale ? 'avatar_w1_role' : 'avatar_m1_role')) || (isFemale ? 'Éleveuse' : 'Éleveur');
+      const ageStr = (!isNaN(rawAge) && rawAge > 0) ? `${rawAge} ${this.t('onboarding_preview_years') || 'ans'} • ` : '';
+      previewDetails.textContent = `${ageStr}${role} 🌾`;
+    }
+  },
+
+  handleOnboardingSubmit(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+    const nameInput = document.getElementById('onboardingNameInput');
+    const ageInput = document.getElementById('onboardingAgeInput');
+    const hiddenAvatar = document.getElementById('onboardingSelectedAvatar');
+
+    const name = (nameInput?.value || '').trim();
+    const age = parseInt(ageInput?.value, 10);
+    const avatarId = hiddenAvatar?.value || 'avatar-m1';
+
+    const errName = document.getElementById('onboardingNameError');
+    const errAge = document.getElementById('onboardingAgeError');
+
+    let hasError = false;
+    if (!name || name.length < 2) {
+      if (errName) errName.classList.remove('hidden');
+      if (nameInput) nameInput.focus();
+      hasError = true;
+    } else {
+      if (errName) errName.classList.add('hidden');
+    }
+
+    if (isNaN(age) || age < 10 || age > 100) {
+      if (errAge) errAge.classList.remove('hidden');
+      if (!hasError && ageInput) ageInput.focus();
+      hasError = true;
+    } else {
+      if (errAge) errAge.classList.add('hidden');
+    }
+
+    if (hasError) return;
+
+    const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
+    const profile = {
+      name: name,
+      age: age,
+      avatar: avatarId,
+      gender: avatar ? avatar.gender : 'male',
+      updatedAt: Date.now()
+    };
+
+    appState.userProfile = profile;
+    try {
+      localStorage.setItem('fermegest_user_profile', JSON.stringify(profile));
+      localStorage.setItem('fermegest_onboarding_completed', 'true');
+    } catch (err) {}
+
+    this.saveState();
+    this.closeModal('modalOnboarding');
+    this.updateUserHeaderUI();
+    this.switchTab('dashboard');
+
+    // Open second step: Auth / Cloud Backup prompt
+    setTimeout(() => {
+      this.openAuthPromptModal();
+    }, 400);
+  },
+
+  openAuthPromptModal() {
+    const modal = document.getElementById('modalAuthPrompt');
+    if (!modal) return;
+
+    const name = (appState.userProfile && appState.userProfile.name) || '';
+    const subtitleEl = document.getElementById('authPromptSubtitle');
+    if (subtitleEl) {
+      const tpl = this.t('auth_prompt_welcome') || 'Ravi de vous compter parmi nous, <strong>{name}</strong> !';
+      subtitleEl.innerHTML = tpl.replace('{name}', this.escapeHtml(name));
+    }
+
+    modal.classList.remove('hidden');
+  },
+
+  showGuestWarningConfirmation() {
+    const modal = document.getElementById('modalGuestWarning');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  confirmGuestMode() {
+    this.closeModal('modalGuestWarning');
+    this.closeModal('modalAuthPrompt');
+    try {
+      localStorage.setItem('fermegest_guest_acknowledged', 'true');
+      localStorage.setItem('fermegest_guest_mode', 'true');
+    } catch (e) {}
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const msg = isAr 
+      ? '👤 تم تفعيل وضع الضيف. يمكنك ربط حسابك لاحقاً من ملفك الشخصي لتأمين المزرعة.' 
+      : (isEn ? '👤 Guest Mode active. You can link your account anytime to back up your farm.' : '👤 Mode Invité activé. Vous pouvez lier votre compte à tout moment depuis votre profil pour sauvegarder votre élevage.');
+    this.showToast(msg);
+
+    this.updateUserHeaderUI();
+    if (window.appAuth && typeof appAuth.updateUI === 'function') {
+      appAuth.updateUI();
+    }
+  },
+
+  openEditProfileModal() {
+    const modal = document.getElementById('modalEditProfile');
+    if (!modal) return;
+
+    const profile = appState.userProfile || (function() {
+      try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+    })();
+
+    const nameInput = document.getElementById('editProfileNameInput');
+    const ageInput = document.getElementById('editProfileAgeInput');
+    const hiddenAvatar = document.getElementById('editProfileSelectedAvatar');
+    const grid = document.getElementById('editProfileAvatarGrid');
+
+    const curAvatar = profile ? (profile.avatar || 'avatar-m1') : 'avatar-m1';
+    if (nameInput) nameInput.value = profile ? (profile.name || '') : '';
+    if (ageInput) ageInput.value = profile ? (profile.age || '') : '';
+    if (hiddenAvatar) hiddenAvatar.value = curAvatar;
+
+    if (grid && window.AppAvatars) {
+      grid.innerHTML = window.AppAvatars.list.map(a => {
+        const isSel = (a.id === curAvatar);
+        return `
+          <div class="avatar-card-item ${isSel ? 'selected' : ''}" 
+               data-avatar-id="${a.id}" 
+               onclick="app.selectEditProfileAvatar('${a.id}')"
+               title="${a.defaultName}">
+            <div class="avatar-card-svg-wrap">
+              ${window.AppAvatars.getSvg(a.id, 52)}
+              <div class="avatar-card-check">✓</div>
+            </div>
+            <div class="avatar-card-name">${a.defaultName}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    modal.classList.remove('hidden');
+  },
+
+  selectEditProfileAvatar(avatarId) {
+    const hidden = document.getElementById('editProfileSelectedAvatar');
+    if (hidden) hidden.value = avatarId;
+
+    const grid = document.getElementById('editProfileAvatarGrid');
+    if (grid) {
+      grid.querySelectorAll('.avatar-card-item').forEach(el => {
+        if (el.getAttribute('data-avatar-id') === avatarId) {
+          el.classList.add('selected');
+        } else {
+          el.classList.remove('selected');
+        }
+      });
+    }
+  },
+
+  handleSaveProfileEdit(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+    const nameInput = document.getElementById('editProfileNameInput');
+    const ageInput = document.getElementById('editProfileAgeInput');
+    const hiddenAvatar = document.getElementById('editProfileSelectedAvatar');
+
+    const name = (nameInput?.value || '').trim();
+    const age = parseInt(ageInput?.value, 10);
+    const avatarId = hiddenAvatar?.value || 'avatar-m1';
+
+    if (!name || isNaN(age) || age < 10 || age > 100) {
+      this.showToast('Veuillez renseigner un nom et un âge valide.');
+      return;
+    }
+
+    const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
+    const profile = {
+      name: name,
+      age: age,
+      avatar: avatarId,
+      gender: avatar ? avatar.gender : 'male',
+      updatedAt: Date.now()
+    };
+
+    appState.userProfile = profile;
+    try {
+      localStorage.setItem('fermegest_user_profile', JSON.stringify(profile));
+    } catch (err) {}
+
+    this.saveState();
+    this.closeModal('modalEditProfile');
+    this.updateUserHeaderUI();
+
+    if (window.appAuth) {
+      if (typeof appAuth.openProfileModal === 'function') {
+        appAuth.openProfileModal();
+      }
+      if (typeof appAuth.pushData === 'function' && appAuth.currentUser) {
+        appAuth.pushData(false, true);
+      }
+    }
+
+    const isAr = appState.lang === 'ar';
+    this.showToast(isAr ? '✅ تم تحديث بياناتك بنجاح !' : '✅ Profil mis à jour avec succès !');
+  },
+
+  updateUserHeaderUI() {
+    const profile = appState.userProfile || (function() {
+      try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+    })();
+
+    if (!profile) return;
+
+    const avatarId = profile.avatar || 'avatar-m1';
+    const name = profile.name || '';
+
+    // Desktop header user name and avatar
+    const headerUserText = document.getElementById('headerUserText');
+    const headerUserInitial = document.getElementById('headerUserInitial');
+    if (headerUserText && name) {
+      headerUserText.textContent = name;
+    }
+    if (headerUserInitial && window.AppAvatars) {
+      headerUserInitial.innerHTML = window.AppAvatars.getSvg(avatarId, 28);
+    }
+
+    // Mobile header button
+    const mobileUserInitial = document.getElementById('mobileUserInitial');
+    if (mobileUserInitial && window.AppAvatars) {
+      mobileUserInitial.innerHTML = window.AppAvatars.getSvg(avatarId, 32);
+    }
+
+    // Mobile drawer profile avatar and name if appAuth exists
+    if (window.appAuth && typeof appAuth.updateUI === 'function') {
+      appAuth.updateUI();
     }
   },
 

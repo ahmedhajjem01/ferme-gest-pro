@@ -256,6 +256,31 @@
     async handleAuthStateChange(event, session) {
       if (session && session.user) {
         this.currentUser = session.user;
+
+        // Connect userProfile (Name, Age, Avatar) to Supabase user metadata
+        const profile = (window.appState && window.appState.userProfile) || (function() {
+          try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+        })();
+        if (profile && this.client && this.client.auth) {
+          try {
+            this.client.auth.updateUser({
+              data: {
+                full_name: profile.name,
+                age: profile.age,
+                avatar: profile.avatar,
+                farmer_name: profile.name
+              }
+            }).catch(() => {});
+          } catch (e) {}
+        }
+
+        // Close auth prompt modals
+        if (window.app && typeof app.closeModal === 'function') {
+          app.closeModal('modalAuthPrompt');
+          app.closeModal('modalGuestWarning');
+          app.closeModal('modalAuth');
+        }
+
         this.updateUI();
         await this.syncNow(false);
         this.subscribeRealtime();
@@ -546,6 +571,9 @@
           currency: state.currency || 'TND',
           lang: state.lang || 'fr',
           theme: state.theme || 'dark',
+          userProfile: state.userProfile || (function() {
+            try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+          })(),
           eggStock: Number(state.eggStock) || 0,
           eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
           feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
@@ -631,6 +659,9 @@
         currency: state.currency || 'TND',
         lang: state.lang || 'fr',
         theme: state.theme || 'dark',
+        userProfile: state.userProfile || (function() {
+          try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+        })(),
         eggStock: Number(state.eggStock) || 0,
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
@@ -789,6 +820,18 @@
         state.lang = cloudData.lang;
       }
 
+      // Restore userProfile if provided by cloud
+      if (cloudData.userProfile && typeof cloudData.userProfile === 'object') {
+        const localProf = state.userProfile;
+        if (!localProf || (cloudData.userProfile.updatedAt && Number(cloudData.userProfile.updatedAt) >= Number(localProf.updatedAt || 0))) {
+          state.userProfile = cloudData.userProfile;
+          try {
+            localStorage.setItem('fermegest_user_profile', JSON.stringify(cloudData.userProfile));
+            localStorage.setItem('fermegest_onboarding_completed', 'true');
+          } catch (e) {}
+        }
+      }
+
       // Egg & feed stock handling
       if (cloudData.eggStock !== undefined) {
         const cloudEggs = Number(cloudData.eggStock) || 0;
@@ -932,8 +975,16 @@
       const drawerAuthSection = document.getElementById('drawerAuthSection');
 
       const isAuth = !!this.currentUser;
+      const profile = (window.appState && window.appState.userProfile) || (function() {
+        try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+      })();
+
       const email = this.currentUser ? (this.currentUser.email || 'Utilisateur') : '';
-      const initial = email ? email[0].toUpperCase() : 'U';
+      const farmerName = profile ? profile.name : (email ? email.split('@')[0] : 'Éleveur');
+      const avatarId = profile ? (profile.avatar || 'avatar-m1') : 'avatar-m1';
+      const initial = email ? email[0].toUpperCase() : '👤';
+      const hasAvatar = typeof window.AppAvatars !== 'undefined';
+      const avatarSvgSmall = hasAvatar ? window.AppAvatars.getSvg(avatarId, 32) : initial;
 
       if (headerAuthBtn) {
         headerAuthBtn.style.display = isAuth ? 'none' : 'inline-flex';
@@ -941,10 +992,16 @@
       if (headerUserChip) {
         headerUserChip.style.display = isAuth ? 'inline-flex' : 'none';
         if (headerUserText) {
-          headerUserText.textContent = email.split('@')[0];
+          headerUserText.textContent = farmerName;
         }
         const initialEl = document.getElementById('headerUserInitial');
-        if (initialEl) initialEl.textContent = initial;
+        if (initialEl) {
+          if (hasAvatar) {
+            initialEl.innerHTML = window.AppAvatars.getSvg(avatarId, 28);
+          } else {
+            initialEl.textContent = initial;
+          }
+        }
       }
 
       // Mobile header profile button update
@@ -953,13 +1010,17 @@
       const mobileHeaderUserBtn = document.getElementById('mobileHeaderUserBtn');
 
       if (mobileUserInitial) {
-        mobileUserInitial.textContent = isAuth ? initial : '👤';
+        if (hasAvatar) {
+          mobileUserInitial.innerHTML = window.AppAvatars.getSvg(avatarId, 32);
+        } else {
+          mobileUserInitial.textContent = isAuth ? initial : '👤';
+        }
       }
       if (mobileUserSyncDot) {
         mobileUserSyncDot.style.display = isAuth ? 'block' : 'none';
       }
       if (mobileHeaderUserBtn) {
-        mobileHeaderUserBtn.title = isAuth ? `Mon Compte (${email})` : 'Connexion';
+        mobileHeaderUserBtn.title = isAuth ? `${farmerName} (${email})` : `${farmerName} (Mode Invité)`;
         if (isAuth) {
           mobileHeaderUserBtn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1))';
           mobileHeaderUserBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
@@ -975,18 +1036,25 @@
           const roleText = role === 'partner' ? '🤝 Associé' : '👑 Propriétaire';
           drawerAuthSection.innerHTML = `
             <div class="drawer-user-card" onclick="if(window.app && app.closeMobileMenu) app.closeMobileMenu(); appAuth.openProfileModal();">
-              <div class="user-avatar">${initial}</div>
+              <div class="user-avatar" style="width:42px; height:42px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;">${avatarSvgSmall}</div>
               <div class="user-details">
-                <span class="user-email-text">${email}</span>
+                <span class="user-email-text" style="font-weight:700;">${farmerName}</span>
                 <span class="user-sync-status">🟢 En ligne &bull; ${roleText}</span>
               </div>
             </div>
           `;
         } else {
           drawerAuthSection.innerHTML = `
-            <button type="button" class="btn btn-primary btn-full drawer-btn" onclick="if(window.app && app.closeMobileMenu) app.closeMobileMenu(); appAuth.openModal();">
-              <span>👤</span>
-              <span>Se Connecter / Synchroniser</span>
+            <div class="drawer-user-card" onclick="if(window.app && app.closeMobileMenu) app.closeMobileMenu(); appAuth.openProfileModal();">
+              <div class="user-avatar" style="width:42px; height:42px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;">${avatarSvgSmall}</div>
+              <div class="user-details">
+                <span class="user-email-text" style="font-weight:700;">${farmerName}</span>
+                <span class="user-sync-status" style="color: #f59e0b; font-size:0.75rem;">⚠️ Mode Invité &bull; Non sauvegardé</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-full drawer-btn" style="margin-top: 8px;" onclick="if(window.app && app.closeMobileMenu) app.closeMobileMenu(); app.openAuthPromptModal();">
+              <span>☁️</span>
+              <span>Sauvegarder dans le Cloud</span>
             </button>
           `;
         }
@@ -1272,6 +1340,9 @@
         currency: state.currency || 'TND',
         lang: state.lang || 'fr',
         theme: state.theme || 'dark',
+        userProfile: state.userProfile || (function() {
+          try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+        })(),
         eggStock: Number(state.eggStock) || 0,
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
@@ -1397,10 +1468,44 @@
       const timeEl = document.getElementById('profileModalLastSync');
 
       const isAuth = !!this.currentUser;
-      const email = isAuth ? (this.currentUser.email || 'Utilisateur') : 'Mode Local (Invité)';
-      const initial = isAuth && this.currentUser.email ? this.currentUser.email[0].toUpperCase() : '👤';
+      const profile = (window.appState && window.appState.userProfile) || (function() {
+        try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
+      })();
 
-      if (avatarEl) avatarEl.textContent = initial;
+      const email = isAuth ? (this.currentUser.email || 'Utilisateur') : (profile ? `${profile.name} (Mode Invité)` : 'Mode Local (Invité)');
+      const farmerName = profile ? profile.name : (isAuth && this.currentUser.email ? this.currentUser.email.split('@')[0] : 'Éleveur');
+      const age = profile ? profile.age : null;
+      const avatarId = profile ? (profile.avatar || 'avatar-m1') : 'avatar-m1';
+      const isFemale = profile ? profile.gender === 'female' : false;
+      const roleText = window.app && typeof app.t === 'function' 
+        ? (profile && profile.avatar && window.AppAvatars ? app.t(window.AppAvatars.getById(avatarId).roleKey) : (isFemale ? 'Éleveuse' : 'Éleveur'))
+        : (isFemale ? 'Éleveuse' : 'Éleveur');
+
+      const farmerNameEl = document.getElementById('profileModalFarmerName');
+      if (farmerNameEl) farmerNameEl.textContent = farmerName;
+
+      const ageAndRoleEl = document.getElementById('profileModalAgeAndRole');
+      if (ageAndRoleEl) {
+        ageAndRoleEl.textContent = age ? `${age} ans • ${roleText} 🌾` : `${roleText} 🌾`;
+      }
+
+      if (avatarEl) {
+        if (window.AppAvatars) {
+          avatarEl.innerHTML = window.AppAvatars.getSvg(avatarId, 64);
+        } else {
+          avatarEl.textContent = isAuth && this.currentUser.email ? this.currentUser.email[0].toUpperCase() : '👤';
+        }
+      }
+
+      const guestBanner = document.getElementById('profileGuestWarningBanner');
+      if (guestBanner) {
+        if (!isAuth) {
+          guestBanner.classList.remove('hidden');
+        } else {
+          guestBanner.classList.add('hidden');
+        }
+      }
+
       if (emailEl) emailEl.textContent = email;
       if (timeEl) {
         timeEl.textContent = this.lastSyncedAt
