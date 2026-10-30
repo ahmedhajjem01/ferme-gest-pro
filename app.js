@@ -209,10 +209,14 @@ const app = {
     this.renderAll();
     document.querySelectorAll('#animalPortionBanner, [id*="PortionBanner"]').forEach(el => el.remove());
 
-    // First-time User Onboarding check
+    // First-time User Onboarding & Animal Types check
     const onboardingDone = localStorage.getItem('fermegest_onboarding_completed') === 'true';
+    const animalsDone = localStorage.getItem('fermegest_animals_selection_completed') === 'true';
     if (!onboardingDone) {
       this.openOnboardingModal();
+    } else if (!animalsDone) {
+      this.updateUserHeaderUI();
+      setTimeout(() => this.openAnimalSelectionModal(), 400);
     } else {
       this.updateUserHeaderUI();
     }
@@ -1069,6 +1073,123 @@ const app = {
     if (window.appAuth && typeof appAuth.updateUI === 'function') {
       appAuth.updateUI();
     }
+
+    // Step 3: Open animal selection modal after guest confirmation
+    setTimeout(() => {
+      this.openAnimalSelectionModal();
+    }, 400);
+  },
+
+  openAnimalSelectionModal(isEditMode = false) {
+    const modal = document.getElementById('modalAnimalSelection');
+    if (!modal) return;
+
+    this.isEditingAnimalTypes = !!isEditMode;
+
+    const currentTypes = (appState.userProfile && Array.isArray(appState.userProfile.managedAnimals) && appState.userProfile.managedAnimals.length > 0)
+      ? appState.userProfile.managedAnimals
+      : (function() {
+          try {
+            const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
+            return Array.isArray(raw) && raw.length > 0 ? raw : ['poultry'];
+          } catch(e) { return ['poultry']; }
+        })();
+
+    this.tempSelectedAnimalTypes = [...currentTypes];
+    this.updateAnimalTypesSelectionUI();
+
+    const err = document.getElementById('animalSelectionError');
+    if (err) err.classList.add('hidden');
+
+    this.applyTranslations();
+    modal.classList.remove('hidden');
+  },
+
+  toggleAnimalTypeSelection(animalType) {
+    if (!this.tempSelectedAnimalTypes) {
+      this.tempSelectedAnimalTypes = ['poultry'];
+    }
+
+    const idx = this.tempSelectedAnimalTypes.indexOf(animalType);
+    if (idx > -1) {
+      if (this.tempSelectedAnimalTypes.length > 1) {
+        this.tempSelectedAnimalTypes.splice(idx, 1);
+      } else {
+        const err = document.getElementById('animalSelectionError');
+        if (err) {
+          err.classList.remove('hidden');
+          setTimeout(() => err.classList.add('hidden'), 2500);
+        }
+        return;
+      }
+    } else {
+      this.tempSelectedAnimalTypes.push(animalType);
+    }
+
+    const err = document.getElementById('animalSelectionError');
+    if (err) err.classList.add('hidden');
+
+    this.updateAnimalTypesSelectionUI();
+  },
+
+  updateAnimalTypesSelectionUI() {
+    const selected = this.tempSelectedAnimalTypes || ['poultry'];
+    const cards = document.querySelectorAll('#animalTypesSelectionGrid .animal-type-card');
+    cards.forEach(card => {
+      const type = card.getAttribute('data-animal-type');
+      if (selected.includes(type)) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    });
+  },
+
+  saveAnimalTypeSelection() {
+    const selected = this.tempSelectedAnimalTypes || ['poultry'];
+    if (!Array.isArray(selected) || selected.length === 0) {
+      const err = document.getElementById('animalSelectionError');
+      if (err) err.classList.remove('hidden');
+      return;
+    }
+
+    if (!appState.userProfile) appState.userProfile = {};
+    appState.userProfile.managedAnimals = [...selected];
+
+    try {
+      localStorage.setItem('fermegest_managed_animal_types', JSON.stringify(selected));
+      localStorage.setItem('fermegest_animals_selection_completed', 'true');
+      localStorage.setItem('fermegest_user_profile', JSON.stringify(appState.userProfile));
+    } catch(e) {}
+
+    this.saveState();
+    this.closeModal('modalAnimalSelection');
+    this.updateUserHeaderUI();
+
+    if (window.appAuth && typeof appAuth.updateUserProfileMetadata === 'function') {
+      appAuth.updateUserProfileMetadata(appState.userProfile);
+    }
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const msg = isAr 
+      ? '✅ تم حفظ أنواع الحيوانات بنجاح !' 
+      : (isEn ? '✅ Managed animal types saved successfully!' : '✅ Types d\'animaux enregistrés avec succès !');
+    this.showToast(msg);
+  },
+
+  getManagedAnimalsBadgesHtml(managedArray) {
+    const list = Array.isArray(managedArray) && managedArray.length > 0 ? managedArray : ['poultry'];
+    const map = {
+      poultry: { icon: '🐔', label: this.t('animal_cat_poultry_title') || 'Volailles' },
+      cattle: { icon: '🐄', label: this.t('animal_cat_cattle_title') || 'Bovins' },
+      sheep: { icon: '🐑', label: this.t('animal_cat_sheep_title') || 'Ovins & Caprins' },
+      equine: { icon: '🐎', label: this.t('animal_cat_equine_title') || 'Équidés' }
+    };
+    return list.map(t => {
+      const item = map[t] || { icon: '🐾', label: t };
+      return `<span class="managed-animal-badge">${item.icon} ${item.label}</span>`;
+    }).join(' ');
   },
 
   openEditProfileModal() {
@@ -1115,6 +1236,14 @@ const app = {
           </div>
         `;
       }).join('');
+    }
+
+    const managedEl = document.getElementById('editProfileManagedAnimalsList');
+    if (managedEl) {
+      const managed = (profile && profile.managedAnimals) || (function() {
+        try { return JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null'); } catch(e) { return null; }
+      })() || ['poultry'];
+      managedEl.innerHTML = this.getManagedAnimalsBadgesHtml(managed);
     }
 
     this.applyTranslations();

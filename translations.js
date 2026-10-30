@@ -755,7 +755,23 @@ const TRANSLATIONS = {
     profile_btn_edit: "✏️ Modifier Profil",
     profile_guest_badge: "👤 Mode Invité (Non synchronisé)",
     profile_guest_warning_box: "⚠️ Vous êtes en mode invité. Vos données ne sont pas sauvegardées en ligne.",
-    profile_btn_connect_cloud: "☁️ Lier mon compte pour sauvegarder"
+    profile_btn_connect_cloud: "☁️ Lier mon compte pour sauvegarder",
+
+    // Animal Types Selection (Multi-select)
+    animals_select_title: "Quels types d'animaux voulez-vous gérer ? 🐾",
+    animals_select_subtitle: "Sélectionnez un ou plusieurs types d'élevage pour personnaliser votre espace (choix multiple) :",
+    animal_cat_poultry_title: "Volailles",
+    animal_cat_poultry_desc: "Poulets de chair, pondeuses, canards, dindes, cailles...",
+    animal_cat_cattle_title: "Bovins",
+    animal_cat_cattle_desc: "Vaches laitières, veaux, taureaux d'engraissement...",
+    animal_cat_sheep_title: "Ovins & Caprins",
+    animal_cat_sheep_desc: "Moutons, brebis, agneaux, chèvres...",
+    animal_cat_equine_title: "Équidés",
+    animal_cat_equine_desc: "Chevaux, juments, poulains, poneys, ânes...",
+    animal_select_btn_confirm: "Valider et Commencer 🚜",
+    animal_select_err_min_one: "Veuillez sélectionner au moins un type d'animal.",
+    profile_managed_animals_lbl: "Élevages gérés :",
+    profile_btn_edit_animals: "🐾 Modifier mes élevages"
   },
 
   ar: {
@@ -1509,7 +1525,23 @@ const TRANSLATIONS = {
     profile_btn_edit: "✏️ تعديل الملف",
     profile_guest_badge: "👤 وضع الضيف (غير متزامن)",
     profile_guest_warning_box: "⚠️ أنت تعمل في وضع الضيف. بياناتك غير محفوظة في السحابة.",
-    profile_btn_connect_cloud: "☁️ ربط حسابي لحفظ المزرعة"
+    profile_btn_connect_cloud: "☁️ ربط حسابي لحفظ المزرعة",
+
+    // Animal Types Selection (Multi-select)
+    animals_select_title: "ما هي أنواع الحيوانات التي ترغب في إدارتها ؟ 🐾",
+    animals_select_subtitle: "حدد نوعاً واحداً أو أكثر لتخصيص مساحة مزرعتك (اختيار متعدد) :",
+    animal_cat_poultry_title: "الدواجن",
+    animal_cat_poultry_desc: "دجاج لحم، بياض، بط، حبش، سمان...",
+    animal_cat_cattle_title: "الأبقار والمواشي",
+    animal_cat_cattle_desc: "أبقار حلوب، عجول، تسمين...",
+    animal_cat_sheep_title: "الأغنام والماعز",
+    animal_cat_sheep_desc: "خراف، نعاج، كباش، ماعز...",
+    animal_cat_equine_title: "الخيول والفروسية",
+    animal_cat_equine_desc: "خيول، أفراس، أمهار، بوني، حمير...",
+    animal_select_btn_confirm: "تأكيد وبدء الاستخدام 🚜",
+    animal_select_err_min_one: "الرجاء اختيار نوع واحد على الأقل من الحيوانات.",
+    profile_managed_animals_lbl: "أنواع التربية المُدارة :",
+    profile_btn_edit_animals: "🐾 تعديل أنواع التربية"
   },
 
   en: {
@@ -2263,7 +2295,23 @@ const TRANSLATIONS = {
     profile_btn_edit: "✏️ Edit Profile",
     profile_guest_badge: "👤 Guest Mode (Not synced)",
     profile_guest_warning_box: "⚠️ You are in guest mode. Your data is not backed up online.",
-    profile_btn_connect_cloud: "☁️ Link account to backup"
+    profile_btn_connect_cloud: "☁️ Link account to backup",
+
+    // Animal Types Selection (Multi-select)
+    animals_select_title: "Which types of animals do you want to manage? 🐾",
+    animals_select_subtitle: "Select one or more livestock types to customize your farm (multi-select):",
+    animal_cat_poultry_title: "Poultry",
+    animal_cat_poultry_desc: "Broilers, layers, ducks, turkeys, quails...",
+    animal_cat_cattle_title: "Cattle",
+    animal_cat_cattle_desc: "Dairy cows, calves, beef cattle...",
+    animal_cat_sheep_title: "Sheep & Goats",
+    animal_cat_sheep_desc: "Sheep, ewes, lambs, goats...",
+    animal_cat_equine_title: "Equine",
+    animal_cat_equine_desc: "Horses, mares, foals, ponies, donkeys...",
+    animal_select_btn_confirm: "Confirm & Get Started 🚜",
+    animal_select_err_min_one: "Please select at least one animal type.",
+    profile_managed_animals_lbl: "Managed Livestock:",
+    profile_btn_edit_animals: "🐾 Edit Managed Livestock"
   }
 };
 

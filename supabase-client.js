@@ -279,6 +279,14 @@
           app.closeModal('modalAuthPrompt');
           app.closeModal('modalGuestWarning');
           app.closeModal('modalAuth');
+
+          // Open animal selection if not completed yet
+          const animalsDone = localStorage.getItem('fermegest_animals_selection_completed') === 'true';
+          if (!animalsDone && typeof app.openAnimalSelectionModal === 'function') {
+            setTimeout(() => {
+              app.openAnimalSelectionModal();
+            }, 400);
+          }
         }
 
         this.updateUI();
@@ -1488,6 +1496,14 @@
       const ageAndRoleEl = document.getElementById('profileModalAgeAndRole');
       if (ageAndRoleEl) {
         ageAndRoleEl.textContent = age ? `${age} ${yearsText} • ${roleText} 🌾` : `${roleText} 🌾`;
+      }
+
+      const animalsEl = document.getElementById('profileModalManagedAnimals');
+      if (animalsEl && window.app && typeof app.getManagedAnimalsBadgesHtml === 'function') {
+        const managed = (profile && profile.managedAnimals) || (function() {
+          try { return JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null'); } catch(e) { return null; }
+        })();
+        animalsEl.innerHTML = app.getManagedAnimalsBadgesHtml(managed);
       }
 
       if (avatarEl) {

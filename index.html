@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=76">
+  <link rel="stylesheet" href="styles.css?v=77">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -2579,9 +2579,13 @@
             <div class="profile-sync-time">
               <span data-i18n="profile_last_sync_lbl">Dernière synchro :</span> <span id="profileModalLastSync">À l'instant</span>
             </div>
-            <div style="margin-top: 8px;">
+            <div id="profileModalManagedAnimals" class="profile-managed-animals-row" style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
+            <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
               <button type="button" class="btn btn-xs btn-outline profile-edit-btn" onclick="app.openEditProfileModal()" data-i18n="profile_btn_edit">
                 ✏️ Modifier Profil
+              </button>
+              <button type="button" class="btn btn-xs btn-outline profile-edit-btn" onclick="if(window.appAuth) appAuth.closeProfileModal(); app.openAnimalSelectionModal(true);" data-i18n="profile_btn_edit_animals">
+                🐾 Modifier mes élevages
               </button>
             </div>
           </div>
@@ -2850,6 +2854,73 @@
     </div>
   </div>
 
+  <!-- Modal 3.5: Sélection des Types d'Animaux Gérés (Choix Multiple) -->
+  <div id="modalAnimalSelection" class="modal-overlay hidden" data-backdrop="static" style="z-index: 10005;">
+    <div class="modal-card animal-selection-modal-card">
+      <div class="animal-selection-header">
+        <div class="animal-selection-icon-badge">🐾</div>
+        <h2 class="animal-selection-title" data-i18n="animals_select_title">Quels types d'animaux voulez-vous gérer ? 🐾</h2>
+        <p class="animal-selection-subtitle" data-i18n="animals_select_subtitle">
+          Sélectionnez un ou plusieurs types d'élevage pour personnaliser votre espace (choix multiple) :
+        </p>
+      </div>
+
+      <div class="animal-selection-body">
+        <div class="animal-types-grid" id="animalTypesSelectionGrid">
+          <!-- 1. Volailles -->
+          <div class="animal-type-card selected" data-animal-type="poultry" onclick="app.toggleAnimalTypeSelection('poultry')">
+            <div class="animal-type-checkbox">✓</div>
+            <div class="animal-type-icon">🐔</div>
+            <div class="animal-type-info">
+              <div class="animal-type-name" data-i18n="animal_cat_poultry_title">Volailles</div>
+              <div class="animal-type-desc" data-i18n="animal_cat_poultry_desc">Poulets, canards, dindes, cailles...</div>
+            </div>
+          </div>
+
+          <!-- 2. Bovins -->
+          <div class="animal-type-card" data-animal-type="cattle" onclick="app.toggleAnimalTypeSelection('cattle')">
+            <div class="animal-type-checkbox">✓</div>
+            <div class="animal-type-icon">🐄</div>
+            <div class="animal-type-info">
+              <div class="animal-type-name" data-i18n="animal_cat_cattle_title">Bovins</div>
+              <div class="animal-type-desc" data-i18n="animal_cat_cattle_desc">Vaches laitières, veaux, engraissement...</div>
+            </div>
+          </div>
+
+          <!-- 3. Ovins & Caprins -->
+          <div class="animal-type-card" data-animal-type="sheep" onclick="app.toggleAnimalTypeSelection('sheep')">
+            <div class="animal-type-checkbox">✓</div>
+            <div class="animal-type-icon">🐑</div>
+            <div class="animal-type-info">
+              <div class="animal-type-name" data-i18n="animal_cat_sheep_title">Ovins & Caprins</div>
+              <div class="animal-type-desc" data-i18n="animal_cat_sheep_desc">Moutons, brebis, agneaux, chèvres...</div>
+            </div>
+          </div>
+
+          <!-- 4. Équidés -->
+          <div class="animal-type-card" data-animal-type="equine" onclick="app.toggleAnimalTypeSelection('equine')">
+            <div class="animal-type-checkbox">✓</div>
+            <div class="animal-type-icon">🐎</div>
+            <div class="animal-type-info">
+              <div class="animal-type-name" data-i18n="animal_cat_equine_title">Équidés</div>
+              <div class="animal-type-desc" data-i18n="animal_cat_equine_desc">Chevaux, juments, poulains, ânes...</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="animalSelectionError" class="onboarding-error-msg hidden" style="text-align: center; margin-top: 10px;" data-i18n="animal_select_err_min_one">
+          Veuillez sélectionner au moins un type d'animal.
+        </div>
+
+        <div class="animal-selection-actions" style="margin-top: 1.5rem;">
+          <button type="button" class="btn btn-primary btn-lg btn-full bold animal-selection-submit-btn" onclick="app.saveAnimalTypeSelection()">
+            <span data-i18n="animal_select_btn_confirm">Valider et Commencer 🚜</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal 4: Modifier mon Profil Éleveur -->
   <div id="modalEditProfile" class="modal-overlay hidden" style="z-index: 10006;">
     <div class="modal-card" style="max-width: 520px;">
@@ -2881,6 +2952,13 @@
             <div id="editProfileAvatarGrid" class="onboarding-avatar-grid compact"></div>
             <input type="hidden" id="editProfileSelectedAvatar" value="avatar-m1">
           </div>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label class="form-label" data-i18n="profile_managed_animals_lbl">Élevages gérés :</label>
+            <div id="editProfileManagedAnimalsList" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;"></div>
+            <button type="button" class="btn btn-sm btn-outline" onclick="app.closeModal('modalEditProfile'); app.openAnimalSelectionModal(true);" data-i18n="profile_btn_edit_animals">
+              🐾 Modifier mes élevages
+            </button>
+          </div>
           <div class="modal-actions" style="margin-top: 1.25rem;">
             <button type="button" class="btn btn-outline" onclick="app.closeModal('modalEditProfile')" data-i18n="btn_cancel">Annuler</button>
             <button type="submit" class="btn btn-emerald bold" data-i18n="btn_save">Enregistrer</button>
@@ -2894,11 +2972,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="mobile-bridge.js"></script>
-  <script src="avatars.js?v=112"></script>
+  <script src="avatars.js?v=113"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=112"></script>
-  <script src="translations.js?v=112"></script>
-  <script src="app.js?v=112"></script>
+  <script src="supabase-client.js?v=113"></script>
+  <script src="translations.js?v=113"></script>
+  <script src="app.js?v=113"></script>
 </body>
 </html>
