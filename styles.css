@@ -4144,13 +4144,52 @@ label {
 /* ========================================================
    AUTH PROMPT & GUEST WARNING MODALS
    ======================================================== */
+#modalAuthPrompt.modal-overlay:not(.hidden),
+#modalGuestWarning.modal-overlay:not(.hidden) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 1rem 0.75rem !important;
+}
+
+#modalAuthPrompt.hidden,
+#modalGuestWarning.hidden {
+  display: none !important;
+}
+
 .auth-prompt-modal-card {
   max-width: 480px !important;
   width: 95% !important;
+  margin: auto !important;
   border-radius: 20px !important;
   background: var(--bg-surface, #1e293b) !important;
-  padding: 1.75rem !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5) !important;
+  padding: 1.75rem 1.5rem !important;
   text-align: center;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 2.5rem) !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.5) rgba(15, 23, 42, 0.4);
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.auth-prompt-modal-card::-webkit-scrollbar {
+  width: 6px;
+}
+.auth-prompt-modal-card::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 8px;
+}
+.auth-prompt-modal-card::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.5);
+  border-radius: 8px;
+}
+.auth-prompt-modal-card::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
 }
 .auth-prompt-icon-badge {
   font-size: 2.5rem;
@@ -4220,11 +4259,16 @@ label {
 .guest-warning-card {
   max-width: 460px !important;
   width: 95% !important;
+  margin: auto !important;
   border-radius: 20px !important;
   background: var(--bg-surface, #1e293b) !important;
   border: 1.5px solid rgba(239, 68, 68, 0.4) !important;
   padding: 1.75rem !important;
   box-shadow: 0 25px 60px rgba(239, 68, 68, 0.25) !important;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 2.5rem) !important;
+  box-sizing: border-box !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 .guest-warning-header {
   text-align: center;
@@ -4322,6 +4366,11 @@ label {
   padding: 1.75rem !important;
   box-sizing: border-box !important;
   margin: auto !important;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 2.5rem) !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.5) rgba(15, 23, 42, 0.4);
 }
 
 .animal-selection-header {
@@ -4489,5 +4538,67 @@ label {
   }
   .animal-selection-modal-card {
     padding: 1.25rem !important;
+  }
+}
+
+@media (max-width: 480px), (max-height: 720px) {
+  .auth-prompt-modal-card {
+    padding: 1.25rem 1rem 1.5rem !important;
+    max-height: calc(100vh - 1.5rem) !important;
+    width: 96% !important;
+  }
+  .auth-prompt-icon-badge {
+    font-size: 2rem !important;
+    margin-bottom: 0.35rem !important;
+  }
+  .auth-prompt-title {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.35rem !important;
+  }
+  .auth-prompt-subtitle {
+    font-size: 0.82rem !important;
+    margin-bottom: 0.85rem !important;
+  }
+  .auth-benefits-box {
+    padding: 0.65rem 0.85rem !important;
+    margin-bottom: 0.95rem !important;
+  }
+  .benefit-item {
+    font-size: 0.78rem !important;
+    padding: 0.25rem 0 !important;
+  }
+  .auth-prompt-social-btn {
+    padding: 0.65rem 0.85rem !important;
+    margin-bottom: 0.6rem !important;
+    font-size: 0.88rem !important;
+  }
+  .auth-divider {
+    margin: 0.7rem 0 !important;
+  }
+  .auth-guest-btn {
+    padding: 0.65rem 0.85rem !important;
+    font-size: 0.84rem !important;
+  }
+
+  .guest-warning-card {
+    padding: 1.25rem 1rem !important;
+    max-height: calc(100vh - 1.5rem) !important;
+    width: 96% !important;
+  }
+  .guest-warning-icon {
+    font-size: 2.2rem !important;
+  }
+  .guest-warning-title {
+    font-size: 1.15rem !important;
+  }
+  .guest-warning-text {
+    font-size: 0.82rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .animal-selection-modal-card {
+    padding: 1.25rem 1rem !important;
+    max-height: calc(100vh - 1.5rem) !important;
+    width: 96% !important;
   }
 }
