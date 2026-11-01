@@ -4412,6 +4412,10 @@ label {
   gap: 0.85rem;
 }
 
+.animal-type-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .animal-type-card {
   position: relative;
   background: rgba(255, 255, 255, 0.03);

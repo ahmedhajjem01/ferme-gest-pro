@@ -1190,15 +1190,15 @@ const app = {
     this.isEditingAnimalTypes = !!isEditMode;
 
     const currentTypes = (appState.userProfile && Array.isArray(appState.userProfile.managedAnimals) && appState.userProfile.managedAnimals.length > 0)
-      ? appState.userProfile.managedAnimals
+      ? appState.userProfile.managedAnimals.filter(t => t !== 'equine')
       : (function() {
           try {
             const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
-            return Array.isArray(raw) && raw.length > 0 ? raw : ['poultry'];
+            return Array.isArray(raw) && raw.length > 0 ? raw.filter(t => t !== 'equine') : ['poultry'];
           } catch(e) { return ['poultry']; }
         })();
 
-    this.tempSelectedAnimalTypes = [...currentTypes];
+    this.tempSelectedAnimalTypes = currentTypes.length > 0 ? [...currentTypes] : ['poultry'];
     this.updateAnimalTypesSelectionUI();
 
     const err = document.getElementById('animalSelectionError');
@@ -1282,12 +1282,11 @@ const app = {
   },
 
   getManagedAnimalsBadgesHtml(managedArray) {
-    const list = Array.isArray(managedArray) && managedArray.length > 0 ? managedArray : ['poultry'];
+    const list = Array.isArray(managedArray) && managedArray.length > 0 ? managedArray.filter(t => t !== 'equine') : ['poultry'];
     const map = {
       poultry: { icon: '🐔', label: this.t('animal_cat_poultry_title') || 'Volailles' },
       cattle: { icon: '🐄', label: this.t('animal_cat_cattle_title') || 'Bovins' },
-      sheep: { icon: '🐑', label: this.t('animal_cat_sheep_title') || 'Ovins & Caprins' },
-      equine: { icon: '🐎', label: this.t('animal_cat_equine_title') || 'Équidés' }
+      sheep: { icon: '🐑', label: this.t('animal_cat_sheep_title') || 'Ovins & Caprins' }
     };
     return list.map(t => {
       const item = map[t] || { icon: '🐾', label: t };
