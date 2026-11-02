@@ -1312,6 +1312,7 @@ const app = {
     const managed = this.getUserManagedAnimalTypes();
     const hasPoultry = managed.includes('poultry');
     const hasCattle = managed.includes('cattle');
+    const hasSheep = managed.includes('sheep');
 
     // 1. Navigation items (Incubator tab in sidebar & mobile footer)
     const incNavItems = document.querySelectorAll('[data-tab="incubator"]');
@@ -1338,10 +1339,16 @@ const app = {
     // 3. KPI Livestock Subtitle
     const kpiAnimalsSub = document.getElementById('kpiAnimalsBreakdown');
     if (kpiAnimalsSub) {
-      if (hasCattle && !hasPoultry) {
+      if (hasPoultry && hasCattle && hasSheep) {
+        kpiAnimalsSub.setAttribute('data-i18n', 'kpi_animals_sub_all');
+        kpiAnimalsSub.textContent = this.t('kpi_animals_sub_all');
+      } else if (hasCattle && !hasPoultry && !hasSheep) {
         kpiAnimalsSub.setAttribute('data-i18n', 'kpi_animals_sub_bovins');
         kpiAnimalsSub.textContent = this.t('kpi_animals_sub_bovins');
-      } else if (hasCattle && hasPoultry) {
+      } else if (hasSheep && !hasPoultry && !hasCattle) {
+        kpiAnimalsSub.setAttribute('data-i18n', 'kpi_animals_sub_ovins');
+        kpiAnimalsSub.textContent = this.t('kpi_animals_sub_ovins');
+      } else if ((hasCattle && hasPoultry) || (hasSheep && hasPoultry) || (hasCattle && hasSheep)) {
         kpiAnimalsSub.setAttribute('data-i18n', 'kpi_animals_sub_mixed');
         kpiAnimalsSub.textContent = this.t('kpi_animals_sub_mixed');
       } else {
@@ -1353,9 +1360,12 @@ const app = {
     // 4. Modal Add Animal Title
     const modalAddAnimalTitle = document.querySelector('#modalAddAnimal .modal-header h3');
     if (modalAddAnimalTitle) {
-      if (hasCattle && !hasPoultry) {
+      if (hasCattle && !hasPoultry && !hasSheep) {
         modalAddAnimalTitle.setAttribute('data-i18n', 'modal_add_bovin_title');
         modalAddAnimalTitle.textContent = this.t('modal_add_bovin_title');
+      } else if (hasSheep && !hasPoultry && !hasCattle) {
+        modalAddAnimalTitle.setAttribute('data-i18n', 'modal_add_ovin_title');
+        modalAddAnimalTitle.textContent = this.t('modal_add_ovin_title');
       } else {
         modalAddAnimalTitle.setAttribute('data-i18n', 'modal_add_animal_title');
         modalAddAnimalTitle.textContent = this.t('modal_add_animal_title');
@@ -1377,6 +1387,7 @@ const app = {
     const managed = this.getUserManagedAnimalTypes();
     const hasPoultry = managed.includes('poultry');
     const hasCattle = managed.includes('cattle');
+    const hasSheep = managed.includes('sheep');
     const currentVal = defaultVal || select.value;
 
     const cattleOptions = [
@@ -1384,6 +1395,15 @@ const app = {
       { val: 'taurillon', key: 'opt_species_taurillon', label: '🐂 Taurillon / Bovin Viande' },
       { val: 'veau', key: 'opt_species_veau', label: '🐂 Veau d\'Élevage' },
       { val: 'bovin_autre', key: 'opt_species_bovin_autre', label: '🌾 Autre Bovin' }
+    ];
+
+    const sheepOptions = [
+      { val: 'mouton', key: 'opt_species_mouton', label: '🐑 Mouton / Bélier (Viande)' },
+      { val: 'brebis', key: 'opt_species_brebis', label: '🐑 Brebis (Laitière / Repro)' },
+      { val: 'agneau', key: 'opt_species_agneau', label: '🐑 Agneau d\'Engraissement' },
+      { val: 'chevre', key: 'opt_species_chevre', label: '🐐 Chèvre Laitière / Repro' },
+      { val: 'chevreau', key: 'opt_species_chevreau', label: '🐐 Chevreau d\'Élevage' },
+      { val: 'ovin_autre', key: 'opt_species_ovin_autre', label: '🌾 Autre Ovin / Caprin' }
     ];
 
     const poultryOptions = [
@@ -1395,30 +1415,44 @@ const app = {
       { val: 'autre', key: 'opt_species_other', label: '🌾 Autre volaille' }
     ];
 
+    const activeCount = (hasCattle ? 1 : 0) + (hasSheep ? 1 : 0) + (hasPoultry ? 1 : 0);
     let html = '';
-    if (hasCattle && hasPoultry) {
-      html += `<optgroup label="${this.t('optgroup_bovins') || '🐄 Élevage Bovin'}">`;
-      html += cattleOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
-      html += `</optgroup>`;
-      html += `<optgroup label="${this.t('optgroup_volailles') || '🐔 Élevage Avicole (Volailles)'}">`;
-      html += poultryOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
-      html += `</optgroup>`;
+
+    if (activeCount > 1) {
+      if (hasCattle) {
+        html += `<optgroup label="${this.t('optgroup_bovins') || '🐄 Élevage Bovin'}">`;
+        html += cattleOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+        html += `</optgroup>`;
+      }
+      if (hasSheep) {
+        html += `<optgroup label="${this.t('optgroup_ovins') || '🐑 Élevage Ovin & Caprin'}">`;
+        html += sheepOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+        html += `</optgroup>`;
+      }
+      if (hasPoultry) {
+        html += `<optgroup label="${this.t('optgroup_volailles') || '🐔 Élevage Avicole (Volailles)'}">`;
+        html += poultryOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+        html += `</optgroup>`;
+      }
     } else if (hasCattle) {
       html += cattleOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+    } else if (hasSheep) {
+      html += sheepOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
     } else {
       html += poultryOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
     }
 
     select.innerHTML = html;
 
-    const validValues = (hasCattle && hasPoultry)
-      ? [...cattleOptions.map(o => o.val), ...poultryOptions.map(o => o.val)]
-      : (hasCattle ? cattleOptions.map(o => o.val) : poultryOptions.map(o => o.val));
+    const allActiveOptions = [];
+    if (hasCattle) allActiveOptions.push(...cattleOptions.map(o => o.val));
+    if (hasSheep) allActiveOptions.push(...sheepOptions.map(o => o.val));
+    if (hasPoultry || allActiveOptions.length === 0) allActiveOptions.push(...poultryOptions.map(o => o.val));
 
-    if (currentVal && validValues.includes(currentVal)) {
+    if (currentVal && allActiveOptions.includes(currentVal)) {
       select.value = currentVal;
-    } else if (validValues.length > 0) {
-      select.value = validValues[0];
+    } else if (allActiveOptions.length > 0) {
+      select.value = allActiveOptions[0];
     }
 
     const formPrefix = selectId.startsWith('edit') ? 'editAnimal' : 'animal';
@@ -1432,6 +1466,7 @@ const app = {
     const managed = this.getUserManagedAnimalTypes();
     const hasPoultry = managed.includes('poultry');
     const hasCattle = managed.includes('cattle');
+    const hasSheep = managed.includes('sheep');
     const currentVal = defaultVal || select.value;
 
     const cattleSales = [
@@ -1440,6 +1475,15 @@ const app = {
       { val: 'bovin_viande', key: 'opt_sale_bovin_viande', label: '🥩 Taurillon / Viande' },
       { val: 'vache_reforme', key: 'opt_sale_vache_reforme', label: '🐄 Vache de Réforme' },
       { val: 'fumier_bovin', key: 'opt_sale_fumier_bovin', label: '🚜 Fumier Bovin Organique' }
+    ];
+
+    const sheepSales = [
+      { val: 'agneau', key: 'opt_sale_agneau', label: '🐑 Agneaux sur pied' },
+      { val: 'mouton', key: 'opt_sale_mouton', label: '🥩 Mouton / Viande ovine' },
+      { val: 'lait_brebis_chevre', key: 'opt_sale_lait_brebis_chevre', label: '🥛 Lait de Brebis / Chèvre' },
+      { val: 'chevreau', key: 'opt_sale_chevreau', label: '🐐 Chevreau sur pied' },
+      { val: 'laine', key: 'opt_sale_laine', label: '🧶 Laine & Toisons' },
+      { val: 'fumier_ovin', key: 'opt_sale_fumier_ovin', label: '🚜 Fumier Ovin & Caprin' }
     ];
 
     const poultrySales = [
@@ -1451,30 +1495,44 @@ const app = {
       { val: 'autre', key: 'opt_sale_other', label: '📦 Autre produit avicole' }
     ];
 
+    const activeCount = (hasCattle ? 1 : 0) + (hasSheep ? 1 : 0) + (hasPoultry ? 1 : 0);
     let html = '';
-    if (hasCattle && hasPoultry) {
-      html += `<optgroup label="${this.t('optgroup_bovins') || '🐄 Bovins'}">`;
-      html += cattleSales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
-      html += `</optgroup>`;
-      html += `<optgroup label="${this.t('optgroup_volailles') || '🐔 Volailles'}">`;
-      html += poultrySales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
-      html += `</optgroup>`;
+
+    if (activeCount > 1) {
+      if (hasCattle) {
+        html += `<optgroup label="${this.t('optgroup_bovins') || '🐄 Bovins'}">`;
+        html += cattleSales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+        html += `</optgroup>`;
+      }
+      if (hasSheep) {
+        html += `<optgroup label="${this.t('optgroup_ovins') || '🐑 Ovins & Caprins'}">`;
+        html += sheepSales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+        html += `</optgroup>`;
+      }
+      if (hasPoultry) {
+        html += `<optgroup label="${this.t('optgroup_volailles') || '🐔 Volailles'}">`;
+        html += poultrySales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+        html += `</optgroup>`;
+      }
     } else if (hasCattle) {
       html += cattleSales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+    } else if (hasSheep) {
+      html += sheepSales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
     } else {
       html += poultrySales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
     }
 
     select.innerHTML = html;
 
-    const validValues = (hasCattle && hasPoultry)
-      ? [...cattleSales.map(o => o.val), ...poultrySales.map(o => o.val)]
-      : (hasCattle ? cattleSales.map(o => o.val) : poultrySales.map(o => o.val));
+    const allActiveSales = [];
+    if (hasCattle) allActiveSales.push(...cattleSales.map(o => o.val));
+    if (hasSheep) allActiveSales.push(...sheepSales.map(o => o.val));
+    if (hasPoultry || allActiveSales.length === 0) allActiveSales.push(...poultrySales.map(o => o.val));
 
-    if (currentVal && validValues.includes(currentVal)) {
+    if (currentVal && allActiveSales.includes(currentVal)) {
       select.value = currentVal;
-    } else if (validValues.length > 0) {
-      select.value = validValues[0];
+    } else if (allActiveSales.length > 0) {
+      select.value = allActiveSales[0];
     }
 
     this.handleSaleTypeChange();
@@ -1487,6 +1545,7 @@ const app = {
     const managed = this.getUserManagedAnimalTypes();
     const hasPoultry = managed.includes('poultry');
     const hasCattle = managed.includes('cattle');
+    const hasSheep = managed.includes('sheep');
     const activeFilter = this.currentAnimalFilter || 'all';
 
     const activeAnimals = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
@@ -1496,6 +1555,12 @@ const app = {
       taurillon: 0,
       veau: 0,
       bovin_autre: 0,
+      mouton: 0,
+      brebis: 0,
+      agneau: 0,
+      chevre: 0,
+      chevreau: 0,
+      ovin_autre: 0,
       poulet: 0,
       pondeuse: 0,
       poussin: 0,
@@ -1510,6 +1575,12 @@ const app = {
       else if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') counts.taurillon++;
       else if (sp === 'veau' || sp === 'broutard') counts.veau++;
       else if (sp === 'bovin' || sp === 'bovin_autre') counts.bovin_autre++;
+      else if (sp === 'mouton' || sp === 'belier') counts.mouton++;
+      else if (sp === 'brebis') counts.brebis++;
+      else if (sp === 'agneau') counts.agneau++;
+      else if (sp === 'chevre' || sp === 'bouc') counts.chevre++;
+      else if (sp === 'chevreau') counts.chevreau++;
+      else if (sp === 'ovin' || sp === 'caprin' || sp === 'ovin_autre') counts.ovin_autre++;
       else if (sp === 'canard' || sp === 'canard_barbarie') counts.canard++;
       else if (counts[sp] !== undefined) counts[sp]++;
     });
@@ -1522,6 +1593,15 @@ const app = {
       chips.push({ id: 'taurillon', key: 'chip_taurillon', defaultLabel: '🐂 Taurillons', count: counts.taurillon });
       chips.push({ id: 'veau', key: 'chip_veau', defaultLabel: '🐂 Veaux', count: counts.veau });
       chips.push({ id: 'bovin_autre', key: 'chip_bovin_autre', defaultLabel: '🌾 Autres Bovins', count: counts.bovin_autre });
+    }
+
+    if (hasSheep) {
+      chips.push({ id: 'mouton', key: 'chip_mouton', defaultLabel: '🐑 Moutons', count: counts.mouton });
+      chips.push({ id: 'brebis', key: 'chip_brebis', defaultLabel: '🐑 Brebis', count: counts.brebis });
+      chips.push({ id: 'agneau', key: 'chip_agneau', defaultLabel: '🐑 Agneaux', count: counts.agneau });
+      chips.push({ id: 'chevre', key: 'chip_chevre', defaultLabel: '🐐 Chèvres', count: counts.chevre });
+      chips.push({ id: 'chevreau', key: 'chip_chevreau', defaultLabel: '🐐 Chevreaux', count: counts.chevreau });
+      chips.push({ id: 'ovin_autre', key: 'chip_ovin_autre', defaultLabel: '🌾 Autres Ovins', count: counts.ovin_autre });
     }
 
     if (hasPoultry) {
@@ -1795,8 +1875,12 @@ const app = {
     const managed = this.getUserManagedAnimalTypes();
     const hasPoultry = managed.includes('poultry');
     const hasCattle = managed.includes('cattle');
+    const hasSheep = managed.includes('sheep');
 
     let cattleSuggestions = [];
+    let sheepSuggestions = [];
+    let poultrySuggestions = [];
+
     if (lang === 'ar') {
       cattleSuggestions = [
         { id: 'foin', name: 'قرط فصة', icon: '🌿' },
@@ -1806,6 +1890,24 @@ const app = {
         { id: 'poudre_lait', name: 'حليب بودرة للعجول', icon: '🍼' },
         { id: 'paille', name: 'تبن قمح', icon: '🌾' },
         { id: 'sel_mineraux', name: 'حجر ملح ومعادن CMV', icon: '🧂' }
+      ];
+      sheepSuggestions = [
+        { id: 'orge', name: 'شعير مرحي', icon: '🌾' },
+        { id: 'foin_ovin', name: 'قرط فصة وقصيبة', icon: '🌿' },
+        { id: 'concentre_ovin', name: 'علف خراف تسمين 16%', icon: '🐑' },
+        { id: 'concentre_brebis', name: 'علف نعاج وماعز 18%', icon: '🥛' },
+        { id: 'poudre_lait_agneau', name: 'بديل حليب للحملان', icon: '🍼' },
+        { id: 'pierre_sel', name: 'حجر ملح ولعق ومعادن', icon: '🧂' },
+        { id: 'paille_ovin', name: 'تبن ليتيير', icon: '🌾' }
+      ];
+      poultrySuggestions = [
+        { id: 'ble', name: 'قمح', icon: '🌾' },
+        { id: 'bouchon', name: 'علف بياضة', icon: '🥚' },
+        { id: 'mais', name: 'ذرة مرحية', icon: '🌽' },
+        { id: 'son', name: 'نخالة القمح', icon: '🌾' },
+        { id: 'tournesol', name: 'قلوب عباد الشمس', icon: '🌻' },
+        { id: 'melange', name: 'خلطة حبوب', icon: '🥣' },
+        { id: 'demarrage', name: 'علف بداية', icon: '🐣' }
       ];
     } else if (lang === 'en') {
       cattleSuggestions = [
@@ -1817,30 +1919,15 @@ const app = {
         { id: 'paille', name: 'Bedding Straw', icon: '🌾' },
         { id: 'sel_mineraux', name: 'Mineral Lick Block (CMV)', icon: '🧂' }
       ];
-    } else {
-      cattleSuggestions = [
-        { id: 'foin', name: 'Foin de luzerne', icon: '🌿' },
-        { id: 'ensilage', name: 'Ensilage de maïs', icon: '🌽' },
-        { id: 'concentre_lait', name: 'Concentré laitier 18%', icon: '🥛' },
-        { id: 'concentre_engrais', name: 'Concentré engraissement', icon: '🐂' },
-        { id: 'poudre_lait', name: 'Poudre de lait veau', icon: '🍼' },
-        { id: 'paille', name: 'Paille de litière', icon: '🌾' },
-        { id: 'sel_mineraux', name: 'Bloc de sel / CMV', icon: '🧂' }
+      sheepSuggestions = [
+        { id: 'orge', name: 'Crushed Barley', icon: '🌾' },
+        { id: 'foin_ovin', name: 'Alfalfa & Oat Hay', icon: '🌿' },
+        { id: 'concentre_ovin', name: 'Sheep Fattening Feed 16%', icon: '🐑' },
+        { id: 'concentre_brebis', name: 'Dairy Sheep/Goat Feed 18%', icon: '🥛' },
+        { id: 'poudre_lait_agneau', name: 'Lamb Milk Replacer', icon: '🍼' },
+        { id: 'pierre_sel', name: 'Mineral Salt Lick Block', icon: '🧂' },
+        { id: 'paille_ovin', name: 'Bedding Straw', icon: '🌾' }
       ];
-    }
-
-    let poultrySuggestions = [];
-    if (lang === 'ar') {
-      poultrySuggestions = [
-        { id: 'ble', name: 'قمح', icon: '🌾' },
-        { id: 'bouchon', name: 'علف بياضة', icon: '🥚' },
-        { id: 'mais', name: 'ذرة مرحية', icon: '🌽' },
-        { id: 'son', name: 'نخالة القمح', icon: '🌾' },
-        { id: 'tournesol', name: 'قلوب عباد الشمس', icon: '🌻' },
-        { id: 'melange', name: 'خلطة حبوب', icon: '🥣' },
-        { id: 'demarrage', name: 'علف بداية', icon: '🐣' }
-      ];
-    } else if (lang === 'en') {
       poultrySuggestions = [
         { id: 'ble', name: 'Wheat', icon: '🌾' },
         { id: 'bouchon', name: 'Layer Feed', icon: '🥚' },
@@ -1851,6 +1938,24 @@ const app = {
         { id: 'demarrage', name: 'Starter Feed', icon: '🐣' }
       ];
     } else {
+      cattleSuggestions = [
+        { id: 'foin', name: 'Foin de luzerne', icon: '🌿' },
+        { id: 'ensilage', name: 'Ensilage de maïs', icon: '🌽' },
+        { id: 'concentre_lait', name: 'Concentré laitier 18%', icon: '🥛' },
+        { id: 'concentre_engrais', name: 'Concentré engraissement', icon: '🐂' },
+        { id: 'poudre_lait', name: 'Poudre de lait veau', icon: '🍼' },
+        { id: 'paille', name: 'Paille de litière', icon: '🌾' },
+        { id: 'sel_mineraux', name: 'Bloc de sel / CMV', icon: '🧂' }
+      ];
+      sheepSuggestions = [
+        { id: 'orge', name: 'Orge concassée', icon: '🌾' },
+        { id: 'foin_ovin', name: 'Foin de luzerne / avoine', icon: '🌿' },
+        { id: 'concentre_ovin', name: 'Concentré ovin engraissement 16%', icon: '🐑' },
+        { id: 'concentre_brebis', name: 'Concentré brebis/chèvre 18%', icon: '🥛' },
+        { id: 'poudre_lait_agneau', name: 'Lait d\'allaitement agneaux', icon: '🍼' },
+        { id: 'pierre_sel', name: 'Pierre à lécher / Minéraux', icon: '🧂' },
+        { id: 'paille_ovin', name: 'Paille de litière', icon: '🌾' }
+      ];
       poultrySuggestions = [
         { id: 'ble', name: 'Blé', icon: '🌾' },
         { id: 'bouchon', name: 'Aliment ponte', icon: '🥚' },
@@ -1863,13 +1968,10 @@ const app = {
     }
 
     let suggestions = [];
-    if (hasCattle && hasPoultry) {
-      suggestions = [...cattleSuggestions, ...poultrySuggestions];
-    } else if (hasCattle) {
-      suggestions = cattleSuggestions;
-    } else {
-      suggestions = poultrySuggestions;
-    }
+    if (hasCattle) suggestions.push(...cattleSuggestions);
+    if (hasSheep) suggestions.push(...sheepSuggestions);
+    if (hasPoultry) suggestions.push(...poultrySuggestions);
+    if (suggestions.length === 0) suggestions = poultrySuggestions;
 
     container.innerHTML = suggestions.map(s => `
       <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.74rem; padding: 3px 9px; border-radius: var(--radius-pill); font-weight: 700;" onclick="app.selectFeedSuggestion('${s.name}')">
@@ -3711,6 +3813,49 @@ const app = {
       return 9800;               // Génisse gestante 15-24 mois: ~9.8 kg/j
     }
 
+    // ── 0b. OVINS & CAPRINS (Moutons, Brebis, Agneaux, Chèvres, Chevreaux) - Portions Zootechniques ──
+    const isSheep = sp === 'mouton' || sp === 'brebis' || sp === 'agneau' || sp === 'chevre' || sp === 'chevreau' || sp === 'belier' || sp === 'bouc' || sp === 'ovin' || sp === 'caprin' || sp === 'ovin_autre' || sp.includes('mouton') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('chevre') || sp.includes('sheep') || sp.includes('goat') || sp.includes('ram') || sp.includes('lamb');
+    if (isSheep) {
+      // A. Agneau & Chevreau
+      if (sp === 'agneau' || sp === 'chevreau' || sp.includes('agneau') || sp.includes('chevreau') || sp.includes('lamb') || sp.includes('kid') || stg.includes('agneau') || stg.includes('chevreau')) {
+        if (d <= 30)  return 350;  // J1-J30: 350 g/j (Allaitement colostrum / lait maternel + starter)
+        if (d <= 70)  return 850;  // J31-J70: 850 g/j (Pré-sevrage & sevrage starter 18% + foin)
+        if (d <= 120) return 1400; // J71-J120: 1.4 kg/j (Engraissement actif concentré 16% + foin)
+        if (d <= 180) return 1800; // J121-J180: 1.8 kg/j (Finition agneau lourd / chevreau)
+        return 1900;               // > 180j: 1.9 kg/j
+      }
+
+      // B. Mouton / Bélier / Ovin Viande
+      if (sp === 'mouton' || sp === 'belier' || sp.includes('mouton') || sp.includes('belier') || sp.includes('ram') || stg.includes('engraissement') || stg.includes('belier')) {
+        const isBelier = stg.includes('belier') || stg.includes('reproducteur') || brd.includes('belier');
+        if (isBelier) return 2200; // Bélier reproducteur adulte: ~2.2 kg MS/j
+
+        const isFinition = stg.includes('finition') || stg.includes('finish') || d > 300;
+        if (isFinition) return 2000; // Finition viande ovin: ~2.0 kg MS/j
+
+        if (d <= 120) return 1200; // Jeune ovin démarrage: ~1.2 kg MS/j
+        if (d <= 240) return 1600; // Mouton croissance: ~1.6 kg MS/j
+        return 1800;               // Mouton adulte / engraissement: ~1.8 kg MS/j
+      }
+
+      // C. Brebis / Chèvre (Laitière & Reproductrice)
+      const isTarie = stg.includes('tarie') || stg.includes('dry') || stg.includes('شايحة') || stg.includes('راحة');
+      if (isTarie) return 1300; // Repos mammaire / entretien: ~1.3 kg MS/j
+
+      const isReforme = stg.includes('reforme') || stg.includes('cull') || stg.includes('ذبح') || stg.includes('تفريط');
+      if (isReforme) return 1400; // Réforme viande: ~1.4 kg MS/j
+
+      const isGestante = stg.includes('gestante') || stg.includes('pregnant') || stg.includes('عشار');
+      if (isGestante) return 1800; // Fin de gestation (2 derniers mois): ~1.8 kg MS/j
+
+      const isLactation = stg.includes('lactation') || stg.includes('lait') || stg.includes('حليب') || stg.includes('حلوب') || d >= 420;
+      if (isLactation) return 2600; // Brebis / Chèvre en lactation (1.5-3L lait/j): ~2.6 kg MS/j
+
+      if (d <= 120) return 900;  // Agnela / Chevrette jeune: ~900 g/j
+      if (d <= 300) return 1300; // Agnela / Chevrette croissance: ~1.3 kg MS/j
+      return 1500;               // Génisse ovine avant saillie: ~1.5 kg MS/j
+    }
+
     // 1. CANARD DE BARBARIE / PALMIPÈDES (Table zootechnique officielle)
     if (sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck')) {
       if (d <= 7)   return 22;  // Sem 1: ~22 g/j (Ci 0.73)
@@ -3959,6 +4104,140 @@ const app = {
         stageKey: 'genisse_gestante',
         labelFr: 'Génisse gestante (15–24 mois)', labelAr: 'عجلة عشار (15-24 شهر)', labelEn: 'Pregnant heifer (15-24 mos)',
         notesFr: 'Préparation au vêlage, minéraux CMV', notesAr: 'تحضير للولادة، أملاح ومعادن CMV'
+      };
+    }
+
+    // ── 0b. OVINS & CAPRINS (Moutons, Brebis, Agneaux, Chèvres, Chevreaux) ──
+    const isSheep = sp === 'mouton' || sp === 'brebis' || sp === 'agneau' || sp === 'chevre' || sp === 'chevreau' || sp === 'belier' || sp === 'bouc' || sp === 'ovin' || sp === 'caprin' || sp === 'ovin_autre' || sp.includes('mouton') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('chevre') || sp.includes('sheep') || sp.includes('goat') || sp.includes('ram') || sp.includes('lamb');
+    if (isSheep) {
+      // A. AGNEAU & CHEVREAU
+      if (sp === 'agneau' || sp === 'chevreau' || sp.includes('agneau') || sp.includes('chevreau') || sp.includes('lamb') || sp.includes('kid') || stg.includes('agneau') || stg.includes('chevreau')) {
+        if (days <= 30) {
+          return {
+            minGrams: 280, maxGrams: 420, avgGrams: 350, dailyGrams: 350, ci: 0.35,
+            stageKey: 'ovin_agneau_lait',
+            labelFr: 'Agneau / Chevreau au lait (J1–J30)', labelAr: 'خروف / جدي رضيع باللتر (ي1-30)', labelEn: 'Nursing lamb/kid (d1-30)',
+            notesFr: 'Allaitement maternel ou 1.5L lait/j + starter 18% + foin sec', notesAr: 'رضاعة طبيعية أو 1.5 لتر حليب + علف بادي 18% + قرط فصة'
+          };
+        }
+        if (days <= 70) {
+          return {
+            minGrams: 700, maxGrams: 1000, avgGrams: 850, dailyGrams: 850, ci: 0.85,
+            stageKey: 'ovin_agneau_sevre',
+            labelFr: 'Agneau / Chevreau sevré (J31–J70)', labelAr: 'خروف / جدي مفطوم (ي31-70)', labelEn: 'Weaned lamb/kid (d31-70)',
+            notesFr: 'Concentré ovin 18% (400-600g) + foin de luzerne à volonté', notesAr: 'علف مركب 18% (400-600غ) + قرط فصة ممتاز'
+          };
+        }
+        if (days <= 120) {
+          return {
+            minGrams: 1200, maxGrams: 1600, avgGrams: 1400, dailyGrams: 1400, ci: 1.40,
+            stageKey: 'ovin_agneau_engraissement',
+            labelFr: 'Agneau engraissement actif (3–4 mois)', labelAr: 'خروف تسمين مكثف (3-4 أشهر)', labelEn: 'Active fattening lamb (3-4 mos)',
+            notesFr: 'Concentré ovin 16% + orge concassée + foin', notesAr: 'علف تسمين 16% + شعير مرحي + قرط'
+          };
+        }
+        return {
+          minGrams: 1500, maxGrams: 2100, avgGrams: 1800, dailyGrams: 1800, ci: 1.80,
+          stageKey: 'ovin_agneau_finition',
+          labelFr: 'Agneau / Chevreau finition (>4 mois)', labelAr: 'خروف / جدي تشطيب نهائي للذبح (>4 أشهر)', labelEn: 'Finished market lamb/kid (>4 mos)',
+          notesFr: 'Finition haute énergie musculaire', notesAr: 'عليقة تشطيب نهائية عالية الطاقة'
+        };
+      }
+
+      // B. MOUTON / BÉLIER / OVIN VIANDE
+      if (sp === 'mouton' || sp === 'belier' || sp.includes('mouton') || sp.includes('belier') || sp.includes('ram') || stg.includes('engraissement') || stg.includes('belier')) {
+        const isBelier = stg.includes('belier') || stg.includes('reproducteur') || brd.includes('belier');
+        if (isBelier) {
+          return {
+            minGrams: 1900, maxGrams: 2500, avgGrams: 2200, dailyGrams: 2200, ci: 2.20,
+            stageKey: 'belier_reproducteur',
+            labelFr: 'Bélier adulte reproducteur', labelAr: 'كبش فحل للتلقيح والتكاثر', labelEn: 'Adult breeding ram',
+            notesFr: 'Ration entretien + minéraux et sel oligo-éléments', notesAr: 'عليقة صيانة + أملاح وحجر لعق'
+          };
+        }
+
+        const isFinition = stg.includes('finition') || stg.includes('finish') || days > 300;
+        if (isFinition) {
+          return {
+            minGrams: 1800, maxGrams: 2200, avgGrams: 2000, dailyGrams: 2000, ci: 2.00,
+            stageKey: 'mouton_finition',
+            labelFr: 'Mouton en finition (viande)', labelAr: 'خروف تسمين نهائي للذبح', labelEn: 'Finished mutton',
+            notesFr: 'Ration d\'engraissement orge + concentré 16%', notesAr: 'عليقة تسمين شعير + علف مركب 16%'
+          };
+        }
+
+        if (days <= 150) {
+          return {
+            minGrams: 1100, maxGrams: 1400, avgGrams: 1250, dailyGrams: 1250, ci: 1.25,
+            stageKey: 'mouton_demarrage',
+            labelFr: 'Jeune ovin démarrage', labelAr: 'خروف نمو أولي', labelEn: 'Starter young sheep',
+            notesFr: 'Foin sec + concentré', notesAr: 'قرط فصة + علف مركب'
+          };
+        }
+
+        return {
+          minGrams: 1500, maxGrams: 1900, avgGrams: 1700, dailyGrams: 1700, ci: 1.70,
+          stageKey: 'mouton_croissance',
+          labelFr: 'Mouton en croissance / engraissement', labelAr: 'خروف نمو وتسمين', labelEn: 'Growing / fattening sheep',
+          notesFr: 'Foin luzerne/avoine + 800g concentré', notesAr: 'قرط قصيبة/فصة + 800غ علف مركب'
+        };
+      }
+
+      // C. BREBIS & CHÈVRE (Laitière & Mère)
+      const isTarie = stg.includes('tarie') || stg.includes('dry') || stg.includes('شايحة') || stg.includes('راحة');
+      if (isTarie) {
+        return {
+          minGrams: 1100, maxGrams: 1500, avgGrams: 1300, dailyGrams: 1300, ci: 1.30,
+          stageKey: 'brebis_tarie',
+          labelFr: 'Brebis / Chèvre tarie (repos)', labelAr: 'نعجة / معزة شايحة طور الراحة', labelEn: 'Dry ewe/goat',
+          notesFr: 'Foin, paille, minéraux sans excès', notesAr: 'قرط، تبن، وأملاح بدون طاقة مفرطة'
+        };
+      }
+
+      const isReforme = stg.includes('reforme') || stg.includes('cull') || stg.includes('ذبح') || stg.includes('تفريط');
+      if (isReforme) {
+        return {
+          minGrams: 1200, maxGrams: 1600, avgGrams: 1400, dailyGrams: 1400, ci: 1.40,
+          stageKey: 'brebis_reforme',
+          labelFr: 'Brebis / Chèvre de réforme (boucherie)', labelAr: 'نعجة / معزة تفريط للذبح', labelEn: 'Cull ewe/goat',
+          notesFr: 'Finition modérée', notesAr: 'تشطيب للتفريط والذبح'
+        };
+      }
+
+      const isGestante = stg.includes('gestante') || stg.includes('pregnant') || stg.includes('عشار');
+      if (isGestante) {
+        return {
+          minGrams: 1600, maxGrams: 2000, avgGrams: 1800, dailyGrams: 1800, ci: 1.80,
+          stageKey: 'brebis_gestante',
+          labelFr: 'Brebis / Chèvre gestante (fin de gestation)', labelAr: 'نعجة / معزة عشار (أواخر الحمل)', labelEn: 'Pregnant ewe/goat',
+          notesFr: 'Renforcement énergétique et minéral pré-agnelage', notesAr: 'تقوية الطاقة والأملاح قبل الولادة'
+        };
+      }
+
+      const isLactation = stg.includes('lactation') || stg.includes('lait') || stg.includes('حليب') || stg.includes('حلوب') || days >= 420;
+      if (isLactation) {
+        return {
+          minGrams: 2300, maxGrams: 2900, avgGrams: 2600, dailyGrams: 2600, ci: 2.60,
+          stageKey: 'brebis_lactation',
+          labelFr: 'Brebis / Chèvre en lactation (1.5–3 L/j)', labelAr: 'نعجة / معزة حلوب في إنتاج الحليب (1.5-3 لتر/يوم)', labelEn: 'Lactating ewe/goat (1.5-3 L/d)',
+          notesFr: 'Foin luzerne 1.2 kg + concentré 18% 1 kg + orge 400g + sel', notesAr: 'قرط فصة 1.2 كغ + علف حلوب 1 كغ + شعير 400غ + ملح'
+        };
+      }
+
+      if (days <= 150) {
+        return {
+          minGrams: 800, maxGrams: 1100, avgGrams: 950, dailyGrams: 950, ci: 0.95,
+          stageKey: 'agnela_jeune',
+          labelFr: 'Agnela / Chevrette jeune', labelAr: 'بركوسة / سخلة نمو بداية', labelEn: 'Young ewe lamb / doeling',
+          notesFr: 'Foin de luzerne + starter', notesAr: 'قرط فصة + علف مركب'
+        };
+      }
+
+      return {
+        minGrams: 1200, maxGrams: 1600, avgGrams: 1400, dailyGrams: 1400, ci: 1.40,
+        stageKey: 'agnela_croissance',
+        labelFr: 'Agnela / Chevrette de renouvellement', labelAr: 'بركوسة / سخلة تربية وتجديد القطيع', labelEn: 'Replacement ewe lamb / doeling',
+        notesFr: 'Fourrage de qualité + concentré modéré', notesAr: 'أعلاف خشنة ممتازة + علف مركب معتدل'
       };
     }
 
@@ -7268,6 +7547,30 @@ const app = {
         if (arrivalAgeDays <= 60) stagePresetSelect.value = 'bovin_veau';
         else if (arrivalAgeDays < 365) stagePresetSelect.value = 'bovin_croissance';
         else stagePresetSelect.value = 'bovin_adulte';
+      } else if (sp === 'mouton' || sp === 'belier') {
+        if (animal.stage === 'Reproducteur') stagePresetSelect.value = 'belier_reproducteur';
+        else if (arrivalAgeDays < 200) stagePresetSelect.value = 'mouton_engraissement';
+        else stagePresetSelect.value = 'mouton_finition';
+      } else if (sp === 'brebis') {
+        if (animal.stage === 'Tarie') stagePresetSelect.value = 'brebis_tarie';
+        else if (animal.stage === 'Gestante') stagePresetSelect.value = 'brebis_gestante';
+        else if (animal.stage === 'Réforme') stagePresetSelect.value = 'brebis_reforme';
+        else if (arrivalAgeDays < 300) stagePresetSelect.value = 'agnela_renouvellement';
+        else stagePresetSelect.value = 'brebis_lactation';
+      } else if (sp === 'agneau') {
+        if (arrivalAgeDays <= 30) stagePresetSelect.value = 'agneau_lait';
+        else if (arrivalAgeDays <= 90) stagePresetSelect.value = 'agneau_sevre';
+        else stagePresetSelect.value = 'agneau_engraissement';
+      } else if (sp === 'chevre') {
+        if (animal.stage === 'Tarie') stagePresetSelect.value = 'chevre_tarie';
+        else if (animal.stage === 'Gestante') stagePresetSelect.value = 'chevre_gestante';
+        else if (animal.stage === 'Réforme') stagePresetSelect.value = 'chevre_reforme';
+        else if (arrivalAgeDays < 300) stagePresetSelect.value = 'chevrette_croissance';
+        else stagePresetSelect.value = 'chevre_lactation';
+      } else if (sp === 'chevreau') {
+        if (arrivalAgeDays <= 30) stagePresetSelect.value = 'chevreau_lait';
+        else if (arrivalAgeDays <= 90) stagePresetSelect.value = 'chevreau_sevre';
+        else stagePresetSelect.value = 'chevreau_engraissement';
       } else if (sp === 'canard' || sp === 'canard_barbarie') {
         if (arrivalAgeDays <= 21) stagePresetSelect.value = 'caneton_demarrage';
         else if (arrivalAgeDays < 150) stagePresetSelect.value = 'canard_croissance';
@@ -7603,6 +7906,134 @@ const app = {
           label: isAr ? '🐂 عجل رضيع بداية' : (isEn ? '🐂 Starter calf' : '🐂 Veau démarrage')
         }
       ];
+    } else if (sp === 'mouton' || sp === 'belier') {
+      options = [
+        {
+          key: 'mouton_engraissement',
+          days: 180,
+          label: isAr ? '🐑 خروف تسمين مكثف (~6 أشهر)' : (isEn ? '🐑 Fattening sheep (~6 mos)' : '🐑 Mouton engraissement (~6 mois)')
+        },
+        {
+          key: 'mouton_finition',
+          days: 270,
+          label: isAr ? '🐑 خروف تشطيب لحم عيد / مذبح (~9 أشهر)' : (isEn ? '🐑 Market sheep (~9 mos)' : '🐑 Mouton finition boucherie (~9 mois)')
+        },
+        {
+          key: 'belier_reproducteur',
+          days: 720,
+          label: isAr ? '🐑 كبش فحل للتلقيح (~24 شهر)' : (isEn ? '🐑 Adult breeding ram (~24 mos)' : '🐑 Bélier adulte reproducteur (~24 mois)')
+        }
+      ];
+    } else if (sp === 'brebis') {
+      options = [
+        {
+          key: 'brebis_lactation',
+          days: 540,
+          label: isAr ? '🐑 نعجة حلوب في إنتاج الحليب (~18 شهر)' : (isEn ? '🐑 Lactating dairy ewe (~18 mos)' : '🐑 Brebis en lactation (~18 mois)')
+        },
+        {
+          key: 'brebis_gestante',
+          days: 480,
+          label: isAr ? '🐑 نعجة عشار حامل (~16 شهر)' : (isEn ? '🐑 Pregnant ewe (~16 mos)' : '🐑 Brebis gestante (~16 mois)')
+        },
+        {
+          key: 'brebis_tarie',
+          days: 420,
+          label: isAr ? '🐑 نعجة شايحة / راحة قبل الولادة' : (isEn ? '🐑 Dry ewe (pre-lambing rest)' : '🐑 Brebis tarie (repos pré-agnelage)')
+        },
+        {
+          key: 'agnela_renouvellement',
+          days: 240,
+          label: isAr ? '🐑 بركوسة تربية وتجديد القطيع (~8 أشهر)' : (isEn ? '🐑 Replacement ewe lamb (~8 mos)' : '🐑 Agnela renouvellement (~8 mois)')
+        },
+        {
+          key: 'brebis_reforme',
+          days: 720,
+          label: isAr ? '🐑 نعجة تفريط للذبح' : (isEn ? '🐑 Cull ewe for meat' : '🐑 Brebis de réforme')
+        }
+      ];
+    } else if (sp === 'agneau') {
+      options = [
+        {
+          key: 'agneau_lait',
+          days: 0,
+          label: isAr ? '🐑 خروف رضيع باللتر (0-30 يوم)' : (isEn ? '🐑 Nursing lamb (0-30 days)' : '🐑 Agneau au lait (0-30 jours)')
+        },
+        {
+          key: 'agneau_sevre',
+          days: 60,
+          label: isAr ? '🐑 خروف مفطوم (~2 شهر)' : (isEn ? '🐑 Weaned lamb (~2 mos)' : '🐑 Agneau sevré (~2 mois)')
+        },
+        {
+          key: 'agneau_engraissement',
+          days: 120,
+          label: isAr ? '🐑 علوش تسمين مكثف (~4 أشهر)' : (isEn ? '🐑 Fattening lamb (~4 mos)' : '🐑 Agneau engraissement (~4 mois)')
+        }
+      ];
+    } else if (sp === 'chevre') {
+      options = [
+        {
+          key: 'chevre_lactation',
+          days: 540,
+          label: isAr ? '🐐 معزة حلوب في إنتاج الحليب (~18 شهر)' : (isEn ? '🐐 Lactating dairy goat (~18 mos)' : '🐐 Chèvre en lactation (~18 mois)')
+        },
+        {
+          key: 'chevre_gestante',
+          days: 480,
+          label: isAr ? '🐐 معزة عشار حامل (~16 شهر)' : (isEn ? '🐐 Pregnant doe (~16 mos)' : '🐐 Chèvre gestante (~16 mois)')
+        },
+        {
+          key: 'chevre_tarie',
+          days: 420,
+          label: isAr ? '🐐 معزة شايحة / راحة قبل الولادة' : (isEn ? '🐐 Dry doe (rest)' : '🐐 Chèvre tarie (repos)')
+        },
+        {
+          key: 'chevrette_croissance',
+          days: 240,
+          label: isAr ? '🐐 سخلة نمو وتربية (~8 أشهر)' : (isEn ? '🐐 Growing doeling (~8 mos)' : '🐐 Chevrette croissance (~8 mois)')
+        },
+        {
+          key: 'chevre_reforme',
+          days: 720,
+          label: isAr ? '🐐 معزة تفريط للذبح' : (isEn ? '🐐 Cull goat for meat' : '🐐 Chèvre de réforme')
+        }
+      ];
+    } else if (sp === 'chevreau') {
+      options = [
+        {
+          key: 'chevreau_lait',
+          days: 0,
+          label: isAr ? '🐐 جدي رضيع باللتر (0-30 يوم)' : (isEn ? '🐐 Nursing kid (0-30 days)' : '🐐 Chevreau au lait (0-30 jours)')
+        },
+        {
+          key: 'chevreau_sevre',
+          days: 60,
+          label: isAr ? '🐐 جدي مفطوم (~2 شهر)' : (isEn ? '🐐 Weaned kid (~2 mos)' : '🐐 Chevreau sevré (~2 mois)')
+        },
+        {
+          key: 'chevreau_engraissement',
+          days: 120,
+          label: isAr ? '🐐 جدي تسمين ولحم (~4 أشهر)' : (isEn ? '🐐 Fattening kid (~4 mos)' : '🐐 Chevreau engraissement (~4 mois)')
+        }
+      ];
+    } else if (sp === 'ovin_autre' || sp === 'ovin' || sp === 'caprin') {
+      options = [
+        {
+          key: 'ovin_adulte',
+          days: 365,
+          label: isAr ? '🌾 رأس غنم بالغ (>1 سنة)' : (isEn ? '🌾 Adult sheep/goat (>1 yr)' : '🌾 Ovin adulte (>1 an)')
+        },
+        {
+          key: 'ovin_croissance',
+          days: 180,
+          label: isAr ? '🌾 خروف نمو (~6 أشهر)' : (isEn ? '🌾 Growing sheep (~6 mos)' : '🌾 Ovin croissance (~6 mois)')
+        },
+        {
+          key: 'ovin_jeune',
+          days: 0,
+          label: isAr ? '🌾 خروف/جدي بداية' : (isEn ? '🌾 Starter lamb/kid' : '🌾 Agneau/Chevreau démarrage')
+        }
+      ];
     } else if (sp === 'canard' || sp === 'canard_barbarie') {
       options = [
         {
@@ -7785,6 +8216,42 @@ const app = {
       defaultDays = 720;
       stageName = 'Réforme';
     } else if (presetKey === 'bovin_adulte') {
+      defaultDays = 365;
+      stageName = 'Adulte';
+    } else if (presetKey === 'agneau_lait' || presetKey === 'chevreau_lait' || presetKey === 'ovin_jeune') {
+      defaultDays = 0;
+      stageName = 'Démarrage';
+    } else if (presetKey === 'agneau_sevre' || presetKey === 'chevreau_sevre') {
+      defaultDays = 60;
+      stageName = 'Croissance';
+    } else if (presetKey === 'agneau_engraissement' || presetKey === 'chevreau_engraissement') {
+      defaultDays = 120;
+      stageName = 'Finition';
+    } else if (presetKey === 'mouton_engraissement') {
+      defaultDays = 180;
+      stageName = 'Finition';
+    } else if (presetKey === 'mouton_finition') {
+      defaultDays = 270;
+      stageName = 'Finition';
+    } else if (presetKey === 'belier_reproducteur') {
+      defaultDays = 720;
+      stageName = 'Reproducteur';
+    } else if (presetKey === 'brebis_lactation' || presetKey === 'chevre_lactation') {
+      defaultDays = 540;
+      stageName = 'Lactation';
+    } else if (presetKey === 'brebis_gestante' || presetKey === 'chevre_gestante') {
+      defaultDays = 480;
+      stageName = 'Gestante';
+    } else if (presetKey === 'brebis_tarie' || presetKey === 'chevre_tarie') {
+      defaultDays = 420;
+      stageName = 'Tarie';
+    } else if (presetKey === 'agnela_renouvellement' || presetKey === 'chevrette_croissance') {
+      defaultDays = 240;
+      stageName = 'Croissance';
+    } else if (presetKey === 'brebis_reforme' || presetKey === 'chevre_reforme') {
+      defaultDays = 720;
+      stageName = 'Réforme';
+    } else if (presetKey === 'ovin_adulte') {
       defaultDays = 365;
       stageName = 'Adulte';
     } else if (presetKey === 'caille_croissance') {
@@ -9670,6 +10137,25 @@ const app = {
       } else if (type === 'fumier_bovin') {
         const unitFumier = appState.lang === 'ar' ? '(مقطورة / أكياس سماد)' : (appState.lang === 'en' ? '(Trailers / Bags)' : '(Remorques / Sacs)');
         if (unitLabel) unitLabel.textContent = unitFumier;
+      } else if (type === 'lait_brebis_chevre') {
+        const unitLaitOvin = appState.lang === 'ar' ? '(لتر حليب نعاج وماعز)' : (appState.lang === 'en' ? '(Liters of Sheep/Goat Milk)' : '(Litres de lait de brebis / chèvre)');
+        if (unitLabel) unitLabel.textContent = unitLaitOvin;
+        if (price) price.placeholder = '2.200';
+      } else if (type === 'agneau') {
+        const unitAgneau = appState.lang === 'ar' ? '(خراف / علوش بالرأس)' : (appState.lang === 'en' ? '(Lambs / Heads)' : '(Agneaux / Têtes)');
+        if (unitLabel) unitLabel.textContent = unitAgneau;
+      } else if (type === 'mouton') {
+        const unitMouton = appState.lang === 'ar' ? '(خراف وكباش / بالرأس)' : (appState.lang === 'en' ? '(Sheep / Heads)' : '(Moutons / Têtes)');
+        if (unitLabel) unitLabel.textContent = unitMouton;
+      } else if (type === 'chevreau') {
+        const unitChevreau = appState.lang === 'ar' ? '(جديان / بالرأس)' : (appState.lang === 'en' ? '(Kids / Heads)' : '(Chevreaux / Têtes)');
+        if (unitLabel) unitLabel.textContent = unitChevreau;
+      } else if (type === 'laine') {
+        const unitLaine = appState.lang === 'ar' ? '(جزات صوف / كغ)' : (appState.lang === 'en' ? '(Fleeces / Kg)' : '(Toisons / Kg de laine)');
+        if (unitLabel) unitLabel.textContent = unitLaine;
+      } else if (type === 'fumier_ovin') {
+        const unitFumierOvin = appState.lang === 'ar' ? '(مقطورة / أكياس غبار أغنام)' : (appState.lang === 'en' ? '(Sheep Manure Bags)' : '(Sacs / Remorques fumier ovin)');
+        if (unitLabel) unitLabel.textContent = unitFumierOvin;
       } else if (type === 'poussin') {
         const unitPoussin = appState.lang === 'ar' ? '(كتاكيت / بالرأس)' : (appState.lang === 'en' ? '(Chicks / Birds)' : '(Poussins / Sujets)');
         if (unitLabel) unitLabel.textContent = unitPoussin;
@@ -11630,6 +12116,16 @@ const app = {
       case 'broutard': return '🐂';
       case 'bovin':
       case 'bovin_autre': return '🐄';
+      case 'mouton':
+      case 'belier':
+      case 'brebis':
+      case 'agneau':
+      case 'ovin': return '🐑';
+      case 'chevre':
+      case 'chevreau':
+      case 'bouc':
+      case 'caprin': return '🐐';
+      case 'ovin_autre': return '🌾';
       case 'poulet': return '🍗';
       case 'pondeuse': return '🥚';
       case 'poussin': return '🐣';
@@ -11656,6 +12152,12 @@ const app = {
       if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') return 'عجل تسمين / لحم';
       if (sp === 'veau' || sp === 'broutard') return 'عجل رضيع / مفطوم';
       if (sp === 'bovin' || sp === 'bovin_autre') return 'أبقار ومواشي';
+      if (sp === 'mouton' || sp === 'belier') return 'خروف / كبش';
+      if (sp === 'brebis') return 'نعجة';
+      if (sp === 'agneau') return 'حمل / علوش';
+      if (sp === 'chevre' || sp === 'bouc') return 'ماعز / عنزة';
+      if (sp === 'chevreau') return 'جدي';
+      if (sp === 'ovin' || sp === 'caprin' || sp === 'ovin_autre') return 'أغنام وماعز';
       if (sp === 'poulet' || sp === 'coq') return 'دجاج / ديوك';
       if (sp === 'pondeuse') return 'دجاج بياض';
       if (sp === 'poussin') return 'كتكوت';
@@ -11673,6 +12175,12 @@ const app = {
       if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') return 'Beef cattle / Bull';
       if (sp === 'veau' || sp === 'broutard') return 'Calf';
       if (sp === 'bovin' || sp === 'bovin_autre') return 'Cattle';
+      if (sp === 'mouton' || sp === 'belier') return 'Sheep / Ram';
+      if (sp === 'brebis') return 'Ewe';
+      if (sp === 'agneau') return 'Lamb';
+      if (sp === 'chevre' || sp === 'bouc') return 'Goat';
+      if (sp === 'chevreau') return 'Kid';
+      if (sp === 'ovin' || sp === 'caprin' || sp === 'ovin_autre') return 'Sheep & Goats';
       if (sp === 'poulet' || sp === 'coq') return 'Chicken / Rooster';
       if (sp === 'pondeuse') return 'Laying hen';
       if (sp === 'poussin') return 'Chick';
@@ -11690,6 +12198,12 @@ const app = {
     if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') return 'Taurillon / Bovin viande';
     if (sp === 'veau' || sp === 'broutard') return 'Veau d\'élevage';
     if (sp === 'bovin' || sp === 'bovin_autre') return 'Bovin';
+    if (sp === 'mouton' || sp === 'belier') return 'Mouton / Bélier';
+    if (sp === 'brebis') return 'Brebis';
+    if (sp === 'agneau') return 'Agneau';
+    if (sp === 'chevre' || sp === 'bouc') return 'Chèvre';
+    if (sp === 'chevreau') return 'Chevreau';
+    if (sp === 'ovin' || sp === 'caprin' || sp === 'ovin_autre') return 'Ovin & Caprin';
     if (sp === 'poulet' || sp === 'coq') return 'Poulet / Coq';
     if (sp === 'pondeuse') return 'Poule pondeuse';
     if (sp === 'poussin') return 'Poussin';
@@ -11732,6 +12246,32 @@ const app = {
     if (sp === 'veau' || sp.includes('veau')) {
       if (ageDays >= 120) return 'Croissance';
       if (ageDays >= 60) return 'Pré-sevrage';
+      return 'Démarrage';
+    }
+
+    // 0b. Ovins & Caprins (Moutons, Brebis, Agneaux, Chèvres, Chevreaux)
+    if (sp === 'mouton' || sp === 'belier' || sp === 'brebis' || sp === 'agneau' || sp === 'chevre' || sp === 'chevreau' || sp === 'bouc' || sp === 'ovin' || sp === 'caprin' || sp === 'ovin_autre' || sp.includes('mouton') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('chevre')) {
+      if (stg.includes('tarie') || stg.includes('dry') || stg.includes('شايحة') || stg.includes('راحة')) return 'Tarie';
+      if (stg.includes('reforme') || stg.includes('cull') || stg.includes('تفريط')) return 'Réforme';
+      if (stg.includes('belier') || stg.includes('reproducteur') || brd.includes('belier')) return 'Reproducteur';
+      if (stg.includes('gestante') || stg.includes('عشار')) return 'Gestante';
+      if (sp === 'brebis' || sp === 'chevre') {
+        if (stg.includes('lactation') || ageDays >= 420) return 'Lactation';
+        if (ageDays >= 150) return 'Croissance';
+        return 'Démarrage';
+      }
+      if (sp === 'agneau' || sp === 'chevreau') {
+        if (ageDays >= 120) return 'Finition';
+        if (ageDays >= 60) return 'Croissance';
+        return 'Démarrage';
+      }
+      if (sp === 'mouton' || sp === 'belier') {
+        if (ageDays >= 240) return 'Finition';
+        if (ageDays >= 90) return 'Engraissement';
+        return 'Démarrage';
+      }
+      if (ageDays >= 365) return 'Adulte';
+      if (ageDays >= 90) return 'Croissance';
       return 'Démarrage';
     }
 
