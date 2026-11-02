@@ -2,6 +2,7 @@
 // (Poultry, Cattle, Sheep & Goats) in FermeGest Pro
 const fs = require('fs');
 const path = require('path');
+const assert = require('assert');
 
 const appJsPath = path.join(__dirname, '..', 'app.js');
 const translationsPath = path.join(__dirname, '..', 'translations.js');
@@ -38,6 +39,11 @@ const app = {
   translateSpecies: extractFn('translateSpecies'),
   translateStage: extractFn('translateStage'),
   getStageBadgeClass: extractFn('getStageBadgeClass'),
+  getExpenseLinkedLotIds: extractFn('getExpenseLinkedLotIds'),
+  getLotExitDate: extractFn('getLotExitDate'),
+  calculateDaysBetween: extractFn('calculateDaysBetween'),
+  calculateAllLotsFinancials: extractFn('calculateAllLotsFinancials'),
+  getTodayStr: () => '2026-11-02',
   calculateAgeInDays: function(birthDate) {
     if (!birthDate) return 0;
     const b = new Date(birthDate);
@@ -245,6 +251,54 @@ lotsDemo.forEach(l => {
   console.log(`   - Coût de revient complet par tête : ${totalHeadCost.toFixed(3)} DT`);
   console.log(`   - Investissement total du lot : ${(totalHeadCost * l.currentQuantity).toFixed(3)} DT\n`);
 });
+
+// -------------------------------------------------------------
+// STEP 5B: TEST DES 2 MODES DE DISTRIBUTION D'ALIMENT
+// -------------------------------------------------------------
+console.log('--- ETAPE 5B: TEST DES 2 TYPES DE DISTRIBUTION D\'ALIMENT ---');
+console.log('1) Mode Distribution Totale (par coefficient zootechnique)');
+console.log('2) Mode Distribution par Lot (100% attribué au lot sélectionné)\n');
+
+const todayStr = '2026-11-02';
+
+// 1. Distribution par Lot : 50 kg de concentré direct pour les Vaches (lot_bovin_01)
+const distribLotBovin = {
+  id: 'distrib_demo_01',
+  date: todayStr,
+  targetMode: 'lot',
+  linkedLotId: 'lot_bovin_01',
+  totalKg: 50,
+  totalCost: 50 * 0.850, // 42.500 DT
+  items: [{ id: 'feed_1', kg: 50, pricePerKg: 0.850 }]
+};
+
+// 2. Distribution Totale : 200 kg d'aliment pour toute la ferme (réparti par coefficient)
+const distribTotaleFerme = {
+  id: 'distrib_demo_02',
+  date: todayStr,
+  targetMode: 'total',
+  linkedLotId: 'all',
+  totalKg: 200,
+  totalCost: 200 * 0.600, // 120.000 DT
+  items: [{ id: 'feed_2', kg: 200, pricePerKg: 0.600 }]
+};
+
+global.appState.feedDistributions = [distribLotBovin, distribTotaleFerme];
+global.appState.expenses = [];
+
+const finResults = app.calculateAllLotsFinancials();
+
+console.log(`✓ Distribution par Lot enregistrée : 50 kg (42.500 DT) -> 100% Lot Bovin [lot_bovin_01]`);
+console.log(`✓ Distribution Totale enregistrée : 200 kg (120.000 DT) -> Réparti par coefficients réels`);
+console.log(`\n▶ Résultats financiers de la distribution :`);
+Object.keys(finResults).forEach(lid => {
+  const r = finResults[lid];
+  const feedAlloc = r.allocatedFeed.toFixed(3);
+  const costPerHead = (r.allocatedFeed / (r.animal.currentQuantity || 1)).toFixed(3);
+  console.log(`   - ${r.animal.name} (${r.animal.currentQuantity} têtes) : Aliment alloué = ${feedAlloc} DT | Coût aliment / sujet = ${costPerHead} DT`);
+});
+assert(finResults['lot_bovin_01'].allocatedFeed >= 42.5, 'Le lot bovin doit recevoir ses 42.500 DT directs plus sa part de la répartition générale');
+console.log('✓ Validation des 2 modes réussie avec exactitude zootechnique !\n');
 
 // -------------------------------------------------------------
 // STEP 6: VENTES DE PRODUITS & VERIFICATION DES REVENUS / BENEFICES

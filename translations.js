@@ -831,7 +831,16 @@ const TRANSLATIONS = {
     feed_sugg_pierre_sel: "Pierre à lécher / Minéraux",
     feed_sugg_lait_agneau: "Lait d'allaitement agneaux",
     kpi_animals_sub_ovins: "Moutons, Brebis, Agneaux, Chèvres (Ovins)",
-    kpi_animals_sub_all: "Élevage diversifié (Volailles, Bovins, Ovins)"
+    kpi_animals_sub_all: "Élevage diversifié (Volailles, Bovins, Ovins)",
+
+    // Feed Distribution Modes (Total par coefficient vs Par lot)
+    lbl_distrib_mode: "Type de distribution d'aliment",
+    distrib_mode_total: "Distribution Totale (Par coefficient)",
+    distrib_mode_lot: "Distribution par Lot",
+    lbl_distrib_target_lot: "Sélectionner le lot destinataire",
+    distrib_mode_total_hint: "Répartition calculée selon les coefficients de chaque animal (vaches, moutons...)",
+    distrib_mode_lot_hint: "Attribué à 100% au lot sélectionné et divisé par son nombre de têtes",
+    opt_all_lots: "Tous les lots actifs (Par coefficient)"
   },
 
   ar: {
@@ -1661,7 +1670,16 @@ const TRANSLATIONS = {
     feed_sugg_pierre_sel: "حجر ملح ولعق ومعادن",
     feed_sugg_lait_agneau: "بديل حليب للحملان",
     kpi_animals_sub_ovins: "خراف، نعاج، حملان، ماعز (أغنام)",
-    kpi_animals_sub_all: "تربية متنوعة (دواجن، أبقار، أغنام)"
+    kpi_animals_sub_all: "تربية متنوعة (دواجن، أبقار، أغنام)",
+
+    // Feed Distribution Modes (Total par coefficient vs Par lot)
+    lbl_distrib_mode: "طريقة توزيع العلف",
+    distrib_mode_total: "توزيع كلي (حسب المعاملات)",
+    distrib_mode_lot: "توزيع حسب الدفعة",
+    lbl_distrib_target_lot: "اختر الدفعة المستفيدة",
+    distrib_mode_total_hint: "توزيع وحساب آلي حسب الاحتياج والمعامل لكل حيوان (أبقار، أغنام...)",
+    distrib_mode_lot_hint: "يتم احتساب العلف والتكلفة بالكامل للدفعة المختارة فقط وتقسيمها على عدد الرؤوس",
+    opt_all_lots: "جميع الدفعات النشطة (حسب المعاملات)"
   },
 
   en: {
@@ -2491,7 +2509,16 @@ const TRANSLATIONS = {
     feed_sugg_pierre_sel: "Mineral Salt Lick Block",
     feed_sugg_lait_agneau: "Lamb Milk Replacer",
     kpi_animals_sub_ovins: "Sheep, Ewes, Lambs, Goats (Flock)",
-    kpi_animals_sub_all: "Diversified Livestock (Poultry, Cattle, Sheep)"
+    kpi_animals_sub_all: "Diversified Livestock (Poultry, Cattle, Sheep)",
+
+    // Feed Distribution Modes (Total par coefficient vs Par lot)
+    lbl_distrib_mode: "Feed Distribution Mode",
+    distrib_mode_total: "Total Distribution (By coefficient)",
+    distrib_mode_lot: "Distribution by Lot",
+    lbl_distrib_target_lot: "Select Target Lot",
+    distrib_mode_total_hint: "Auto-calculated proportionally by each animal's zootechnical coefficient (cows, sheep...)",
+    distrib_mode_lot_hint: "Allocated 100% to the selected lot and divided by its head count",
+    opt_all_lots: "All active lots (By coefficient)"
   }
 };
 

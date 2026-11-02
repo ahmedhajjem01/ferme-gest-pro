@@ -5791,8 +5791,61 @@ const app = {
     if (input) input.value = names[type] || '';
   },
 
+  setFeedDistribMode(mode = 'total') {
+    const hidden = document.getElementById('feedDistribMode');
+    const btnTotal = document.getElementById('distribModeBtn_total');
+    const btnLot = document.getElementById('distribModeBtn_lot');
+    const lotGroup = document.getElementById('distribTargetLotGroup');
+    const hint = document.getElementById('distribModeHint');
+
+    if (hidden) hidden.value = mode;
+
+    if (mode === 'lot') {
+      if (btnTotal) { btnTotal.className = 'btn btn-sm btn-outline bold'; }
+      if (btnLot) { btnLot.className = 'btn btn-sm btn-primary bold'; }
+      if (lotGroup) lotGroup.classList.remove('hidden');
+      if (hint) {
+        hint.setAttribute('data-i18n', 'distrib_mode_lot_hint');
+        hint.textContent = this.t('distrib_mode_lot_hint') || 'Attribué à 100% au lot sélectionné et divisé par son nombre de têtes';
+        hint.style.color = 'var(--accent-amber)';
+      }
+    } else {
+      if (btnTotal) { btnTotal.className = 'btn btn-sm btn-primary bold'; }
+      if (btnLot) { btnLot.className = 'btn btn-sm btn-outline bold'; }
+      if (lotGroup) lotGroup.classList.add('hidden');
+      if (hint) {
+        hint.setAttribute('data-i18n', 'distrib_mode_total_hint');
+        hint.textContent = this.t('distrib_mode_total_hint') || 'Répartition calculée selon les coefficients de chaque animal (vaches, moutons...)';
+        hint.style.color = 'var(--accent-emerald)';
+      }
+    }
+  },
+
   renderFeedDistributionModal() {
     appState.feedTypes = this.sanitizeFeedTypes(appState.feedTypes);
+
+    // Initialiser les options de lots pour le mode "Distribution par Lot"
+    const targetLotSelect = document.getElementById('distribTargetLotId');
+    if (targetLotSelect) {
+      const activeLots = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
+      if (activeLots.length > 0) {
+        const curLotVal = targetLotSelect.value;
+        targetLotSelect.innerHTML = activeLots.map(a => {
+          const icon = this.getSpeciesIcon(a.species);
+          const name = this.getAnimalDisplayName(a);
+          const headsLabel = (appState.lang === 'ar') ? 'رأس' : 'têtes';
+          return `<option value="${a.id}">${icon} ${name} (${a.currentQuantity} ${headsLabel})</option>`;
+        }).join('');
+        if (curLotVal && activeLots.some(a => a.id === curLotVal)) {
+          targetLotSelect.value = curLotVal;
+        }
+      } else {
+        const noLotLabel = (appState.lang === 'ar') ? 'لا توجد دفعات نشطة' : 'Aucun lot actif';
+        targetLotSelect.innerHTML = `<option value="">${noLotLabel}</option>`;
+      }
+    }
+    const curMode = document.getElementById('feedDistribMode')?.value || 'total';
+    this.setFeedDistribMode(curMode);
 
     const container = document.getElementById('feedDistribItemsContainer');
     const presetsContainer = document.getElementById('feedSmartPresetsContainer');
@@ -6161,9 +6214,16 @@ const app = {
       return;
     }
 
+    const targetMode = document.getElementById('feedDistribMode')?.value || 'total';
+    const linkedLotId = (targetMode === 'lot') 
+      ? (document.getElementById('distribTargetLotId')?.value || 'all') 
+      : 'all';
+
     const distrib = {
       id: 'distrib-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
       date,
+      targetMode,
+      linkedLotId,
       totalKg: parseFloat(totalKg.toFixed(2)),
       totalCost: parseFloat(totalCost.toFixed(3)),
       cans: parseFloat(totalCans.toFixed(1)),
@@ -6195,9 +6255,21 @@ const app = {
     const isEn = (appState.lang || this.currentLang) === 'en';
     const unitKg = isAr ? 'كغ' : 'kg';
     const details = items.map(it => `${it.kg}${unitKg} ${this.getFeedDisplayName(it).split(' ')[0]}`).join(' + ');
+
+    let lotSuffix = '';
+    if (targetMode === 'lot' && linkedLotId && linkedLotId !== 'all') {
+      const targetLot = (appState.animals || []).find(a => a.id === linkedLotId);
+      if (targetLot) {
+        const lotName = this.getAnimalDisplayName(targetLot);
+        lotSuffix = isAr ? ` ➔ الدفعة: ${lotName}` : (isEn ? ` ➔ Lot: ${lotName}` : ` ➔ Lot : ${lotName}`);
+      }
+    } else {
+      lotSuffix = isAr ? ' ➔ (توزيع كلي حسب المعاملات)' : (isEn ? ' ➔ (Total by zootechnical coef)' : ' ➔ (Répartition par coefficient)');
+    }
+
     this.showToast(isAr 
-      ? `🌾 تم تسجيل التوزيع: ${details} (المجموع ${totalKg.toFixed(1)} ${unitKg}) !` 
-      : (isEn ? `🌾 Distribution saved: ${details} (Total ${totalKg.toFixed(1)} kg)!` : `🌾 Distribution enregistrée : ${details} (Total ${totalKg.toFixed(1)} kg) !`));
+      ? `🌾 تم تسجيل التوزيع: ${details} (المجموع ${totalKg.toFixed(1)} ${unitKg})${lotSuffix} !` 
+      : (isEn ? `🌾 Distribution saved: ${details} (Total ${totalKg.toFixed(1)} kg)${lotSuffix}!` : `🌾 Distribution enregistrée : ${details} (Total ${totalKg.toFixed(1)} kg)${lotSuffix} !`));
   },
 
   renderFeedStockAdjustModal() {
@@ -6986,9 +7058,27 @@ const app = {
 
       // 4a. Distributions réelles d'aliment effectuées le jour d
       const distribsOnD = (appState.feedDistributions || []).filter(dist => dist.date === d);
-      const feedDistCost = distribsOnD.reduce((s, dist) => s + (Number(dist.totalCost) || 0), 0);
 
-      if (feedDistCost > 0) {
+      // Séparer les distributions par lot (100% au lot désigné) et les distributions totales (selon coefficients)
+      let generalFeedDistCost = 0;
+      distribsOnD.forEach(dist => {
+        const cost = Number(dist.totalCost) || 0;
+        if (cost <= 0) return;
+        if (dist.targetMode === 'lot' && dist.linkedLotId && dist.linkedLotId !== 'all') {
+          if (lotMap[dist.linkedLotId]) {
+            // Attribué directement et intégralement au lot choisi
+            lotMap[dist.linkedLotId].allocatedFeed += cost;
+          } else {
+            // Repli sécurisé si le lot n'est plus actif ou introuvable
+            generalFeedDistCost += cost;
+          }
+        } else {
+          // Distribution totale générale par coefficients zootechniques
+          generalFeedDistCost += cost;
+        }
+      });
+
+      if (generalFeedDistCost > 0) {
         const targetLots = (activeLotsOnD.length > 0) ? activeLotsOnD : Object.values(lotMap);
         let totalFeedPortions = 0;
         const lotPortions = targetLots.map(info => {
@@ -7004,7 +7094,7 @@ const app = {
 
         if (totalFeedPortions > 0) {
           lotPortions.forEach(lp => {
-            lp.info.allocatedFeed += feedDistCost * (lp.portion / totalFeedPortions);
+            lp.info.allocatedFeed += generalFeedDistCost * (lp.portion / totalFeedPortions);
           });
         }
       }
