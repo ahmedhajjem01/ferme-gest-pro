@@ -3669,6 +3669,48 @@ const app = {
     const stg = (stage || '').toLowerCase();
     const brd = (breed || '').toLowerCase();
 
+    // ── 0. BOVINS (Vaches Laitières, Taurillons, Veaux) - Portions Zootechniques Journalières ──
+    const isBovine = sp === 'vache_laitiere' || sp === 'taurillon' || sp === 'veau' || sp === 'bovin' || sp === 'bovin_autre' || sp === 'bovin_viande' || sp.includes('vache') || sp.includes('bovin') || sp.includes('taurillon') || sp.includes('veau') || sp.includes('cattle') || sp.includes('cow');
+    if (isBovine) {
+      // A. Veau d'élevage
+      if (sp === 'veau' || sp.includes('veau') || stg.includes('veau')) {
+        if (d <= 21)  return 1200; // J1-J21: 1.2 kg/j (Allaitement colostrum / lait)
+        if (d <= 60)  return 2200; // J22-J60: 2.2 kg/j (Pré-sevrage lait + starter 18% + foin)
+        if (d <= 120) return 3500; // J61-J120: 3.5 kg/j (Sevrage concentré croissance + foin)
+        if (d <= 180) return 5000; // J121-J180: 5.0 kg/j (Broutard 4-6 mois)
+        return 6800;               // > 180j: 6.8 kg/j (Jeune bovin)
+      }
+
+      // B. Taurillon / Bovin Viande (Engraissement)
+      if (sp === 'taurillon' || sp === 'bovin_viande' || sp.includes('taurillon') || sp.includes('bull') || stg.includes('engraissement') || stg.includes('finition') || stg.includes('taureau')) {
+        const isTaureau = stg.includes('taureau') || stg.includes('reproducteur') || brd.includes('taureau');
+        if (isTaureau) return 12500; // Taureau reproducteur: ~12.5 kg/j
+
+        const isFinition = stg.includes('finition') || stg.includes('finish') || d > 480;
+        if (isFinition) return 11500; // Finition viande haute densité: ~11.5 kg/j
+
+        const isEngraissement = stg.includes('engraissement') || d > 365;
+        if (isEngraissement) return 10500; // Engraissement actif 12-16 mois: ~10.5 kg/j
+
+        if (d <= 180) return 5000;  // Veau taurillon 0-6 mois: ~5.0 kg/j
+        return 8500;                 // Taurillon croissance 6-12 mois: ~8.5 kg/j
+      }
+
+      // C. Vache Laitière / Bovin générique
+      const isTarie = stg.includes('tarie') || stg.includes('dry') || stg.includes('شايحة') || stg.includes('راحة');
+      if (isTarie) return 10500; // Vache tarie repos pré-vêlage: ~10.5 kg/j
+
+      const isReforme = stg.includes('reforme') || stg.includes('cull') || stg.includes('ذبح') || stg.includes('تفريط');
+      if (isReforme) return 11800; // Vache de réforme finition: ~11.8 kg/j
+
+      const isLactation = stg.includes('lactation') || stg.includes('lait') || stg.includes('حليب') || stg.includes('حلوب') || d >= 720;
+      if (isLactation) return 18000; // Vache laitière en lactation: ~18.0 kg MS/j
+
+      if (d <= 180) return 4500; // Génisse sevrée 0-6 mois: ~4.5 kg/j
+      if (d <= 450) return 7500; // Génisse croissance 6-15 mois: ~7.5 kg/j
+      return 9800;               // Génisse gestante 15-24 mois: ~9.8 kg/j
+    }
+
     // 1. CANARD DE BARBARIE / PALMIPÈDES (Table zootechnique officielle)
     if (sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck')) {
       if (d <= 7)   return 22;  // Sem 1: ~22 g/j (Ci 0.73)
