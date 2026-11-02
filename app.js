@@ -124,6 +124,7 @@ const app = {
     this.updateCurrencyDropdownOptions();
     this.updateMobileMenuControls();
     this.applyTranslations();
+    this.updateLivestockUIThemeAndVisibility();
     const addSp = document.getElementById('animalSpecies')?.value || 'poulet';
     this.handleAnimalSpeciesChange(addSp, 'animal');
     const editSp = document.getElementById('editAnimalSpecies')?.value || 'poulet';
@@ -206,6 +207,7 @@ const app = {
     this.setupListeners();
     this.updateCurrencySymbols();
     this.applyTranslations();
+    this.updateLivestockUIThemeAndVisibility();
     this.renderAll();
     document.querySelectorAll('#animalPortionBanner, [id*="PortionBanner"]').forEach(el => el.remove());
 
@@ -524,14 +526,19 @@ const app = {
       fabBtn.addEventListener('click', () => this.toggleFabMenu());
     }
 
-    // Animals Filter Chips
-    document.querySelectorAll('[data-filter-animal]').forEach(chip => {
-      chip.addEventListener('click', () => {
-        document.querySelectorAll('[data-filter-animal]').forEach(c => c.classList.remove('active'));
+    // Animals Filter Chips (Event Delegation)
+    const chipsRow = document.getElementById('animalFilterChipsRow');
+    if (chipsRow) {
+      chipsRow.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-filter-animal]');
+        if (!chip) return;
+        chipsRow.querySelectorAll('[data-filter-animal]').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
-        this.renderAnimals(chip.getAttribute('data-filter-animal'));
+        const filterVal = chip.getAttribute('data-filter-animal');
+        this.currentAnimalFilter = filterVal;
+        this.renderAnimals(filterVal);
       });
-    });
+    }
 
     // Expenses Search & Filter
     const expSearch = document.getElementById('expenseSearchInput');
@@ -723,6 +730,7 @@ const app = {
         if (birthDateInput && !birthDateInput.value) {
           birthDateInput.value = this.getTodayStr();
         }
+        this.populateAnimalSpeciesOptions('animalSpecies');
         const sp = document.getElementById('animalSpecies')?.value || 'poulet';
         this.handleAnimalSpeciesChange(sp, 'animal');
         this.updateArrivalAgePreview('animal');
@@ -818,6 +826,7 @@ const app = {
       }
 
       if (modalId === 'modalAddSale') {
+        this.populateSaleProductOptions();
         this.validateSaleQuantityAgainstLot();
       }
 
@@ -1279,6 +1288,260 @@ const app = {
       ? '✅ تم حفظ أنواع الحيوانات بنجاح !' 
       : (isEn ? '✅ Managed animal types saved successfully!' : '✅ Types d\'animaux enregistrés avec succès !');
     this.showToast(msg);
+
+    this.updateLivestockUIThemeAndVisibility();
+    this.renderAll();
+  },
+
+  getUserManagedAnimalTypes() {
+    if (appState.userProfile && Array.isArray(appState.userProfile.managedAnimals) && appState.userProfile.managedAnimals.length > 0) {
+      const filtered = appState.userProfile.managedAnimals.filter(t => t !== 'equine');
+      if (filtered.length > 0) return filtered;
+    }
+    try {
+      const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
+      if (Array.isArray(raw) && raw.length > 0) {
+        const filtered = raw.filter(t => t !== 'equine');
+        if (filtered.length > 0) return filtered;
+      }
+    } catch(e) {}
+    return ['poultry'];
+  },
+
+  updateLivestockUIThemeAndVisibility() {
+    const managed = this.getUserManagedAnimalTypes();
+    const hasPoultry = managed.includes('poultry');
+    const hasCattle = managed.includes('cattle');
+
+    // 1. Navigation items (Incubator tab in sidebar & mobile footer)
+    const incNavItems = document.querySelectorAll('[data-tab="incubator"]');
+    incNavItems.forEach(el => {
+      el.style.display = hasPoultry ? '' : 'none';
+    });
+
+    // 2. Overview cards: Daily egg alert, Egg stock card, Egg production chart
+    const dailyEggBanner = document.getElementById('dailyEggAlertBanner');
+    if (dailyEggBanner && !hasPoultry) {
+      dailyEggBanner.style.display = 'none';
+    }
+
+    const eggStockCard = document.querySelector('.egg-stock-card');
+    if (eggStockCard) {
+      eggStockCard.style.display = hasPoultry ? '' : 'none';
+    }
+
+    const eggChartCard = document.getElementById('eggProductionChartCard');
+    if (eggChartCard) {
+      eggChartCard.style.display = hasPoultry ? '' : 'none';
+    }
+
+    // 3. KPI Livestock Subtitle
+    const kpiAnimalsSub = document.getElementById('kpiAnimalsBreakdown');
+    if (kpiAnimalsSub) {
+      if (hasCattle && !hasPoultry) {
+        kpiAnimalsSub.setAttribute('data-i18n', 'kpi_animals_sub_bovins');
+        kpiAnimalsSub.textContent = this.t('kpi_animals_sub_bovins');
+      } else if (hasCattle && hasPoultry) {
+        kpiAnimalsSub.setAttribute('data-i18n', 'kpi_animals_sub_mixed');
+        kpiAnimalsSub.textContent = this.t('kpi_animals_sub_mixed');
+      } else {
+        kpiAnimalsSub.setAttribute('data-i18n', 'kpi_animals_sub');
+        kpiAnimalsSub.textContent = this.t('kpi_animals_sub');
+      }
+    }
+
+    // 4. Modal Add Animal Title
+    const modalAddAnimalTitle = document.querySelector('#modalAddAnimal .modal-header h3');
+    if (modalAddAnimalTitle) {
+      if (hasCattle && !hasPoultry) {
+        modalAddAnimalTitle.setAttribute('data-i18n', 'modal_add_bovin_title');
+        modalAddAnimalTitle.textContent = this.t('modal_add_bovin_title');
+      } else {
+        modalAddAnimalTitle.setAttribute('data-i18n', 'modal_add_animal_title');
+        modalAddAnimalTitle.textContent = this.t('modal_add_animal_title');
+      }
+    }
+
+    // 5. Populate species & sales selects, filter chips, and feed suggestions
+    this.populateAnimalSpeciesOptions('animalSpecies');
+    this.populateAnimalSpeciesOptions('editAnimalSpecies');
+    this.populateSaleProductOptions();
+    this.renderAnimalFilterChips();
+    this.renderFeedExpenseSuggestions();
+  },
+
+  populateAnimalSpeciesOptions(selectId = 'animalSpecies', defaultVal = null) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const managed = this.getUserManagedAnimalTypes();
+    const hasPoultry = managed.includes('poultry');
+    const hasCattle = managed.includes('cattle');
+    const currentVal = defaultVal || select.value;
+
+    const cattleOptions = [
+      { val: 'vache_laitiere', key: 'opt_species_vache_laitiere', label: '🐄 Vache Laitière' },
+      { val: 'taurillon', key: 'opt_species_taurillon', label: '🐂 Taurillon / Bovin Viande' },
+      { val: 'veau', key: 'opt_species_veau', label: '🐂 Veau d\'Élevage' },
+      { val: 'bovin_autre', key: 'opt_species_bovin_autre', label: '🌾 Autre Bovin' }
+    ];
+
+    const poultryOptions = [
+      { val: 'poulet', key: 'opt_species_poulet', label: '🐔 Poulet / Coq' },
+      { val: 'canard', key: 'opt_species_canard', label: '🦆 Canard' },
+      { val: 'pintade', key: 'opt_species_pintade', label: '🪶 Pintade' },
+      { val: 'caille', key: 'opt_species_caille', label: '🐦 Caille' },
+      { val: 'dinde', key: 'opt_species_dinde', label: '🦃 Dinde' },
+      { val: 'autre', key: 'opt_species_other', label: '🌾 Autre volaille' }
+    ];
+
+    let html = '';
+    if (hasCattle && hasPoultry) {
+      html += `<optgroup label="${this.t('optgroup_bovins') || '🐄 Élevage Bovin'}">`;
+      html += cattleOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+      html += `</optgroup>`;
+      html += `<optgroup label="${this.t('optgroup_volailles') || '🐔 Élevage Avicole (Volailles)'}">`;
+      html += poultryOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+      html += `</optgroup>`;
+    } else if (hasCattle) {
+      html += cattleOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+    } else {
+      html += poultryOptions.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+    }
+
+    select.innerHTML = html;
+
+    const validValues = (hasCattle && hasPoultry)
+      ? [...cattleOptions.map(o => o.val), ...poultryOptions.map(o => o.val)]
+      : (hasCattle ? cattleOptions.map(o => o.val) : poultryOptions.map(o => o.val));
+
+    if (currentVal && validValues.includes(currentVal)) {
+      select.value = currentVal;
+    } else if (validValues.length > 0) {
+      select.value = validValues[0];
+    }
+
+    const formPrefix = selectId.startsWith('edit') ? 'editAnimal' : 'animal';
+    this.handleAnimalSpeciesChange(select.value, formPrefix);
+  },
+
+  populateSaleProductOptions(defaultVal = null) {
+    const select = document.getElementById('saleProductType');
+    if (!select) return;
+
+    const managed = this.getUserManagedAnimalTypes();
+    const hasPoultry = managed.includes('poultry');
+    const hasCattle = managed.includes('cattle');
+    const currentVal = defaultVal || select.value;
+
+    const cattleSales = [
+      { val: 'lait', key: 'opt_sale_lait', label: '🥛 Lait Frais (Litres)' },
+      { val: 'veau', key: 'opt_sale_veau', label: '🐂 Veau sur pied' },
+      { val: 'bovin_viande', key: 'opt_sale_bovin_viande', label: '🥩 Taurillon / Viande' },
+      { val: 'vache_reforme', key: 'opt_sale_vache_reforme', label: '🐄 Vache de Réforme' },
+      { val: 'fumier_bovin', key: 'opt_sale_fumier_bovin', label: '🚜 Fumier Bovin Organique' }
+    ];
+
+    const poultrySales = [
+      { val: 'oeufs', key: 'opt_sale_eggs', label: '🥚 Œufs' },
+      { val: 'poussin', key: 'opt_sale_poussin', label: '🐣 Poussins' },
+      { val: 'poulet', key: 'opt_sale_poulet', label: '🍗 Poulets' },
+      { val: 'pintade', key: 'opt_sale_pintade', label: '🪶 Pintades' },
+      { val: 'canard', key: 'opt_sale_canard', label: '🦆 Canards de Barbarie' },
+      { val: 'autre', key: 'opt_sale_other', label: '📦 Autre produit avicole' }
+    ];
+
+    let html = '';
+    if (hasCattle && hasPoultry) {
+      html += `<optgroup label="${this.t('optgroup_bovins') || '🐄 Bovins'}">`;
+      html += cattleSales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+      html += `</optgroup>`;
+      html += `<optgroup label="${this.t('optgroup_volailles') || '🐔 Volailles'}">`;
+      html += poultrySales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+      html += `</optgroup>`;
+    } else if (hasCattle) {
+      html += cattleSales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+    } else {
+      html += poultrySales.map(o => `<option value="${o.val}" data-i18n="${o.key}">${this.t(o.key) || o.label}</option>`).join('');
+    }
+
+    select.innerHTML = html;
+
+    const validValues = (hasCattle && hasPoultry)
+      ? [...cattleSales.map(o => o.val), ...poultrySales.map(o => o.val)]
+      : (hasCattle ? cattleSales.map(o => o.val) : poultrySales.map(o => o.val));
+
+    if (currentVal && validValues.includes(currentVal)) {
+      select.value = currentVal;
+    } else if (validValues.length > 0) {
+      select.value = validValues[0];
+    }
+
+    this.handleSaleTypeChange();
+  },
+
+  renderAnimalFilterChips() {
+    const container = document.getElementById('animalFilterChipsRow');
+    if (!container) return;
+
+    const managed = this.getUserManagedAnimalTypes();
+    const hasPoultry = managed.includes('poultry');
+    const hasCattle = managed.includes('cattle');
+    const activeFilter = this.currentAnimalFilter || 'all';
+
+    const activeAnimals = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
+    const counts = {
+      all: activeAnimals.length,
+      vache_laitiere: 0,
+      taurillon: 0,
+      veau: 0,
+      bovin_autre: 0,
+      poulet: 0,
+      pondeuse: 0,
+      poussin: 0,
+      adulte: 0,
+      pintade: 0,
+      canard: 0
+    };
+
+    activeAnimals.forEach(a => {
+      const sp = (a.species || '').toLowerCase();
+      if (sp === 'vache_laitiere' || sp === 'vache') counts.vache_laitiere++;
+      else if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') counts.taurillon++;
+      else if (sp === 'veau' || sp === 'broutard') counts.veau++;
+      else if (sp === 'bovin' || sp === 'bovin_autre') counts.bovin_autre++;
+      else if (sp === 'canard' || sp === 'canard_barbarie') counts.canard++;
+      else if (counts[sp] !== undefined) counts[sp]++;
+    });
+
+    const chips = [];
+    chips.push({ id: 'all', key: 'chip_all', defaultLabel: 'Tous', count: counts.all });
+
+    if (hasCattle) {
+      chips.push({ id: 'vache_laitiere', key: 'chip_vache_laitiere', defaultLabel: '🐄 Vaches Laitières', count: counts.vache_laitiere });
+      chips.push({ id: 'taurillon', key: 'chip_taurillon', defaultLabel: '🐂 Taurillons', count: counts.taurillon });
+      chips.push({ id: 'veau', key: 'chip_veau', defaultLabel: '🐂 Veaux', count: counts.veau });
+      chips.push({ id: 'bovin_autre', key: 'chip_bovin_autre', defaultLabel: '🌾 Autres Bovins', count: counts.bovin_autre });
+    }
+
+    if (hasPoultry) {
+      chips.push({ id: 'poulet', key: 'chip_poulet', defaultLabel: '🍗 Poulets', count: counts.poulet });
+      chips.push({ id: 'pondeuse', key: 'chip_pondeuse', defaultLabel: '🥚 Pondeuses', count: counts.pondeuse });
+      chips.push({ id: 'poussin', key: 'chip_poussin', defaultLabel: '🐣 Poussins', count: counts.poussin });
+      chips.push({ id: 'adulte', key: 'chip_poulet_adulte', defaultLabel: '🐓 Coqs', count: counts.adulte });
+      chips.push({ id: 'pintade', key: 'chip_pintade', defaultLabel: '🪶 Pintades', count: counts.pintade });
+      chips.push({ id: 'canard', key: 'chip_canard', defaultLabel: '🦆 Canards', count: counts.canard });
+    }
+
+    const validIds = chips.map(c => c.id);
+    if (!validIds.includes(activeFilter)) {
+      this.currentAnimalFilter = 'all';
+    }
+
+    container.innerHTML = chips.map(c => {
+      const isAct = (c.id === this.currentAnimalFilter);
+      return `<button class="chip ${isAct ? 'active' : ''}" data-filter-animal="${c.id}"><span data-i18n="${c.key}">${this.t(c.key) || c.defaultLabel}</span> (<span id="chipCount_${c.id}">${c.count}</span>)</button>`;
+    }).join('\n');
   },
 
   getManagedAnimalsBadgesHtml(managedArray) {
@@ -1529,35 +1792,88 @@ const app = {
     if (!container) return;
 
     const lang = appState.lang || 'fr';
-    const suggestions = lang === 'ar' ? [
-      { id: 'ble', name: 'قمح' },
-      { id: 'bouchon', name: 'علف بياضة' },
-      { id: 'mais', name: 'ذرة مرحية' },
-      { id: 'son', name: 'نخالة القمح' },
-      { id: 'tournesol', name: 'قلوب عباد الشمس' },
-      { id: 'melange', name: 'خلطة حبوب' },
-      { id: 'demarrage', name: 'علف بداية' }
-    ] : (lang === 'en' ? [
-      { id: 'ble', name: 'Wheat' },
-      { id: 'bouchon', name: 'Layer Feed' },
-      { id: 'mais', name: 'Cracked Corn' },
-      { id: 'son', name: 'Wheat Bran' },
-      { id: 'tournesol', name: 'Sunflower Seeds' },
-      { id: 'melange', name: 'Grain Mixture' },
-      { id: 'demarrage', name: 'Starter Feed' }
-    ] : [
-      { id: 'ble', name: 'Blé' },
-      { id: 'bouchon', name: 'Aliment ponte' },
-      { id: 'mais', name: 'Maïs concassé' },
-      { id: 'son', name: 'Son de blé (Sedari)' },
-      { id: 'tournesol', name: 'Tournesol' },
-      { id: 'melange', name: 'Mélange graines' },
-      { id: 'demarrage', name: 'Aliment démarrage' }
-    ]);
+    const managed = this.getUserManagedAnimalTypes();
+    const hasPoultry = managed.includes('poultry');
+    const hasCattle = managed.includes('cattle');
+
+    let cattleSuggestions = [];
+    if (lang === 'ar') {
+      cattleSuggestions = [
+        { id: 'foin', name: 'قرط فصة', icon: '🌿' },
+        { id: 'ensilage', name: 'سيلاج ذرة', icon: '🌽' },
+        { id: 'concentre_lait', name: 'علف بقر حلوب 18%', icon: '🥛' },
+        { id: 'concentre_engrais', name: 'علف تسمين عجول', icon: '🐂' },
+        { id: 'poudre_lait', name: 'حليب بودرة للعجول', icon: '🍼' },
+        { id: 'paille', name: 'تبن قمح', icon: '🌾' },
+        { id: 'sel_mineraux', name: 'حجر ملح ومعادن CMV', icon: '🧂' }
+      ];
+    } else if (lang === 'en') {
+      cattleSuggestions = [
+        { id: 'foin', name: 'Alfalfa Hay', icon: '🌿' },
+        { id: 'ensilage', name: 'Corn Silage', icon: '🌽' },
+        { id: 'concentre_lait', name: 'Dairy Concentrate 18%', icon: '🥛' },
+        { id: 'concentre_engrais', name: 'Fattening Concentrate', icon: '🐂' },
+        { id: 'poudre_lait', name: 'Calf Milk Replacer', icon: '🍼' },
+        { id: 'paille', name: 'Bedding Straw', icon: '🌾' },
+        { id: 'sel_mineraux', name: 'Mineral Lick Block (CMV)', icon: '🧂' }
+      ];
+    } else {
+      cattleSuggestions = [
+        { id: 'foin', name: 'Foin de luzerne', icon: '🌿' },
+        { id: 'ensilage', name: 'Ensilage de maïs', icon: '🌽' },
+        { id: 'concentre_lait', name: 'Concentré laitier 18%', icon: '🥛' },
+        { id: 'concentre_engrais', name: 'Concentré engraissement', icon: '🐂' },
+        { id: 'poudre_lait', name: 'Poudre de lait veau', icon: '🍼' },
+        { id: 'paille', name: 'Paille de litière', icon: '🌾' },
+        { id: 'sel_mineraux', name: 'Bloc de sel / CMV', icon: '🧂' }
+      ];
+    }
+
+    let poultrySuggestions = [];
+    if (lang === 'ar') {
+      poultrySuggestions = [
+        { id: 'ble', name: 'قمح', icon: '🌾' },
+        { id: 'bouchon', name: 'علف بياضة', icon: '🥚' },
+        { id: 'mais', name: 'ذرة مرحية', icon: '🌽' },
+        { id: 'son', name: 'نخالة القمح', icon: '🌾' },
+        { id: 'tournesol', name: 'قلوب عباد الشمس', icon: '🌻' },
+        { id: 'melange', name: 'خلطة حبوب', icon: '🥣' },
+        { id: 'demarrage', name: 'علف بداية', icon: '🐣' }
+      ];
+    } else if (lang === 'en') {
+      poultrySuggestions = [
+        { id: 'ble', name: 'Wheat', icon: '🌾' },
+        { id: 'bouchon', name: 'Layer Feed', icon: '🥚' },
+        { id: 'mais', name: 'Cracked Corn', icon: '🌽' },
+        { id: 'son', name: 'Wheat Bran', icon: '🌾' },
+        { id: 'tournesol', name: 'Sunflower Seeds', icon: '🌻' },
+        { id: 'melange', name: 'Grain Mixture', icon: '🥣' },
+        { id: 'demarrage', name: 'Starter Feed', icon: '🐣' }
+      ];
+    } else {
+      poultrySuggestions = [
+        { id: 'ble', name: 'Blé', icon: '🌾' },
+        { id: 'bouchon', name: 'Aliment ponte', icon: '🥚' },
+        { id: 'mais', name: 'Maïs concassé', icon: '🌽' },
+        { id: 'son', name: 'Son de blé (Sedari)', icon: '🌾' },
+        { id: 'tournesol', name: 'Tournesol', icon: '🌻' },
+        { id: 'melange', name: 'Mélange graines', icon: '🥣' },
+        { id: 'demarrage', name: 'Aliment démarrage', icon: '🐣' }
+      ];
+    }
+
+    let suggestions = [];
+    if (hasCattle && hasPoultry) {
+      suggestions = [...cattleSuggestions, ...poultrySuggestions];
+    } else if (hasCattle) {
+      suggestions = cattleSuggestions;
+    } else {
+      suggestions = poultrySuggestions;
+    }
 
     container.innerHTML = suggestions.map(s => `
       <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.74rem; padding: 3px 9px; border-radius: var(--radius-pill); font-weight: 700;" onclick="app.selectFeedSuggestion('${s.name}')">
-        🌾 ${s.name}
+        ${s.icon || '🌾'} ${s.name}
       </button>
     `).join('');
   },
@@ -3453,6 +3769,156 @@ const app = {
     const stg = (stage || '').toLowerCase();
     const brd = (breed || '').toLowerCase();
     const days = Math.max(1, Math.round(Number(ageDays) || 1));
+
+    // ── 0. BOVINS (Vaches Laitières, Taurillons, Veaux) - Référentiel Zootechnique ──
+    const isBovine = sp === 'vache_laitiere' || sp === 'taurillon' || sp === 'veau' || sp === 'bovin' || sp === 'bovin_autre' || sp === 'bovin_viande' || sp.includes('vache') || sp.includes('bovin') || sp.includes('taurillon') || sp.includes('veau') || sp.includes('cattle') || sp.includes('cow');
+    if (isBovine) {
+      // A. VEAU D'ÉLEVAGE (Phases allaitement, pré-sevrage, sevrage, broutard)
+      if (sp === 'veau' || sp.includes('veau') || stg.includes('veau')) {
+        if (days <= 21) {
+          return {
+            minGrams: 1000, maxGrams: 1400, avgGrams: 1200, dailyGrams: 1200, ci: 1.20,
+            stageKey: 'bovin_veau_laitier',
+            labelFr: 'Veau au lait (J1–J21)', labelAr: 'عجل رضيع باللتر (ي1-21)', labelEn: 'Nursing calf (d1-21)',
+            notesFr: 'Colostrum J1-J3 puis lait maternel/poudre 6-8L/j + eau tiède', notesAr: 'لبأ ي1-3 ثم حليب أم أو بديل 6-8 لتر/يوم + ماء دافئ'
+          };
+        }
+        if (days <= 60) {
+          return {
+            minGrams: 1800, maxGrams: 2600, avgGrams: 2200, dailyGrams: 2200, ci: 1.80,
+            stageKey: 'bovin_veau_pre_sevrage',
+            labelFr: 'Veau pré-sevrage (J22–J60)', labelAr: 'عجل قبل الفطام (ي22-60)', labelEn: 'Pre-weaning calf (d22-60)',
+            notesFr: 'Lait dégressif + concentré starter 18% + foin sec', notesAr: 'حليب متناقص + علف بادي 18% + قرط فصة جاف'
+          };
+        }
+        if (days <= 120) {
+          return {
+            minGrams: 3000, maxGrams: 4000, avgGrams: 3500, dailyGrams: 3500, ci: 2.80,
+            stageKey: 'bovin_veau_sevre',
+            labelFr: 'Veau sevré (J61–J120)', labelAr: 'عجل مفطوم (ي61-120)', labelEn: 'Weaned calf (d61-120)',
+            notesFr: 'Concentré croissance 2.5-3.5 kg/j + foin à volonté', notesAr: 'علف مركب نمو 2.5-3.5 كغ/يوم + قرط فصة'
+          };
+        }
+        if (days <= 180) {
+          return {
+            minGrams: 4500, maxGrams: 5500, avgGrams: 5000, dailyGrams: 5000, ci: 3.80,
+            stageKey: 'bovin_broutard',
+            labelFr: 'Broutard / Veau 4-6 mois', labelAr: 'عجل مفطوم نمو (ي121-180)', labelEn: 'Feeder calf 4-6 mos',
+            notesFr: 'Ration de croissance: foin de luzerne + concentré 3.5 kg', notesAr: 'عليقة نمو: قرط فصة + علف مركب 3.5 كغ'
+          };
+        }
+        return {
+          minGrams: 6000, maxGrams: 7500, avgGrams: 6800, dailyGrams: 6800, ci: 4.50,
+          stageKey: 'bovin_jeune',
+          labelFr: 'Jeune bovin (>6 mois)', labelAr: 'عجل نمو متقدم (>6 أشهر)', labelEn: 'Young cattle (>6 mos)',
+          notesFr: 'Ration d\'élevage 6.8 kg/j', notesAr: 'عليقة تربية 6.8 كغ/يوم'
+        };
+      }
+
+      // B. TAURILLON / BOVIN VIANDE (Engraissement & Finition)
+      if (sp === 'taurillon' || sp === 'bovin_viande' || sp.includes('taurillon') || sp.includes('bull') || stg.includes('engraissement') || stg.includes('finition') || stg.includes('taureau')) {
+        const isTaureau = stg.includes('taureau') || stg.includes('reproducteur') || brd.includes('taureau');
+        if (isTaureau) {
+          return {
+            minGrams: 11500, maxGrams: 14000, avgGrams: 12500, dailyGrams: 12500, ci: 7.20,
+            stageKey: 'taureau_reproducteur',
+            labelFr: 'Taureau reproducteur adulte', labelAr: 'ثور تلقيح فحل بالغ', labelEn: 'Adult breeding bull',
+            notesFr: 'Ration d\'entretien: foin de qualité + minéraux', notesAr: 'عليقة صيانة للفحل: قرط ممتاز وأملاح'
+          };
+        }
+
+        const isFinition = stg.includes('finition') || stg.includes('finish') || days > 480;
+        if (isFinition) {
+          return {
+            minGrams: 10500, maxGrams: 12500, avgGrams: 11500, dailyGrams: 11500, ci: 7.50,
+            stageKey: 'taurillon_finition',
+            labelFr: 'Taurillon en finition (>16 mois)', labelAr: 'عجل مرحلة تشطيب اللحم (>16 شهر)', labelEn: 'Finished bull (>16 mos)',
+            notesFr: 'Ration finition forte densité musculaire', notesAr: 'عليقة تشطيب نهائية عالية البروتين والطاقة'
+          };
+        }
+
+        const isEngraissement = stg.includes('engraissement') || days > 365;
+        if (isEngraissement) {
+          return {
+            minGrams: 9500, maxGrams: 11500, avgGrams: 10500, dailyGrams: 10500, ci: 6.80,
+            stageKey: 'taurillon_engraissement',
+            labelFr: 'Taurillon engraissement actif (12–16 mois)', labelAr: 'عجل تسمين مكثف (12-16 شهر)', labelEn: 'Active fattening bull (12-16 mos)',
+            notesFr: 'Concentré haute énergie + paille / ensilage', notesAr: 'علف تسمين عالي الطاقة + تبن / سيلاج'
+          };
+        }
+
+        if (days <= 180) {
+          return {
+            minGrams: 4500, maxGrams: 5500, avgGrams: 5000, dailyGrams: 5000, ci: 3.80,
+            stageKey: 'taurillon_veau',
+            labelFr: 'Veau taurillon (0–6 mois)', labelAr: 'عجل تسمين بداية (0-6 أشهر)', labelEn: 'Starter bull calf (0-6 mos)',
+            notesFr: 'Foin sec + concentré starter', notesAr: 'قرط فصة + علف مركب بداية'
+          };
+        }
+
+        return {
+          minGrams: 7500, maxGrams: 9500, avgGrams: 8500, dailyGrams: 8500, ci: 5.50,
+          stageKey: 'taurillon_croissance',
+          labelFr: 'Taurillon croissance (6–12 mois)', labelAr: 'عجل تسمين نمو (6-12 شهر)', labelEn: 'Growing steer (6-12 mos)',
+          notesFr: 'Ensilage / foin + concentré engraissement 4-5 kg/j', notesAr: 'سيلاج ذرة / قرط + علف تسمين 4-5 كغ/يوم'
+        };
+      }
+
+      // C. VACHE LAITIÈRE / BOVIN GÉNÉRIQUE (Génisses, Lactation, Tarissement, Réforme)
+      const isTarie = stg.includes('tarie') || stg.includes('dry') || stg.includes('شايحة') || stg.includes('راحة');
+      if (isTarie) {
+        return {
+          minGrams: 9500, maxGrams: 12000, avgGrams: 10500, dailyGrams: 10500, ci: 6.50,
+          stageKey: 'vache_tarie',
+          labelFr: 'Vache tarie (repos pré-vêlage)', labelAr: 'بقرة شايحة (طور الراحة قبل الولادة)', labelEn: 'Dry cow (pre-calving rest)',
+          notesFr: 'Foin, paille, minéraux sans excès d\'énergie', notesAr: 'قرط، تبن، وأملاح بدون طاقة مفرطة'
+        };
+      }
+
+      const isReforme = stg.includes('reforme') || stg.includes('cull') || stg.includes('ذبح') || stg.includes('تفريط');
+      if (isReforme) {
+        return {
+          minGrams: 10500, maxGrams: 13000, avgGrams: 11800, dailyGrams: 11800, ci: 7.20,
+          stageKey: 'vache_reforme',
+          labelFr: 'Vache de réforme (finition)', labelAr: 'بقرة تفريط (تسمين للذبح)', labelEn: 'Cull cow (finishing)',
+          notesFr: 'Ration de finition de réforme', notesAr: 'عليقة تسمين الأبقار المعدة للذبح'
+        };
+      }
+
+      const isLactation = stg.includes('lactation') || stg.includes('lait') || stg.includes('حليب') || stg.includes('حلوب') || days >= 720;
+      if (isLactation) {
+        return {
+          minGrams: 16000, maxGrams: 20000, avgGrams: 18000, dailyGrams: 18000, ci: 8.50,
+          stageKey: 'vache_lactation',
+          labelFr: 'Vache laitière en lactation', labelAr: 'بقرة حلوب في فترة إنتاج الحليب', labelEn: 'Dairy cow in lactation',
+          notesFr: 'Ration complète: 18 kg MS (ensilage maïs, luzerne, concentré 18%)', notesAr: 'عليقة كاملة: 18 كغ مادة جافة (سيلاج ذرة، فصة، علف 18%)'
+        };
+      }
+
+      if (days <= 180) {
+        return {
+          minGrams: 4000, maxGrams: 5000, avgGrams: 4500, dailyGrams: 4500, ci: 3.50,
+          stageKey: 'genisse_sevre',
+          labelFr: 'Génisse sevrée (0–6 mois)', labelAr: 'عجلة مفطومة (0-6 أشهر)', labelEn: 'Weaned heifer (0-6 mos)',
+          notesFr: 'Concentré génisse 2 kg/j + foin à volonté', notesAr: 'علف مركب + قرط فصة'
+        };
+      }
+      if (days <= 450) {
+        return {
+          minGrams: 6500, maxGrams: 8500, avgGrams: 7500, dailyGrams: 7500, ci: 5.00,
+          stageKey: 'genisse_croissance',
+          labelFr: 'Génisse de croissance (6–15 mois)', labelAr: 'عجلة نمو (6-15 شهر)', labelEn: 'Growing heifer (6-15 mos)',
+          notesFr: 'Fourrage grossier de qualité + 2.5 kg concentré', notesAr: 'أعلاف خشنة ممتازة + 2.5 كغ علف مركّز'
+        };
+      }
+
+      return {
+        minGrams: 8500, maxGrams: 11000, avgGrams: 9800, dailyGrams: 9800, ci: 6.20,
+        stageKey: 'genisse_gestante',
+        labelFr: 'Génisse gestante (15–24 mois)', labelAr: 'عجلة عشار (15-24 شهر)', labelEn: 'Pregnant heifer (15-24 mos)',
+        notesFr: 'Préparation au vêlage, minéraux CMV', notesAr: 'تحضير للولادة، أملاح ومعادن CMV'
+      };
+    }
 
     // ── 1. CANARD DE BARBARIE / PALMIPÈDES (Barème zootechnique) ──────────────
     if (sp === 'canard' || sp === 'canard_barbarie' || sp.includes('duck')) {
@@ -6729,10 +7195,7 @@ const app = {
     if (notesInput) notesInput.value = animal.notes || '';
 
     const sp = animal.species || 'poulet';
-    if (speciesSelect) {
-      speciesSelect.value = sp;
-      this.handleAnimalSpeciesChange(sp, 'editAnimal');
-    }
+    this.populateAnimalSpeciesOptions('editAnimalSpecies', sp);
 
     // Pré-sélectionner le statut d'arrivée selon l'âge à l'achat d'origine du lot (arrivalAgeDays)
     const stagePresetSelect = document.getElementById('editAnimalStageSelect');
@@ -6741,7 +7204,29 @@ const app = {
         ? Math.max(0, parseInt(animal.arrivalAgeDays, 10) || 0)
         : 0;
 
-      if (sp === 'canard' || sp === 'canard_barbarie') {
+      if (sp === 'vache_laitiere') {
+        if (animal.stage === 'Tarie') stagePresetSelect.value = 'vache_tarie';
+        else if (animal.stage === 'Gestante') stagePresetSelect.value = 'genisse_gestante';
+        else if (animal.stage === 'Réforme') stagePresetSelect.value = 'vache_reforme';
+        else if (arrivalAgeDays <= 90) stagePresetSelect.value = 'veau_femelle';
+        else if (arrivalAgeDays < 450) stagePresetSelect.value = 'genisse_croissance';
+        else stagePresetSelect.value = 'vache_lactation';
+      } else if (sp === 'taurillon' || sp === 'bovin_viande') {
+        if (animal.stage === 'Reproducteur') stagePresetSelect.value = 'taureau_reproducteur';
+        else if (arrivalAgeDays <= 90) stagePresetSelect.value = 'veau_male';
+        else if (arrivalAgeDays < 270) stagePresetSelect.value = 'taurillon_croissance';
+        else if (arrivalAgeDays < 450) stagePresetSelect.value = 'taurillon_engraissement';
+        else stagePresetSelect.value = 'taurillon_finition';
+      } else if (sp === 'veau') {
+        if (arrivalAgeDays <= 21) stagePresetSelect.value = 'veau_lactation';
+        else if (arrivalAgeDays <= 60) stagePresetSelect.value = 'veau_pre_sevrage';
+        else if (arrivalAgeDays <= 120) stagePresetSelect.value = 'veau_sevre';
+        else stagePresetSelect.value = 'broutard';
+      } else if (sp === 'bovin_autre' || sp === 'bovin') {
+        if (arrivalAgeDays <= 60) stagePresetSelect.value = 'bovin_veau';
+        else if (arrivalAgeDays < 365) stagePresetSelect.value = 'bovin_croissance';
+        else stagePresetSelect.value = 'bovin_adulte';
+      } else if (sp === 'canard' || sp === 'canard_barbarie') {
         if (arrivalAgeDays <= 21) stagePresetSelect.value = 'caneton_demarrage';
         else if (arrivalAgeDays < 150) stagePresetSelect.value = 'canard_croissance';
         else stagePresetSelect.value = 'canard_adulte';
@@ -6974,7 +7459,109 @@ const app = {
     const sp = (speciesVal || 'poulet').toLowerCase();
 
     let options = [];
-    if (sp === 'canard' || sp === 'canard_barbarie') {
+    if (sp === 'vache_laitiere') {
+      options = [
+        {
+          key: 'vache_lactation',
+          days: 720,
+          label: isAr ? '🐄 بقرة حلوب في إنتاج الحليب (~24 شهر)' : (isEn ? '🐄 Dairy cow in lactation (~24 mos)' : '🐄 Vache laitière en lactation (~24 mois)')
+        },
+        {
+          key: 'vache_tarie',
+          days: 720,
+          label: isAr ? '🐄 بقرة شايحة / راحة قبل الولادة' : (isEn ? '🐄 Dry cow (pre-calving rest)' : '🐄 Vache tarie (repos pré-vêlage)')
+        },
+        {
+          key: 'genisse_gestante',
+          days: 540,
+          label: isAr ? '🐄 عجلة عشار حامل (~18 شهر)' : (isEn ? '🐄 Pregnant heifer (~18 mos)' : '🐄 Génisse gestante (~18 mois)')
+        },
+        {
+          key: 'genisse_croissance',
+          days: 300,
+          label: isAr ? '🐄 عجلة نمو وتكاثر (~10 أشهر)' : (isEn ? '🐄 Growing heifer (~10 mos)' : '🐄 Génisse de croissance (~10 mois)')
+        },
+        {
+          key: 'veau_femelle',
+          days: 60,
+          label: isAr ? '🐄 عجل أنثى / ولة مفطومة (~2 شهر)' : (isEn ? '🐄 Weaned female calf (~2 mos)' : '🐄 Veau femelle sevrée (~2 mois)')
+        },
+        {
+          key: 'vache_reforme',
+          days: 720,
+          label: isAr ? '🐄 بقرة تفريط / تسمين للذبح' : (isEn ? '🐄 Cull cow for meat' : '🐄 Vache de réforme (viande)')
+        }
+      ];
+    } else if (sp === 'taurillon' || sp === 'bovin_viande') {
+      options = [
+        {
+          key: 'taurillon_engraissement',
+          days: 365,
+          label: isAr ? '🐂 عجل تسمين مكثف (~12 شهر)' : (isEn ? '🐂 Fattening steer (~12 mos)' : '🐂 Taurillon engraissement (~12 mois)')
+        },
+        {
+          key: 'taurillon_croissance',
+          days: 180,
+          label: isAr ? '🐂 عجل نمو أولي (~6 أشهر)' : (isEn ? '🐂 Growing steer (~6 mos)' : '🐂 Taurillon croissance (~6 mois)')
+        },
+        {
+          key: 'taurillon_finition',
+          days: 480,
+          label: isAr ? '🐂 عجل مرحلة تشطيب اللحم (>16 شهر)' : (isEn ? '🐂 Finished bull (>16 mos)' : '🐂 Taurillon finition (>16 mois)')
+        },
+        {
+          key: 'veau_male',
+          days: 90,
+          label: isAr ? '🐂 عجل فتي مفطوم (~3 أشهر)' : (isEn ? '🐂 Weaned bull calf (~3 mos)' : '🐂 Broutard / Veau sevré (~3 mois)')
+        },
+        {
+          key: 'taureau_reproducteur',
+          days: 720,
+          label: isAr ? '🐂 ثور فحل للتلقيح (~24 شهر)' : (isEn ? '🐂 Breeding bull (~24 mos)' : '🐂 Taureau reproducteur (~24 mois)')
+        }
+      ];
+    } else if (sp === 'veau') {
+      options = [
+        {
+          key: 'veau_lactation',
+          days: 0,
+          label: isAr ? '🐂 عجل رضيع باللتر (0-21 يوم)' : (isEn ? '🐂 Nursing calf (0-21 days)' : '🐂 Veau au lait (0-21 jours)')
+        },
+        {
+          key: 'veau_pre_sevrage',
+          days: 30,
+          label: isAr ? '🐂 عجل قبل الفطام (~1 شهر)' : (isEn ? '🐂 Pre-weaning calf (~1 mo)' : '🐂 Veau pré-sevrage (~1 mois)')
+        },
+        {
+          key: 'veau_sevre',
+          days: 90,
+          label: isAr ? '🐂 عجل مفطوم أولي (~3 أشهر)' : (isEn ? '🐂 Weaned calf (~3 mos)' : '🐂 Veau sevré (~3 mois)')
+        },
+        {
+          key: 'broutard',
+          days: 150,
+          label: isAr ? '🐂 عجل مفطوم نمو 4-6 أشهر' : (isEn ? '🐂 Feeder calf (4-6 mos)' : '🐂 Broutard 4-6 mois')
+        }
+      ];
+    } else if (sp === 'bovin_autre' || sp === 'bovin') {
+      options = [
+        {
+          key: 'bovin_adulte',
+          days: 365,
+          label: isAr ? '🐄 رأس بقر بالغ (>1 سنة)' : (isEn ? '🐄 Adult cattle (>1 yr)' : '🐄 Bovin adulte (>1 an)')
+        },
+        {
+          key: 'bovin_croissance',
+          days: 180,
+          label: isAr ? '🐄 عجل نمو (~6 أشهر)' : (isEn ? '🐄 Growing cattle (~6 mos)' : '🐄 Jeune bovin croissance (~6 mois)')
+        },
+        {
+          key: 'bovin_veau',
+          days: 0,
+          label: isAr ? '🐂 عجل رضيع بداية' : (isEn ? '🐂 Starter calf' : '🐂 Veau démarrage')
+        }
+      ];
+    } else if (sp === 'canard' || sp === 'canard_barbarie') {
       options = [
         {
           key: 'caneton_demarrage',
@@ -7119,9 +7706,45 @@ const app = {
     let defaultDays = 0;
     let stageName = 'Croissance';
 
-    if (presetKey === 'poussin' || presetKey === 'caneton_demarrage' || presetKey === 'cailleteau' || presetKey === 'dindonneau' || (presetKey && presetKey.includes('demarrage')) || presetKey === 'pintadeau') {
+    if (presetKey === 'veau_lactation' || presetKey === 'bovin_veau' || presetKey === 'poussin' || presetKey === 'caneton_demarrage' || presetKey === 'cailleteau' || presetKey === 'dindonneau' || (presetKey && presetKey.includes('demarrage')) || presetKey === 'pintadeau') {
       defaultDays = 0;
       stageName = 'Démarrage';
+    } else if (presetKey === 'veau_pre_sevrage') {
+      defaultDays = 30;
+      stageName = 'Pré-sevrage';
+    } else if (presetKey === 'veau_sevre' || presetKey === 'veau_male' || presetKey === 'veau_femelle') {
+      defaultDays = 90;
+      stageName = 'Croissance';
+    } else if (presetKey === 'broutard' || presetKey === 'taurillon_croissance' || presetKey === 'bovin_croissance') {
+      defaultDays = 180;
+      stageName = 'Croissance';
+    } else if (presetKey === 'genisse_croissance') {
+      defaultDays = 300;
+      stageName = 'Croissance';
+    } else if (presetKey === 'taurillon_engraissement') {
+      defaultDays = 365;
+      stageName = 'Finition';
+    } else if (presetKey === 'taurillon_finition') {
+      defaultDays = 480;
+      stageName = 'Finition';
+    } else if (presetKey === 'genisse_gestante') {
+      defaultDays = 540;
+      stageName = 'Gestante';
+    } else if (presetKey === 'vache_tarie') {
+      defaultDays = 720;
+      stageName = 'Tarie';
+    } else if (presetKey === 'vache_lactation') {
+      defaultDays = 720;
+      stageName = 'Lactation';
+    } else if (presetKey === 'taureau_reproducteur') {
+      defaultDays = 720;
+      stageName = 'Reproducteur';
+    } else if (presetKey === 'vache_reforme') {
+      defaultDays = 720;
+      stageName = 'Réforme';
+    } else if (presetKey === 'bovin_adulte') {
+      defaultDays = 365;
+      stageName = 'Adulte';
     } else if (presetKey === 'caille_croissance') {
       defaultDays = 15;
       stageName = 'Croissance';
@@ -8989,7 +9612,23 @@ const app = {
       if (eggFormatGroup) eggFormatGroup.style.display = 'none';
       if (format) format.value = 'unite';
 
-      if (type === 'poussin') {
+      if (type === 'lait') {
+        const unitLait = appState.lang === 'ar' ? '(لتر حليب طازج)' : (appState.lang === 'en' ? '(Liters of Milk)' : '(Litres de lait)');
+        if (unitLabel) unitLabel.textContent = unitLait;
+        if (price) price.placeholder = '1.400';
+      } else if (type === 'veau') {
+        const unitVeau = appState.lang === 'ar' ? '(عجول / بالرأس)' : (appState.lang === 'en' ? '(Calves / Heads)' : '(Veaux / Têtes)');
+        if (unitLabel) unitLabel.textContent = unitVeau;
+      } else if (type === 'bovin_viande') {
+        const unitViande = appState.lang === 'ar' ? '(عجول تسمين / بالرأس)' : (appState.lang === 'en' ? '(Beef cattle / Heads)' : '(Taurillons / Têtes)');
+        if (unitLabel) unitLabel.textContent = unitViande;
+      } else if (type === 'vache_reforme') {
+        const unitReforme = appState.lang === 'ar' ? '(أبقار تفريط / بالرأس)' : (appState.lang === 'en' ? '(Cull cows / Heads)' : '(Vaches réforme / Têtes)');
+        if (unitLabel) unitLabel.textContent = unitReforme;
+      } else if (type === 'fumier_bovin') {
+        const unitFumier = appState.lang === 'ar' ? '(مقطورة / أكياس سماد)' : (appState.lang === 'en' ? '(Trailers / Bags)' : '(Remorques / Sacs)');
+        if (unitLabel) unitLabel.textContent = unitFumier;
+      } else if (type === 'poussin') {
         const unitPoussin = appState.lang === 'ar' ? '(كتاكيت / بالرأس)' : (appState.lang === 'en' ? '(Chicks / Birds)' : '(Poussins / Sujets)');
         if (unitLabel) unitLabel.textContent = unitPoussin;
       } else if (type === 'poulet') {
@@ -10940,6 +11579,15 @@ const app = {
 
   getSpeciesIcon(species) {
     switch (species) {
+      case 'vache_laitiere':
+      case 'vache': return '🐄';
+      case 'taurillon':
+      case 'bovin_viande':
+      case 'taureau': return '🐂';
+      case 'veau':
+      case 'broutard': return '🐂';
+      case 'bovin':
+      case 'bovin_autre': return '🐄';
       case 'poulet': return '🍗';
       case 'pondeuse': return '🥚';
       case 'poussin': return '🐣';
@@ -10962,6 +11610,10 @@ const app = {
     const sp = species.toString().toLowerCase().trim();
 
     if (lang === 'ar') {
+      if (sp === 'vache_laitiere' || sp === 'vache') return 'بقرة حلوب';
+      if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') return 'عجل تسمين / لحم';
+      if (sp === 'veau' || sp === 'broutard') return 'عجل رضيع / مفطوم';
+      if (sp === 'bovin' || sp === 'bovin_autre') return 'أبقار ومواشي';
       if (sp === 'poulet' || sp === 'coq') return 'دجاج / ديوك';
       if (sp === 'pondeuse') return 'دجاج بياض';
       if (sp === 'poussin') return 'كتكوت';
@@ -10975,6 +11627,10 @@ const app = {
     }
 
     if (lang === 'en') {
+      if (sp === 'vache_laitiere' || sp === 'vache') return 'Dairy cow';
+      if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') return 'Beef cattle / Bull';
+      if (sp === 'veau' || sp === 'broutard') return 'Calf';
+      if (sp === 'bovin' || sp === 'bovin_autre') return 'Cattle';
       if (sp === 'poulet' || sp === 'coq') return 'Chicken / Rooster';
       if (sp === 'pondeuse') return 'Laying hen';
       if (sp === 'poussin') return 'Chick';
@@ -10988,6 +11644,10 @@ const app = {
     }
 
     // French
+    if (sp === 'vache_laitiere' || sp === 'vache') return 'Vache laitière';
+    if (sp === 'taurillon' || sp === 'bovin_viande' || sp === 'taureau') return 'Taurillon / Bovin viande';
+    if (sp === 'veau' || sp === 'broutard') return 'Veau d\'élevage';
+    if (sp === 'bovin' || sp === 'bovin_autre') return 'Bovin';
     if (sp === 'poulet' || sp === 'coq') return 'Poulet / Coq';
     if (sp === 'pondeuse') return 'Poule pondeuse';
     if (sp === 'poussin') return 'Poussin';
@@ -11010,6 +11670,28 @@ const app = {
     const daysSince = this.calculateAgeInDays(animal.birthDate);
     const startAge = Number(animal.arrivalAgeDays) || 0;
     const ageDays = Math.max(0, daysSince + startAge);
+
+    // 0. Bovins (Vaches, Taurillons, Veaux)
+    if (sp === 'vache_laitiere' || sp === 'bovin' || sp === 'bovin_autre' || sp.includes('vache') || sp.includes('cow')) {
+      if (stg.includes('tarie') || stg.includes('dry') || stg.includes('شايحة') || stg.includes('راحة')) return 'Tarie';
+      if (stg.includes('reforme') || stg.includes('cull') || stg.includes('تفريط')) return 'Réforme';
+      if (ageDays >= 720) return 'Lactation';
+      if (ageDays >= 450) return 'Gestante';
+      if (ageDays >= 180) return 'Croissance';
+      return 'Démarrage';
+    }
+    if (sp === 'taurillon' || sp === 'bovin_viande' || sp.includes('taurillon') || sp.includes('bull')) {
+      if (stg.includes('taureau') || stg.includes('reproducteur') || brd.includes('taureau')) return 'Reproducteur';
+      if (ageDays >= 480) return 'Finition';
+      if (ageDays >= 365) return 'Engraissement';
+      if (ageDays >= 180) return 'Croissance';
+      return 'Démarrage';
+    }
+    if (sp === 'veau' || sp.includes('veau')) {
+      if (ageDays >= 120) return 'Croissance';
+      if (ageDays >= 60) return 'Pré-sevrage';
+      return 'Démarrage';
+    }
 
     const isLaying = stg.includes('ponte') || stg.includes('lay') || brd.includes('ponte') || brd.includes('pondeuse') || notes.includes('ponte') || notes.includes('pondeuse') || sp === 'pondeuse';
     const isRooster = stg.includes('coq') || stg.includes('rooster') || brd.includes('coq') || notes.includes('coq') || stg.includes('سردوك') || notes.includes('سردوك');
@@ -11099,6 +11781,11 @@ const app = {
     const sLower = s.toLowerCase();
 
     if (lang === 'ar') {
+      if (sLower.includes('lactation') || sLower.includes('حليب')) return 'إنتاج الحليب';
+      if (sLower.includes('tarie') || sLower.includes('dry') || sLower.includes('شايحة') || sLower.includes('راحة')) return 'طور الراحة / شايحة';
+      if (sLower.includes('gestante') || sLower.includes('عشار')) return 'عشار / حامل';
+      if (sLower.includes('reforme') || sLower.includes('تفريط')) return 'تفريط / مذبح';
+      if (sLower.includes('pre-sevrage') || sLower.includes('pré-sevrage')) return 'قبل الفطام';
       if (sLower.includes('démarrage') || sLower.includes('demarrage') || sLower.includes('start') || sLower.includes('بداية') || sLower.includes('تحضين')) {
         return 'بداية / تحضين';
       }
@@ -11121,6 +11808,11 @@ const app = {
     }
 
     if (lang === 'en') {
+      if (sLower.includes('lactation')) return 'Lactation / Milk';
+      if (sLower.includes('tarie') || sLower.includes('dry')) return 'Dry Cow';
+      if (sLower.includes('gestante') || sLower.includes('pregnant')) return 'Pregnant';
+      if (sLower.includes('reforme') || sLower.includes('cull')) return 'Cull';
+      if (sLower.includes('pre-sevrage') || sLower.includes('pre-weaning')) return 'Pre-weaning';
       if (sLower.includes('démarrage') || sLower.includes('demarrage') || sLower.includes('start') || sLower.includes('بداية')) {
         return 'Starter';
       }
@@ -11143,6 +11835,11 @@ const app = {
     }
 
     // French
+    if (sLower.includes('lactation')) return 'Lactation';
+    if (sLower.includes('tarie')) return 'Tarie';
+    if (sLower.includes('gestante')) return 'Gestante';
+    if (sLower.includes('reforme')) return 'Réforme';
+    if (sLower.includes('pre-sevrage') || sLower.includes('pré-sevrage')) return 'Pré-sevrage';
     if (sLower.includes('démarrage') || sLower.includes('demarrage')) return 'Démarrage';
     if (sLower.includes('croissance')) return 'Croissance';
     if (sLower.includes('finition')) return 'Finition';
@@ -11155,6 +11852,10 @@ const app = {
   getStageBadgeClass(stage) {
     if (!stage) return 'badge-stage-growth';
     const s = stage.toString().toLowerCase().trim();
+    if (s.includes('lactation') || s.includes('حليب')) return 'badge-stage-finish';
+    if (s.includes('tarie') || s.includes('شايحة')) return 'badge-stage-start';
+    if (s.includes('gestante') || s.includes('عشار')) return 'badge-stage-growth';
+    if (s.includes('reforme') || s.includes('تفريط')) return 'badge-stage-repro';
     if (s.includes('démarrage') || s.includes('demarrage') || s.includes('start') || s.includes('بداية') || s.includes('تحضين')) return 'badge-stage-start';
     if (s.includes('croissance') || s.includes('growth') || s.includes('نمو')) return 'badge-stage-growth';
     if (s.includes('finition') || s.includes('finish') || s.includes('تسمين')) return 'badge-stage-finish';

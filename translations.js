@@ -773,7 +773,35 @@ const TRANSLATIONS = {
     animal_select_btn_confirm: "Valider et Commencer 🚜",
     animal_select_err_min_one: "Veuillez sélectionner au moins un type d'animal.",
     profile_managed_animals_lbl: "Élevages gérés :",
-    profile_btn_edit_animals: "🐾 Modifier mes élevages"
+    profile_btn_edit_animals: "🐾 Modifier mes élevages",
+
+    // Bovins (Cattle) & Multi-Livestock Extensions
+    chip_vache_laitiere: "🐄 Vaches Laitières",
+    chip_taurillon: "🐂 Taurillons",
+    chip_veau: "🐂 Veaux",
+    chip_bovin_autre: "🌾 Autres Bovins",
+    opt_species_vache_laitiere: "🐄 Vache Laitière",
+    opt_species_taurillon: "🐂 Taurillon / Bovin Viande",
+    opt_species_veau: "🐂 Veau d'Élevage",
+    opt_species_bovin_autre: "🌾 Autre Bovin",
+    optgroup_bovins: "🐄 Élevage Bovin",
+    optgroup_volailles: "🐔 Élevage Avicole (Volailles)",
+    modal_add_bovin_title: "Nouveau Bovin / Lot de Bovins",
+    opt_sale_lait: "🥛 Lait Frais (Litres)",
+    opt_sale_veau: "🐂 Veau sur pied",
+    opt_sale_bovin_viande: "🥩 Taurillon / Viande",
+    opt_sale_vache_reforme: "🐄 Vache de Réforme",
+    opt_sale_fumier_bovin: "🚜 Fumier Bovin Organique",
+    feed_sugg_foin: "Foin de luzerne",
+    feed_sugg_ensilage: "Ensilage de maïs",
+    feed_sugg_concentre_lait: "Concentré laitier 18%",
+    feed_sugg_concentre_engrais: "Concentré engraissement",
+    feed_sugg_poudre_lait: "Poudre de lait veau",
+    feed_sugg_paille: "Paille de litière",
+    feed_sugg_sel_mineraux: "Bloc de sel / CMV",
+    feed_sugg_veto_ia: "Soins & Insémination IA",
+    kpi_animals_sub_bovins: "Vaches laitières, Veaux, Taurillons (Bovins)",
+    kpi_animals_sub_mixed: "Volailles & Bovins (Élevage Mixte)"
   },
 
   ar: {
@@ -1545,7 +1573,35 @@ const TRANSLATIONS = {
     animal_select_btn_confirm: "تأكيد وبدء الاستخدام 🚜",
     animal_select_err_min_one: "الرجاء اختيار نوع واحد على الأقل من الحيوانات.",
     profile_managed_animals_lbl: "أنواع التربية المُدارة :",
-    profile_btn_edit_animals: "🐾 تعديل أنواع التربية"
+    profile_btn_edit_animals: "🐾 تعديل أنواع التربية",
+
+    // Bovins (Cattle) & Multi-Livestock Extensions
+    chip_vache_laitiere: "🐄 أبقار حلوب",
+    chip_taurillon: "🐂 عجول تسمين",
+    chip_veau: "🐂 عجول رضيعة",
+    chip_bovin_autre: "🌾 أبقار أخرى",
+    opt_species_vache_laitiere: "🐄 بقرة حلوب",
+    opt_species_taurillon: "🐂 عجل تسمين / لحم",
+    opt_species_veau: "🐂 عجل رضيع / مفطوم",
+    opt_species_bovin_autre: "🌾 أبقار أخرى",
+    optgroup_bovins: "🐄 تربية الأبقار والمواشي",
+    optgroup_volailles: "🐔 تربية الدواجن والطيور",
+    modal_add_bovin_title: "إضافة رأس أو دفعة أبقار جديدة",
+    opt_sale_lait: "🥛 حليب طازج (لتر)",
+    opt_sale_veau: "🐂 عجل حي على رجليه",
+    opt_sale_bovin_viande: "🥩 عجل تسمين / لحم",
+    opt_sale_vache_reforme: "🐄 بقرة تفريط / مذبح",
+    opt_sale_fumier_bovin: "🚜 غبار بقري عضوي (سماد)",
+    feed_sugg_foin: "قرط فصة",
+    feed_sugg_ensilage: "سيلاج ذرة",
+    feed_sugg_concentre_lait: "علف بقر حلوب 18%",
+    feed_sugg_concentre_engrais: "علف تسمين عجول",
+    feed_sugg_poudre_lait: "حليب بودرة للعجول",
+    feed_sugg_paille: "تبن قمح ليتيير",
+    feed_sugg_sel_mineraux: "حجر ملح ومعادن CMV",
+    feed_sugg_veto_ia: "بيطرة وتلقيح اصطناعي IA",
+    kpi_animals_sub_bovins: "أبقار حلوب، عجول تسمين ورضع (مواشي)",
+    kpi_animals_sub_mixed: "دواجن وأبقار (تربية مختلطة)"
   },
 
   en: {
@@ -2317,7 +2373,35 @@ const TRANSLATIONS = {
     animal_select_btn_confirm: "Confirm & Get Started 🚜",
     animal_select_err_min_one: "Please select at least one animal type.",
     profile_managed_animals_lbl: "Managed Livestock:",
-    profile_btn_edit_animals: "🐾 Edit Managed Livestock"
+    profile_btn_edit_animals: "🐾 Edit Managed Livestock",
+
+    // Bovins (Cattle) & Multi-Livestock Extensions
+    chip_vache_laitiere: "🐄 Dairy Cows",
+    chip_taurillon: "🐂 Beef Cattle",
+    chip_veau: "🐂 Calves",
+    chip_bovin_autre: "🌾 Other Cattle",
+    opt_species_vache_laitiere: "🐄 Dairy Cow",
+    opt_species_taurillon: "🐂 Beef Cattle / Fattening Bull",
+    opt_species_veau: "🐂 Breeding Calf",
+    opt_species_bovin_autre: "🌾 Other Cattle",
+    optgroup_bovins: "🐄 Cattle Breeding",
+    optgroup_volailles: "🐔 Poultry Farming",
+    modal_add_bovin_title: "New Cattle Head / Batch",
+    opt_sale_lait: "🥛 Fresh Milk (Liters)",
+    opt_sale_veau: "🐂 Live Calf",
+    opt_sale_bovin_viande: "🥩 Beef Cattle / Meat",
+    opt_sale_vache_reforme: "🐄 Cull Cow",
+    opt_sale_fumier_bovin: "🚜 Organic Cattle Manure",
+    feed_sugg_foin: "Alfalfa Hay",
+    feed_sugg_ensilage: "Corn Silage",
+    feed_sugg_concentre_lait: "Dairy Concentrate 18%",
+    feed_sugg_concentre_engrais: "Fattening Concentrate",
+    feed_sugg_poudre_lait: "Calf Milk Replacer",
+    feed_sugg_paille: "Bedding Straw",
+    feed_sugg_sel_mineraux: "Mineral Lick Block (CMV)",
+    feed_sugg_veto_ia: "Vet Care & AI Insemination",
+    kpi_animals_sub_bovins: "Dairy cows, Calves, Beef cattle",
+    kpi_animals_sub_mixed: "Poultry & Cattle (Mixed Farming)"
   }
 };
 
