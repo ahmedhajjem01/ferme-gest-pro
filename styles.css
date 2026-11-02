@@ -1957,6 +1957,8 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   border-radius: 50%;
 }
 .legend-hatch { background-color: var(--accent-amber); }
+.legend-gestation { background-color: #ec4899; }
+.legend-dryoff { background-color: #f59e0b; }
 .legend-mirage { background-color: var(--accent-cyan); }
 .legend-vaccine { background-color: var(--accent-violet); }
 .legend-sale { background-color: var(--primary); }
@@ -2031,6 +2033,16 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
 .event-mirage {
   background: var(--accent-cyan-light);
   color: #38bdf8;
+}
+.event-gestation {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.4);
+}
+.event-dryoff {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 /* Forms & Modals */

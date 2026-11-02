@@ -43,6 +43,7 @@ const app = {
   getLotExitDate: extractFn('getLotExitDate'),
   calculateDaysBetween: extractFn('calculateDaysBetween'),
   calculateAllLotsFinancials: extractFn('calculateAllLotsFinancials'),
+  addDays: extractFn('addDays'),
   getTodayStr: () => '2026-11-02',
   calculateAgeInDays: function(birthDate) {
     if (!birthDate) return 0;
@@ -299,6 +300,45 @@ Object.keys(finResults).forEach(lid => {
 });
 assert(finResults['lot_bovin_01'].allocatedFeed >= 42.5, 'Le lot bovin doit recevoir ses 42.500 DT directs plus sa part de la répartition générale');
 console.log('✓ Validation des 2 modes réussie avec exactitude zootechnique !\n');
+
+// -------------------------------------------------------------
+// STEP 5C: CALENDRIER DE REPRODUCTION (GESTATION) & VACCINATION
+// -------------------------------------------------------------
+console.log('--- ETAPE 5C: GESTATION (ENCEINTE) & PROGRAMME VACCINAL AU CALENDRIER ---');
+
+// 1. Simulation Gestation Vache (Bovins)
+const cowMatingDate = '2026-09-01';
+const cowEchoDate = app.addDays(cowMatingDate, 60);
+const cowDryDate = app.addDays(cowMatingDate, 223);
+const cowCalvingDate = app.addDays(cowMatingDate, 283);
+
+console.log(`▶ 🐄 Vache Gestante (Saillie du ${cowMatingDate}) :`);
+console.log(`   - Échographie confirmation (J+60) : ${cowEchoDate}`);
+console.log(`   - Date de Tarissement (repos pré-vêlage 60j avant) : ${cowDryDate}`);
+console.log(`   - Date prévisionnelle de Vêlage (283 jours) : ${cowCalvingDate}`);
+assert.strictEqual(cowCalvingDate, '2027-06-11', 'Gestation vache doit être exactement de 283 jours');
+
+// 2. Simulation Gestation Brebis (Ovins)
+const eweMatingDate = '2026-10-01';
+const eweEchoDate = app.addDays(eweMatingDate, 50);
+const eweBoosterDate = app.addDays(eweMatingDate, 120);
+const eweLambingDate = app.addDays(eweMatingDate, 150);
+
+console.log(`\n▶ 🐑 Brebis Gestante (Saillie du ${eweMatingDate}) :`);
+console.log(`   - Constat de gestation (J+50) : ${eweEchoDate}`);
+console.log(`   - Vaccin entérotoxémie pré-agnelage (J+120) : ${eweBoosterDate}`);
+console.log(`   - Date prévisionnelle d'Agnelage (150 jours) : ${eweLambingDate}`);
+assert.strictEqual(eweLambingDate, '2027-02-28', 'Gestation brebis doit être exactement de 150 jours');
+
+// 3. Simulation Programmation Vaccinale avec Rappel Booster
+const vacDate = '2026-11-05';
+const vacBoosterDate = app.addDays(vacDate, 21);
+console.log(`\n▶ 💉 Programmation Vaccin & Rappel :`);
+console.log(`   - Dose 1 (Vaccin Entérotoxémie) : ${vacDate}`);
+console.log(`   - Dose 2 (Rappel Booster 21j)   : ${vacBoosterDate}`);
+assert.strictEqual(vacBoosterDate, '2026-11-26', 'Rappel vaccin doit être à +21 jours');
+
+console.log('✓ Validation des cycles de gestation et vaccins réussie au calendrier !\n');
 
 // -------------------------------------------------------------
 // STEP 6: VENTES DE PRODUITS & VERIFICATION DES REVENUS / BENEFICES

@@ -840,7 +840,52 @@ const TRANSLATIONS = {
     lbl_distrib_target_lot: "Sélectionner le lot destinataire",
     distrib_mode_total_hint: "Répartition calculée selon les coefficients de chaque animal (vaches, moutons...)",
     distrib_mode_lot_hint: "Attribué à 100% au lot sélectionné et divisé par son nombre de têtes",
-    opt_all_lots: "Tous les lots actifs (Par coefficient)"
+    opt_all_lots: "Tous les lots actifs (Par coefficient)",
+
+    // Calendar Reproduction & Gestation
+    btn_add_gestation: "+ Gestation / Saillie",
+    btn_add_vaccine: "+ Vaccin & Soin",
+    modal_add_gestation_title: "Déclarer une Gestation / Saillie",
+    lbl_gestation_animal: "Femelle concernée (Vache, Brebis, Chèvre)",
+    lbl_gestation_type: "Type de saillie",
+    opt_saillie_naturelle: "🐂 Saillie Naturelle",
+    opt_insemination: "🧪 Insémination Artificielle (IA)",
+    opt_constat_echo: "🔍 Constat Gestation Confirmé",
+    lbl_mating_date: "Date de Saillie / IA",
+    lbl_gestation_sire: "Reproducteur / Taureau / Bélier / Réf IA",
+    lbl_gestation_calc_summary: "Calcul automatique des étapes de gestation",
+    lbl_gestation_notes: "Notes / Observations",
+    btn_save_gestation: "Enregistrer la Gestation",
+    toast_gestation_saved: "🤰 Gestation enregistrée et jalons ajoutés au calendrier !",
+
+    // Calendar Vaccination & Care
+    modal_add_vaccine_title: "Programmer un Vaccin ou Soin",
+    lbl_vaccine_target: "Animal ou Lot destinataire",
+    lbl_vaccine_presets: "Sélection rapide du vaccin / soin recommandé :",
+    lbl_vaccine_name: "Nom du vaccin ou traitement",
+    lbl_vaccine_date: "Date d'administration",
+    lbl_vaccine_booster: "Rappel automatique (Booster)",
+    opt_booster_none: "Aucun rappel",
+    opt_booster_21d: "Dans 21 jours (~3 semaines)",
+    opt_booster_1m: "Dans 1 mois",
+    opt_booster_6m: "Dans 6 mois",
+    opt_booster_1y: "Dans 1 an (Rappel annuel)",
+    lbl_vaccine_notes: "Notes / Posologie / Vétérinaire",
+    btn_save_vaccine: "Enregistrer dans le Calendrier",
+    toast_vaccine_saved: "💉 Vaccin / Soin programmé avec succès !",
+
+    // Calendar Legends & Day Details
+    cal_legend_gestation: "Gestation / Mise-bas",
+    cal_legend_dryoff: "Tarissement",
+    modal_day_events_title: "Événements du",
+    btn_mark_done: "Fait",
+    btn_mark_pending: "À faire",
+    btn_delete_event: "Supprimer",
+    toast_event_updated: "Événement mis à jour !",
+    toast_event_deleted: "Événement supprimé du calendrier !",
+    btn_close: "Fermer",
+    btn_add_gestation_short: "🤰 + Gestation",
+    btn_add_vaccine_short: "💉 + Vaccin"
   },
 
   ar: {
@@ -1679,7 +1724,52 @@ const TRANSLATIONS = {
     lbl_distrib_target_lot: "اختر الدفعة المستفيدة",
     distrib_mode_total_hint: "توزيع وحساب آلي حسب الاحتياج والمعامل لكل حيوان (أبقار، أغنام...)",
     distrib_mode_lot_hint: "يتم احتساب العلف والتكلفة بالكامل للدفعة المختارة فقط وتقسيمها على عدد الرؤوس",
-    opt_all_lots: "جميع الدفعات النشطة (حسب المعاملات)"
+    opt_all_lots: "جميع الدفعات النشطة (حسب المعاملات)",
+
+    // Calendar Reproduction & Gestation
+    btn_add_gestation: "+ تلقيح / عشار",
+    btn_add_vaccine: "+ تطعيم وعلاج",
+    modal_add_gestation_title: "تسجيل حالة عشار / تلقيح",
+    lbl_gestation_animal: "الأنثى المعنية (بقرة، نعجة، ماعز)",
+    lbl_gestation_type: "طريقة التلقيح",
+    opt_saillie_naturelle: "🐂 تلقيح طبيعي (فحل/ثور)",
+    opt_insemination: "🧪 تلقيح اصطناعي (IA)",
+    opt_constat_echo: "🔍 تأكيد الحمل والإيكوغرافيا",
+    lbl_mating_date: "تاريخ التلقيح / الضراب",
+    lbl_gestation_sire: "الفحل / الثور / الكبش / رقم القشة",
+    lbl_gestation_calc_summary: "حساب آلي لمراحل العشار وموعد الولادة",
+    lbl_gestation_notes: "ملاحظات وتفاصيل",
+    btn_save_gestation: "تسجيل العشار في الرزنامة",
+    toast_gestation_saved: "🤰 تم تسجيل العشار وإضافة مواعيد الولادة للرزنامة بنجاح !",
+
+    // Calendar Vaccination & Care
+    modal_add_vaccine_title: "برمجة تطعيم أو علاج بيطري",
+    lbl_vaccine_target: "الحيوان أو الدفعة المستفيدة",
+    lbl_vaccine_presets: "اختيار سريع للقاح أو العلاج المقترح :",
+    lbl_vaccine_name: "اسم اللقاح أو العلاج",
+    lbl_vaccine_date: "تاريخ الحقن أو العلاج",
+    lbl_vaccine_booster: "تذكير تلقائي بالجرعة الثانية (Booster)",
+    opt_booster_none: "بدون جرعة تذكيرية",
+    opt_booster_21d: "بعد 21 يوماً (~3 أسابيع)",
+    opt_booster_1m: "بعد شهر واحد",
+    opt_booster_6m: "بعد 6 أشهر",
+    opt_booster_1y: "بعد سنة (تذكير سنوي)",
+    lbl_vaccine_notes: "ملاحظات / الجرعة / اسم البيطري",
+    btn_save_vaccine: "حفظ وبرمجة في الرزنامة",
+    toast_vaccine_saved: "💉 تم تسجيل وبرمجة اللقاح بنجاح !",
+
+    // Calendar Legends & Day Details
+    cal_legend_gestation: "عشار وموعد ولادة",
+    cal_legend_dryoff: "تجفيف وراحة",
+    modal_day_events_title: "مواعيد وأحداث يوم",
+    btn_mark_done: "تم الإنجاز",
+    btn_mark_pending: "قيد الانتظار",
+    btn_delete_event: "حذف",
+    toast_event_updated: "تم تحديث حالة الموعد !",
+    toast_event_deleted: "تم حذف الموعد من الرزنامة !",
+    btn_close: "إغلاق",
+    btn_add_gestation_short: "🤰 + عشار",
+    btn_add_vaccine_short: "💉 + تطعيم"
   },
 
   en: {
@@ -2518,7 +2608,52 @@ const TRANSLATIONS = {
     lbl_distrib_target_lot: "Select Target Lot",
     distrib_mode_total_hint: "Auto-calculated proportionally by each animal's zootechnical coefficient (cows, sheep...)",
     distrib_mode_lot_hint: "Allocated 100% to the selected lot and divided by its head count",
-    opt_all_lots: "All active lots (By coefficient)"
+    opt_all_lots: "All active lots (By coefficient)",
+
+    // Calendar Reproduction & Gestation
+    btn_add_gestation: "+ Breeding / Pregnancy",
+    btn_add_vaccine: "+ Vaccine & Care",
+    modal_add_gestation_title: "Record Pregnancy / Breeding",
+    lbl_gestation_animal: "Target Female (Cow, Ewe, Goat)",
+    lbl_gestation_type: "Breeding Type",
+    opt_saillie_naturelle: "🐂 Natural Breeding",
+    opt_insemination: "🧪 Artificial Insemination (AI)",
+    opt_constat_echo: "🔍 Confirmed Pregnancy (Ultrasound)",
+    lbl_mating_date: "Mating / Insemination Date",
+    lbl_gestation_sire: "Sire / Bull / Ram / Straw Ref",
+    lbl_gestation_calc_summary: "Automated Pregnancy Milestones Calculation",
+    lbl_gestation_notes: "Notes / Observations",
+    btn_save_gestation: "Save Pregnancy to Calendar",
+    toast_gestation_saved: "🤰 Pregnancy recorded and milestones added to calendar!",
+
+    // Calendar Vaccination & Care
+    modal_add_vaccine_title: "Schedule Vaccine or Care",
+    lbl_vaccine_target: "Target Animal or Flock",
+    lbl_vaccine_presets: "Quick selection of recommended vaccine / care:",
+    lbl_vaccine_name: "Vaccine or Treatment Name",
+    lbl_vaccine_date: "Administration Date",
+    lbl_vaccine_booster: "Automatic Booster / Reminder",
+    opt_booster_none: "No booster reminder",
+    opt_booster_21d: "In 21 days (~3 weeks)",
+    opt_booster_1m: "In 1 month",
+    opt_booster_6m: "In 6 months",
+    opt_booster_1y: "In 1 year (Annual booster)",
+    lbl_vaccine_notes: "Notes / Dosage / Veterinarian",
+    btn_save_vaccine: "Save to Calendar",
+    toast_vaccine_saved: "💉 Vaccine / Care scheduled successfully!",
+
+    // Calendar Legends & Day Details
+    cal_legend_gestation: "Pregnancy / Birth",
+    cal_legend_dryoff: "Drying-off",
+    modal_day_events_title: "Events for",
+    btn_mark_done: "Done",
+    btn_mark_pending: "Pending",
+    btn_delete_event: "Delete",
+    toast_event_updated: "Event updated!",
+    toast_event_deleted: "Event removed from calendar!",
+    btn_close: "Close",
+    btn_add_gestation_short: "🤰 + Pregnancy",
+    btn_add_vaccine_short: "💉 + Vaccine"
   }
 };
 

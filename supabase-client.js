@@ -597,6 +597,7 @@
           expenses: Array.isArray(state.expenses) ? state.expenses : [],
           sales: Array.isArray(state.sales) ? state.sales : [],
           incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
+          calendarEvents: Array.isArray(state.calendarEvents) ? state.calendarEvents : [],
           deletedIds: Array.from(this.getDeletedIds()),
           lastUpdated: Date.now()
         };
@@ -943,6 +944,7 @@
         window.appState.expenses = state.expenses;
         window.appState.sales = state.sales;
         window.appState.incubatorBatches = state.incubatorBatches;
+        window.appState.calendarEvents = state.calendarEvents;
       }
 
       // Persist to local device storage as well (offline fallback)

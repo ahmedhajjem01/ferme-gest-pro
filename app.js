@@ -31,6 +31,7 @@ const appState = {
   expenses: [],
   sales: [],
   incubatorBatches: [],
+  calendarEvents: [],
   dismissedSaleAlerts: [],
   savedFavoriteFeedRoutine: null,
   userProfile: null
@@ -290,6 +291,7 @@ const app = {
         expenses: appState.expenses,
         sales: appState.sales,
         incubatorBatches: appState.incubatorBatches,
+        calendarEvents: Array.isArray(appState.calendarEvents) ? appState.calendarEvents : [],
         dismissedSaleAlerts: Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : [],
         savedFavoriteFeedRoutine: appState.savedFavoriteFeedRoutine || null,
         userProfile: appState.userProfile || null,
@@ -818,6 +820,30 @@ const app = {
         const dateInput = document.getElementById('distribDate');
         if (dateInput) dateInput.value = this.getTodayStr();
         this.renderFeedDistributionModal();
+      }
+
+      if (modalId === 'modalAddGestation') {
+        this.renderAddGestationModal();
+      }
+
+      if (modalId === 'modalAddVaccine') {
+        this.renderAddVaccineModal();
+      }
+
+      if (modalId === 'modalAddGestation') {
+        this.renderAddGestationModal();
+      }
+
+      if (modalId === 'modalAddVaccine') {
+        this.renderAddVaccineModal();
+      }
+
+      if (modalId === 'modalAddGestation') {
+        this.renderAddGestationModal();
+      }
+
+      if (modalId === 'modalAddVaccine') {
+        this.renderAddVaccineModal();
       }
 
       if (modalId === 'modalAddFeedType') {
@@ -11379,44 +11405,576 @@ const app = {
     return breed;
   },
 
+
+  addDays(dateStr, numDays) {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('-');
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      d.setDate(d.getDate() + numDays);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    } catch (e) {
+      return dateStr;
+    }
+  },
+
+  renderAddGestationModal(defaultAnimalId = null, defaultDate = null) {
+    const animalSelect = document.getElementById('gestationAnimalId');
+    if (!animalSelect) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    // Filter female reproductive animals / lots:
+    // Cows, heifers, ewes, goats, or any active herd
+    const femaleAnimals = (appState.animals || []).filter(a => {
+      const sp = (a.species || '').toLowerCase();
+      const st = (a.stage || '').toLowerCase();
+      return (
+        sp === 'vache_laitiere' || sp === 'genisse' || sp === 'brebis' || sp === 'chevre' ||
+        sp.includes('vache') || sp.includes('brebis') || sp.includes('chevre') ||
+        st.includes('lactation') || st.includes('tarie') || st.includes('gestante') ||
+        st.includes('femelle') || st.includes('reproduct') ||
+        Number(a.currentQuantity) > 0
+      );
+    });
+
+    if (femaleAnimals.length > 0) {
+      animalSelect.innerHTML = femaleAnimals.map(a => {
+        const icon = this.getSpeciesIcon(a.species);
+        const name = this.getAnimalDisplayName(a);
+        const stage = this.translateStage(a.stage);
+        const qty = a.currentQuantity || a.quantity || 1;
+        const headsLabel = isAr ? 'رأس' : (isEn ? 'heads' : 'têtes');
+        return `<option value="${a.id}">${icon} ${name} (${stage} • ${qty} ${headsLabel})</option>`;
+      }).join('');
+      if (defaultAnimalId && femaleAnimals.some(a => a.id === defaultAnimalId)) {
+        animalSelect.value = defaultAnimalId;
+      }
+    } else {
+      animalSelect.innerHTML = `<option value="">${isAr ? 'لا توجد إناث أو مواشي مسجلة' : (isEn ? 'No female animals registered' : 'Aucune femelle ou cheptel enregistré')}</option>`;
+    }
+
+    const dateInput = document.getElementById('gestationMatingDate');
+    if (dateInput) {
+      dateInput.value = defaultDate || this.getTodayStr();
+    }
+    this.updateGestationPreview();
+  },
+
+  handleGestationAnimalChange(animalId) {
+    this.updateGestationPreview();
+  },
+
+  updateGestationPreview() {
+    const animalId = document.getElementById('gestationAnimalId')?.value;
+    const matingDate = document.getElementById('gestationMatingDate')?.value || this.getTodayStr();
+    const container = document.getElementById('gestationMilestonesContent');
+    if (!container) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    const animal = (appState.animals || []).find(a => a.id === animalId);
+    const sp = (animal?.species || 'vache_laitiere').toLowerCase();
+    const isBovine = (sp.includes('vache') || sp.includes('bovin') || sp.includes('genisse'));
+
+    const totalGestationDays = isBovine ? 283 : 150;
+    const echoDays = isBovine ? 60 : 50;
+    const dryOffDays = isBovine ? 223 : 120; // 60d before calving (cow) or 30d pre-lambing booster (sheep)
+
+    const echoDate = this.addDays(matingDate, echoDays);
+    const dryDate = this.addDays(matingDate, dryOffDays);
+    const birthDate = this.addDays(matingDate, totalGestationDays);
+
+    let html = '';
+    if (isBovine) {
+      html = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-top: 0.35rem;">
+          <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 0.45rem;">
+            <div style="font-weight: 700; color: #38bdf8;">🔍 ${isAr ? 'فحص الإيكوغرافيا' : (isEn ? 'Ultrasound Check' : 'Échographie')}</div>
+            <div style="font-size: 0.82rem; font-weight: 700; margin-top: 2px;">${this.formatDateFR(echoDate)}</div>
+            <small class="text-muted">${isAr ? 'اليوم +60' : (isEn ? 'Day +60' : 'À J+60')}</small>
+          </div>
+          <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 0.45rem;">
+            <div style="font-weight: 700; color: #f59e0b;">🥛 ${isAr ? 'موعد التجفيف' : (isEn ? 'Dry-off Date' : 'Tarissement')}</div>
+            <div style="font-size: 0.82rem; font-weight: 700; margin-top: 2px;">${this.formatDateFR(dryDate)}</div>
+            <small class="text-muted">${isAr ? 'قبل الولادة بشهرين' : (isEn ? '60d pre-calving' : 'À J+223 (-60j)')}</small>
+          </div>
+          <div style="background: rgba(236,72,153,0.12); border: 1px solid rgba(236,72,153,0.3); border-radius: var(--radius-sm); padding: 0.45rem;">
+            <div style="font-weight: 700; color: #f472b6;">🍼 ${isAr ? 'موعد الولادة (الفطام)' : (isEn ? 'Expected Calving' : 'Vêlage prévu')}</div>
+            <div style="font-size: 0.82rem; font-weight: 700; margin-top: 2px;">${this.formatDateFR(birthDate)}</div>
+            <small style="color: #f472b6; font-weight: 600;">${isAr ? 'مدة العشار 283 يوماً (~9 أشهر)' : (isEn ? '283 days gestation (~9 mos)' : '283 jours (~9 mois)')}</small>
+          </div>
+        </div>
+      `;
+    } else {
+      html = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-top: 0.35rem;">
+          <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 0.45rem;">
+            <div style="font-weight: 700; color: #38bdf8;">🔍 ${isAr ? 'فحص الإيكوغرافيا' : (isEn ? 'Ultrasound Check' : 'Constat écho')}</div>
+            <div style="font-size: 0.82rem; font-weight: 700; margin-top: 2px;">${this.formatDateFR(echoDate)}</div>
+            <small class="text-muted">${isAr ? 'اليوم +50' : (isEn ? 'Day +50' : 'À J+50')}</small>
+          </div>
+          <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 0.45rem;">
+            <div style="font-weight: 700; color: #a78bfa;">💉 ${isAr ? 'تطعيم قبل الولادة' : (isEn ? 'Pre-lambing Vaccine' : 'Vaccin pré-agnelage')}</div>
+            <div style="font-size: 0.82rem; font-weight: 700; margin-top: 2px;">${this.formatDateFR(dryDate)}</div>
+            <small class="text-muted">${isAr ? 'قبل الولادة بشهر' : (isEn ? '30d pre-lambing' : 'À J+120 (-30j)')}</small>
+          </div>
+          <div style="background: rgba(236,72,153,0.12); border: 1px solid rgba(236,72,153,0.3); border-radius: var(--radius-sm); padding: 0.45rem;">
+            <div style="font-weight: 700; color: #f472b6;">🍼 ${isAr ? 'موعد ولادة الخراف' : (isEn ? 'Expected Lambing' : 'Agnelage prévu')}</div>
+            <div style="font-size: 0.82rem; font-weight: 700; margin-top: 2px;">${this.formatDateFR(birthDate)}</div>
+            <small style="color: #f472b6; font-weight: 600;">${isAr ? 'مدة العشار 150 يوماً (~5 أشهر)' : (isEn ? '150 days gestation (~5 mos)' : '150 jours (~5 mois)')}</small>
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+  },
+
+  handleSaveGestation(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const animalId = document.getElementById('gestationAnimalId')?.value;
+    const gestType = document.getElementById('gestationType')?.value || 'saillie_naturelle';
+    const matingDate = document.getElementById('gestationMatingDate')?.value || this.getTodayStr();
+    const sire = document.getElementById('gestationSire')?.value?.trim() || '';
+    const notes = document.getElementById('gestationNotes')?.value?.trim() || '';
+
+    if (!animalId) {
+      this.showToast(this.t('lbl_gestation_animal'), 'warning');
+      return;
+    }
+
+    const animal = (appState.animals || []).find(a => a.id === animalId);
+    if (!animal) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const sp = (animal.species || 'vache_laitiere').toLowerCase();
+    const isBovine = (sp.includes('vache') || sp.includes('bovin') || sp.includes('genisse'));
+    const animalName = this.getAnimalDisplayName(animal);
+
+    const totalDays = isBovine ? 283 : 150;
+    const echoDays = isBovine ? 60 : 50;
+    const dryDays = isBovine ? 223 : 120;
+
+    const echoDate = this.addDays(matingDate, echoDays);
+    const dryDate = this.addDays(matingDate, dryDays);
+    const birthDate = this.addDays(matingDate, totalDays);
+
+    const gestGroupId = 'gest-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4);
+
+    const events = [
+      {
+        id: gestGroupId + '-mating',
+        groupId: gestGroupId,
+        type: 'saillie',
+        date: matingDate,
+        title: `${isAr ? 'تلقيح / ضراب' : (isEn ? 'Breeding / AI' : 'Saillie / IA')} (${animalName})`,
+        linkedAnimalId: animalId,
+        animalName,
+        details: sire ? `${isAr ? 'الفحل:' : (isEn ? 'Sire:' : 'Reproducteur :')} ${sire}` : (notes || ''),
+        isDone: true
+      },
+      {
+        id: gestGroupId + '-echo',
+        groupId: gestGroupId,
+        type: 'echographie',
+        date: echoDate,
+        title: `🔍 ${isAr ? 'فحص الإيكوغرافيا' : (isEn ? 'Ultrasound Check' : 'Échographie')} (${animalName})`,
+        linkedAnimalId: animalId,
+        animalName,
+        details: isAr ? 'تأكيد ثبوت الحمل' : (isEn ? 'Pregnancy confirmation' : 'Confirmation de gestation'),
+        isDone: false
+      },
+      {
+        id: gestGroupId + '-dry',
+        groupId: gestGroupId,
+        type: isBovine ? 'tarissement' : 'vaccin',
+        date: dryDate,
+        title: isBovine 
+          ? `🥛 ${isAr ? 'تجفيف وراحة' : (isEn ? 'Dry-off' : 'Tarissement')} (${animalName})`
+          : `💉 ${isAr ? 'تطعيم ما قبل الولادة' : (isEn ? 'Pre-lambing vaccine' : 'Vaccin pré-agnelage')} (${animalName})`,
+        linkedAnimalId: animalId,
+        animalName,
+        details: isBovine 
+          ? (isAr ? 'إيقاف الحلب للراحة وتجهيز الضرع' : (isEn ? 'Stop milking for pre-calving rest' : 'Arrêt de la traite 60j avant vêlage'))
+          : (isAr ? 'تحصين النعجة لمناعة اللبأ للحملان' : (isEn ? 'Ewe booster for lamb colostral immunity' : 'Rappel entérotoxémie pour immunité colostrale')),
+        isDone: false
+      },
+      {
+        id: gestGroupId + '-birth',
+        groupId: gestGroupId,
+        type: 'mise_bas',
+        date: birthDate,
+        title: isBovine 
+          ? `🍼 ${isAr ? 'موعد الولادة (فطام العجل)' : (isEn ? 'Expected Calving' : 'Vêlage prévu')} (${animalName})`
+          : `🍼 ${isAr ? 'موعد ولادة الخراف' : (isEn ? 'Expected Lambing' : 'Agnelage prévu')} (${animalName})`,
+        linkedAnimalId: animalId,
+        animalName,
+        details: `${isAr ? 'مدة العشار الكاملة:' : (isEn ? 'Full gestation:' : 'Gestation totale :')} ${totalDays} ${isAr ? 'يوماً' : (isEn ? 'days' : 'jours')}`,
+        isDone: false
+      }
+    ];
+
+    if (!Array.isArray(appState.calendarEvents)) {
+      appState.calendarEvents = [];
+    }
+    appState.calendarEvents.push(...events);
+
+    // Update Animal status
+    animal.isPregnant = true;
+    animal.matingDate = matingDate;
+    animal.expectedBirthDate = birthDate;
+    animal.dryingOffDate = dryDate;
+    animal.sire = sire;
+    if (notes) animal.reproductionNotes = notes;
+    animal.stage = isAr ? 'عشار / حامل' : (isEn ? 'Pregnant' : 'Gestante');
+
+    this.saveState();
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData(false, true);
+    }
+
+    this.closeModal('modalAddGestation');
+    this.renderAll();
+    this.showToast(this.t('toast_gestation_saved') || '🤰 Gestation enregistrée et jalons ajoutés au calendrier !');
+  },
+
+  renderAddVaccineModal(defaultTargetId = null, defaultDate = null) {
+    const targetSelect = document.getElementById('vaccineTargetLotId');
+    if (!targetSelect) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    const activeLots = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
+    let optionsHtml = `<option value="all">${isAr ? '🌐 كامل القطيع (جميع الحظائر)' : (isEn ? '🌐 Entire Herd / All Flocks' : '🌐 Toute la ferme (Tous les cheptels)')}</option>`;
+    optionsHtml += activeLots.map(a => {
+      const icon = this.getSpeciesIcon(a.species);
+      const name = this.getAnimalDisplayName(a);
+      const qty = a.currentQuantity || 1;
+      const headsLabel = isAr ? 'رأس' : (isEn ? 'heads' : 'têtes');
+      return `<option value="${a.id}">${icon} ${name} (${qty} ${headsLabel})</option>`;
+    }).join('');
+
+    targetSelect.innerHTML = optionsHtml;
+    if (defaultTargetId) targetSelect.value = defaultTargetId;
+
+    const dateInput = document.getElementById('vaccineDate');
+    if (dateInput) {
+      dateInput.value = defaultDate || this.getTodayStr();
+    }
+
+    this.handleVaccineTargetChange(targetSelect.value);
+  },
+
+  handleVaccineTargetChange(targetId) {
+    const container = document.getElementById('vaccinePresetsContainer');
+    if (!container) return;
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    let presets = [];
+    let sp = 'general';
+    if (targetId !== 'all') {
+      const a = (appState.animals || []).find(an => an.id === targetId);
+      sp = (a?.species || '').toLowerCase();
+    }
+
+    if (sp.includes('vache') || sp.includes('bovin') || sp.includes('veau') || sp.includes('taurillon')) {
+      presets = [
+        { name: isAr ? '💉 لقاح التسمم المعوي والكلستريديا' : (isEn ? '💉 Enterotoxemia / Clostridial Vaccine' : '💉 Vaccin Entérotoxémie / Clostridioses'), color: 'btn-emerald' },
+        { name: isAr ? '💉 لقاح الحمى القلاعية' : (isEn ? '💉 Foot-and-Mouth Vaccine' : '💉 Vaccin Fièvre Aphteuse'), color: 'btn-outline' },
+        { name: isAr ? '💉 لقاح الباستوريلا والتنفسي' : (isEn ? '💉 Pasteurella / Respiratory Vaccine' : '💉 Vaccin Pasteurellose / Respiratoire'), color: 'btn-outline' },
+        { name: isAr ? '🪱 مضاد الطفيليات والديدان' : (isEn ? '🪱 Dewormer / Antiparasitic' : '🪱 Déparasitage / Vermifuge complet'), color: 'btn-amber' }
+      ];
+    } else if (sp.includes('mouton') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('chevre')) {
+      presets = [
+        { name: isAr ? '💉 لقاح الكلية الرخوة والتسمم المعوي' : (isEn ? '💉 Enterotoxemia / Pulpy Kidney' : '💉 Vaccin Entérotoxémie (Rein pulpeux)'), color: 'btn-emerald' },
+        { name: isAr ? '💉 لقاح انقطاع الحليب المعدي' : (isEn ? '💉 Contagious Agalactia Vaccine' : '💉 Vaccin Agalaxie Contagieuse'), color: 'btn-outline' },
+        { name: isAr ? '💉 لقاح جدري الأغنام (الجدري)' : (isEn ? '💉 Sheep Pox Vaccine' : '💉 Vaccin Clavelée (Variole ovine)'), color: 'btn-outline' },
+        { name: isAr ? '🪱 علاج الجرب والديدان الكبدية' : (isEn ? '🪱 Dewormer & Scabies Treatment' : '🪱 Déparasitage Gale, Douve & Strongles'), color: 'btn-amber' }
+      ];
+    } else {
+      presets = [
+        { name: isAr ? '💉 لقاح النيوكاسل (طاعون الدجاج)' : (isEn ? '💉 Newcastle Disease Vaccine' : '💉 Vaccin Newcastle (HB1 / Clone 30)'), color: 'btn-emerald' },
+        { name: isAr ? '💉 لقاح الجمبورو (التهاب الجراب)' : (isEn ? '💉 Gumboro Vaccine' : '💉 Vaccin Gumboro (Bursite)'), color: 'btn-outline' },
+        { name: isAr ? '💉 لقاح التهاب الشعب الهوائية المعدي' : (isEn ? '💉 Infectious Bronchitis (IB)' : '💉 Vaccin Bronchite Infectieuse (H120)'), color: 'btn-outline' },
+        { name: isAr ? '🪱 مضاد الديدان المعوية وفيتامينات' : (isEn ? '🪱 Dewormer & Anti-Stress Vitamins' : '🪱 Vermifuge aviaire & Vitamines AD3E'), color: 'btn-amber' }
+      ];
+    }
+
+    container.innerHTML = presets.map(p => `
+      <button type="button" class="btn btn-sm ${p.color}" style="font-size: 0.74rem; padding: 0.3rem 0.55rem; font-weight: 600;" onclick="app.selectVaccinePreset('${p.name.replace(/'/g, "\\'")}')">
+        ${p.name}
+      </button>
+    `).join('');
+  },
+
+  selectVaccinePreset(name) {
+    const input = document.getElementById('vaccineName');
+    if (input) input.value = name;
+  },
+
+  handleSaveVaccine(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const targetLotId = document.getElementById('vaccineTargetLotId')?.value || 'all';
+    const vaccineName = document.getElementById('vaccineName')?.value?.trim();
+    const vaccineDate = document.getElementById('vaccineDate')?.value || this.getTodayStr();
+    const booster = document.getElementById('vaccineBoosterSelect')?.value || 'none';
+    const notes = document.getElementById('vaccineNotes')?.value?.trim() || '';
+
+    if (!vaccineName) {
+      this.showToast(this.t('lbl_vaccine_name'), 'warning');
+      return;
+    }
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    let animalName = isAr ? 'كامل المزرعة' : (isEn ? 'Whole Farm' : 'Toute la ferme');
+    if (targetLotId !== 'all') {
+      const a = (appState.animals || []).find(an => an.id === targetLotId);
+      if (a) animalName = this.getAnimalDisplayName(a);
+    }
+
+    const vacGroupId = 'vac-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4);
+
+    const primaryEvent = {
+      id: vacGroupId + '-dose1',
+      groupId: vacGroupId,
+      type: 'vaccin',
+      date: vaccineDate,
+      title: `${vaccineName} (${animalName})`,
+      linkedAnimalId: targetLotId,
+      animalName,
+      details: notes,
+      isDone: false
+    };
+
+    if (!Array.isArray(appState.calendarEvents)) {
+      appState.calendarEvents = [];
+    }
+    appState.calendarEvents.push(primaryEvent);
+
+    if (booster !== 'none') {
+      let boosterDays = 21;
+      if (booster === '1m') boosterDays = 30;
+      if (booster === '6m') boosterDays = 182;
+      if (booster === '1y') boosterDays = 365;
+
+      const boosterDate = this.addDays(vaccineDate, boosterDays);
+      const boosterLabel = isAr ? 'جرعة تذكيرية' : (isEn ? 'Booster' : 'Rappel');
+      const boosterEvent = {
+        id: vacGroupId + '-booster',
+        groupId: vacGroupId,
+        type: 'vaccin',
+        date: boosterDate,
+        title: `💉 ${boosterLabel} : ${vaccineName} (${animalName})`,
+        linkedAnimalId: targetLotId,
+        animalName,
+        details: `${isAr ? 'جرعة تذكيرية بعد' : (isEn ? 'Booster after' : 'Rappel après')} ${boosterDays} ${isAr ? 'يوماً' : (isEn ? 'days' : 'jours')}`,
+        isDone: false
+      };
+      appState.calendarEvents.push(boosterEvent);
+    }
+
+    this.saveState();
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData(false, true);
+    }
+
+    this.closeModal('modalAddVaccine');
+    this.renderAll();
+    this.showToast(this.t('toast_vaccine_saved') || '💉 Vaccin / Soin programmé avec succès !');
+  },
+
+  showDayEvents(dateStr) {
+    const modal = document.getElementById('modalDayEventsDetail');
+    const titleLabel = document.getElementById('dayEventsDateLabel');
+    const container = document.getElementById('dayEventsListContainer');
+    if (!modal || !container) return;
+
+    titleLabel.textContent = this.formatDateFR(dateStr);
+    modal.setAttribute('data-current-date', dateStr);
+
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+
+    // 1. Gather calendarEvents
+    const dayCalendarEvents = (appState.calendarEvents || []).filter(e => e.date === dateStr);
+
+    // 2. Incubator hatches & candlings
+    const dayIncubator = [];
+    (appState.incubatorBatches || []).forEach(b => {
+      if (b.hatchDate === dateStr) {
+        dayIncubator.push({ id: b.id, type: 'hatch', title: `🐣 ${this.t('cal_legend_hatch')} ${b.name}`, details: `${b.eggCount || 0} ${this.t('unit_eggs')}` });
+      }
+      if (b.candling1Date === dateStr) {
+        dayIncubator.push({ id: b.id, type: 'mirage', title: `🔍 ${this.t('stage_header_candling1')} (${b.name})`, details: '' });
+      }
+      if (b.lockdownDate === dateStr) {
+        dayIncubator.push({ id: b.id, type: 'lockdown', title: `🛑 ${this.t('stage_header_lockdown')} (${b.name})`, details: '' });
+      }
+    });
+
+    // 3. Sales
+    const daySales = (appState.sales || []).filter(s => s.date === dateStr);
+
+    let html = '';
+
+    if (dayCalendarEvents.length === 0 && dayIncubator.length === 0 && daySales.length === 0) {
+      html = `
+        <div style="text-align: center; padding: 1.5rem 1rem; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-md);">
+          <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">📅</div>
+          <div style="font-weight: 600;">${isAr ? 'لا توجد مواعيد مسجلة في هذا اليوم' : (isEn ? 'No events scheduled on this day' : 'Aucun événement programmé ce jour-là')}</div>
+          <div style="font-size: 0.78rem; margin-top: 0.25rem;">${isAr ? 'يمكنك إضافة موعد تلقيح أو تطعيم بالأزرار أدناه.' : (isEn ? 'You can add a breeding milestone or vaccine using the buttons below.' : 'Utilisez les boutons ci-dessous pour programmer un vêlage ou un vaccin.')}</div>
+        </div>
+      `;
+    } else {
+      // Render calendarEvents
+      dayCalendarEvents.forEach(evt => {
+        const isDone = Boolean(evt.isDone);
+        const icon = evt.type === 'mise_bas' ? '🍼' : (evt.type === 'tarissement' ? '🥛' : (evt.type === 'echographie' ? '🔍' : '💉'));
+        const badgeColor = evt.type === 'mise_bas' ? '#ec4899' : (evt.type === 'tarissement' ? '#f59e0b' : '#a78bfa');
+
+        html += `
+          <div class="panel-card" style="padding: 0.75rem 0.9rem; margin: 0; border: 1.5px solid ${isDone ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'}; background: ${isDone ? 'rgba(16,185,129,0.05)' : 'var(--bg-surface)'}; border-radius: var(--radius-md);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: ${badgeColor}; display: flex; align-items: center; gap: 0.35rem;">
+                  <span>${icon}</span>
+                  <span style="${isDone ? 'text-decoration: line-through; opacity: 0.8;' : ''}">${evt.title}</span>
+                </div>
+                ${evt.details ? `<div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem;">${evt.details}</div>` : ''}
+              </div>
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <button type="button" class="btn btn-sm ${isDone ? 'btn-emerald' : 'btn-outline'}" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;" onclick="app.toggleEventDone('${evt.id}', '${dateStr}')">
+                  ${isDone ? (isAr ? '✓ تم' : (isEn ? '✓ Done' : '✓ Fait')) : (isAr ? 'تحديد كمنجز' : (isEn ? 'Mark done' : 'Marquer fait'))}
+                </button>
+                <button type="button" class="btn btn-sm btn-outline text-rose" style="font-size: 0.72rem; padding: 0.25rem 0.45rem;" onclick="app.deleteCalendarEvent('${evt.id}', '${dateStr}')">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      // Render Incubator
+      dayIncubator.forEach(b => {
+        html += `
+          <div class="panel-card" style="padding: 0.75rem 0.9rem; margin: 0; border: 1px solid rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.05); border-radius: var(--radius-md);">
+            <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-amber);">${b.title}</div>
+            ${b.details ? `<div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem;">${b.details}</div>` : ''}
+          </div>
+        `;
+      });
+
+      // Render Sales
+      daySales.forEach(s => {
+        html += `
+          <div class="panel-card" style="padding: 0.75rem 0.9rem; margin: 0; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05); border-radius: var(--radius-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent-emerald);">💰 ${s.description || this.t('cal_legend_sale')}</div>
+              <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-emerald);">${this.formatMoney(s.total)}</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    container.innerHTML = html;
+    this.openModal('modalDayEventsDetail');
+  },
+
+  toggleEventDone(eventId, dateStr) {
+    const evt = (appState.calendarEvents || []).find(e => e.id === eventId);
+    if (evt) {
+      evt.isDone = !evt.isDone;
+      this.saveState();
+      this.renderAll();
+      this.showDayEvents(dateStr);
+    }
+  },
+
+  deleteCalendarEvent(eventId, dateStr) {
+    if (Array.isArray(appState.calendarEvents)) {
+      appState.calendarEvents = appState.calendarEvents.filter(e => e.id !== eventId);
+      this.saveState();
+      this.renderAll();
+      this.showDayEvents(dateStr);
+      this.showToast(this.t('toast_event_deleted') || 'Événement supprimé !');
+    }
+  },
+
+  openAddEventForDate(type, dateStr = null) {
+    const modal = document.getElementById('modalDayEventsDetail');
+    const curDate = dateStr || modal?.getAttribute('data-current-date') || this.getTodayStr();
+    this.closeModal('modalDayEventsDetail');
+    if (type === 'gestation') {
+      this.openModal('modalAddGestation');
+      const dInput = document.getElementById('gestationMatingDate');
+      if (dInput) dInput.value = curDate;
+      this.updateGestationPreview();
+    } else {
+      this.openModal('modalAddVaccine');
+      const dInput = document.getElementById('vaccineDate');
+      if (dInput) dInput.value = curDate;
+    }
+  },
+
   renderGenerationsTable() {
     const tbody = document.getElementById('generationsTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const poultry = appState.animals.filter(a => a.species === 'poulet' || a.species === 'pondeuse' || a.species === 'poussin' || a.species === 'pintade' || a.species === 'canard' || a.species === 'adulte');
+    const activeAnimals = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
 
     const isArabic = (appState.lang === 'ar' || document.documentElement.getAttribute('dir') === 'rtl');
     const lang = isArabic ? 'ar' : (appState.lang || 'fr');
+    const todayStr = this.getTodayStr();
 
-    if (poultry.length === 0) {
+    if (activeAnimals.length === 0) {
       const emptyMsg = (lang === 'ar') 
-        ? 'لا توجد أجيال دواجن مسجلة حالياً.' 
-        : ((lang === 'en') ? 'No poultry generations recorded.' : 'Aucune génération de volailles enregistrée.');
+        ? 'لا توجد دفعات أو مواشي نشطة مسجلة حالياً في المزرعة.' 
+        : ((lang === 'en') ? 'No active livestock flocks or animals recorded.' : 'Aucun animal ou cheptel actif enregistré sur la ferme.');
       tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">${emptyMsg}</td></tr>`;
       return;
     }
 
-    poultry.forEach(flock => {
+    activeAnimals.forEach(flock => {
       const daysSinceArrival = this.calculateAgeInDays(flock.birthDate);
       const arrivalAgeDays = Number(flock.arrivalAgeDays) || 0;
       const ageDays = daysSinceArrival + arrivalAgeDays;
-      const stageInfo = this.getPoultryDevelopmentStage(ageDays, flock.species);
+      const sp = (flock.species || '').toLowerCase();
+      const isPoultry = (sp === 'poulet' || sp === 'pondeuse' || sp === 'poussin' || sp === 'pintade' || sp === 'canard' || sp === 'caille' || sp === 'dinde' || sp === 'adulte');
+      const isBovine = (sp.includes('vache') || sp.includes('bovin') || sp.includes('veau') || sp.includes('taurillon'));
 
-      const weeks = Math.floor(ageDays / 7);
       let ageDisplay = '';
-      if (lang === 'ar') {
-        ageDisplay = weeks > 0 
-          ? `${ageDays} يوماً (${weeks} أسبوع)` 
-          : `${ageDays} يوماً`;
-      } else if (lang === 'en') {
-        ageDisplay = weeks > 0 
-          ? `${ageDays} days (${weeks} wks)` 
-          : `${ageDays} days`;
+      if (isPoultry || ageDays < 90) {
+        const weeks = Math.floor(ageDays / 7);
+        if (lang === 'ar') {
+          ageDisplay = weeks > 0 ? `${ageDays} يوماً (${weeks} أسابيع)` : `${ageDays} يوماً`;
+        } else if (lang === 'en') {
+          ageDisplay = weeks > 0 ? `${ageDays} days (${weeks} wks)` : `${ageDays} days`;
+        } else {
+          ageDisplay = weeks > 0 ? `${ageDays} jours (${weeks} sem.)` : `${ageDays} jours`;
+        }
+      } else if (ageDays < 730) {
+        const months = Math.round(ageDays / 30.4);
+        ageDisplay = (lang === 'ar') ? `${months} شهر` : ((lang === 'en') ? `${months} mos` : `${months} mois`);
       } else {
-        ageDisplay = weeks > 0 
-          ? `${ageDays} jours (${weeks} sem.)` 
-          : `${ageDays} jours`;
+        const years = (ageDays / 365.25).toFixed(1);
+        ageDisplay = (lang === 'ar') ? `${years} سنة` : ((lang === 'en') ? `${years} yrs` : `${years} ans`);
       }
 
       const translatedStage = this.translateStage(flock.stage);
@@ -11426,15 +11984,49 @@ const app = {
       const translatedBreed = this.getTranslatedBreed(flock.breed);
       const breedDisplay = (translatedBreed && translatedBreed !== '-') ? translatedBreed : '<span class="text-muted">-</span>';
 
+      let stageBadgeHtml = `<span class="stage-badge ${stageClass}">${translatedStage}</span>`;
+      if (flock.isPregnant && flock.expectedBirthDate) {
+        const birthDateFormatted = this.formatDateFR(flock.expectedBirthDate);
+        const birthLbl = isBovine ? (lang === 'ar' ? 'ولادة:' : (lang === 'en' ? 'Calving:' : 'Vêlage :')) : (lang === 'ar' ? 'ولادة:' : (lang === 'en' ? 'Lambing:' : 'Agnelage :'));
+        stageBadgeHtml += `<small style="display:block; color: #f472b6; font-size: 0.72rem; font-weight: 700; margin-top: 2px;">${birthLbl} ${birthDateFormatted}</small>`;
+      }
+
+      // Feed & Next Event
+      let feedAdvice = '';
+      let nextEventText = '';
+
+      if (isPoultry) {
+        const stageInfo = this.getPoultryDevelopmentStage(ageDays, flock.species);
+        feedAdvice = stageInfo.feed;
+        nextEventText = stageInfo.nextEvent;
+      } else {
+        const feedData = this.getAgronomicFeedData(flock.species, ageDays, flock.stage, flock.breed);
+        feedAdvice = `${(feedData.avgGrams / 1000).toFixed(2)} kg/j (${feedData.description})`;
+
+        // Search calendarEvents for upcoming event for this animal
+        const upcoming = (appState.calendarEvents || []).find(e => e.linkedAnimalId === flock.id && e.date >= todayStr);
+        if (upcoming) {
+          nextEventText = `${upcoming.title} (${this.formatDateFR(upcoming.date)})`;
+        } else if (flock.expectedBirthDate && flock.expectedBirthDate >= todayStr) {
+          nextEventText = isBovine 
+            ? (lang === 'ar' ? `🍼 ولادة عجل: ${this.formatDateFR(flock.expectedBirthDate)}` : `🍼 Vêlage prévu: ${this.formatDateFR(flock.expectedBirthDate)}`)
+            : (lang === 'ar' ? `🍼 ولادة خراف: ${this.formatDateFR(flock.expectedBirthDate)}` : `🍼 Agnelage prévu: ${this.formatDateFR(flock.expectedBirthDate)}`);
+        } else if (isBovine) {
+          nextEventText = (lang === 'ar') ? '💉 لقاح الكلستريديا / فحص دوري' : '💉 Vaccin Clostridiose annuel';
+        } else {
+          nextEventText = (lang === 'ar') ? '💉 لقاح الكلية الرخوة / تجريع' : '💉 Vaccin Entérotoxémie / Soin';
+        }
+      }
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${displayName}</strong> ${lotNum ? `<small class="text-muted" style="display:block; font-size: 0.74rem;">${lotNum}</small>` : ''}</td>
         <td>${breedDisplay}</td>
         <td>${this.formatDateFR(flock.birthDate)}</td>
         <td><span class="badge-tag text-emerald" dir="auto">${ageDisplay}</span></td>
-        <td><span class="stage-badge ${stageClass}">${translatedStage}</span></td>
-        <td><small class="text-muted">${stageInfo.feed}</small></td>
-        <td><small class="bold text-amber">${stageInfo.nextEvent}</small></td>
+        <td>${stageBadgeHtml}</td>
+        <td><small class="text-muted">${feedAdvice}</small></td>
+        <td><small class="bold text-amber">${nextEventText}</small></td>
       `;
       tbody.appendChild(tr);
     });
@@ -11574,13 +12166,32 @@ const app = {
         }
       });
 
-      // 3. Check Sales recorded on this date
+      // 3. Check Custom Calendar Events (Gestation, Calvings, Lambings, Dry-offs, Vaccines)
+      (appState.calendarEvents || []).forEach(evt => {
+        if (evt.date === dateStr) {
+          const isDone = Boolean(evt.isDone);
+          const doneStyle = isDone ? 'opacity: 0.65; text-decoration: line-through;' : '';
+          if (evt.type === 'mise_bas') {
+            dayHtml += `<div class="day-event-tag event-gestation" style="${doneStyle}" title="${evt.title}">🍼 ${evt.title}</div>`;
+          } else if (evt.type === 'tarissement') {
+            dayHtml += `<div class="day-event-tag event-dryoff" style="${doneStyle}" title="${evt.title}">🥛 ${evt.title}</div>`;
+          } else if (evt.type === 'echographie') {
+            dayHtml += `<div class="day-event-tag event-mirage" style="${doneStyle}" title="${evt.title}">🔍 ${evt.title}</div>`;
+          } else {
+            dayHtml += `<div class="day-event-tag event-vaccine" style="${doneStyle}" title="${evt.title}">💉 ${evt.title}</div>`;
+          }
+        }
+      });
+
+      // 4. Check Sales recorded on this date
       appState.sales.forEach(s => {
         if (s.date === dateStr) {
           dayHtml += `<div class="day-event-tag event-sale" title="${s.description}">💰 ${this.t('cal_legend_sale')} (${this.formatMoney(s.total)})</div>`;
         }
       });
 
+      cell.style.cursor = 'pointer';
+      cell.setAttribute('onclick', `app.showDayEvents('${dateStr}')`);
       cell.innerHTML = dayHtml;
       grid.appendChild(cell);
     }

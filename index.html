@@ -1074,10 +1074,18 @@
         <!-- TAB 7: CALENDRIER & SUIVI DES GÉNÉRATIONS -->
         <!-- ============================================== -->
         <section id="tab-calendar" class="content-tab">
-          <div class="section-header">
+          <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.85rem;">
             <div>
               <h2 class="section-title" data-i18n="section_calendar_title">Calendrier des Générations & Événements</h2>
-              <p class="section-desc" data-i18n="section_calendar_desc">Visualisez l'âge de chaque génération de poulets, dates d'éclosion, rappels de vaccination et dates de vente optimales.</p>
+              <p class="section-desc" data-i18n="section_calendar_desc">Visualisez l'âge de chaque génération, cycles de gestation, vêlages, agnelages, rappels vaccinaux et soins du cheptel.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-primary bold" style="background: linear-gradient(135deg, #ec4899, #be185d); border: none;" onclick="app.openModal('modalAddGestation')">
+                <span>🤰</span> <span data-i18n="btn_add_gestation">+ Gestation / Saillie</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline bold" style="border-color: #8b5cf6; color: #a78bfa;" onclick="app.openModal('modalAddVaccine')">
+                <span>💉</span> <span data-i18n="btn_add_vaccine">+ Vaccin & Soin</span>
+              </button>
             </div>
           </div>
 
@@ -1088,7 +1096,8 @@
                 <h3 data-i18n="cal_calendar_grid_title" style="margin: 0;">📅 Éphéméride & Événements Agricoles</h3>
                 <div class="calendar-legends">
                   <span class="legend-item"><span class="legend-color legend-hatch"></span> <span data-i18n="cal_legend_hatch">Éclosion</span></span>
-                  <span class="legend-item"><span class="legend-color legend-mirage"></span> <span data-i18n="cal_legend_mirage">Mirage / Couveuse</span></span>
+                  <span class="legend-item"><span class="legend-color legend-gestation" style="background-color: #ec4899;"></span> <span data-i18n="cal_legend_gestation">Gestation / Mise-bas</span></span>
+                  <span class="legend-item"><span class="legend-color legend-dryoff" style="background-color: #f59e0b;"></span> <span data-i18n="cal_legend_dryoff">Tarissement</span></span>
                   <span class="legend-item"><span class="legend-color legend-vaccine"></span> <span data-i18n="cal_legend_vaccine">Vaccin / Soin</span></span>
                   <span class="legend-item"><span class="legend-color legend-sale"></span> <span data-i18n="cal_legend_sale">Vente Prévue</span></span>
                 </div>
@@ -2718,6 +2727,178 @@
     </div>
   </div>
 
+  <!-- Modal: Déclarer une Gestation / Saillie / Insémination -->
+  <div id="modalAddGestation" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+          <span>🤰</span> <span data-i18n="modal_add_gestation_title">Déclarer une Gestation / Saillie</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalAddGestation')">&times;</button>
+      </div>
+      <form id="formAddGestation" novalidate onsubmit="app.handleSaveGestation(event)">
+        <div class="modal-body">
+          <!-- Choix de l'animal / lot femelle -->
+          <div class="form-group">
+            <label for="gestationAnimalId" class="form-label bold" style="color: var(--accent-emerald);">
+              <span data-i18n="lbl_gestation_animal">Femelle concernée (Vache, Brebis, Chèvre)</span>
+            </label>
+            <select id="gestationAnimalId" class="input-field" required onchange="app.handleGestationAnimalChange(this.value)">
+              <!-- Options remplies dynamiquement -->
+            </select>
+          </div>
+
+          <!-- Type de reproduction & Date de Saillie -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="gestationType" class="form-label bold" data-i18n="lbl_gestation_type">Type de saillie</label>
+              <select id="gestationType" class="input-field">
+                <option value="saillie_naturelle" data-i18n="opt_saillie_naturelle">🐂 Saillie Naturelle</option>
+                <option value="insemination" data-i18n="opt_insemination">🧪 Insémination Artificielle (IA)</option>
+                <option value="constat_echographie" data-i18n="opt_constat_echo">🔍 Constat Gestation Confirmé</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="gestationMatingDate" class="form-label bold" data-i18n="lbl_mating_date">Date de Saillie / IA</label>
+              <input type="date" id="gestationMatingDate" class="input-field" required onchange="app.updateGestationPreview()">
+            </div>
+          </div>
+
+          <!-- Reproducteur / Réf Paillette -->
+          <div class="form-group">
+            <label for="gestationSire" class="form-label">
+              <span data-i18n="lbl_gestation_sire">Reproducteur / Taureau / Bélier / Réf IA</span> <small class="text-muted" data-i18n="lbl_optional">(Optionnel)</small>
+            </label>
+            <input type="text" id="gestationSire" class="input-field" placeholder="Ex: Taureau Montbéliard / Paillette #A23">
+          </div>
+
+          <!-- Boîte de calcul intelligent automatique des jalons -->
+          <div id="gestationMilestonesPreview" style="background: rgba(236, 72, 153, 0.08); border: 1.5px solid rgba(236, 72, 153, 0.3); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1rem;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: #f472b6; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+              <span>📅</span> <span data-i18n="lbl_gestation_calc_summary">Calcul automatique des étapes de gestation</span>
+            </div>
+            <div id="gestationMilestonesContent" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+              <!-- Rempli en temps réel selon l'espèce sélectionnée -->
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="form-group">
+            <label for="gestationNotes" class="form-label">
+              <span data-i18n="lbl_gestation_notes">Notes / Observations</span> <small class="text-muted" data-i18n="lbl_optional">(Optionnel)</small>
+            </label>
+            <textarea id="gestationNotes" class="input-field" rows="2" placeholder="État corporel, numéro boucle, nom inséminateur..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalAddGestation')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-primary bold" style="background: linear-gradient(135deg, #ec4899, #be185d); border: none;" data-i18n="btn_save_gestation">
+            <span>🤰</span> <span data-i18n="btn_save_gestation">Enregistrer la Gestation</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Programmer un Vaccin ou Soin Vétérinaire -->
+  <div id="modalAddVaccine" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+          <span>💉</span> <span data-i18n="modal_add_vaccine_title">Programmer un Vaccin ou Soin</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalAddVaccine')">&times;</button>
+      </div>
+      <form id="formAddVaccine" novalidate onsubmit="app.handleSaveVaccine(event)">
+        <div class="modal-body">
+          <!-- Destinataire -->
+          <div class="form-group">
+            <label for="vaccineTargetLotId" class="form-label bold" style="color: var(--accent-emerald);">
+              <span data-i18n="lbl_vaccine_target">Animal ou Lot destinataire</span>
+            </label>
+            <select id="vaccineTargetLotId" class="input-field" required onchange="app.handleVaccineTargetChange(this.value)">
+              <!-- Options remplies dynamiquement -->
+            </select>
+          </div>
+
+          <!-- Presets de Vaccins rapides en 1 clic -->
+          <div class="form-group">
+            <label class="form-label bold" data-i18n="lbl_vaccine_presets">Sélection rapide du vaccin / soin recommandé :</label>
+            <div id="vaccinePresetsContainer" style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.25rem;">
+              <!-- Rempli dynamiquement selon l'espèce du lot sélectionné -->
+            </div>
+          </div>
+
+          <!-- Nom personnalisé du vaccin -->
+          <div class="form-group">
+            <label for="vaccineName" class="form-label bold" data-i18n="lbl_vaccine_name">Nom du vaccin ou traitement</label>
+            <input type="text" id="vaccineName" class="input-field" required placeholder="Ex: Vaccin Entérotoxémie / Clostridioses">
+          </div>
+
+          <!-- Date d'administration & Rappel -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="vaccineDate" class="form-label bold" data-i18n="lbl_vaccine_date">Date d'administration</label>
+              <input type="date" id="vaccineDate" class="input-field" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="vaccineBoosterSelect" class="form-label bold" data-i18n="lbl_vaccine_booster">Rappel automatique (Booster)</label>
+              <select id="vaccineBoosterSelect" class="input-field">
+                <option value="none" selected data-i18n="opt_booster_none">Aucun rappel</option>
+                <option value="21d" data-i18n="opt_booster_21d">Dans 21 jours (~3 semaines)</option>
+                <option value="1m" data-i18n="opt_booster_1m">Dans 1 mois</option>
+                <option value="6m" data-i18n="opt_booster_6m">Dans 6 mois</option>
+                <option value="1y" data-i18n="opt_booster_1y">Dans 1 an (Rappel annuel)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Notes / Posologie -->
+          <div class="form-group">
+            <label for="vaccineNotes" class="form-label">
+              <span data-i18n="lbl_vaccine_notes">Notes / Posologie / Vétérinaire</span> <small class="text-muted" data-i18n="lbl_optional">(Optionnel)</small>
+            </label>
+            <textarea id="vaccineNotes" class="input-field" rows="2" placeholder="Dose (ex: 2ml sous-cutané), lot vaccin, nom du vétérinaire..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalAddVaccine')" data-i18n="btn_cancel">Annuler</button>
+          <button type="submit" class="btn btn-primary bold" data-i18n="btn_save_vaccine">
+            <span>💉</span> <span data-i18n="btn_save_vaccine">Enregistrer dans le Calendrier</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Détail des Événements d'une Journée du Calendrier -->
+  <div id="modalDayEventsDetail" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 id="dayEventsModalTitle" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span>📅</span> <span data-i18n="modal_day_events_title">Événements du</span> <span id="dayEventsDateLabel"></span>
+        </h3>
+        <button type="button" class="modal-close" onclick="app.closeModal('modalDayEventsDetail')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="dayEventsListContainer" style="display: flex; flex-direction: column; gap: 0.65rem;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div style="display: flex; gap: 0.4rem;">
+          <button type="button" class="btn btn-sm btn-outline bold" onclick="app.openAddEventForDate('gestation')">
+            <span data-i18n="btn_add_gestation_short">🤰 + Gestation</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline bold" onclick="app.openAddEventForDate('vaccine')">
+            <span data-i18n="btn_add_vaccine_short">💉 + Vaccin</span>
+          </button>
+        </div>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="app.closeModal('modalDayEventsDetail')" data-i18n="btn_close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============================================== -->
   <!-- ONBOARDING & CLOUD BACKUP MODALS -->
   <!-- ============================================== -->
@@ -2994,7 +3175,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-client.js?v=116"></script>
-  <script src="translations.js?v=117"></script>
-  <script src="app.js?v=117"></script>
+  <script src="translations.js?v=118"></script>
+  <script src="app.js?v=118"></script>
 </body>
 </html>
