@@ -391,6 +391,86 @@ const totalRevenueDemo = salesDemo.reduce((s, v) => s + v.total, 0);
 console.log(`\n✓ RECETTE TOTALE ENCAISSEE : ${totalRevenueDemo.toFixed(3)} DT`);
 
 // -------------------------------------------------------------
+// STEP 6B: SUIVI DE LA TRAITE DU LAIT, TANK DE RESERVE & STATISTIQUES
+// -------------------------------------------------------------
+console.log('\n--- ETAPE 6B: TRAITE DU LAIT, TANK DE RESERVE & STATISTIQUES LAITIERES ---');
+
+// 1. Initialisation de l'état laitier
+let milkStock = 0;
+const milkHarvests = [];
+
+// 2. Simulation de 7 jours de traite pour les 5 vaches laitières
+const dailyMilkingData = [
+  { date: '2026-10-28', morning: 45, evening: 40 }, // 85 L
+  { date: '2026-10-29', morning: 46, evening: 42 }, // 88 L
+  { date: '2026-10-30', morning: 48, evening: 44 }, // 92 L
+  { date: '2026-10-31', morning: 47, evening: 43 }, // 90 L
+  { date: '2026-11-01', morning: 50, evening: 45 }, // 95 L (Pic)
+  { date: '2026-11-02', morning: 48, evening: 43 }, // 91 L
+  { date: '2026-11-03', morning: 49, evening: 45 }  // 94 L
+];
+
+dailyMilkingData.forEach(d => {
+  const dayLiters = d.morning + d.evening;
+  milkStock += dayLiters;
+  milkHarvests.push({
+    id: 'harvest-m-' + d.date,
+    date: d.date,
+    liters: dayLiters,
+    session: 'total',
+    targetLotId: 'lot_bovin_01'
+  });
+  console.log(`  🥛 Traite du ${d.date} : Matin ${d.morning}L + Soir ${d.evening}L = ${dayLiters}L -> Tank: ${milkStock}L`);
+});
+
+const totalHarvestedLiters = milkHarvests.reduce((sum, h) => sum + h.liters, 0);
+assert.strictEqual(totalHarvestedLiters, 635, 'Total récolté sur 7j doit être de 635L');
+assert.strictEqual(milkStock, 635, 'Stock initial dans le tank doit être de 635L');
+
+// 3. Métriques clés et courbe de lactation
+const avgDailyMilk = (totalHarvestedLiters / dailyMilkingData.length).toFixed(1);
+const peakDailyMilk = Math.max(...dailyMilkingData.map(d => d.morning + d.evening));
+const activeDairyCows = 5;
+const avgPerCow = (Number(avgDailyMilk) / activeDairyCows).toFixed(1);
+
+console.log('\n▶ Statistiques et KPIs de Production Laitière :');
+console.log(`   - Production Totale (7j) : ${totalHarvestedLiters} Litres`);
+console.log(`   - Moyenne Journalière    : ${avgDailyMilk} L/jour`);
+console.log(`   - Record Pic Journalier  : ${peakDailyMilk} L (2026-11-01)`);
+console.log(`   - Rendement Moyen / Vache: ${avgPerCow} L/vache/jour (${activeDairyCows} vaches en lactation)`);
+console.log(`   - Équivalence Réserve    : ~${(milkStock / 20).toFixed(1)} Bidons (20L) • ~${(milkStock / 500).toFixed(2)} Citernes`);
+
+assert.strictEqual(avgDailyMilk, '90.7', 'Moyenne journalière correcte');
+assert.strictEqual(peakDailyMilk, 95, 'Pic journalier correct');
+assert.strictEqual(avgPerCow, '18.1', 'Rendement moyen par vache correct');
+
+// 4. Vente directe de lait frais depuis le tank
+const milkSoldQty = 500;
+const milkPrice = 1.450;
+const milkRevenue = milkSoldQty * milkPrice;
+milkStock -= milkSoldQty;
+
+console.log(`\n✓ Vente de lait frais : ${milkSoldQty} L à ${milkPrice.toFixed(3)} DT/L -> Encaissé: ${milkRevenue.toFixed(3)} DT`);
+console.log(`   -> Reste dans le tank : ${milkStock} L`);
+assert.strictEqual(milkStock, 135, 'Reste dans le tank après vente = 135L');
+assert.strictEqual(milkRevenue, 725, 'Recette vente de lait = 725.000 DT');
+
+// 5. Allaitement des veaux (prélèvement sur le tank)
+const calfMilkQty = 20;
+milkStock -= calfMilkQty;
+console.log(`✓ Allaitement des veaux : ${calfMilkQty} L alloués aux veaux -> Reste dans le tank : ${milkStock} L`);
+assert.strictEqual(milkStock, 115, 'Reste dans le tank après allaitement veaux = 115L');
+
+// 6. Consommation de la ferme et fabrication de fromage artisanal
+const cheeseMilkQty = 15;
+milkStock -= cheeseMilkQty;
+console.log(`✓ Transformation fromagère & conso : ${cheeseMilkQty} L déduits -> Reste dans le tank : ${milkStock} L`);
+assert.strictEqual(milkStock, 100, 'Reste final dans le tank = 100L');
+
+console.log('✓ Validation complète du module Lait & Tank de Réserve réussie !');
+
+
+// -------------------------------------------------------------
 // STEP 7: PARITE DES TRADUCTIONS ET CAS LIMITES
 // -------------------------------------------------------------
 console.log('\n--- ETAPE 7: VERIFICATION DE LA PARITE LINGUISTIQUE (FR, AR, EN) ---');

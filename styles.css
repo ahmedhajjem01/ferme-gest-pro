@@ -4618,3 +4618,159 @@ label {
     width: 96% !important;
   }
 }
+
+
+/* Milk Stock & Tank Dashboard Card */
+.milk-stock-card {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(56, 189, 248, 0.08));
+  border: 1.5px solid rgba(2, 132, 199, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.15rem;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.milk-stock-card:hover {
+  border-color: rgba(2, 132, 199, 0.55);
+  box-shadow: 0 6px 22px rgba(2, 132, 199, 0.15);
+}
+.milk-stock-info-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 200px;
+}
+.milk-stock-icon-bubble {
+  font-size: 2.2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(2, 132, 199, 0.2);
+  border: 1.5px solid rgba(2, 132, 199, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+.milk-stock-card:hover .milk-stock-icon-bubble {
+  transform: scale(1.06);
+}
+
+.btn-sky {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  border: none;
+}
+.btn-sky:hover {
+  background: linear-gradient(135deg, #0369a1, #075985);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+}
+
+/* Milk Production Statistics & Line Chart Panel */
+.milk-chart-panel {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s;
+}
+.milk-chart-panel:hover {
+  border-color: rgba(2, 132, 199, 0.4);
+}
+.milk-chart-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem 0.25rem 0.85rem;
+}
+.milk-period-btn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.milk-period-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+.milk-period-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+.milk-chart-svg {
+  width: 100%;
+  height: auto;
+  min-height: 190px;
+  display: block;
+}
+.milk-chart-dot {
+  transition: r 0.2s ease, stroke-width 0.2s ease, stroke 0.2s ease, fill 0.2s ease;
+}
+.milk-chart-dot:hover {
+  r: 7.5px;
+  stroke-width: 3px;
+}
+.milk-chart-dot.active-dot {
+  r: 8.5px !important;
+  stroke: #0284c7 !important;
+  stroke-width: 3.5px !important;
+  fill: #ffffff !important;
+  filter: drop-shadow(0 0 6px rgba(2, 132, 199, 0.75));
+}
+.milk-chart-point-details {
+  margin-top: 0.6rem;
+  background: var(--bg-card);
+  border: 1.5px solid rgba(2, 132, 199, 0.35);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  transition: all 0.25s ease-out;
+  animation: fadeInPoint 0.25s ease-out;
+}
+[data-theme="dark"] .milk-chart-point-details {
+  background: rgba(2, 132, 199, 0.06);
+  border-color: rgba(2, 132, 199, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+.milk-chart-pill.pill-milk {
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+.milk-chart-pill.pill-milk-zero {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-muted, #94a3b8);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+@media (max-width: 680px) {
+  .milk-stock-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+    gap: 0.9rem;
+  }
+}

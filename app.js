@@ -17,6 +17,9 @@ const appState = {
   eggStock: 0,
   eggHarvests: [],
   eggChartPeriod: '7d',
+  milkStock: 0,
+  milkHarvests: [],
+  milkChartPeriod: '7d',
   feedStockKg: null,
   feedStockDate: null,
   feedStockCostPerKg: 0,
@@ -278,6 +281,9 @@ const app = {
         eggStock: Number(appState.eggStock) || 0,
         eggHarvests: appState.eggHarvests || [],
         eggChartPeriod: appState.eggChartPeriod || '7d',
+        milkStock: Number(appState.milkStock) || 0,
+        milkHarvests: Array.isArray(appState.milkHarvests) ? appState.milkHarvests : [],
+        milkChartPeriod: appState.milkChartPeriod || '7d',
         feedStockKg: appState.feedStockKg !== undefined ? appState.feedStockKg : null,
         feedStockDate: appState.feedStockDate || null,
         feedStockCostPerKg: (appState.feedStockCostPerKg !== undefined && appState.feedStockCostPerKg !== null) ? Number(appState.feedStockCostPerKg) : 0,
@@ -318,6 +324,9 @@ const app = {
         appState.eggStock = Number(parsed.eggStock) || 0;
         appState.eggHarvests = Array.isArray(parsed.eggHarvests) ? parsed.eggHarvests : [];
         appState.eggChartPeriod = parsed.eggChartPeriod || '7d';
+        appState.milkStock = Number(parsed.milkStock) || 0;
+        appState.milkHarvests = Array.isArray(parsed.milkHarvests) ? parsed.milkHarvests : [];
+        appState.milkChartPeriod = parsed.milkChartPeriod || '7d';
         appState.feedStockKg = parsed.feedStockKg !== undefined ? parsed.feedStockKg : null;
         appState.feedStockDate = parsed.feedStockDate || null;
         appState.feedStockCostPerKg = (parsed.feedStockCostPerKg !== undefined && parsed.feedStockCostPerKg !== null) ? Number(parsed.feedStockCostPerKg) : 0;
@@ -425,6 +434,8 @@ const app = {
         appState.currency = 'TND';
         appState.lang = 'fr';
         appState.eggStock = 0;
+        appState.milkStock = 0;
+        appState.milkHarvests = [];
         appState.eggHarvests = [];
         appState.animals = [];
         appState.expenses = [];
@@ -1362,6 +1373,22 @@ const app = {
       eggChartCard.style.display = hasPoultry ? '' : 'none';
     }
 
+    const milkStockCard = document.getElementById('milkStockCard');
+    if (milkStockCard) {
+      milkStockCard.style.display = hasCattle ? '' : 'none';
+    }
+
+    const milkChartCard = document.getElementById('milkProductionChartCard');
+    if (milkChartCard) {
+      milkChartCard.style.display = hasCattle ? '' : 'none';
+    }
+
+    const drawerMilkBtn = document.getElementById('drawerMilkHarvestBtn');
+    if (drawerMilkBtn) {
+      drawerMilkBtn.style.display = hasCattle ? '' : 'none';
+    }
+
+
     // 3. KPI Livestock Subtitle
     const kpiAnimalsSub = document.getElementById('kpiAnimalsBreakdown');
     if (kpiAnimalsSub) {
@@ -2047,6 +2074,739 @@ const app = {
   // ==========================================
   // EGG STOCK & HARVEST ACCUMULATION MODULE
   // ==========================================
+  
+  // ==========================================
+  // MILK STOCK & HARVEST MANAGEMENT (BOVINS)
+  // ==========================================
+  renderMilkStock() {
+    const stock = Number(appState.milkStock) || 0;
+    const formattedStock = Number.isInteger(stock) ? stock : stock.toFixed(1);
+
+    const mainCountEl = document.getElementById('milkStockMainCount');
+    if (mainCountEl) mainCountEl.textContent = formattedStock;
+
+    const equivEl = document.getElementById('milkStockEquiv');
+    if (equivEl) {
+      const cans20L = (stock / 20).toFixed(1);
+      const tanks500L = (stock / 500).toFixed(2);
+      const lang = appState.lang || 'fr';
+      if (lang === 'ar') {
+        equivEl.textContent = `~${cans20L} برميل (20 لتر) • ~${tanks500L} خزان (500 لتر)`;
+      } else if (lang === 'en') {
+        equivEl.textContent = `~${cans20L} Cans (20L) • ~${tanks500L} Tanks (500L)`;
+      } else {
+        equivEl.textContent = `~${cans20L} Bidons (20L) • ~${tanks500L} Citernes (500L)`;
+      }
+    }
+
+    const curStockVal = document.getElementById('dailyMilkCurrentStockVal');
+    if (curStockVal) {
+      curStockVal.textContent = formattedStock + ' ' + (this.t('unit_liters_short') || 'L');
+    }
+  },
+
+  openDailyMilkModal() {
+    this.openModal('modalDailyMilk');
+    const input = document.getElementById('dailyMilkLiters');
+    const dateInput = document.getElementById('dailyMilkDate');
+    if (dateInput) {
+      dateInput.value = this.getTodayStr();
+    }
+    if (input) {
+      input.value = '';
+      input.placeholder = '';
+      input.removeAttribute('placeholder');
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 150);
+    }
+
+    // Populate target lot dropdown with cattle lots
+    const lotSelect = document.getElementById('dailyMilkTargetLot');
+    if (lotSelect) {
+      const cattleLots = (appState.animals || []).filter(a => {
+        if (!a || (Number(a.currentQuantity) || 0) <= 0) return false;
+        const sp = String(a.species || '').toLowerCase();
+        return sp === 'vache_laitiere' || sp === 'taurillon' || sp === 'veau' || sp.includes('bovin');
+      });
+
+      let optionsHtml = `<option value="all" data-i18n="opt_all_milking_cows" selected>${this.t('opt_all_milking_cows') || '🐄 Toutes les vaches en lactation'}</option>`;
+      cattleLots.forEach(lot => {
+        const qty = lot.currentQuantity || 0;
+        optionsHtml += `<option value="${lot.id}">🐄 ${lot.name || 'Lot Bovin'} (${qty} têtes)</option>`;
+      });
+      lotSelect.innerHTML = optionsHtml;
+    }
+
+    this.updateDailyMilkPreview();
+  },
+
+  updateDailyMilkPreview() {
+    const current = Number(appState.milkStock) || 0;
+    const input = document.getElementById('dailyMilkLiters');
+    const liters = parseFloat(input?.value) || 0;
+
+    const curStockVal = document.getElementById('dailyMilkCurrentStockVal');
+    if (curStockVal) curStockVal.textContent = (Number.isInteger(current) ? current : current.toFixed(1)) + ' ' + (this.t('unit_liters_short') || 'L');
+
+    const newStockVal = document.getElementById('dailyMilkNewStockVal');
+    const total = current + liters;
+    if (newStockVal) newStockVal.textContent = (Number.isInteger(total) ? total : total.toFixed(1)) + ' ' + (this.t('unit_liters_short') || 'L');
+
+    const btnText = document.getElementById('dailyMilkBtnText');
+    if (btnText) {
+      const lang = appState.lang || 'fr';
+      if (liters > 0) {
+        if (lang === 'ar') btnText.textContent = `إضافة +${liters} لتر إلى خزان الحليب`;
+        else if (lang === 'en') btnText.textContent = `Add +${liters} L to Milk Tank`;
+        else btnText.textContent = `Ajouter +${liters} L au Tank à Lait`;
+      } else {
+        btnText.textContent = this.t('btn_save_milk') || 'Ajouter au Tank à Lait';
+      }
+    }
+  },
+
+  handleSaveDailyMilk(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const litersInput = document.getElementById('dailyMilkLiters');
+    const liters = parseFloat(litersInput?.value);
+    if (!liters || liters <= 0) {
+      this.showToast(this.t('err_fill_required') || 'Veuillez saisir un volume valide.');
+      return;
+    }
+
+    const dateInput = document.getElementById('dailyMilkDate');
+    const harvestDate = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
+    const session = document.getElementById('dailyMilkingSession')?.value || 'total';
+    const targetLotId = document.getElementById('dailyMilkTargetLot')?.value || 'all';
+
+    appState.milkStock = (Number(appState.milkStock) || 0) + liters;
+    appState.milkHarvests = appState.milkHarvests || [];
+    appState.milkHarvests.unshift({
+      id: 'harvest-milk-' + Date.now().toString(36),
+      date: harvestDate,
+      liters: liters,
+      session: session,
+      targetLotId: targetLotId,
+      timestamp: Date.now()
+    });
+
+    this.saveState();
+    this.closeModal('modalDailyMilk');
+    this.renderMilkStock();
+    this.renderMilkProductionChart();
+    this.showToast(this.t('toast_milk_saved', { liters: liters, total: Number.isInteger(appState.milkStock) ? appState.milkStock : appState.milkStock.toFixed(1) }));
+
+    if (litersInput) litersInput.value = '';
+  },
+
+  // ==========================================
+  // MILK PRODUCTION STATISTICS & LINE CHART
+  // ==========================================
+  setMilkChartPeriod(period) {
+    appState.milkChartPeriod = period || '7d';
+    this.saveState();
+    const card = document.getElementById('milkProductionChartCard');
+    if (card) {
+      card.querySelectorAll('.milk-period-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-period') === appState.milkChartPeriod);
+      });
+    }
+    this.renderMilkProductionChart();
+  },
+
+  renderMilkProductionChart() {
+    const card = document.getElementById('milkProductionChartCard');
+    const strip = document.getElementById('milkChartMetricsStrip');
+    const chartBox = document.getElementById('milkChartContainer');
+    if (!card || !chartBox) return;
+
+    const period = appState.milkChartPeriod || '7d';
+
+    // Synchroniser l'état actif des boutons de période
+    card.querySelectorAll('.milk-period-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-period') === period);
+    });
+
+    const harvests = Array.isArray(appState.milkHarvests) ? appState.milkHarvests : [];
+
+    // Agréger les traites par date (somme matin + soir si plusieurs traites)
+    const dailyMap = {};
+    harvests.forEach(h => {
+      if (!h || !h.date) return;
+      const d = String(h.date).trim().split('T')[0];
+      if (d) {
+        dailyMap[d] = (dailyMap[d] || 0) + (Number(h.liters) || 0);
+      }
+    });
+
+    const allHarvestDates = Object.keys(dailyMap).sort();
+    const hasAnyHarvest = allHarvestDates.length > 0;
+
+    // Déterminer la liste chronologique continue des dates pour la période choisie
+    const todayStr = this.getTodayStr();
+    const todayParts = todayStr.split('-').map(Number);
+    const todayDate = new Date(todayParts[0], todayParts[1] - 1, todayParts[2], 12, 0, 0);
+
+    let datesList = [];
+
+    if (period === 'all') {
+      if (allHarvestDates.length === 0) {
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(todayDate);
+          d.setDate(d.getDate() - i);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          datesList.push(`${y}-${m}-${day}`);
+        }
+      } else {
+        const firstStr = allHarvestDates[0];
+        const lastStr = allHarvestDates[allHarvestDates.length - 1] > todayStr ? allHarvestDates[allHarvestDates.length - 1] : todayStr;
+        const fp = firstStr.split('-').map(Number);
+        const lp = lastStr.split('-').map(Number);
+        const cur = new Date(fp[0], fp[1] - 1, fp[2], 12, 0, 0);
+        const end = new Date(lp[0], lp[1] - 1, lp[2], 12, 0, 0);
+
+        if (cur.getTime() === end.getTime()) {
+          cur.setDate(cur.getDate() - 3);
+          end.setDate(end.getDate() + 3);
+        }
+
+        while (cur <= end) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const day = String(cur.getDate()).padStart(2, '0');
+          datesList.push(`${y}-${m}-${day}`);
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    } else {
+      const numDays = period === '30d' ? 30 : (period === '14d' ? 14 : 7);
+      for (let i = numDays - 1; i >= 0; i--) {
+        const d = new Date(todayDate);
+        d.setDate(d.getDate() - i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        datesList.push(`${y}-${m}-${day}`);
+      }
+    }
+
+    // Points de données avec format JJ/MM
+    const points = datesList.map((dt, idx) => {
+      const liters = dailyMap[dt] || 0;
+      const parts = dt.split('-');
+      const label = (parts.length === 3) ? `${parts[2]}/${parts[1]}` : dt;
+      return {
+        date: dt,
+        label: label,
+        liters: liters,
+        index: idx
+      };
+    });
+
+    // Métriques clés
+    const totalHarvested = points.reduce((sum, p) => sum + p.liters, 0);
+    const daysCount = points.length || 1;
+    const avgDaily = (totalHarvested / daysCount).toFixed(1);
+
+    let peakLiters = 0;
+    let peakDateLabel = '-';
+    points.forEach(p => {
+      if (p.liters > peakLiters) {
+        peakLiters = p.liters;
+        peakDateLabel = p.label;
+      }
+    });
+
+    // Vaches en lactation actives
+    const lactatingCows = (appState.animals || [])
+      .filter(a => {
+        if (!a || (Number(a.currentQuantity) || 0) <= 0) return false;
+        const sp = String(a.species || '').toLowerCase();
+        const stg = String(a.stage || '').toLowerCase();
+        return sp === 'vache_laitiere' || stg.includes('lactation') || stg.includes('traite');
+      })
+      .reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+
+    const lang = appState.lang || 'fr';
+    const unitDaysShort = lang === 'ar' ? 'يوم' : (lang === 'en' ? 'd' : 'j');
+    const unitLitersShort = this.t('unit_liters_short') || 'L';
+
+    let avgPerCowStr = '-';
+    if (lactatingCows > 0) {
+      const perCow = (Number(avgDaily) / lactatingCows).toFixed(1);
+      avgPerCowStr = `${perCow} ${unitLitersShort}/${lang === 'ar' ? 'بقرة' : 'vache'} (${lactatingCows} 🐄)`;
+    } else {
+      const activeDays = points.filter(p => p.liters > 0).length;
+      avgPerCowStr = `${activeDays}/${daysCount} ${unitDaysShort}`;
+    }
+
+    // Affichage métriques clés
+    if (strip) {
+      strip.innerHTML = `
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="milk_chart_total">${this.t('milk_chart_total')}</span>
+          <span class="egg-chart-metric-val" style="color: #0284c7;">
+            ${Number.isInteger(totalHarvested) ? totalHarvested.toLocaleString() : totalHarvested.toFixed(1)} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitLitersShort}</small>
+          </span>
+        </div>
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="milk_chart_avg">${this.t('milk_chart_avg')}</span>
+          <span class="egg-chart-metric-val" style="color: #38bdf8;">
+            ${avgDaily} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitLitersShort}/${unitDaysShort}</small>
+          </span>
+        </div>
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="milk_chart_peak">${this.t('milk_chart_peak')}</span>
+          <span class="egg-chart-metric-val" style="color: #f59e0b;">
+            ${peakLiters > 0 ? (Number.isInteger(peakLiters) ? peakLiters.toLocaleString() : peakLiters.toFixed(1)) : 0} 
+            ${peakLiters > 0 ? `<small style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">(${peakDateLabel})</small>` : ''}
+          </span>
+        </div>
+        <div class="egg-chart-metric-card">
+          <span class="egg-chart-metric-lbl" data-i18n="milk_chart_per_cow">${this.t('milk_chart_per_cow')}</span>
+          <span class="egg-chart-metric-val" style="color: #a855f7; font-size: 0.95rem;">
+            ${avgPerCowStr}
+          </span>
+        </div>
+      `;
+    }
+
+    // Si aucune traite dans la base
+    if (!hasAnyHarvest) {
+      chartBox.innerHTML = `
+        <div style="text-align: center; padding: 2.2rem 1rem;">
+          <div style="font-size: 2.6rem; margin-bottom: 0.6rem;">🥛</div>
+          <div style="font-weight: 800; font-size: 1.05rem; margin-bottom: 0.35rem; color: var(--text-main);" data-i18n="milk_chart_empty_title">${this.t('milk_chart_empty_title')}</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 440px; margin: 0 auto 1.25rem; line-height: 1.45;" data-i18n="milk_chart_empty_desc">${this.t('milk_chart_empty_desc')}</p>
+          <button type="button" class="btn btn-sky" onclick="app.openDailyMilkModal()" style="font-weight: 700; padding: 0.45rem 1.1rem; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 0.4rem;">
+            <span>➕</span> <span data-i18n="btn_record_milking">${this.t('btn_record_milking')}</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    // SVG Line Chart (ViewBox 680 x 230)
+    const svgW = 680;
+    const svgH = 230;
+    const padL = 46;
+    const padR = 25;
+    const padT = 28;
+    const padB = 42;
+    const chartW = svgW - padL - padR;
+    const chartH = svgH - padT - padB;
+
+    // Échelle axe Y (Litres)
+    const maxVal = Math.max(...points.map(p => p.liters), 0);
+    let yMax = 20;
+    if (maxVal > 0) {
+      yMax = Math.max(20, Math.ceil((maxVal * 1.25) / 10) * 10);
+    }
+
+    const n = points.length;
+    points.forEach((p, i) => {
+      p.cx = n <= 1 ? padL + chartW / 2 : padL + (i / (n - 1)) * chartW;
+      p.cy = padT + chartH - (p.liters / yMax) * chartH;
+    });
+
+    // Lignes de grille horizontales
+    let gridLinesSvg = '';
+    const gridSteps = 4;
+    for (let s = 0; s <= gridSteps; s++) {
+      const ratio = s / gridSteps;
+      const yVal = Math.round(ratio * yMax);
+      const yPos = padT + chartH - (ratio * chartH);
+      gridLinesSvg += `
+        <line x1="${padL}" y1="${yPos.toFixed(1)}" x2="${padL + chartW}" y2="${yPos.toFixed(1)}" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" />
+        <text x="${padL - 8}" y="${(yPos + 4).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="600" fill="var(--text-muted, #94a3b8)">${yVal}L</text>
+      `;
+    }
+
+    // Courbe Bézier
+    let linePath = '';
+    if (points.length === 1) {
+      linePath = `M ${points[0].cx} ${points[0].cy} L ${points[0].cx + 1} ${points[0].cy}`;
+    } else {
+      linePath = `M ${points[0].cx.toFixed(1)} ${points[0].cy.toFixed(1)}`;
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i > 0 ? points[i - 1] : points[i];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i < points.length - 2 ? points[i + 2] : p2;
+        const cp1x = p1.cx + (p2.cx - p0.cx) / 6;
+        const cp1y = p1.cy + (p2.cy - p0.cy) / 6;
+        const cp2x = p2.cx - (p3.cx - p1.cx) / 6;
+        const cp2y = p2.cy - (p3.cy - p1.cy) / 6;
+        linePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.cx.toFixed(1)} ${p2.cy.toFixed(1)}`;
+      }
+    }
+
+    // Area Gradient
+    const baselineY = padT + chartH;
+    const areaPath = `${linePath} L ${points[points.length - 1].cx.toFixed(1)} ${baselineY} L ${points[0].cx.toFixed(1)} ${baselineY} Z`;
+
+    // Graduations Axe X
+    let xLabelsSvg = '';
+    let step = 1;
+    if (n > 20) step = 4;
+    else if (n > 12) step = 2;
+
+    points.forEach((p, i) => {
+      const isFirst = i === 0;
+      const isLast = i === n - 1;
+      const shouldShow = (i % step === 0) || isFirst || isLast;
+      if (shouldShow) {
+        xLabelsSvg += `
+          <text x="${p.cx.toFixed(1)}" y="${(baselineY + 20).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text-muted, #94a3b8)">${p.label}</text>
+        `;
+      }
+    });
+
+    // Points interactifs
+    let dotsSvg = '';
+    points.forEach((p, i) => {
+      const isZero = p.liters === 0;
+      const dotColor = isZero ? '#64748b' : '#0284c7';
+      const r = isZero ? 3.5 : 5.5;
+
+      dotsSvg += `
+        <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="16" fill="transparent" style="cursor: pointer;" onclick="app.showMilkPointTooltip(${i}, ${p.liters}, '${p.label}', '${p.date}')" onmouseenter="app.showMilkPointTooltip(${i}, ${p.liters}, '${p.label}', '${p.date}')" />
+      `;
+
+      dotsSvg += `
+        <circle id="milkDot_${i}" class="milk-chart-dot" data-idx="${i}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${r}" fill="${dotColor}" stroke="#ffffff" stroke-width="2" style="cursor: pointer;" onclick="app.showMilkPointTooltip(${i}, ${p.liters}, '${p.label}', '${p.date}')" onmouseenter="app.showMilkPointTooltip(${i}, ${p.liters}, '${p.label}', '${p.date}')" />
+      `;
+
+      if (p.liters > 0 && (n <= 14 || p.liters === peakLiters)) {
+        const displayVal = Number.isInteger(p.liters) ? p.liters : p.liters.toFixed(1);
+        dotsSvg += `
+          <g class="egg-point-badge">
+            <rect x="${(p.cx - 15).toFixed(1)}" y="${(p.cy - 22).toFixed(1)}" width="30" height="15" rx="3.5" fill="rgba(2, 132, 199, 0.9)" />
+            <text x="${p.cx.toFixed(1)}" y="${(p.cy - 11).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#ffffff">${displayVal}</text>
+          </g>
+        `;
+      }
+    });
+
+    chartBox.innerHTML = `
+      <div style="position: relative; width: 100%;">
+        <svg class="milk-chart-svg" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="milkAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0284c7" stop-opacity="0.38"/>
+              <stop offset="85%" stop-color="#0284c7" stop-opacity="0.04"/>
+              <stop offset="100%" stop-color="#0284c7" stop-opacity="0.0"/>
+            </linearGradient>
+            <filter id="milkLineGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0284c7" flood-opacity="0.35"/>
+            </filter>
+          </defs>
+
+          <!-- Axes et Grille -->
+          <line x1="${padL}" y1="${baselineY}" x2="${padL + chartW}" y2="${baselineY}" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5" />
+          <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${baselineY}" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5" />
+          ${gridLinesSvg}
+          ${xLabelsSvg}
+
+          <!-- Remplissage dégradé -->
+          <path d="${areaPath}" fill="url(#milkAreaGrad)" />
+
+          <!-- Ligne de courbe -->
+          <path d="${linePath}" fill="none" stroke="#0284c7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#milkLineGlow)" />
+
+          <!-- Ligne repère verticale active -->
+          <line id="milkChartActiveLine" x1="0" y1="${padT}" x2="0" y2="${baselineY}" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3,3" stroke-opacity="0.5" style="display: none; transition: x1 0.2s ease, x2 0.2s ease;" />
+
+          <!-- Points et valeurs -->
+          ${dotsSvg}
+        </svg>
+
+        <!-- Détails interactifs sous le graphique -->
+        <div id="milkChartPointDetails" class="milk-chart-point-details"></div>
+      </div>
+    `;
+
+    // Mémorisation des points pour les interactions et sélection par défaut du dernier jour
+    this._milkChartPoints = points;
+    if (points && points.length > 0) {
+      const lastIdx = points.length - 1;
+      this.showMilkPointTooltip(lastIdx, points[lastIdx].liters, points[lastIdx].label, points[lastIdx].date);
+    }
+  },
+
+  showMilkPointTooltip(idx, liters, dateLabel, fullDate) {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const unitLiters = this.t('unit_liters_short') || 'L';
+    const cansLabel = this.t('milk_equiv_cans') || 'Bidons (20L)';
+    const zeroLabel = this.t('milk_chart_zero_harvest') || (isAr ? 'لا يوجد حلب هذا اليوم' : (isEn ? 'No milking this day' : 'Aucune traite ce jour'));
+
+    const cans = (liters / 20).toFixed(1);
+
+    // 1. Mise à jour de la surbrillance
+    const dots = document.querySelectorAll('.milk-chart-dot');
+    dots.forEach(d => d.classList.remove('active-dot'));
+    const activeDot = document.getElementById('milkDot_' + idx);
+    if (activeDot) {
+      activeDot.classList.add('active-dot');
+    }
+
+    // 2. Positionner la ligne verticale de repère
+    const activeLine = document.getElementById('milkChartActiveLine');
+    if (activeLine && this._milkChartPoints && this._milkChartPoints[idx]) {
+      const pt = this._milkChartPoints[idx];
+      activeLine.setAttribute('x1', pt.cx.toFixed(1));
+      activeLine.setAttribute('x2', pt.cx.toFixed(1));
+      activeLine.style.display = 'block';
+    }
+
+    // 3. Formatage date
+    let dateDisplay = fullDate || dateLabel;
+    try {
+      if (fullDate) {
+        const parts = fullDate.split('-');
+        if (parts.length === 3) {
+          const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          const locale = isAr ? 'ar-TN' : (isEn ? 'en-US' : 'fr-FR');
+          dateDisplay = dateObj.toLocaleDateString(locale, {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          });
+        }
+      }
+    } catch (e) {
+      dateDisplay = fullDate || dateLabel;
+    }
+
+    // 4. Détails inline
+    const detailsEl = document.getElementById('milkChartPointDetails');
+    if (!detailsEl) return;
+
+    if (liters <= 0) {
+      detailsEl.innerHTML = `
+        <div class="egg-chart-point-details-left">
+          <span style="font-size: 1.15rem;">📅</span>
+          <span class="egg-chart-point-date-badge" style="background: rgba(2, 132, 199, 0.15); color: #0284c7;">${dateLabel}</span>
+          <span class="egg-chart-point-date-full">${dateDisplay}</span>
+        </div>
+        <div class="egg-chart-point-details-right">
+          <span class="egg-chart-pill milk-chart-pill pill-milk-zero">🥛 0 ${unitLiters} (${zeroLabel})</span>
+        </div>
+      `;
+    } else {
+      const valStr = Number.isInteger(liters) ? liters : liters.toFixed(1);
+      detailsEl.innerHTML = `
+        <div class="egg-chart-point-details-left">
+          <span style="font-size: 1.15rem;">📅</span>
+          <span class="egg-chart-point-date-badge" style="background: rgba(2, 132, 199, 0.15); color: #0284c7;">${dateLabel}</span>
+          <span class="egg-chart-point-date-full">${dateDisplay}</span>
+        </div>
+        <div class="egg-chart-point-details-right">
+          <span class="egg-chart-pill milk-chart-pill pill-milk">🥛 <strong>${valStr}</strong> ${unitLiters}</span>
+          <span class="egg-chart-pill pill-haras">~<strong>${cans}</strong> ${cansLabel}</span>
+        </div>
+      `;
+    }
+  },
+
+  // ==========================================
+  // MILK SALES FROM TANK
+  // ==========================================
+  openSellMilkModal() {
+    const stock = Number(appState.milkStock) || 0;
+    if (stock <= 0) {
+      this.showToast(appState.lang === 'ar' ? '⚠️ رصيد الحليب فارغ حالياً. سجل حلب جديد أولاً.' : (appState.lang === 'en' ? '⚠️ Milk stock is empty. Record a milking first.' : '⚠️ Votre stock de lait est vide. Enregistrez une traite d\'abord.'));
+      return;
+    }
+    this.openModal('modalSellMilkStock');
+    const availEl = document.getElementById('sellMilkStockAvailable');
+    if (availEl) availEl.textContent = `${Number.isInteger(stock) ? stock : stock.toFixed(1)} ${this.t('unit_liters_short') || 'L'}`;
+
+    const qtyInput = document.getElementById('sellMilkQty');
+    if (qtyInput) {
+      qtyInput.value = '';
+      qtyInput.max = stock;
+    }
+
+    const priceInput = document.getElementById('sellMilkUnitPrice');
+    if (priceInput) {
+      const isTND = appState.currency === 'TND';
+      priceInput.value = isTND ? '1.450' : '1.20';
+    }
+
+    this.calcSellMilkTotal();
+  },
+
+  calcSellMilkTotal() {
+    const q = parseFloat(document.getElementById('sellMilkQty')?.value) || 0;
+    const p = parseFloat(document.getElementById('sellMilkUnitPrice')?.value) || 0;
+    const stock = Number(appState.milkStock) || 0;
+
+    const hintEl = document.getElementById('sellMilkEquivHint');
+    if (hintEl) {
+      const lang = appState.lang || 'fr';
+      const unitL = this.t('unit_liters_short') || 'L';
+      if (q > stock) {
+        hintEl.innerHTML = `<span class="text-rose bold">⚠️ ${q} ${unitL} (${lang === 'ar' ? 'يتجاوز الرصيد المتوفر' : 'dépasse le tank disponible'}) !</span>`;
+      } else {
+        const remaining = stock - q;
+        const remStr = Number.isInteger(remaining) ? remaining : remaining.toFixed(1);
+        hintEl.textContent = `🥛 ${q} ${unitL} (${remStr} ${unitL} ${lang === 'ar' ? 'سيبقى بالخزان' : 'restants après vente'})`;
+      }
+    }
+
+    const totalRevenue = q * p;
+    const revEl = document.getElementById('sellMilkTotalRevenue');
+    if (revEl) revEl.textContent = this.formatMoney(totalRevenue);
+  },
+
+  handleSaveSellMilkStock(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const q = parseFloat(document.getElementById('sellMilkQty')?.value) || 0;
+    const unitPrice = parseFloat(document.getElementById('sellMilkUnitPrice')?.value) || 0;
+    const total = q * unitPrice;
+    const stock = Number(appState.milkStock) || 0;
+
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
+    if (q <= 0) {
+      this.showToast(isAr ? 'يرجى إدخال كمية صحيحة.' : (isEn ? 'Please enter a valid quantity.' : 'Veuillez saisir une quantité valide.'));
+      return;
+    }
+    if (q > stock) {
+      this.showToast(isAr 
+        ? `الكمية المراد بيعها (${q} لتر) تتجاوز الرصيد المتوفر (${stock} لتر)` 
+        : (isEn ? `The quantity to sell (${q} L) exceeds available stock (${stock} L).` : `La quantité à vendre (${q} L) dépasse votre stock disponible (${stock} L).`), 'warning');
+      return;
+    }
+
+    const todayStr = this.getTodayStr();
+    const lang = appState.lang || 'fr';
+    let desc = `Vente de lait frais depuis le tank (${q} Litres)`;
+    if (lang === 'ar') desc = `بيع حليب طازج من الخزان (${q} لتر)`;
+    else if (lang === 'en') desc = `Fresh milk sale from tank (${q} Liters)`;
+
+    const newSale = {
+      id: 'sale-' + Date.now().toString(36),
+      date: todayStr,
+      productType: 'lait',
+      description: desc,
+      quantity: q,
+      unitPrice: unitPrice,
+      total: total,
+      linkedLotId: 'none',
+      ageText: ''
+    };
+
+    appState.sales.unshift(newSale);
+    appState.milkStock = Math.max(0, stock - q);
+
+    this.saveState();
+    this.closeModal('modalSellMilkStock');
+    this.renderAll();
+    this.showToast(this.t('toast_milk_sold', {
+      liters: q,
+      amount: this.formatMoney(total),
+      remaining: Number.isInteger(appState.milkStock) ? appState.milkStock : appState.milkStock.toFixed(1)
+    }));
+  },
+
+  // ==========================================
+  // MILK ALLOCATION TO CALVES (ALLAITEMENT)
+  // ==========================================
+  openCalfMilkModal() {
+    const stock = Number(appState.milkStock) || 0;
+    if (stock <= 0) {
+      this.showToast(appState.lang === 'ar' ? '⚠️ لا يوجد حليب في الخزان.' : (appState.lang === 'en' ? '⚠️ No milk in tank.' : '⚠️ Aucun lait dans le tank.'));
+      return;
+    }
+    this.openModal('modalCalfMilkStock');
+    const availEl = document.getElementById('calfMilkStockAvailable');
+    if (availEl) availEl.textContent = `${Number.isInteger(stock) ? stock : stock.toFixed(1)} ${this.t('unit_liters_short') || 'L'}`;
+
+    const input = document.getElementById('calfMilkQty');
+    if (input) {
+      input.value = '';
+      input.max = stock;
+    }
+  },
+
+  handleSaveCalfMilkStock(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const q = parseFloat(document.getElementById('calfMilkQty')?.value) || 0;
+    const stock = Number(appState.milkStock) || 0;
+    if (q <= 0) return;
+    if (q > stock) {
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? `الكمية تتجاوز الرصيد الحالي (${stock} لتر)` : `La quantité dépasse le stock actuel (${stock} L).`, 'warning');
+      return;
+    }
+
+    appState.milkStock = Math.max(0, stock - q);
+    this.saveState();
+    this.closeModal('modalCalfMilkStock');
+    this.renderMilkStock();
+    this.renderMilkProductionChart();
+    this.showToast(this.t('toast_milk_calves', {
+      liters: q,
+      remaining: Number.isInteger(appState.milkStock) ? appState.milkStock : appState.milkStock.toFixed(1)
+    }));
+  },
+
+  // ==========================================
+  // MILK CONSUMPTION / CHEESE / LOSSES
+  // ==========================================
+  openConsumeMilkModal() {
+    const stock = Number(appState.milkStock) || 0;
+    if (stock <= 0) {
+      this.showToast(appState.lang === 'ar' ? '⚠️ لا يوجد حليب في الخزان.' : (appState.lang === 'en' ? '⚠️ No milk in tank.' : '⚠️ Aucun lait dans le tank.'));
+      return;
+    }
+    this.openModal('modalConsumeMilkStock');
+    const availEl = document.getElementById('consumeMilkStockAvailable');
+    if (availEl) availEl.textContent = `${Number.isInteger(stock) ? stock : stock.toFixed(1)} ${this.t('unit_liters_short') || 'L'}`;
+
+    const input = document.getElementById('consumeMilkQty');
+    if (input) {
+      input.value = '';
+      input.max = stock;
+    }
+  },
+
+  handleSaveConsumeMilkStock(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const q = parseFloat(document.getElementById('consumeMilkQty')?.value) || 0;
+    const stock = Number(appState.milkStock) || 0;
+    const reasonSelect = document.getElementById('consumeMilkReason');
+    const reasonKey = reasonSelect ? reasonSelect.options[reasonSelect.selectedIndex]?.getAttribute('data-i18n') : null;
+    const reasonText = (reasonKey ? this.t(reasonKey) : null) || reasonSelect?.value || 'Consommation';
+
+    if (q <= 0) return;
+    if (q > stock) {
+      const isAr = appState.lang === 'ar';
+      this.showToast(isAr ? `الكمية تتجاوز الرصيد الحالي (${stock} لتر)` : `La quantité dépasse le stock actuel (${stock} L).`, 'warning');
+      return;
+    }
+
+    appState.milkStock = Math.max(0, stock - q);
+    this.saveState();
+    this.closeModal('modalConsumeMilkStock');
+    this.renderMilkStock();
+    this.renderMilkProductionChart();
+    this.showToast(this.t('toast_milk_consumed', {
+      liters: q,
+      reason: reasonText,
+      remaining: Number.isInteger(appState.milkStock) ? appState.milkStock : appState.milkStock.toFixed(1)
+    }));
+  },
+
   renderEggStock() {
     const stock = Number(appState.eggStock) || 0;
     const mainCountEl = document.getElementById('eggStockMainCount');
@@ -3467,6 +4227,8 @@ const app = {
     try { this.renderDashboard(); } catch (e) { console.warn('renderDashboard error:', e); }
     try { this.renderEggStock(); } catch (e) { console.warn('renderEggStock error:', e); }
     try { this.renderEggProductionChart(); } catch (e) { console.warn('renderEggProductionChart error:', e); }
+    try { this.renderMilkStock(); } catch (e) { console.warn('renderMilkStock error:', e); }
+    try { this.renderMilkProductionChart(); } catch (e) { console.warn('renderMilkProductionChart error:', e); }
     try { this.renderFarmFeedSummary(); } catch (e) { console.warn('renderFarmFeedSummary error:', e); }
     try { this.renderAnimals(); } catch (e) { console.warn('renderAnimals error:', e); }
     try { this.renderExpenses(); } catch (e) { console.warn('renderExpenses error:', e); }
@@ -12220,6 +12982,8 @@ const app = {
         appState.feedStockCostPerKg = 0;
         appState.feedStockDate = null;
         appState.eggStock = 0;
+        appState.milkStock = 0;
+        appState.milkHarvests = [];
         appState.eggHarvests = [];
         appState._zeroInitialized = true;
         this.saveState();
@@ -12726,6 +13490,8 @@ const app = {
         appState.incubatorBatches = [];
         appState.eggHarvests = [];
         appState.eggStock = 0;
+        appState.milkStock = 0;
+        appState.milkHarvests = [];
 
         // Remise à zéro intégrale de l'alimentation, du stock magasin et des rations
         appState.feedDistributions = [];

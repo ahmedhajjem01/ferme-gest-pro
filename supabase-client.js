@@ -34,6 +34,8 @@
         lang: 'fr',
         theme: 'dark',
         eggStock: 0,
+        milkStock: 0,
+        milkHarvests: [],
         eggHarvests: [],
         animals: [],
         expenses: [],
@@ -583,6 +585,8 @@
             try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
           })(),
           eggStock: Number(state.eggStock) || 0,
+          milkStock: Number(state.milkStock) || 0,
+          milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
           eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
           feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
           feedStockDate: state.feedStockDate || null,
@@ -672,6 +676,8 @@
           try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
         })(),
         eggStock: Number(state.eggStock) || 0,
+          milkStock: Number(state.milkStock) || 0,
+          milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
         feedStockDate: state.feedStockDate || null,
@@ -847,6 +853,11 @@
         const localEggs = Number(state.eggStock) || 0;
         state.eggStock = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
       }
+      if (cloudData.milkStock !== undefined) {
+        const cloudMilk = Number(cloudData.milkStock) || 0;
+        const localMilk = Number(state.milkStock) || 0;
+        state.milkStock = doMerge ? Math.max(localMilk, cloudMilk) : cloudMilk;
+      }
       const now = Date.now();
       const cloudBaseTs = Number(cloudData.lastUpdated) || (now - 10000);
       // Nettoyer tout timestamp dans le futur (utiliser l'horodatage réel passé de cloudData)
@@ -890,6 +901,7 @@
         state.sales = this.mergeCollections(state.sales, cloudData.sales || []);
         state.incubatorBatches = this.mergeCollections(state.incubatorBatches, cloudData.incubatorBatches || []);
         state.eggHarvests = this.mergeCollections(state.eggHarvests, cloudData.eggHarvests || []);
+        state.milkHarvests = this.mergeCollections(state.milkHarvests, cloudData.milkHarvests || []);
         state.feedDistributions = this.mergeCollections(state.feedDistributions, cloudData.feedDistributions || []);
         state.feedTypes = this.mergeCollections(state.feedTypes, cloudData.feedTypes || []);
       } else {
@@ -898,6 +910,7 @@
         if (Array.isArray(cloudData.sales)) state.sales = cloudData.sales;
         if (Array.isArray(cloudData.incubatorBatches)) state.incubatorBatches = cloudData.incubatorBatches;
         if (Array.isArray(cloudData.eggHarvests)) state.eggHarvests = cloudData.eggHarvests;
+        if (Array.isArray(cloudData.milkHarvests)) state.milkHarvests = cloudData.milkHarvests;
         if (Array.isArray(cloudData.feedDistributions)) state.feedDistributions = cloudData.feedDistributions;
         if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
       }
@@ -931,6 +944,8 @@
         window.appState.lang = state.lang;
         window.appState.theme = state.theme;
         window.appState.eggStock = state.eggStock;
+        window.appState.milkStock = state.milkStock;
+        window.appState.milkHarvests = state.milkHarvests;
         window.appState.eggHarvests = state.eggHarvests;
         window.appState.feedStockKg = state.feedStockKg;
         window.appState.feedStockDate = state.feedStockDate;
@@ -955,6 +970,8 @@
           lang: state.lang,
           theme: state.theme,
           eggStock: state.eggStock,
+          milkStock: state.milkStock,
+          milkHarvests: state.milkHarvests,
           eggHarvests: state.eggHarvests,
           feedStockKg: state.feedStockKg,
           feedStockDate: state.feedStockDate,
@@ -1354,6 +1371,8 @@
           try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
         })(),
         eggStock: Number(state.eggStock) || 0,
+          milkStock: Number(state.milkStock) || 0,
+          milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
         feedStockDate: state.feedStockDate || null,

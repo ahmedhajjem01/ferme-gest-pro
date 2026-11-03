@@ -23,7 +23,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=81">
+  <link rel="stylesheet" href="styles.css?v=82">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -92,7 +92,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=148').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=151').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -271,6 +271,10 @@
             <button type="button" class="btn btn-primary btn-full drawer-btn" style="margin-top: 0.45rem; background: linear-gradient(135deg, #10b981, #059669); border:none;" onclick="app.closeMobileMenu(); app.openDailyEggModal();">
               <span>🥚</span>
               <span data-i18n="daily_eggs_menu_btn">🥚 Récolte Quotidienne des Œufs</span>
+            </button>
+            <button type="button" id="drawerMilkHarvestBtn" class="btn btn-primary btn-full drawer-btn" style="margin-top: 0.45rem; background: linear-gradient(135deg, #0284c7, #0369a1); border:none; display: none;" onclick="app.closeMobileMenu(); app.openDailyMilkModal();">
+              <span>🥛</span>
+              <span data-i18n="drawer_milking_btn">🥛 Enregistrer la Traite du Lait</span>
             </button>
           </div>
 
@@ -554,6 +558,76 @@
               </div>
             </div>
           </div>
+
+          <!-- Stock de Lait & Réserve / Tank à Lait Card (Bovins) -->
+          <div id="milkStockCard" class="milk-stock-card" style="display: none;">
+            <div class="milk-stock-info-group">
+              <div class="milk-stock-icon-bubble">🥛</div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0;" data-i18n="milk_stock_title">Tank à Lait & Réserve</h3>
+                  <span class="badge-pill text-sky" data-i18n="milk_stock_badge" style="font-size: 0.72rem; background: rgba(2, 132, 199, 0.15); color: #0284c7;">Frais & Disponible</span>
+                </div>
+                <div style="font-size: 1.7rem; font-weight: 900; color: var(--text-main); line-height: 1.15;">
+                  <span id="milkStockMainCount">0</span> <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);" data-i18n="unit_liters">Litres</span>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;" id="milkStockEquiv">
+                  ~0 Bidons (20L)
+                </div>
+              </div>
+            </div>
+
+            <!-- Action buttons: 2x2 grid -->
+            <div class="egg-stock-actions-grid">
+              <button type="button" class="btn btn-sky egg-stock-btn" onclick="app.openDailyMilkModal()" data-i18n="btn_record_milking">
+                ➕ Traite
+              </button>
+              <button type="button" class="btn btn-secondary egg-stock-btn" onclick="app.openSellMilkModal()" data-i18n="btn_sell_milk">
+                💰 Vente
+              </button>
+              <button type="button" class="btn btn-amber egg-stock-btn" onclick="app.openCalfMilkModal()" data-i18n="btn_calf_milk">
+                🍼 Veaux
+              </button>
+              <button type="button" class="btn btn-outline egg-stock-btn" onclick="app.openConsumeMilkModal()" data-i18n="btn_consume_milk" title="Déduire consommation, transformation ou pertes">
+                🍽️ Conso
+              </button>
+            </div>
+          </div>
+
+          <!-- Statistiques & Courbe de Traite / Production de Lait (Line Chart) -->
+          <div id="milkProductionChartCard" class="panel-card milk-chart-panel" style="display: none;">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.3rem;">🥛</span>
+                <div>
+                  <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800;" data-i18n="milk_chart_title">Statistiques & Courbe du Lait</h3>
+                  <small class="text-muted" data-i18n="milk_chart_sub">Évolution journalière de la traite (Axe X : Date • Axe Y : Litres de lait)</small>
+                </div>
+              </div>
+
+              <!-- Filtres de période : 7j, 14j, 30j, Tout -->
+              <div class="milk-chart-period-filters" style="display: inline-flex; gap: 0.25rem; background: var(--bg-card); padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <button type="button" class="milk-period-btn active" data-period="7d" onclick="app.setMilkChartPeriod('7d')" data-i18n="milk_chart_period_7d">7j</button>
+                <button type="button" class="milk-period-btn" data-period="14d" onclick="app.setMilkChartPeriod('14d')" data-i18n="milk_chart_period_14d">14j</button>
+                <button type="button" class="milk-period-btn" data-period="30d" onclick="app.setMilkChartPeriod('30d')" data-i18n="milk_chart_period_30d">30j</button>
+                <button type="button" class="milk-period-btn" data-period="all" onclick="app.setMilkChartPeriod('all')" data-i18n="milk_chart_period_all">Tout</button>
+              </div>
+            </div>
+
+            <!-- Bandeau Métriques Clés (Total L, Moyenne L/j, Record Pic, Rendement/vache) -->
+            <div class="milk-chart-metrics-strip" id="milkChartMetricsStrip">
+              <!-- Rempli dynamiquement -->
+            </div>
+
+            <!-- Conteneur du Graphique Vectoriel (SVG Line Chart) -->
+            <div class="panel-body" style="padding: 0.75rem 0.65rem 0.5rem 0.65rem; overflow-x: auto;">
+              <div id="milkChartContainer" style="width: 100%; min-width: 300px; position: relative;">
+                <!-- Rendu dynamique du graphique -->
+              </div>
+            </div>
+          </div>
+
+
 
           <!-- Farm Daily Feed & Ration Card (Table Agronomique Réelle) -->
           <div id="farmFeedSummaryCard" class="farm-feed-summary-card">
@@ -2323,6 +2397,186 @@
             </div>
           </div>
 
+  <!-- Modal: Enregistrement Traite Quotidienne du Lait -->
+  <div id="modalDailyMilk" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 data-i18n="modal_daily_milk_title">🥛 Enregistrer la Traite Journalière</h3>
+        <button class="modal-close" onclick="app.closeModal('modalDailyMilk')">&times;</button>
+      </div>
+      <form id="formDailyMilk" onsubmit="app.handleSaveDailyMilk(event)">
+        <div class="modal-body">
+          <div style="background: rgba(2, 132, 199, 0.1); border: 1px solid rgba(2, 132, 199, 0.25); border-radius: var(--radius-md); padding: 0.9rem; margin-bottom: 1.15rem; display: flex; align-items: center; gap: 0.75rem;">
+            <div style="font-size: 1.8rem;">🥛</div>
+            <div style="font-size: 0.88rem; color: var(--text-main); font-weight: 600; line-height: 1.4;" data-i18n="modal_daily_milk_sub">
+              Saisissez la quantité de lait collectée lors de la traite du jour.
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-bottom: 1rem;">
+            <div class="form-group flex-1">
+              <label for="dailyMilkDate" class="form-label" data-i18n="lbl_milking_date" style="font-weight: 700;">Date de la traite</label>
+              <input type="date" id="dailyMilkDate" class="input-field" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="dailyMilkingSession" class="form-label" data-i18n="lbl_milking_session" style="font-weight: 700;">Session</label>
+              <select id="dailyMilkingSession" class="input-field">
+                <option value="total" data-i18n="opt_milking_total" selected>Journée entière (Total)</option>
+                <option value="matin" data-i18n="opt_milking_morning">Traite du Matin</option>
+                <option value="soir" data-i18n="opt_milking_evening">Traite du Soir</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="dailyMilkLiters" class="form-label" data-i18n="lbl_milk_liters" style="font-weight: 700;">
+              Volume de lait récolté (Litres)
+            </label>
+            <div style="position: relative;">
+              <input type="number" id="dailyMilkLiters" class="input-field" step="0.5" min="0.5" max="100000" required oninput="app.updateDailyMilkPreview()" style="font-size: 1.35rem; font-weight: 800; padding: 0.65rem 0.85rem; color: #0284c7; letter-spacing: 0.03em;">
+              <span style="position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted); font-size: 0.85rem;" data-i18n="unit_liters_short">L</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.15rem;">
+            <label for="dailyMilkTargetLot" class="form-label" data-i18n="lbl_milk_target_lot" style="font-weight: 700;">Lot ou Vaches concernées</label>
+            <select id="dailyMilkTargetLot" class="input-field">
+              <option value="all" data-i18n="opt_all_milking_cows" selected>🐄 Toutes les vaches en lactation</option>
+            </select>
+          </div>
+
+          <!-- Live Milk Tank Accumulation Preview -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.35rem;">
+              <span data-i18n="daily_milk_stock_current_lbl">Stock actuel dans le tank :</span>
+              <strong id="dailyMilkCurrentStockVal">0 L</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 800; color: #0284c7;">
+              <span data-i18n="daily_milk_stock_after_lbl">Nouveau stock après ajout :</span>
+              <span id="dailyMilkNewStockVal">0 L</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-sky btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
+            <span id="dailyMilkBtnText" data-i18n="btn_save_milk">Ajouter au Tank à Lait</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Vente de Lait Frais depuis le Tank -->
+  <div id="modalSellMilkStock" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 data-i18n="modal_sell_milk_title">💰 Vente de Lait Frais depuis le Tank</h3>
+        <button class="modal-close" onclick="app.closeModal('modalSellMilkStock')">&times;</button>
+      </div>
+      <form id="formSellMilkStock" onsubmit="app.handleSaveSellMilkStock(event)">
+        <div class="modal-body">
+          <div style="background: rgba(2, 132, 199, 0.1); border: 1px solid rgba(2, 132, 199, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" data-i18n="sell_milk_available">Stock disponible dans le tank :</span>
+            <strong id="sellMilkStockAvailable" style="color: #0284c7; font-size: 1.05rem;">0 L</strong>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="sellMilkQty" class="form-label" data-i18n="sell_milk_qty_lbl" style="font-weight: 700;">Litres à vendre</label>
+            <input type="number" id="sellMilkQty" class="input-field" step="0.5" min="0.5" required oninput="app.calcSellMilkTotal()" style="font-size: 1.25rem; font-weight: 800; color: #0284c7;">
+            <small id="sellMilkEquivHint" class="text-muted" style="display:block; margin-top:0.25rem; font-size: 0.78rem;">0 Litres</small>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="sellMilkUnitPrice" class="form-label">
+              <span data-i18n="sell_milk_price_lbl">Prix au Litre</span> (<span class="currency-label">DT</span>/L)
+            </label>
+            <input type="number" id="sellMilkUnitPrice" class="input-field" step="0.01" min="0" oninput="app.calcSellMilkTotal()">
+          </div>
+
+          <div style="background: var(--bg-surface); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.88rem; font-weight: 700;" data-i18n="sell_milk_total_lbl">Revenu total à encaisser :</span>
+            <strong id="sellMilkTotalRevenue" style="font-size: 1.3rem; color: var(--accent-emerald);">0,000 DT</strong>
+          </div>
+
+          <button type="submit" class="btn btn-sky btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
+            <span data-i18n="sell_milk_btn_submit">Encaisser la Vente & Déduire du Tank</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Allaitement des Veaux (Alimentation au Lait) -->
+  <div id="modalCalfMilkStock" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 data-i18n="modal_calf_milk_title">🍼 Allaitement des Veaux (Alimentation au Lait)</h3>
+        <button class="modal-close" onclick="app.closeModal('modalCalfMilkStock')">&times;</button>
+      </div>
+      <form id="formCalfMilkStock" onsubmit="app.handleSaveCalfMilkStock(event)">
+        <div class="modal-body">
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="modal_calf_milk_sub">
+            Allouer une quantité de lait frais du tank pour l'allaitement des jeunes veaux.
+          </p>
+
+          <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" data-i18n="sell_milk_available">Stock disponible dans le tank :</span>
+            <strong id="calfMilkStockAvailable" style="color: #f59e0b; font-size: 1.05rem;">0 L</strong>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="calfMilkQty" class="form-label" data-i18n="calf_milk_qty_lbl">Litres alloués aux veaux</label>
+            <input type="number" id="calfMilkQty" class="input-field" step="0.5" min="0.5" required style="font-size: 1.25rem; font-weight: 800; color: #f59e0b;">
+          </div>
+
+          <button type="submit" class="btn btn-amber btn-full" style="font-weight: 700; padding: 0.75rem;">
+            <span data-i18n="calf_milk_btn_submit">Déduire du Tank (Nourriture Veaux)</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Consommation, Transformation ou Pertes de Lait -->
+  <div id="modalConsumeMilkStock" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 data-i18n="modal_consume_milk_title">🍽️ Consommation, Transformation ou Pertes de Lait</h3>
+        <button class="modal-close" onclick="app.closeModal('modalConsumeMilkStock')">&times;</button>
+      </div>
+      <form id="formConsumeMilkStock" onsubmit="app.handleSaveConsumeMilkStock(event)">
+        <div class="modal-body">
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="modal_consume_milk_sub">
+            Déduire du lait pour la consommation de la ferme, fabrication de fromage ou pertes.
+          </p>
+
+          <div style="background: rgba(100, 116, 139, 0.1); border: 1px solid rgba(100, 116, 139, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" data-i18n="sell_milk_available">Stock disponible dans le tank :</span>
+            <strong id="consumeMilkStockAvailable" style="color: var(--text-main); font-size: 1.05rem;">0 L</strong>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="consumeMilkReason" class="form-label" data-i18n="consume_milk_reason_lbl">Motif de la déduction</label>
+            <select id="consumeMilkReason" class="input-field">
+              <option value="conso" data-i18n="opt_milk_reason_conso" selected>🍽️ Consommation familiale</option>
+              <option value="fromage" data-i18n="opt_milk_reason_cheese">🧀 Transformation (Fromage, Yaourt, Beurre)</option>
+              <option value="perte" data-i18n="opt_milk_reason_loss">⚠️ Perte / Lait altéré / Acidifié</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="consumeMilkQty" class="form-label" data-i18n="consume_milk_qty_lbl">Litres à déduire</label>
+            <input type="number" id="consumeMilkQty" class="input-field" step="0.5" min="0.5" required style="font-size: 1.25rem; font-weight: 800;">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full" style="font-weight: 700; padding: 0.75rem;">
+            <span data-i18n="consume_milk_btn_submit">Déduire du Tank</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
           <button type="submit" class="btn btn-primary btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;" data-i18n="btn_save_stock_magasin">
             Enregistrer les Stocks Magasin
           </button>
@@ -3171,11 +3425,11 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="mobile-bridge.js"></script>
-  <script src="avatars.js?v=116"></script>
+  <script src="avatars.js?v=119"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js?v=116"></script>
-  <script src="translations.js?v=118"></script>
-  <script src="app.js?v=118"></script>
+  <script src="supabase-client.js?v=119"></script>
+  <script src="translations.js?v=119"></script>
+  <script src="app.js?v=119"></script>
 </body>
 </html>
