@@ -538,7 +538,13 @@
     },
 
     // 5b. Smart Manual Sync: pull + merge + save + push + broadcast
-    async syncNow(showToast = true) {
+    async syncNow(showToast = true, adWatched = false) {
+      if (showToast && !adWatched && window.MobileBridge && typeof window.MobileBridge.promptRewardedAd === 'function' && this.currentUser) {
+        window.MobileBridge.promptRewardedAd('cloud_sync', () => {
+          this.syncNow(showToast, true);
+        });
+        return;
+      }
       if (!this.client || !this.currentUser) {
         if (showToast && window.app && app.showToast) {
           app.showToast('Veuillez vous connecter pour synchroniser vos appareils.');

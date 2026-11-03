@@ -944,7 +944,16 @@ const TRANSLATIONS = {
     toast_milk_consumed: "🍽️ {liters} L de lait déduits ({reason}). Reste en tank : {remaining} L",
     drawer_milking_btn: "🥛 Enregistrer la Traite du Lait",
     milk_equiv_cans: "Bidons (20L)",
-    milk_chart_zero_harvest: "Aucune traite ce jour"
+    milk_chart_zero_harvest: "Aucune traite ce jour",
+    // Google AdMob Rewarded Ads
+    ad_reward_excel_title: "📊 Export du Rapport Excel (.xlsx)",
+    ad_reward_excel_desc: "Regardez une courte vidéo publicitaire pour débloquer et télécharger votre classeur Excel complet.",
+    ad_reward_sync_title: "☁️ Synchronisation Cloud de la Ferme",
+    ad_reward_sync_desc: "Regardez une courte vidéo publicitaire pour synchroniser instantanément toutes vos données en ligne.",
+    btn_watch_ad_unlock: "🎬 Regarder la vidéo & Continuer",
+    ad_reward_loading: "Chargement de la vidéo en cours...",
+    ad_reward_success_excel: "🎉 Merci pour votre soutien ! Téléchargement Excel en cours...",
+    ad_reward_success_sync: "🎉 Merci pour votre soutien ! Synchronisation en cours..."
   },
 
   ar: {
@@ -1887,7 +1896,16 @@ const TRANSLATIONS = {
     toast_milk_consumed: "🍽️ تم خصم {liters} لتر حليب ({reason}). المتبقي في الخزان : {remaining} لتر",
     drawer_milking_btn: "🥛 تسجيل حلب اللبن",
     milk_equiv_cans: "براميل (20 لتر)",
-    milk_chart_zero_harvest: "لا يوجد حلب هذا اليوم"
+    milk_chart_zero_harvest: "لا يوجد حلب هذا اليوم",
+    // Google AdMob Rewarded Ads
+    ad_reward_excel_title: "📊 تصدير تقرير إكسيل (.xlsx)",
+    ad_reward_excel_desc: "شاهد فيديو إعلاني قصير لفتح وتحميل ملف الإكسيل الكامل لمزرعتك.",
+    ad_reward_sync_title: "☁️ المزامنة السحابية للمزرعة",
+    ad_reward_sync_desc: "شاهد فيديو إعلاني قصير لبدء المزامنة السحابية الآمنة لبياناتك في السحابة.",
+    btn_watch_ad_unlock: "🎬 مشاهدة الفيديو والمتابعة",
+    ad_reward_loading: "جاري تحميل الفيديو الإعلاني...",
+    ad_reward_success_excel: "🎉 شكراً لدعمك ! جاري تحميل ملف الإكسيل...",
+    ad_reward_success_sync: "🎉 شكراً لدعمك ! جاري مزامنة بيانات المزرعة..."
   },
 
   en: {
@@ -2830,7 +2848,16 @@ const TRANSLATIONS = {
     toast_milk_consumed: "🍽️ {liters} L milk deducted ({reason}). Remaining in tank: {remaining} L",
     drawer_milking_btn: "🥛 Record Milk Harvest",
     milk_equiv_cans: "Cans (20L)",
-    milk_chart_zero_harvest: "No milking this day"
+    milk_chart_zero_harvest: "No milking this day",
+    // Google AdMob Rewarded Ads
+    ad_reward_excel_title: "📊 Export Excel Report (.xlsx)",
+    ad_reward_excel_desc: "Watch a short video ad to unlock and download your complete farm Excel workbook.",
+    ad_reward_sync_title: "☁️ Farm Cloud Synchronization",
+    ad_reward_sync_desc: "Watch a short video ad to instantly synchronize your farm data online.",
+    btn_watch_ad_unlock: "🎬 Watch Video & Proceed",
+    ad_reward_loading: "Loading video ad...",
+    ad_reward_success_excel: "🎉 Thank you for supporting the app! Downloading Excel...",
+    ad_reward_success_sync: "🎉 Thank you for supporting the app! Synchronizing cloud data..."
   }
 };
 

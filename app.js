@@ -12994,8 +12994,17 @@ const app = {
     });
   },
 
-  // Export officiel vers Excel (Classeur Multi-Onglets .xlsx avec fallback XML Spreadsheet)
-  exportExcel() {
+  // Export officiel vers Excel (Classeur Multi-Onglets .xlsx avec fallback XML Spreadsheet)  exportExcel() {
+    if (window.MobileBridge && typeof window.MobileBridge.promptRewardedAd === 'function') {
+      window.MobileBridge.promptRewardedAd('excel_export', () => {
+        this._doExportExcel();
+      });
+      return;
+    }
+    this._doExportExcel();
+  },
+
+  _doExportExcel() {
     const currency = appState.currency || 'TND';
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR');

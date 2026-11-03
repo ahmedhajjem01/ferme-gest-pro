@@ -23,6 +23,7 @@ const MobileBridge = {
       await this.initSplashScreen();
       await this.initBackButton();
       await this.requestNotificationPermissions();
+      await this.initAdMob();
     }
 
     this.attachHapticsToUI();
@@ -672,6 +673,160 @@ const MobileBridge = {
       console.log('[MobileBridge] Share cancelled or failed:', e);
     }
     return false;
+  },
+
+  
+  // =========================================================================
+  // 7. GOOGLE ADMOB MONETIZATION MANAGER (Rewarded Ads & Banners)
+  // =========================================================================
+  admob: {
+    initialized: false,
+    isRewardedLoaded: false,
+    activeActionCallback: null,
+    activeActionType: null,
+    
+    // Official Google Test IDs (Ready for instant live testing & Google Play review)
+    // Replace with your production AdMob IDs from admob.google.com when ready:
+    config: {
+      isTesting: true,
+      appId: 'ca-app-pub-3940256099942544~3347511713',
+      rewardedAdId: 'ca-app-pub-3940256099942544/5224354917',
+      interstitialAdId: 'ca-app-pub-3940256099942544/1033173712',
+      bannerAdId: 'ca-app-pub-3940256099942544/6300978111'
+    }
+  },
+
+  async initAdMob() {
+    if (!this.isNative || !window.Capacitor) {
+      console.log('[AdMob] Running in Web mode. Ads will use seamless in-app sponsor fallback.');
+      return;
+    }
+
+    try {
+      const AdMob = window.Capacitor.Plugins?.AdMob;
+      if (!AdMob) {
+        console.warn('[AdMob] AdMob plugin not found in Capacitor Plugins.');
+        return;
+      }
+
+      await AdMob.initialize({
+        initializeForTesting: this.admob.config.isTesting
+      });
+
+      this.admob.initialized = true;
+      console.log('[AdMob] Initialized successfully. Preloading rewarded video ad...');
+      await this.preloadRewardedAd();
+    } catch (e) {
+      console.warn('[AdMob] Initialization warning:', e);
+    }
+  },
+
+  async preloadRewardedAd() {
+    if (!this.isNative || !this.admob.initialized) return;
+    try {
+      const AdMob = window.Capacitor.Plugins?.AdMob;
+      if (!AdMob) return;
+
+      await AdMob.prepareRewardVideoAd({
+        adId: this.admob.config.rewardedAdId,
+        isTesting: this.admob.config.isTesting
+      });
+      this.admob.isRewardedLoaded = true;
+      console.log('[AdMob] Rewarded video preloaded and ready.');
+    } catch (e) {
+      console.warn('[AdMob] Preload rewarded ad error:', e);
+      this.admob.isRewardedLoaded = false;
+    }
+  },
+
+  promptRewardedAd(actionType, onSuccessCallback) {
+    this.admob.activeActionType = actionType;
+    this.admob.activeActionCallback = onSuccessCallback;
+
+    const modal = document.getElementById('modalRewardAdPrompt');
+    const titleEl = document.getElementById('rewardAdPromptTitle');
+    const descEl = document.getElementById('rewardAdPromptDesc');
+
+    if (actionType === 'excel_export') {
+      if (titleEl) {
+        titleEl.setAttribute('data-i18n', 'ad_reward_excel_title');
+        titleEl.textContent = typeof app !== 'undefined' ? app.t('ad_reward_excel_title') : '📊 Export du Rapport Excel (.xlsx)';
+      }
+      if (descEl) {
+        descEl.setAttribute('data-i18n', 'ad_reward_excel_desc');
+        descEl.textContent = typeof app !== 'undefined' ? app.t('ad_reward_excel_desc') : 'Regardez une courte vidéo publicitaire pour débloquer et télécharger votre classeur Excel complet.';
+      }
+    } else if (actionType === 'cloud_sync') {
+      if (titleEl) {
+        titleEl.setAttribute('data-i18n', 'ad_reward_sync_title');
+        titleEl.textContent = typeof app !== 'undefined' ? app.t('ad_reward_sync_title') : '☁️ Synchronisation Cloud de la Ferme';
+      }
+      if (descEl) {
+        descEl.setAttribute('data-i18n', 'ad_reward_sync_desc');
+        descEl.textContent = typeof app !== 'undefined' ? app.t('ad_reward_sync_desc') : 'Regardez une courte vidéo publicitaire pour synchroniser instantanément toutes vos données en ligne.';
+      }
+    }
+
+    if (modal) {
+      modal.classList.remove('hidden');
+    } else {
+      this.triggerRewardVideoAd();
+    }
+  },
+
+  cancelRewardAd() {
+    const modal = document.getElementById('modalRewardAdPrompt');
+    if (modal) modal.classList.add('hidden');
+    this.admob.activeActionCallback = null;
+    this.admob.activeActionType = null;
+  },
+
+  async triggerRewardVideoAd() {
+    const modal = document.getElementById('modalRewardAdPrompt');
+    if (modal) modal.classList.add('hidden');
+
+    const cb = this.admob.activeActionCallback;
+    const actionType = this.admob.activeActionType;
+    this.admob.activeActionCallback = null;
+    this.admob.activeActionType = null;
+
+    if (!cb) return;
+
+    // A. Native Android/iOS Execution via AdMob
+    if (this.isNative && window.Capacitor?.Plugins?.AdMob) {
+      const AdMob = window.Capacitor.Plugins.AdMob;
+      try {
+        if (typeof app !== 'undefined' && app.showToast) {
+          app.showToast(app.t('ad_reward_loading') || 'Chargement de la vidéo...');
+        }
+
+        // Show native Rewarded Ad
+        await AdMob.showRewardVideoAd();
+
+        // Award reward to user upon completion
+        const successMsg = actionType === 'excel_export'
+          ? (typeof app !== 'undefined' ? app.t('ad_reward_success_excel') : '🎉 Téléchargement Excel en cours...')
+          : (typeof app !== 'undefined' ? app.t('ad_reward_success_sync') : '🎉 Synchronisation Cloud en cours...');
+        if (typeof app !== 'undefined' && app.showToast) app.showToast(successMsg);
+
+        cb();
+        // Preload next ad for seamless responsiveness
+        this.preloadRewardedAd();
+        return;
+      } catch (e) {
+        console.warn('[AdMob] Native rewarded ad show error, executing action directly:', e);
+        // Fallback: execute action so user is never blocked if network drops
+        cb();
+        return;
+      }
+    }
+
+    // B. Web/Browser Fallback Execution (Non-blocking seamless execution)
+    const successMsg = actionType === 'excel_export'
+      ? (typeof app !== 'undefined' ? app.t('ad_reward_success_excel') : '🎉 Téléchargement Excel en cours...')
+      : (typeof app !== 'undefined' ? app.t('ad_reward_success_sync') : '🎉 Synchronisation Cloud en cours...');
+    if (typeof app !== 'undefined' && app.showToast) app.showToast(successMsg);
+    cb();
   },
 
   hashCode(str) {
