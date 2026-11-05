@@ -293,6 +293,8 @@ const app = {
         sicamCansCount: (appState.sicamCansCount !== undefined && appState.sicamCansCount !== null) ? Number(appState.sicamCansCount) : null,
         feedDistributions: Array.isArray(appState.feedDistributions) ? appState.feedDistributions : [],
         feedTypes: Array.isArray(appState.feedTypes) ? appState.feedTypes : [],
+        deletedFeedIds: Array.isArray(appState.deletedFeedIds) ? appState.deletedFeedIds : [],
+        deletedFeedFamilies: Array.isArray(appState.deletedFeedFamilies) ? appState.deletedFeedFamilies : [],
         animals: appState.animals,
         expenses: appState.expenses,
         sales: appState.sales,
@@ -433,10 +435,18 @@ const app = {
 
         appState._zeroInitialized = true;
 
-        // Purge any residual blacklist arrays from previous sessions to guarantee new purchases are never blocked
-        appState.deletedFeedFamilies = [];
-        appState.deletedFeedNames = [];
-        appState.deletedFeedIds = [];
+        // Load persisted deleted feed tombstones
+        appState.deletedFeedFamilies = Array.isArray(parsed.deletedFeedFamilies) ? parsed.deletedFeedFamilies : [];
+        appState.deletedFeedNames = Array.isArray(parsed.deletedFeedNames) ? parsed.deletedFeedNames : [];
+        appState.deletedFeedIds = Array.isArray(parsed.deletedFeedIds) ? parsed.deletedFeedIds : [];
+
+        // Filter out any tombstoned feeds from appState.feedTypes
+        const activeTombstones = (window.appAuth && typeof window.appAuth.getDeletedIds === 'function')
+          ? window.appAuth.getDeletedIds()
+          : new Set(appState.deletedFeedIds || []);
+        if (Array.isArray(appState.feedTypes)) {
+          appState.feedTypes = appState.feedTypes.filter(ft => ft && !activeTombstones.has(String(ft.id)));
+        }
 
         this.synchronizeAnimalStages();
         this.reconcileFeedTypesFromExpenses();
@@ -5743,8 +5753,11 @@ const app = {
                  .replace(/\(\s*\)/g, '')
                  .replace(/\s+/g, ' ')
                  .trim();
-      if (!name || name === 'قمح /' || name === 'Blé /') {
+      if (name === 'قمح /' || name === 'Blé /') {
         name = 'Blé';
+      }
+      if (!name) {
+        name = ft.id ? ft.id.replace(/^feed-/, '') : 'Aliment';
       }
 
       const family = this.detectFeedTypeFromText(name) || this.detectFeedTypeFromText(ft.id) || 'general';
@@ -5764,9 +5777,14 @@ const app = {
       };
     });
 
-    // Eradicate any synthetic feed-principal
+    // Eradicate any synthetic feed-principal or tombstoned feeds
+    const activeTombstones = (window.appAuth && typeof window.appAuth.getDeletedIds === 'function')
+      ? window.appAuth.getDeletedIds()
+      : new Set((window.appState && window.appState.deletedFeedIds) || []);
     list = list.filter(ft => 
+      ft &&
       ft.id !== 'feed-principal' &&
+      !activeTombstones.has(String(ft.id)) &&
       !(ft.name || '').toLowerCase().includes('principal') &&
       !(ft.name || '').includes('علف رئيسي')
     );
@@ -5792,39 +5810,27 @@ const app = {
 
   detectFeedTypeFromText(text) {
     if (!text) return null;
-    const t = String(text).toLowerCase();
-    if (t.includes('bouchon') || t.includes('ponte') || t.includes('بوشون') || t.includes('بياض')) return 'bouchon';
-    if (t.includes('blé') || t.includes('ble') || t.includes('قمح') || t.includes('بليه')) return 'ble';
-    if (t.includes('maïs') || t.includes('mais') || t.includes('ذرة') || t.includes('ذرَة')) return 'mais';
-    if (t.includes('son') || t.includes('نخالة') || t.includes('sedari') || t.includes('سداري')) return 'son';
-    if (t.includes('démarrage') || t.includes('demarrage') || t.includes('بداية') || t.includes('starter')) return 'demarrage';
-    if (t.includes('feverole') || t.includes('féverole') || t.includes('فول')) return 'feverole';
-    if (t.includes('orge') || t.includes('شعير') || t.includes('barley')) return 'orge';
-    if (t.includes('tournesol') || t.includes('عباد') || t.includes('قلوب') || t.includes('sunflower')) return 'tournesol';
-    if (t.includes('mélange') || t.includes('melange') || t.includes('خلطة') || t.includes('mixture')) return 'melange';
-    if (t.includes('soja') || t.includes('صويا') || t.includes('soy')) return 'soja';
-    if (t.includes('concentré') || t.includes('concentre') || t.includes('مركز') || t.includes('cmv')) return 'concentre';
-    if (t.includes('croissance') || t.includes('engraissement') || t.includes('تسمين') || t.includes('نمو') || t.includes('grower')) return 'croissance';
+    const s = String(text);
+    if (/(?<!\p{L})(bouchon|bouchons|ponte|بوشون|بياض|بياضة)(?!\p{L})/iu.test(s)) return 'bouchon';
+    if (/(?<!\p{L})(son|نخالة|النخالة|sedari|سداري|السداري)(?!\p{L})/iu.test(s)) return 'son';
+    if (/(?<!\p{L})(blé|ble|قمح|القمح|بليه|البليه)(?!\p{L})/iu.test(s)) return 'ble';
+    if (/(?<!\p{L})(maïs|mais|ذرة|الذرة|ذرَة|الذرَة)(?!\p{L})/iu.test(s)) return 'mais';
+    if (/(?<!\p{L})(démarrage|demarrage|بداية|starter)(?!\p{L})/iu.test(s)) return 'demarrage';
+    if (/(?<!\p{L})(feverole|féverole|feveroles|féveroles|فول|الفول)(?!\p{L})/iu.test(s)) return 'feverole';
+    if (/(?<!\p{L})(orge|شعير|الشعير|barley)(?!\p{L})/iu.test(s)) return 'orge';
+    if (/(?<!\p{L})(tournesol|عباد|قلوب|القلوب|sunflower)(?!\p{L})/iu.test(s)) return 'tournesol';
+    if (/(?<!\p{L})(mélange|melange|خلطة|mixture)(?!\p{L})/iu.test(s)) return 'melange';
+    if (/(?<!\p{L})(soja|صويا|الصويا|soy)(?!\p{L})/iu.test(s)) return 'soja';
+    if (/(?<!\p{L})(concentré|concentre|مركز|cmv)(?!\p{L})/iu.test(s)) return 'concentre';
+    if (/(?<!\p{L})(croissance|engraissement|تسمين|نمو|grower)(?!\p{L})/iu.test(s)) return 'croissance';
     return null;
   },
 
   isFeedInFamily(ft, family) {
     if (!ft || !family) return false;
     const id = String(ft.id || '').toLowerCase();
-    const name = String(ft.name || '').toLowerCase();
-    if (family === 'bouchon') return id === 'feed-bouchon' || name.includes('bouchon') || name.includes('ponte') || name.includes('بوشون') || name.includes('بياض');
-    if (family === 'ble') return id === 'feed-ble' || name.includes('blé') || name.includes('ble') || name.includes('قمح') || name.includes('بليه');
-    if (family === 'mais') return id === 'feed-mais' || name.includes('maïs') || name.includes('mais') || name.includes('ذرة');
-    if (family === 'son') return id === 'feed-son' || name.includes('son') || name.includes('نخالة') || name.includes('sedari');
-    if (family === 'demarrage') return id === 'feed-demarrage' || name.includes('démarrage') || name.includes('demarrage') || name.includes('بداية') || name.includes('starter');
-    if (family === 'feverole') return id === 'feed-feverole' || name.includes('feverole') || name.includes('féverole') || name.includes('فول');
-    if (family === 'orge') return id === 'feed-orge' || name.includes('orge') || name.includes('شعير');
-    if (family === 'tournesol') return id === 'feed-tournesol' || name.includes('tournesol') || name.includes('عباد') || name.includes('قلوب');
-    if (family === 'melange') return id === 'feed-melange' || name.includes('mélange') || name.includes('melange') || name.includes('خلطة');
-    if (family === 'soja') return id === 'feed-soja' || name.includes('soja') || name.includes('صويا');
-    if (family === 'concentre') return id === 'feed-concentre' || name.includes('concentré') || name.includes('concentre') || name.includes('مركز') || name.includes('cmv');
-    if (family === 'croissance') return id === 'feed-croissance' || name.includes('croissance') || name.includes('engraissement') || name.includes('تسمين') || name.includes('نمو');
-    return false;
+    if (id === 'feed-' + family) return true;
+    return this.detectFeedTypeFromText(ft.name) === family || this.detectFeedTypeFromText(id) === family;
   },
 
   getFeedDefaultDensity(family, texture = 'grain') {
@@ -6279,6 +6285,14 @@ const app = {
       const unitPrice = group.totalAddedKg > 0 ? parseFloat((group.totalCost / group.totalAddedKg).toFixed(3)) : 0;
 
       if (!ft) {
+        // Respecter les suppressions de l'utilisateur : ne JAMAIS ressusciter un aliment supprimé
+        const deletedIds = (window.appAuth && typeof window.appAuth.getDeletedIds === 'function')
+          ? window.appAuth.getDeletedIds()
+          : new Set(appState.deletedFeedIds || []);
+        const deletedFamilies = new Set(appState.deletedFeedFamilies || []);
+        if (group.feedTypeId && deletedIds.has(String(group.feedTypeId))) return;
+        if (group.family && (deletedFamilies.has(group.family) || deletedIds.has('feed-' + group.family))) return;
+
         let initialStock = Math.max(0, parseFloat(group.totalAddedKg.toFixed(2)));
 
         if (group.family) {
@@ -7326,6 +7340,18 @@ const app = {
     }
     appState.feedTypes.push(newType);
 
+    // Si cet aliment avait été précédemment supprimé, lever le tombstone
+    if (window.appAuth && typeof window.appAuth.removeDeletedId === 'function') {
+      window.appAuth.removeDeletedId(newType.id);
+      if (family) window.appAuth.removeDeletedId('feed-' + family);
+    }
+    if (Array.isArray(appState.deletedFeedIds)) {
+      appState.deletedFeedIds = appState.deletedFeedIds.filter(id => id !== newType.id);
+    }
+    if (family && Array.isArray(appState.deletedFeedFamilies)) {
+      appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => f !== family);
+    }
+
     if (recordExpense && stockKg > 0 && priceKg > 0) {
       const totalCost = stockKg * priceKg;
       const isAr = appState.lang === 'ar';
@@ -7385,7 +7411,23 @@ const app = {
       onConfirm: () => {
         const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id);
 
-        // Détacher les dépenses liées à cet aliment pour qu'elles n'apparaissent plus comme actives dans ce stock
+        // 1. Enregistrer dans le système de tombstones (cloud + peer)
+        if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+          window.appAuth.addDeletedId(id);
+          if (family) {
+            window.appAuth.addDeletedId('feed-' + family);
+          }
+        }
+
+        // 2. Mémoriser localement pour empêcher toute réconciliation automatique
+        if (!Array.isArray(appState.deletedFeedIds)) appState.deletedFeedIds = [];
+        if (!appState.deletedFeedIds.includes(id)) appState.deletedFeedIds.push(id);
+        if (family) {
+          if (!Array.isArray(appState.deletedFeedFamilies)) appState.deletedFeedFamilies = [];
+          if (!appState.deletedFeedFamilies.includes(family)) appState.deletedFeedFamilies.push(family);
+        }
+
+        // 3. Détacher les dépenses liées à cet aliment pour qu'elles n'apparaissent plus comme actives dans ce stock
         (appState.expenses || []).forEach(e => {
           if (e.feedTypeId === id || (family && this.detectFeedTypeFromText(e.title) === family)) {
             e.feedStockDetached = true;
@@ -7394,8 +7436,8 @@ const app = {
           }
         });
 
-        // Supprimer définitivement de feedTypes
-        appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id);
+        // 4. Supprimer définitivement de feedTypes
+        appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id && (!family || !this.isFeedInFamily(f, family)));
         appState.feedStockKg = parseFloat((appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0).toFixed(2));
         appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
 

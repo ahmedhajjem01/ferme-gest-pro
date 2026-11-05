@@ -52,10 +52,9 @@
         const raw = localStorage.getItem('fermegest_deleted_ids');
         if (raw) {
           const list = JSON.parse(raw);
-          // Protect feed family IDs from being permanently tombstoned
-          const staticFeedIds = ['feed-ble', 'feed-bouchon', 'feed-mais', 'feed-son', 'feed-demarrage', 'feed-feverole', 'feed-orge', 'feed-tournesol', 'feed-melange', 'feed-soja', 'feed-concentre', 'feed-croissance'];
-          const filtered = list.filter(id => !staticFeedIds.includes(id));
-          return new Set(filtered);
+          if (Array.isArray(list)) {
+            return new Set(list.map(String));
+          }
         }
       } catch (e) {}
       return new Set();
@@ -922,16 +921,16 @@
         if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
       }
 
-      // Keep feedTypes clean: remove any artificial feed-principal and sync total stock
+      // Keep feedTypes clean: remove any artificial feed-principal, tombstoned feeds, and sync total stock
       if (Array.isArray(state.feedTypes)) {
+        const deletedIds = this.getDeletedIds();
         state.feedTypes = state.feedTypes.filter(ft => 
-          ft.id !== 'feed-principal' &&
+          ft && ft.id !== 'feed-principal' &&
+          !deletedIds.has(String(ft.id)) &&
           !(ft.name || '').toLowerCase().includes('principal') &&
           !(ft.name || '').includes('علف رئيسي')
         );
-        if (state.feedTypes.length > 0) {
-          state.feedStockKg = parseFloat(state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
-        }
+        state.feedStockKg = parseFloat(state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
       }
 
       // Preserve all animal species (bovins, ovins, volailles)
