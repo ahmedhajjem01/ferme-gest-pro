@@ -273,7 +273,7 @@ const app = {
   // State Persistence
   saveState() {
     try {
-      localStorage.setItem('fermegest_state', JSON.stringify({
+      const serializedState = JSON.stringify({
         version: '2.2.0-poultry',
         currency: appState.currency,
         lang: appState.lang || 'fr',
@@ -302,7 +302,11 @@ const app = {
         savedFavoriteFeedRoutine: appState.savedFavoriteFeedRoutine || null,
         userProfile: appState.userProfile || null,
         _zeroInitialized: true
-      }));
+      });
+      localStorage.setItem('fermegest_state', serializedState);
+      if ((appState.animals && appState.animals.length > 0) || (appState.sales && appState.sales.length > 0) || (appState.expenses && appState.expenses.length > 0)) {
+        localStorage.setItem('fermegest_state_backup', serializedState);
+      }
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
     }
@@ -315,7 +319,14 @@ const app = {
 
   loadState() {
     try {
-      const saved = localStorage.getItem('fermegest_state');
+      let saved = localStorage.getItem('fermegest_state');
+      if (!saved) {
+        const backup = localStorage.getItem('fermegest_state_backup');
+        if (backup) {
+          console.info('🛡️ Restoring farm data from local automatic safety backup...');
+          saved = backup;
+        }
+      }
       if (saved) {
         const parsed = JSON.parse(saved);
         appState.currency = 'TND'; // Verrouillé définitivement au Dinar Tunisien (TND)
@@ -386,23 +397,26 @@ const app = {
           });
         }
 
-        // Strict aviculture sanitization & purge legacy simulation data
+        // Purge legacy hardcoded simulation IDs only (never filter out user's bovins, ovins, or milk)
         const legacySimLotIds = new Set(['lot-p-01', 'lot-p-02', 'lot-p-03', 'lot-p-04', 'lot-p-05', 'lot-p-06', 'lot-p-07']);
         const legacySimBatchIds = new Set(['batch-01', 'batch-02', 'batch-03', 'batch-04']);
         const legacySimExpIds = new Set(['exp-01', 'exp-02', 'exp-03', 'exp-04', 'exp-05', 'exp-06', 'exp-07', 'exp-08']);
         const legacySimSaleIds = new Set(['sale-01', 'sale-02', 'sale-03', 'sale-04', 'sale-05', 'sale-06', 'sale-07', 'sale-08']);
 
         const rawAnimals = Array.isArray(parsed.animals) ? parsed.animals : [];
-        appState.animals = rawAnimals.filter(a => a.species !== 'bovin' && a.species !== 'ovin' && !legacySimLotIds.has(a.id));
+        appState.animals = rawAnimals.filter(a => a && !legacySimLotIds.has(a.id));
 
         const rawSales = Array.isArray(parsed.sales) ? parsed.sales : [];
-        appState.sales = rawSales.filter(s => s.productType !== 'lait' && s.productType !== 'bovin' && s.productType !== 'ovin' && !legacySimSaleIds.has(s.id) && !legacySimLotIds.has(s.linkedLotId));
+        appState.sales = rawSales.filter(s => s && !legacySimSaleIds.has(s.id) && !legacySimLotIds.has(s.linkedLotId));
 
         const rawExpenses = Array.isArray(parsed.expenses) ? parsed.expenses : [];
-        appState.expenses = rawExpenses.filter(e => e.linkedLotId !== 'lot-b-01' && e.linkedLotId !== 'lot-o-01' && !legacySimExpIds.has(e.id) && !legacySimLotIds.has(e.linkedLotId));
+        appState.expenses = rawExpenses.filter(e => e && !legacySimExpIds.has(e.id) && !legacySimLotIds.has(e.linkedLotId));
 
         const rawBatches = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches : [];
-        appState.incubatorBatches = rawBatches.filter(b => !legacySimBatchIds.has(b.id));
+        appState.incubatorBatches = rawBatches.filter(b => b && !legacySimBatchIds.has(b.id));
+
+        appState.calendarEvents = Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [];
+        appState.dismissedSaleAlerts = Array.isArray(parsed.dismissedSaleAlerts) ? parsed.dismissedSaleAlerts : [];
 
         if (appState.feedStockKg === 290) {
           appState.feedStockKg = null;
@@ -410,17 +424,6 @@ const app = {
         }
 
         appState._zeroInitialized = true;
-
-        if (!appState.animals || appState.animals.length === 0) {
-          appState.customDailyFeedKg = null;
-          appState.sicamCansCount = null;
-          if (!appState.expenses || appState.expenses.length === 0) {
-            appState.feedTypes = [];
-            appState.feedStockKg = null;
-            appState.feedDistributions = [];
-            appState.savedFavoriteFeedRoutine = null;
-          }
-        }
 
         // Purge any residual blacklist arrays from previous sessions to guarantee new purchases are never blocked
         appState.deletedFeedFamilies = [];
