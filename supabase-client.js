@@ -908,6 +908,7 @@
         state.incubatorBatches = this.mergeCollections(state.incubatorBatches, cloudData.incubatorBatches || []);
         state.eggHarvests = this.mergeCollections(state.eggHarvests, cloudData.eggHarvests || []);
         state.milkHarvests = this.mergeCollections(state.milkHarvests, cloudData.milkHarvests || []);
+        state.calendarEvents = this.mergeCollections(state.calendarEvents, cloudData.calendarEvents || []);
         state.feedDistributions = this.mergeCollections(state.feedDistributions, cloudData.feedDistributions || []);
         state.feedTypes = this.mergeCollections(state.feedTypes, cloudData.feedTypes || []);
       } else {
@@ -933,8 +934,8 @@
         }
       }
 
-      // Filter out any bovine or ovine residue
-      state.animals = (state.animals || []).filter(a => a.species !== 'bovin' && a.species !== 'ovin');
+      // Preserve all animal species (bovins, ovins, volailles)
+      state.animals = Array.isArray(state.animals) ? state.animals : [];
 
       // Keep farm code in sync
       if (cloudData.farmCode) {
@@ -970,11 +971,12 @@
 
       // Persist to local device storage as well (offline fallback)
       try {
-        localStorage.setItem('fermegest_state', JSON.stringify({
+        const serialized = JSON.stringify({
           version: '2.5.0-pro',
           currency: state.currency,
           lang: state.lang,
           theme: state.theme,
+          userProfile: state.userProfile,
           eggStock: state.eggStock,
           milkStock: state.milkStock,
           milkHarvests: state.milkHarvests,
@@ -990,8 +992,13 @@
           animals: state.animals,
           expenses: state.expenses,
           sales: state.sales,
-          incubatorBatches: state.incubatorBatches
-        }));
+          incubatorBatches: state.incubatorBatches,
+          calendarEvents: state.calendarEvents
+        });
+        localStorage.setItem('fermegest_state', serialized);
+        if ((state.animals && state.animals.length > 0) || (state.sales && state.sales.length > 0) || (state.expenses && state.expenses.length > 0)) {
+          localStorage.setItem('fermegest_state_backup', serialized);
+        }
       } catch (e) {}
 
       if (window.app) {
