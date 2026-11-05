@@ -13474,6 +13474,27 @@ const app = {
     this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel (.xls) téléchargé avec succès !');
   },
 
+  restoreBackup() {
+    try {
+      const backup = localStorage.getItem('fermegest_state_backup');
+      if (!backup) {
+        this.showToast('⚠️ Aucune sauvegarde locale détectée sur ce navigateur.');
+        return;
+      }
+      localStorage.setItem('fermegest_state', backup);
+      this.loadState();
+      this.renderAll();
+      this.closeModal('modalDataOptions');
+      this.showToast('✅ Sauvegarde restaurée avec succès ! Vos données sont revenues.');
+      if (window.appAuth && typeof appAuth.pushData === 'function') {
+        appAuth.pushData(false);
+      }
+    } catch (e) {
+      console.warn('Restore failed:', e);
+      this.showToast('⚠️ Erreur lors de la restauration.');
+    }
+  },
+
   resetAllData() {
     const isAr = appState.lang === 'ar';
     this.confirmDialog({
