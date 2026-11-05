@@ -301,6 +301,8 @@ const app = {
         dismissedSaleAlerts: Array.isArray(appState.dismissedSaleAlerts) ? appState.dismissedSaleAlerts : [],
         savedFavoriteFeedRoutine: appState.savedFavoriteFeedRoutine || null,
         userProfile: appState.userProfile || null,
+        farmCode: localStorage.getItem('fermegest_farm_code') || null,
+        farmRole: localStorage.getItem('fermegest_farm_role') || 'owner',
         _zeroInitialized: true
       });
       localStorage.setItem('fermegest_state', serializedState);
@@ -330,6 +332,12 @@ const app = {
       if (saved) {
         const parsed = JSON.parse(saved);
         appState.currency = 'TND'; // Verrouillé définitivement au Dinar Tunisien (TND)
+        if (parsed.farmCode && !localStorage.getItem('fermegest_farm_code')) {
+          localStorage.setItem('fermegest_farm_code', parsed.farmCode);
+        }
+        if (parsed.farmRole && !localStorage.getItem('fermegest_farm_role')) {
+          localStorage.setItem('fermegest_farm_role', parsed.farmRole);
+        }
         appState.lang = parsed.lang || 'fr';
         appState.theme = parsed.theme || 'dark';
         appState.eggStock = Number(parsed.eggStock) || 0;

@@ -941,6 +941,13 @@
       if (cloudData.farmCode) {
         localStorage.setItem('fermegest_farm_code', cloudData.farmCode);
       }
+      if (cloudData.farmRole) {
+        localStorage.setItem('fermegest_farm_role', cloudData.farmRole);
+      }
+      if (cloudData.farmRole === 'partner' && cloudData.farmCode) {
+        // Auto pull latest shared data from the owner
+        setTimeout(() => this.pullSharedData(cloudData.farmCode), 100);
+      }
       if (cloudData.ownerEmail) {
         localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
       }
@@ -1150,6 +1157,20 @@
     // Team & Shared Farm methods (2 Accounts Collaboration)
     getFarmCode() {
       let code = localStorage.getItem('fermegest_farm_code');
+      if (!code) {
+        // Check backup first before generating a random new code
+        try {
+          const raw = localStorage.getItem('fermegest_state') || localStorage.getItem('fermegest_state_backup');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.farmCode) {
+              code = parsed.farmCode;
+              localStorage.setItem('fermegest_farm_code', code);
+              if (parsed.farmRole) localStorage.setItem('fermegest_farm_role', parsed.farmRole);
+            }
+          }
+        } catch (e) {}
+      }
       if (!code) {
         code = this.generateFarmCode();
         localStorage.setItem('fermegest_farm_code', code);
