@@ -12141,40 +12141,8 @@ const app = {
     const gestWrapper = document.getElementById('gestationSectionWrapper');
     const gestSubheader = document.getElementById('gestationSubheader');
 
-    let filter = appState.reproductionFilter;
-    if (!filter) {
-      if (hasMammals && !hasPoultry) filter = 'gestation';
-      else filter = 'all';
-      appState.reproductionFilter = filter;
-    }
-
-    if (filterPills) {
-      filterPills.style.display = '';
-      const buttons = filterPills.querySelectorAll('.reproduction-filter-btn');
-      buttons.forEach(btn => {
-        if (btn.getAttribute('data-filter') === filter) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-    }
-
-    if (filter === 'incubator') {
-      if (titleEl) {
-        titleEl.setAttribute('data-i18n', 'section_incubator_title');
-        titleEl.textContent = this.t('section_incubator_title');
-      }
-      if (descEl) {
-        descEl.setAttribute('data-i18n', 'section_incubator_desc');
-        descEl.textContent = this.t('section_incubator_desc');
-      }
-      if (btnInc) btnInc.style.display = '';
-      if (btnGest) btnGest.style.display = 'none';
-      if (incWrapper) incWrapper.style.display = '';
-      if (incSubheader) incSubheader.style.display = 'none';
-      if (gestWrapper) gestWrapper.style.display = 'none';
-    } else if (filter === 'gestation') {
+    // 1. ELEVAGE BOVIN / OVIN EXCLUSIF (Vaches et/ou Brebis uniquement)
+    if (hasMammals && !hasPoultry) {
       if (titleEl) {
         titleEl.setAttribute('data-i18n', 'section_gestation_title');
         titleEl.textContent = this.t('section_gestation_title');
@@ -12185,45 +12153,115 @@ const app = {
       }
       if (btnInc) btnInc.style.display = 'none';
       if (btnGest) btnGest.style.display = '';
+      if (filterPills) filterPills.style.display = 'none';
       if (incWrapper) incWrapper.style.display = 'none';
       if (gestWrapper) {
         gestWrapper.style.display = '';
         gestWrapper.style.marginTop = '0';
       }
       if (gestSubheader) gestSubheader.style.display = 'none';
-    } else {
+
+      this.renderGestations();
+    }
+    // 2. ELEVAGE VOLAILLES EXCLUSIF (Poulets uniquement) -> EFFACE LA BANDE GESTATION DU DESSOUS
+    else if (hasPoultry && !hasMammals) {
       if (titleEl) {
-        titleEl.setAttribute('data-i18n', 'section_reproduction_mixed_title');
-        titleEl.textContent = this.t('section_reproduction_mixed_title');
+        titleEl.setAttribute('data-i18n', 'section_incubator_title');
+        titleEl.textContent = this.t('section_incubator_title');
       }
       if (descEl) {
-        descEl.setAttribute('data-i18n', 'section_reproduction_mixed_desc');
-        descEl.textContent = this.t('section_reproduction_mixed_desc');
+        descEl.setAttribute('data-i18n', 'section_incubator_desc');
+        descEl.textContent = this.t('section_incubator_desc');
       }
       if (btnInc) btnInc.style.display = '';
-      if (btnGest) btnGest.style.display = '';
+      if (btnGest) btnGest.style.display = 'none';
+      if (filterPills) filterPills.style.display = 'none';
       if (incWrapper) incWrapper.style.display = '';
-      if (incSubheader) incSubheader.style.display = 'flex';
-      if (gestWrapper) {
-        gestWrapper.style.display = '';
-        gestWrapper.style.marginTop = '1.75rem';
-      }
-      if (gestSubheader) gestSubheader.style.display = 'flex';
-    }
+      if (incSubheader) incSubheader.style.display = 'none';
+      if (gestWrapper) gestWrapper.style.display = 'none'; // Efface la bande au-dessous !
 
-    this.renderIncubatorBatches();
-    this.renderGestations();
+      this.renderIncubatorBatches();
+    }
+    // 3. ELEVAGE MIXTE (Volailles ET Vaches/Brebis)
+    else {
+      let filter = appState.reproductionFilter || 'all';
+      if (filterPills) {
+        filterPills.style.display = '';
+        const buttons = filterPills.querySelectorAll('.reproduction-filter-btn');
+        buttons.forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
+        });
+      }
+
+      if (filter === 'incubator') {
+        if (titleEl) {
+          titleEl.setAttribute('data-i18n', 'section_incubator_title');
+          titleEl.textContent = this.t('section_incubator_title');
+        }
+        if (descEl) {
+          descEl.setAttribute('data-i18n', 'section_incubator_desc');
+          descEl.textContent = this.t('section_incubator_desc');
+        }
+        if (btnInc) btnInc.style.display = '';
+        if (btnGest) btnGest.style.display = 'none';
+        if (incWrapper) incWrapper.style.display = '';
+        if (incSubheader) incSubheader.style.display = 'none';
+        if (gestWrapper) gestWrapper.style.display = 'none';
+        this.renderIncubatorBatches();
+      } else if (filter === 'gestation') {
+        if (titleEl) {
+          titleEl.setAttribute('data-i18n', 'section_gestation_title');
+          titleEl.textContent = this.t('section_gestation_title');
+        }
+        if (descEl) {
+          descEl.setAttribute('data-i18n', 'section_gestation_desc');
+          descEl.textContent = this.t('section_gestation_desc');
+        }
+        if (btnInc) btnInc.style.display = 'none';
+        if (btnGest) btnGest.style.display = '';
+        if (incWrapper) incWrapper.style.display = 'none';
+        if (gestWrapper) {
+          gestWrapper.style.display = '';
+          gestWrapper.style.marginTop = '0';
+        }
+        if (gestSubheader) gestSubheader.style.display = 'none';
+        this.renderGestations();
+      } else {
+        // 'all'
+        if (titleEl) {
+          titleEl.setAttribute('data-i18n', 'section_reproduction_mixed_title');
+          titleEl.textContent = this.t('section_reproduction_mixed_title');
+        }
+        if (descEl) {
+          descEl.setAttribute('data-i18n', 'section_reproduction_mixed_desc');
+          descEl.textContent = this.t('section_reproduction_mixed_desc');
+        }
+        if (btnInc) btnInc.style.display = '';
+        if (btnGest) btnGest.style.display = '';
+        if (incWrapper) incWrapper.style.display = '';
+        if (incSubheader) incSubheader.style.display = 'flex';
+        if (gestWrapper) {
+          gestWrapper.style.display = '';
+          gestWrapper.style.marginTop = '1.75rem';
+        }
+        if (gestSubheader) gestSubheader.style.display = 'flex';
+        this.renderIncubatorBatches();
+        this.renderGestations();
+      }
+    }
 
     // Update badge count
     const incCount = (appState.incubatorBatches || []).length;
-    const gestCount = this.getActiveGestations().length;
+    const gestCount = (typeof this.getActiveGestations === 'function') ? this.getActiveGestations().length : 0;
     const badge = document.getElementById('countIncubatorBadge');
     if (badge) {
       const totalActive = (hasPoultry ? incCount : 0) + (hasMammals ? gestCount : 0);
       badge.textContent = totalActive;
       badge.style.display = totalActive > 0 ? '' : 'none';
     }
+    return;
   },
+
 
   setReproductionFilter(filter) {
     appState.reproductionFilter = filter || 'all';

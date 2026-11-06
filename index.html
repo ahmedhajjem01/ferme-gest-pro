@@ -1125,8 +1125,8 @@
         <section id="tab-incubator" class="content-tab">
           <div class="section-header" style="flex-wrap: wrap; gap: 0.85rem; justify-content: space-between; align-items: center;">
             <div>
-              <h2 class="section-title" id="reproductionSectionTitle" data-i18n="section_reproduction_mixed_title">Reproduction, Naissances & Couveuse</h2>
-              <p class="section-desc" id="reproductionSectionDesc" data-i18n="section_reproduction_mixed_desc">Suivi des temps d'éclosion pour les volailles et de mise-bas (vêlage, agnelage) pour les bovins et ovins.</p>
+              <h2 class="section-title" id="reproductionSectionTitle" data-i18n="section_incubator_title">Incubateur & Gestion d'Éclosion</h2>
+              <p class="section-desc" id="reproductionSectionDesc" data-i18n="section_incubator_desc">Date de mise en couveuse ("hachage"), étapes de mirage, transfert à l'éclosoir et compte à rebours de sortie de l'œuf.</p>
             </div>
             <div id="reproductionActionButtons" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button id="btnOpenIncubatorModal" class="btn btn-amber bold" onclick="app.openModal('modalAddBatch')">
@@ -1136,7 +1136,7 @@
                 </svg>
                 <span data-i18n="btn_put_in_incubator">Mettre en Couveuse</span>
               </button>
-              <button id="btnOpenGestationModal" class="btn btn-primary bold" style="background: linear-gradient(135deg, #ec4899, #be185d); border: none;" onclick="app.openModal('modalAddGestation')">
+              <button id="btnOpenGestationModal" class="btn btn-primary bold" style="background: linear-gradient(135deg, #ec4899, #be185d); border: none; display: none;" onclick="app.openModal('modalAddGestation')">
                 <span>🤰</span>
                 <span data-i18n="btn_add_gestation">+ Gestation / Saillie</span>
               </button>
@@ -1144,7 +1144,7 @@
           </div>
 
           <!-- Filter Pills for Mixed Farms (Shown when farm has both poultry and cattle/sheep) -->
-          <div id="reproductionFilterPills" style="margin-top: 0.75rem; margin-bottom: 1.15rem;">
+          <div id="reproductionFilterPills" style="display: none; margin-top: 0.75rem; margin-bottom: 1.15rem;">
             <div style="display: inline-flex; gap: 0.35rem; background: var(--bg-card); padding: 0.3rem 0.4rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); flex-wrap: wrap;">
               <button type="button" class="btn btn-xs bold reproduction-filter-btn active" data-filter="all" onclick="app.setReproductionFilter('all')">
                 🌟 <span data-i18n="filter_all_births">Tout afficher</span>
