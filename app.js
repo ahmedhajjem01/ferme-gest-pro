@@ -8723,6 +8723,16 @@ const app = {
   },
 
   // Gère le changement de l'espèce (1ère sélection)
+  isMammalSpecies(sp) {
+    if (!sp) return false;
+    const s = String(sp).toLowerCase();
+    return s === 'vache_laitiere' || s === 'taurillon' || s === 'veau' ||
+           s === 'bovin' || s === 'bovin_viande' || s === 'bovin_autre' ||
+           s === 'mouton' || s === 'brebis' || s === 'agneau' || s === 'belier' ||
+           s === 'ovin' || s === 'ovin_autre' ||
+           s === 'chevre' || s === 'chevreau' || s === 'caprin';
+  },
+
   handleAnimalSpeciesChange(speciesVal = 'poulet', formPrefix = 'animal') {
     const stageSelect = document.getElementById(`${formPrefix}StageSelect`);
     if (!stageSelect) return;
@@ -9095,6 +9105,48 @@ const app = {
 
     stageSelect.innerHTML = options.map(opt => `<option value="${opt.key}" data-days="${opt.days}">${opt.label}</option>`).join('');
     this.handleAnimalStagePresetChange(options[0].key, formPrefix);
+
+    // Adapt form labels dynamically for Mammals (Cattle/Sheep/Goats) vs Poultry
+    const isMammal = this.isMammalSpecies(sp);
+    const cur = isAr ? 'د.ت' : (isEn ? 'TND' : 'DT');
+
+    // Species field label
+    const speciesLbl = document.querySelector(`label[for="${formPrefix}Species"]`);
+    if (speciesLbl) {
+      if (isAr) speciesLbl.innerHTML = `<span data-i18n="lbl_species_type">${isMammal ? '1. نوع الحيوان / الماشية' : '1. نوع الطائر / الدواجن'}</span>`;
+      else if (isEn) speciesLbl.innerHTML = `<span data-i18n="lbl_species_type">${isMammal ? '1. Animal / Livestock Type' : '1. Poultry Type'}</span>`;
+      else speciesLbl.innerHTML = `<span data-i18n="lbl_species_type">${isMammal ? '1. Type d\'animal' : '1. Type de volaille'}</span>`;
+    }
+
+    // Quantity field label
+    const qtyLbl = document.querySelector(`label[for="${formPrefix}Quantity"]`);
+    if (qtyLbl) {
+      if (formPrefix.startsWith('edit')) {
+        if (isAr) qtyLbl.innerHTML = `<span data-i18n="card_current_count">${isMammal ? 'العدد الحالي (الرؤوس الحية)' : 'العدد الحالي (الطيور الحية)'}</span>`;
+        else if (isEn) qtyLbl.innerHTML = `<span data-i18n="card_current_count">${isMammal ? 'Current Live Count (Heads)' : 'Current Live Count (Birds)'}</span>`;
+        else qtyLbl.innerHTML = `<span data-i18n="card_current_count">${isMammal ? 'Effectif Actuel (Têtes)' : 'Effectif Actuel (Sujets)'}</span>`;
+      } else {
+        if (isAr) qtyLbl.innerHTML = `<span data-i18n="lbl_initial_qty">${isMammal ? 'عدد الرؤوس' : 'عدد الطيور / الكتاكيت'}</span>`;
+        else if (isEn) qtyLbl.innerHTML = `<span data-i18n="lbl_initial_qty">${isMammal ? 'Number of Heads' : 'Number of Birds'}</span>`;
+        else qtyLbl.innerHTML = `<span data-i18n="lbl_initial_qty">${isMammal ? 'Nombre de Têtes' : 'Nombre de Sujets'}</span>`;
+      }
+    }
+
+    // Purchase cost per head label
+    const costLbl = document.querySelector(`label[for="${formPrefix}CostPerHead"]`);
+    if (costLbl) {
+      if (isAr) costLbl.innerHTML = `<span data-i18n="lbl_unit_purchase_cost">${isMammal ? 'سعر شراء الرأس الواحد' : 'سعر شراء الطائر الواحد'}</span> (<span class="currency-label">${cur}</span>)`;
+      else if (isEn) costLbl.innerHTML = `<span data-i18n="lbl_unit_purchase_cost">${isMammal ? 'Purchase Price per Head' : 'Unit Purchase Price'}</span> (<span class="currency-label">${cur}</span>)`;
+      else costLbl.innerHTML = `<span data-i18n="lbl_unit_purchase_cost">${isMammal ? 'Prix d\'Achat par Tête' : 'Prix d\'Achat unitaire'}</span> (<span class="currency-label">${cur}</span>)`;
+    }
+
+    // Birth or Arrival date label (No "éclosion" for cows/sheep/goats!)
+    const birthLbl = document.querySelector(`label[for="${formPrefix}BirthDate"]`);
+    if (birthLbl) {
+      if (isAr) birthLbl.innerHTML = `<span data-i18n="lbl_arrival_date">${isMammal ? 'تاريخ الولادة أو الشراء' : 'تاريخ الفقس أو الشراء'}</span>`;
+      else if (isEn) birthLbl.innerHTML = `<span data-i18n="lbl_arrival_date">${isMammal ? 'Birth or Purchase Date' : 'Hatch / Arrival Date'}</span>`;
+      else birthLbl.innerHTML = `<span data-i18n="lbl_arrival_date">${isMammal ? 'Date de Naissance ou d\'Arrivée' : 'Date d\'Éclosion / Arrivée'}</span>`;
+    }
   },
 
   // Gère le choix du statut (2ème sélection) et pré-remplit l'âge de départ
