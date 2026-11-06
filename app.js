@@ -11831,6 +11831,15 @@ const app = {
     // Déduire du stock uniquement si ce sont les œufs de la ferme
     if (eggSource === 'farm') {
       const currentStock = Number(appState.eggStock) || 0;
+      if (eggsCount > currentStock) {
+        const isAr = (appState.lang || this.currentLang) === 'ar';
+        this.showToast(isAr 
+          ? `رصيد بيض المزرعة غير كافٍ (المتوفر: ${currentStock} بيضة).` 
+          : `Stock d'œufs de la ferme insuffisant (disponible: ${currentStock} œufs).`, 
+          'warning'
+        );
+        return;
+      }
       appState.eggStock = Math.max(0, currentStock - eggsCount);
     } else if (eggSource === 'purchased' && eggCost > 0) {
       // Enregistrer automatiquement la dépense d'achat d'œufs
@@ -11884,11 +11893,28 @@ const app = {
       elecCostInput.value = (Number(batch.electricityCost) || 0).toFixed(3);
     }
 
-    // Proposer une estimation par défaut (80% des œufs)
+    const totalEggs = Number(batch.eggsCount) || 1;
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
+    // Set max hint
+    const maxHint = document.getElementById('hatchLiveCountMaxHint');
+    if (maxHint) {
+      maxHint.textContent = isAr 
+        ? `(الحد الأقصى: ${totalEggs} بيضة)`
+        : (isEn ? `(Max: ${totalEggs} eggs)` : `(Max : ${totalEggs} œufs)`);
+    }
+
+    // Set max and suggested value (80% of eggs, clamped to totalEggs)
     const liveInput = document.getElementById('hatchLiveCount');
     if (liveInput) {
-      liveInput.value = Math.max(1, Math.round(batch.eggsCount * 0.8));
+      liveInput.max = totalEggs;
+      liveInput.value = Math.min(totalEggs, Math.max(0, Math.round(totalEggs * 0.8)));
+      liveInput.style.borderColor = '';
     }
+
+    const errDiv = document.getElementById('hatchLiveCountError');
+    if (errDiv) errDiv.style.display = 'none';
 
     // Réinitialiser le sélecteur de destination
     const targetSelect = document.getElementById('hatchTargetFlock');
@@ -11904,7 +11930,8 @@ const app = {
       lots.forEach(l => {
         const opt = document.createElement('option');
         opt.value = l.id;
-        opt.textContent = `${l.name || l.id} (${l.currentQuantity} têtes - ${l.species || ''})`;
+        const headsUnit = isAr ? 'طائر' : 'têtes';
+        opt.textContent = `${l.name || l.id} (${l.currentQuantity} ${headsUnit} - ${l.species || ''})`;
         existingSelect.appendChild(opt);
       });
     }
@@ -11928,50 +11955,97 @@ const app = {
     if (!card) return;
 
     const totalEggs = batch ? (Number(batch.eggsCount) || 1) : 1;
-    const liveCount = parseInt(document.getElementById('hatchLiveCount')?.value, 10) || 0;
+    const liveInput = document.getElementById('hatchLiveCount');
+    let liveCount = parseInt(liveInput?.value, 10);
+    if (isNaN(liveCount)) liveCount = 0;
+
     const eggCost = parseFloat(document.getElementById('hatchEggCostActual')?.value) || 0;
     const elecCost = parseFloat(document.getElementById('hatchElectricityCostActual')?.value) || 0;
     const totalCost = eggCost + elecCost;
 
-    const hatchRate = Math.min(100, Math.round((liveCount / totalEggs) * 100));
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
+    const submitBtn = document.querySelector('#formHatchPrompt button[type="submit"]');
+    const errDiv = document.getElementById('hatchLiveCountError');
+
+    // Validation control: liveCount cannot exceed totalEggs or be negative
+    const isExceeded = liveCount > totalEggs;
+    const isNegative = liveCount < 0;
+
+    if (isExceeded || isNegative) {
+      if (liveInput) liveInput.style.borderColor = '#ef4444';
+      if (submitBtn) submitBtn.disabled = true;
+
+      const errMsg = isExceeded
+        ? (isAr 
+            ? `⚠️ عدد الكتاكيت (${liveCount}) لا يمكن أن يتجاوز عدد بيض الحضانة (${totalEggs} بيضة).` 
+            : (isEn 
+                ? `⚠️ Hatched chicks (${liveCount}) cannot exceed incubated eggs (${totalEggs} eggs).` 
+                : `⚠️ Le nombre de poussins (${liveCount}) ne peut pas dépasser le nombre d'œufs incubés (${totalEggs} œufs).`))
+        : (isAr ? '⚠️ يرجى إدخال عدد صحيح موجب.' : '⚠️ Veuillez entrer un nombre positif.');
+
+      if (errDiv) {
+        errDiv.textContent = errMsg;
+        errDiv.style.display = 'block';
+      }
+
+      card.innerHTML = `
+        <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid #ef4444; border-radius: var(--radius-sm); padding: 0.85rem; text-align: center; color: #ef4444; font-weight: 700; font-size: 0.9rem; line-height: 1.45;">
+          ${errMsg}
+        </div>
+      `;
+      return;
+    }
+
+    if (liveInput) liveInput.style.borderColor = '';
+    if (errDiv) errDiv.style.display = 'none';
+    if (submitBtn) submitBtn.disabled = false;
+
+    const hatchRate = totalEggs > 0 ? Math.min(100, Math.round((liveCount / totalEggs) * 100)) : 0;
     const losses = Math.max(0, totalEggs - liveCount);
     const costPerChick = liveCount > 0 ? (totalCost / liveCount) : 0;
 
     const rateBadgeColor = hatchRate >= 70 ? 'var(--accent-emerald, #10b981)' : (hatchRate >= 50 ? '#f59e0b' : '#ef4444');
 
+    const eggsUnit = this.t('unit_eggs') || (isAr ? 'بيضة' : 'œufs');
+    const totalCostLbl = this.t('hatch_kpi_total_cost') || (isAr ? 'التكلفة الإجمالية للحضانة' : (isEn ? 'Total Incubation Cost' : 'Coût Total Couvée'));
+    const costPerChickLbl = this.t('hatch_kpi_cost_per_chick') || (isAr ? 'تكلفة الفرخ الواحد الصافي' : (isEn ? 'Cost / Chick' : 'Coût de revient / poussin'));
+    const perChickUnit = this.t('unit_per_chick') || (isAr ? '/ فرخ' : (isEn ? '/ chick' : '/ poussin'));
+
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.4rem;">
         <span style="font-weight: 800; font-size: 0.88rem; color: var(--text-main);" data-i18n="lbl_hatch_calc_summary">
-          ${this.t('lbl_hatch_calc_summary') || 'Bilan Financier & Zootechnique'}
+          ${this.t('lbl_hatch_calc_summary') || (isAr ? 'الحصيلة المالية والفنية للتفقيس' : 'Bilan Financier & Zootechnique')}
         </span>
         <span class="badge-pill" style="background: ${rateBadgeColor}; color: #ffffff; font-weight: 800; font-size: 0.76rem; padding: 0.15rem 0.55rem;">
-          ${hatchRate}% ${this.t('hatch_kpi_rate') || 'Taux d\'éclosion'}
+          ${hatchRate}% ${this.t('hatch_kpi_rate') || (isAr ? 'نسبة نجاح التفقيس' : 'Taux d\'éclosion')}
         </span>
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.65rem;">
         <div style="background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-          <small class="text-muted" style="font-size: 0.72rem;" data-i18n="hatch_kpi_losses">${this.t('hatch_kpi_losses') || 'Pertes (non éclos)'}</small>
+          <small class="text-muted" style="font-size: 0.72rem;" data-i18n="hatch_kpi_losses">${this.t('hatch_kpi_losses') || (isAr ? 'الخسائر (بيض لم يفقس)' : 'Pertes (non éclos)')}</small>
           <div style="font-weight: 800; color: #f87171; font-size: 1.05rem;">
-            ${losses} <small style="font-size: 0.75rem; font-weight: normal;">œufs</small>
+            ${losses} <small style="font-size: 0.75rem; font-weight: normal;">${eggsUnit}</small>
           </div>
         </div>
         <div style="background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-          <small class="text-muted" style="font-size: 0.72rem;">Coût Total Couvée</small>
+          <small class="text-muted" style="font-size: 0.72rem;" data-i18n="hatch_kpi_total_cost">${totalCostLbl}</small>
           <div style="font-weight: 800; color: #38bdf8; font-size: 1.05rem;">
             ${this.formatMoney(totalCost)}
           </div>
         </div>
         <div style="background: var(--bg-card); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1.5px solid var(--accent-emerald);">
-          <small class="text-muted" style="font-size: 0.72rem; font-weight: 700; color: var(--accent-emerald);" data-i18n="hatch_kpi_cost_per_chick">${this.t('hatch_kpi_cost_per_chick') || 'Coût de revient / poussin'}</small>
+          <small class="text-muted" style="font-size: 0.72rem; font-weight: 700; color: var(--accent-emerald);" data-i18n="hatch_kpi_cost_per_chick">${costPerChickLbl}</small>
           <div style="font-weight: 900; color: var(--accent-emerald); font-size: 1.15rem;">
-            ${this.formatMoney(costPerChick)} <small style="font-size: 0.72rem; font-weight: 600;">/ tête</small>
+            ${this.formatMoney(costPerChick)} <small style="font-size: 0.72rem; font-weight: 600;">${perChickUnit}</small>
           </div>
         </div>
       </div>
 
       <div style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.35; background: rgba(0,0,0,0.15); padding: 0.4rem 0.6rem; border-radius: var(--radius-xs);" data-i18n="hatch_cost_absorption_note">
-        ${this.t('hatch_cost_absorption_note')}
+        ${this.t('hatch_cost_absorption_note') || ''}
       </div>
     `;
   },
@@ -11988,9 +12062,23 @@ const app = {
     const batch = appState.incubatorBatches.find(b => b.id === batchId);
     if (!batch) return;
 
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const totalEggs = Number(batch.eggsCount) || 0;
+
     if (isNaN(liveCount) || liveCount < 0) {
-      const isAr = appState.lang === 'ar';
-      this.showToast(isAr ? 'يرجى إدخال عدد صحيح موجب من الفراخ.' : 'Veuillez entrer un nombre positif de poussins.', 'warning');
+      this.showToast(isAr ? 'يرجى إدخال عدد صحيح موجب من الفراخ.' : (isEn ? 'Please enter a valid positive number of chicks.' : 'Veuillez entrer un nombre positif de poussins.'), 'warning');
+      return;
+    }
+
+    if (liveCount > totalEggs) {
+      this.showToast(isAr 
+        ? `⚠️ عدد الكتاكيت (${liveCount}) لا يمكن أن يتجاوز عدد بيض الحضانة (${totalEggs} بيضة).` 
+        : (isEn 
+            ? `⚠️ Hatched chicks (${liveCount}) cannot exceed incubated eggs (${totalEggs} eggs).` 
+            : `⚠️ Le nombre de poussins (${liveCount}) ne peut pas dépasser le nombre d'œufs incubés (${totalEggs} œufs).`), 
+        'warning'
+      );
       return;
     }
 

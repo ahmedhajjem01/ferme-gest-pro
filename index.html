@@ -2181,8 +2181,12 @@
           </div>
 
           <div class="form-group mt-3">
-            <label for="hatchLiveCount" style="font-size: 0.95rem; font-weight: 700;" data-i18n="lbl_live_chicks_count">Combien de poussins sont sortis vivants de l'œuf ?</label>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+              <label for="hatchLiveCount" style="font-size: 0.95rem; font-weight: 700;" data-i18n="lbl_live_chicks_count">Combien de poussins sont sortis vivants de l'œuf ?</label>
+              <small id="hatchLiveCountMaxHint" style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);"></small>
+            </div>
             <input type="number" id="hatchLiveCount" class="input-field bold" style="font-size: 1.25rem; color: var(--primary);" min="0" required oninput="app.updateHatchCalculationsPreview()">
+            <div id="hatchLiveCountError" style="display: none; color: #ef4444; font-size: 0.82rem; font-weight: 700; margin-top: 5px;"></div>
           </div>
 
           <!-- Saisie des coûts réels de la couvée -->
