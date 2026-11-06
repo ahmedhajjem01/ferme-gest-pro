@@ -1778,7 +1778,7 @@
         <h3 id="modalAddExpenseTitle" data-i18n="modal_add_expense_title">Enregistrer une Dépense</h3>
         <button class="modal-close" onclick="app.closeModal('modalAddExpense')">&times;</button>
       </div>
-      <form id="formAddExpense" onsubmit="app.handleSaveExpense(event)">
+      <form id="formAddExpense" novalidate onsubmit="app.handleSaveExpense(event)">
         <div class="modal-body">
           <div class="form-row" id="expenseCategoryRow">
             <div class="form-group flex-1">
@@ -1801,7 +1801,7 @@
 
           <div class="form-group" style="margin-bottom: 0.65rem;">
             <label for="expenseTitle" id="expenseTitleLabel" data-i18n="lbl_expense_title">Description / Intitulé de la Dépense</label>
-            <input type="text" id="expenseTitle" class="input-field" required oninput="app.onExpenseTitleInput()">
+            <input type="text" id="expenseTitle" class="input-field" oninput="app.onExpenseTitleInput()">
           </div>
 
           <!-- Suggestions rapides d'aliments (visible quand catégorie = nourriture) -->
@@ -1922,11 +1922,11 @@
           <div id="expenseStandardRow" class="form-row">
             <div class="form-group flex-1">
               <label for="expenseQuantity" data-i18n="lbl_qty">Quantité (kg, sacs, mois, etc.)</label>
-              <input type="number" id="expenseQuantity" class="input-field" step="0.1" min="0.1" required oninput="app.calcExpenseTotal()">
+              <input type="number" id="expenseQuantity" class="input-field" step="0.1" min="0.1" oninput="app.calcExpenseTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="expenseUnitPrice"><span data-i18n="lbl_unit_price">Prix Unitaire</span> (<span class="currency-label">DT</span>)</label>
-              <input type="number" id="expenseUnitPrice" class="input-field" step="0.01" min="0" required oninput="app.calcExpenseTotal()">
+              <input type="number" id="expenseUnitPrice" class="input-field" step="0.01" min="0" oninput="app.calcExpenseTotal()">
             </div>
             <div class="form-group flex-1">
               <label for="expenseTotalCalculated"><span data-i18n="lbl_total_calculated">Total</span> (<span class="currency-label">DT</span>)</label>

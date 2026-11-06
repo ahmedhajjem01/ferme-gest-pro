@@ -1594,6 +1594,7 @@
   };
 
   window.appAuth = appAuth;
+  try { if (typeof globalThis !== "undefined") globalThis.appAuth = appAuth; } catch (e) {}
   window.switchAuthTab = function(mode) { appAuth.switchTab(mode); };
   window.handleAuthSubmit = function(e) { appAuth.handleSubmit(e); };
 

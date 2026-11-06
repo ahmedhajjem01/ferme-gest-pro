@@ -1240,8 +1240,8 @@ const app = {
     this.showToast(msg);
 
     this.updateUserHeaderUI();
-    if (window.appAuth && typeof appAuth.updateUI === 'function') {
-      appAuth.updateUI();
+    if (window.appAuth && typeof window.appAuth.updateUI === 'function') {
+      window.appAuth.updateUI();
     }
 
     // Step 3: Open animal selection modal after guest confirmation
@@ -1336,8 +1336,8 @@ const app = {
     this.closeModal('modalAnimalSelection');
     this.updateUserHeaderUI();
 
-    if (window.appAuth && typeof appAuth.updateUserProfileMetadata === 'function') {
-      appAuth.updateUserProfileMetadata(appState.userProfile);
+    if (window.appAuth && typeof window.appAuth.updateUserProfileMetadata === 'function') {
+      window.appAuth.updateUserProfileMetadata(appState.userProfile);
     }
 
     const isAr = appState.lang === 'ar';
@@ -1854,11 +1854,11 @@ const app = {
     this.updateUserHeaderUI();
 
     if (window.appAuth) {
-      if (typeof appAuth.openProfileModal === 'function') {
-        appAuth.openProfileModal();
+      if (typeof window.appAuth.openProfileModal === 'function') {
+        window.appAuth.openProfileModal();
       }
-      if (typeof appAuth.pushData === 'function' && appAuth.currentUser) {
-        appAuth.pushData(false, true);
+      if (typeof window.appAuth.pushData === 'function' && window.appAuth.currentUser) {
+        window.appAuth.pushData(false, true);
       }
     }
 
@@ -1892,8 +1892,8 @@ const app = {
     }
 
     // Mobile drawer profile avatar and name if appAuth exists
-    if (window.appAuth && typeof appAuth.updateUI === 'function') {
-      appAuth.updateUI();
+    if (window.appAuth && typeof window.appAuth.updateUI === 'function') {
+      window.appAuth.updateUI();
     }
   },
 
@@ -4236,8 +4236,8 @@ const app = {
 
     const displayLabel = this.getExpenseLinkedLotsDisplay(exp);
     this.showToast(isAr ? `تم تحديث التوزيع : ${displayLabel}` : `Affectation mise à jour : ${displayLabel}`);
-    if (window.appAuth && appAuth.pushData) {
-      appAuth.pushData();
+    if (window.appAuth && window.appAuth.pushData) {
+      window.appAuth.pushData();
     }
   },
 
@@ -7136,7 +7136,7 @@ const app = {
         <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 0.85rem;">
           <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🌾</div>
           <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 1.1rem; color: var(--text-main);">${emptyStateMsg}</div>
-          <button type="button" class="btn btn-sm btn-emerald" style="font-weight: 700; padding: 0.45rem 1rem;" onclick="app.openModal('modalNewFeedType')">
+          <button type="button" class="btn btn-sm btn-emerald" style="font-weight: 700; padding: 0.45rem 1rem;" onclick="app.openFeedPurchaseModal()">
             ${addFeedBtnText}
           </button>
         </div>
@@ -8601,8 +8601,8 @@ const app = {
       const displayName = this.getAnimalDisplayName(animal);
       this.showToast(isAr ? `تم تحديث "${displayName}" بنجاح` : `Lot "${displayName}" mis à jour avec succès !`);
 
-      if (window.appAuth && appAuth.pushData) {
-        appAuth.pushData();
+      if (window.appAuth && window.appAuth.pushData) {
+        window.appAuth.pushData();
       }
     } catch (err) {
       console.error('handleSaveEditAnimal failed:', err);
@@ -9410,8 +9410,8 @@ const app = {
       this.closeModal('modalDeleteAnimalConfirm');
       return;
     }
-    if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-      appAuth.addDeletedId(lotId);
+    if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+      window.appAuth.addDeletedId(lotId);
     }
     appState.animals = appState.animals.filter(a => a.id !== lotId);
     this.saveState();
@@ -10241,8 +10241,20 @@ const app = {
           feedStockAddedKg = addedKg;
           feedTypeId = targetFeed.id;
 
-          if (window.appAuth && typeof appAuth.removeDeletedId === 'function') {
-            appAuth.removeDeletedId(targetFeed.id);
+          if (window.appAuth && typeof window.appAuth.removeDeletedId === 'function') {
+            window.appAuth.removeDeletedId(targetFeed.id);
+            if (detectedFamily) {
+              window.appAuth.removeDeletedId('feed-' + detectedFamily);
+            }
+          }
+          if (Array.isArray(appState.deletedFeedIds)) {
+            appState.deletedFeedIds = appState.deletedFeedIds.filter(id => id !== targetFeed.id);
+            if (detectedFamily) {
+              appState.deletedFeedIds = appState.deletedFeedIds.filter(id => id !== 'feed-' + detectedFamily);
+            }
+          }
+          if (detectedFamily && Array.isArray(appState.deletedFeedFamilies)) {
+            appState.deletedFeedFamilies = appState.deletedFeedFamilies.filter(f => f !== detectedFamily);
           }
         }
       } else {
@@ -10374,13 +10386,13 @@ const app = {
           appState.feedStockKg = parseFloat((appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0).toFixed(2));
           appState.feedStockUpdatedAt = Date.now();
         }
-        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-          appAuth.addDeletedId(expId);
+        if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+          window.appAuth.addDeletedId(expId);
         }
         appState.expenses = appState.expenses.filter(e => e.id !== expId);
         this.saveState();
-        if (window.appAuth && typeof appAuth.pushData === 'function') {
-          appAuth.pushData(false);
+        if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+          window.appAuth.pushData(false);
         }
         this.renderAll();
         this.renderFeedStockAdjustModal();
@@ -11242,8 +11254,8 @@ const app = {
             appState.eggStock = (Number(appState.eggStock) || 0) + eggsToAdd;
           }
         }
-        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-          appAuth.addDeletedId(saleId);
+        if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+          window.appAuth.addDeletedId(saleId);
         }
         appState.sales = appState.sales.filter(s => s.id !== saleId);
         this.saveState();
@@ -12067,8 +12079,8 @@ const app = {
       isDanger: true,
       confirmText: isAr ? 'حذف' : 'Supprimer',
       onConfirm: () => {
-        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-          appAuth.addDeletedId(batchId);
+        if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+          window.appAuth.addDeletedId(batchId);
         }
         appState.incubatorBatches = appState.incubatorBatches.filter(b => b.id !== batchId);
         this.saveState();
@@ -13537,8 +13549,8 @@ const app = {
       this.renderAll();
       this.closeModal('modalDataOptions');
       this.showToast('✅ Sauvegarde restaurée avec succès ! Vos données sont revenues.');
-      if (window.appAuth && typeof appAuth.pushData === 'function') {
-        appAuth.pushData(false);
+      if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+        window.appAuth.pushData(false);
       }
     } catch (e) {
       console.warn('Restore failed:', e);
@@ -13557,14 +13569,14 @@ const app = {
       confirmText: isAr ? 'مسح الكل' : 'Tout supprimer',
       onConfirm: () => {
         // Enregistrer tous les identifiants supprimés dans les tombstones Cloud pour éviter toute résurrection
-        if (window.appAuth && typeof appAuth.addDeletedId === 'function') {
-          (appState.animals || []).forEach(a => a && a.id && appAuth.addDeletedId(a.id));
-          (appState.expenses || []).forEach(e => e && e.id && appAuth.addDeletedId(e.id));
-          (appState.sales || []).forEach(s => s && s.id && appAuth.addDeletedId(s.id));
-          (appState.incubatorBatches || []).forEach(b => b && b.id && appAuth.addDeletedId(b.id));
-          (appState.eggHarvests || []).forEach(h => h && h.id && appAuth.addDeletedId(h.id));
-          (appState.feedDistributions || []).forEach(d => d && d.id && appAuth.addDeletedId(d.id));
-          (appState.feedTypes || []).forEach(ft => ft && ft.id && appAuth.addDeletedId(ft.id));
+        if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+          (appState.animals || []).forEach(a => a && a.id && window.appAuth.addDeletedId(a.id));
+          (appState.expenses || []).forEach(e => e && e.id && window.appAuth.addDeletedId(e.id));
+          (appState.sales || []).forEach(s => s && s.id && window.appAuth.addDeletedId(s.id));
+          (appState.incubatorBatches || []).forEach(b => b && b.id && window.appAuth.addDeletedId(b.id));
+          (appState.eggHarvests || []).forEach(h => h && h.id && window.appAuth.addDeletedId(h.id));
+          (appState.feedDistributions || []).forEach(d => d && d.id && window.appAuth.addDeletedId(d.id));
+          (appState.feedTypes || []).forEach(ft => ft && ft.id && window.appAuth.addDeletedId(ft.id));
         }
 
         // Remise à zéro totale de toutes les collections et compteurs
@@ -13595,8 +13607,8 @@ const app = {
 
         // Propager immédiatement l'état vide au cloud et aux autres appareils
         if (window.appAuth) {
-          if (typeof appAuth.pushData === 'function') appAuth.pushData(false);
-          if (typeof appAuth.broadcastCurrentState === 'function') appAuth.broadcastCurrentState();
+          if (typeof window.appAuth.pushData === 'function') window.appAuth.pushData(false);
+          if (typeof window.appAuth.broadcastCurrentState === 'function') window.appAuth.broadcastCurrentState();
         }
 
         this.closeModal('modalDataOptions');
