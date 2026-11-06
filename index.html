@@ -187,14 +187,6 @@
           </div>
           <span id="headerUserText" class="user-pill-name" data-i18n="default_user_name">Utilisateur</span>
         </button>
-
-        <!-- Quick Data Modal Trigger -->
-        <button id="dataOptionsBtn" class="icon-btn" title="Options de données / Sauvegarde" aria-label="Paramètres données">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 20h9"></path>
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-          </svg>
-        </button>
       </div>
 
       <!-- Mobile Right Controls (Profile Button + 3-Line Menu) -->
@@ -274,10 +266,6 @@
             <button type="button" class="btn btn-emerald btn-full drawer-btn" onclick="app.closeMobileMenu(); app.exportExcel();">
               <span>📊</span>
               <span data-i18n="btn_export_excel">Télécharger Tableau Excel (.xlsx)</span>
-            </button>
-            <button type="button" class="btn btn-secondary btn-full drawer-btn" style="margin-top: 0.45rem;" onclick="app.closeMobileMenu(); app.openModal('modalDataOptions');">
-              <span>⚙️</span>
-              <span data-i18n="btn_manage_data">Options & Sauvegarde</span>
             </button>
             <button type="button" id="drawerEggHarvestBtn" class="btn btn-primary btn-full drawer-btn" style="margin-top: 0.45rem; background: linear-gradient(135deg, #10b981, #059669); border:none;" onclick="app.closeMobileMenu(); app.openDailyEggModal();">
               <span>🥚</span>
@@ -2836,33 +2824,6 @@
       </form>
     </div>
   </div>
-
-  <!-- Modal: Sauvegarde & Données de Démonstration -->
-  <div id="modalDataOptions" class="modal-overlay hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 data-i18n="modal_settings_title">Paramètres des Données & Démo</h3>
-        <button class="modal-close" onclick="app.closeModal('modalDataOptions')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-desc" data-i18n="modal_settings_desc">Gérez vos données locales ou démarrez avec une ferme propre pour enregistrer votre propre élevage.</p>
-        
-        <div class="data-options-buttons">
-          <button class="btn btn-primary btn-full" onclick="app.restoreBackup()" style="font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: #2563eb; color: #fff;">
-            🛡️ Restaurer la Sauvegarde Locale de Secours
-          </button>
-          <button class="btn btn-emerald btn-full" onclick="app.exportExcel()" data-i18n="btn_export_excel" style="font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem;">
-            📊 Télécharger le Tableau Excel (.xlsx)
-          </button>
-          <button class="btn btn-secondary btn-full" onclick="app.loadSampleData()" data-i18n="btn_load_sample">
-            🌱 Démarrer une Ferme Vierge (Propre & Neuve)
-          </button>
-          <button class="btn btn-danger-outline btn-full" onclick="app.resetAllData()" data-i18n="btn_reset_all">
-            🗑️ Réinitialiser Toutes les Données à 0
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
 

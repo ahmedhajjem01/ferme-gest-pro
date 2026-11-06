@@ -562,12 +562,6 @@ const app = {
       mobileMenuBtn.onclick = (e) => this.toggleMobileMenu(e);
     }
 
-    // Data options modal
-    const dataBtn = document.getElementById('dataOptionsBtn');
-    if (dataBtn) {
-      dataBtn.addEventListener('click', () => this.openModal('modalDataOptions'));
-    }
-
     // Floating Action Button
     const fabBtn = document.getElementById('fabMainBtn');
     if (fabBtn) {
@@ -14061,38 +14055,6 @@ const app = {
   // ==========================================
   // DATA IMPORT / EXPORT & BACKUP
   // ==========================================
-  loadSampleData() {
-    const isAr = appState.lang === 'ar';
-    this.confirmDialog({
-      title: isAr ? 'تهيئة مزرعة جديدة' : 'Nouvelle Ferme Vierge',
-      message: isAr 
-        ? 'هل ترغب في تهيئة التطبيق بحالة نظيفة وفارغة تماماً لبدء مزرعتك الخاصة؟' 
-        : 'Voulez-vous initialiser une ferme neuve et propre avec toutes les données à zéro ?',
-      isDanger: false,
-      confirmText: isAr ? 'تأكيد' : 'Initialiser',
-      onConfirm: () => {
-        appState.animals = [];
-        appState.expenses = [];
-        appState.sales = [];
-        appState.incubatorBatches = [];
-        appState.feedTypes = [];
-        appState.feedDistributions = [];
-        appState.feedStockKg = null;
-        appState.feedStockCostPerKg = 0;
-        appState.feedStockDate = null;
-        appState.eggStock = 0;
-        appState.milkStock = 0;
-        appState.milkHarvests = [];
-        appState.eggHarvests = [];
-        appState._zeroInitialized = true;
-        this.saveState();
-        this.closeModal('modalDataOptions');
-        this.renderAll();
-        this.showToast(isAr ? 'تم تهيئة المزرعة بنجاح !' : 'Application initialisée à zéro avec succès !');
-      }
-    });
-  },
-
   // Export officiel vers Excel (Classeur Multi-Onglets .xlsx avec fallback XML Spreadsheet)
   exportExcel() {
     if (window.MobileBridge && typeof window.MobileBridge.promptRewardedAd === 'function') {
@@ -14569,87 +14531,6 @@ const app = {
     URL.revokeObjectURL(url);
 
     this.showToast(this.t('toast_excel_downloaded') || 'Tableau Excel (.xls) téléchargé avec succès !');
-  },
-
-  restoreBackup() {
-    try {
-      const backup = localStorage.getItem('fermegest_state_backup');
-      if (!backup) {
-        this.showToast('⚠️ Aucune sauvegarde locale détectée sur ce navigateur.');
-        return;
-      }
-      localStorage.setItem('fermegest_state', backup);
-      this.loadState();
-      this.renderAll();
-      this.closeModal('modalDataOptions');
-      this.showToast('✅ Sauvegarde restaurée avec succès ! Vos données sont revenues.');
-      if (window.appAuth && typeof window.appAuth.pushData === 'function') {
-        window.appAuth.pushData(false);
-      }
-    } catch (e) {
-      console.warn('Restore failed:', e);
-      this.showToast('⚠️ Erreur lors de la restauration.');
-    }
-  },
-
-  resetAllData() {
-    const isAr = appState.lang === 'ar';
-    this.confirmDialog({
-      title: isAr ? 'إعادة ضبط شاملة' : 'Suppression Totale',
-      message: isAr 
-        ? 'تحذير هام: سيتم مسح كافة البيانات المسجلة نهائياً (الحيوانات، المصاريف، المبيعات، ومخزون الأعلاف بالكامل). هل ترغب في المتابعة؟'
-        : 'ATTENTION: Cette action va réinitialiser absolument toutes vos données à 0 (animaux, dépenses, ventes, récoltes, stocks d\'aliments et rations). Continuer ?',
-      isDanger: true,
-      confirmText: isAr ? 'مسح الكل' : 'Tout supprimer',
-      onConfirm: () => {
-        // Enregistrer tous les identifiants supprimés dans les tombstones Cloud pour éviter toute résurrection
-        if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
-          (appState.animals || []).forEach(a => a && a.id && window.appAuth.addDeletedId(a.id));
-          (appState.expenses || []).forEach(e => e && e.id && window.appAuth.addDeletedId(e.id));
-          (appState.sales || []).forEach(s => s && s.id && window.appAuth.addDeletedId(s.id));
-          (appState.incubatorBatches || []).forEach(b => b && b.id && window.appAuth.addDeletedId(b.id));
-          (appState.eggHarvests || []).forEach(h => h && h.id && window.appAuth.addDeletedId(h.id));
-          (appState.feedDistributions || []).forEach(d => d && d.id && window.appAuth.addDeletedId(d.id));
-          (appState.feedTypes || []).forEach(ft => ft && ft.id && window.appAuth.addDeletedId(ft.id));
-        }
-
-        // Remise à zéro totale de toutes les collections et compteurs
-        appState.animals = [];
-        appState.expenses = [];
-        appState.sales = [];
-        appState.incubatorBatches = [];
-        appState.eggHarvests = [];
-        appState.eggStock = 0;
-        appState.milkStock = 0;
-        appState.milkHarvests = [];
-
-        // Remise à zéro intégrale de l'alimentation, du stock magasin et des rations
-        appState.feedDistributions = [];
-        appState.feedTypes = [];
-        appState.feedStockKg = null;
-        appState.feedStockDate = null;
-        appState.feedStockCostPerKg = 0;
-        appState.customDailyFeedKg = null;
-        appState.sicamCansCount = null;
-        appState.feedRationMode = 'custom';
-        appState.savedFavoriteFeedRoutine = null;
-        appState.deletedFeedFamilies = [];
-        appState.deletedFeedIds = [];
-
-        appState._zeroInitialized = true;
-        this.saveState();
-
-        // Propager immédiatement l'état vide au cloud et aux autres appareils
-        if (window.appAuth) {
-          if (typeof window.appAuth.pushData === 'function') window.appAuth.pushData(false);
-          if (typeof window.appAuth.broadcastCurrentState === 'function') window.appAuth.broadcastCurrentState();
-        }
-
-        this.closeModal('modalDataOptions');
-        this.renderAll();
-        this.showToast(this.t('toast_data_reset'));
-      }
-    });
   },
 
   // ==========================================
