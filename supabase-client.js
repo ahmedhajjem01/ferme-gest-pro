@@ -309,6 +309,7 @@
         this.subscribeUserSync();
         this.subscribeCollaborativeRealtime();
       } else {
+        const wasAuth = !!this.currentUser;
         this.currentUser = null;
         if (this.realtimeChannel && this.client) {
           try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
@@ -322,7 +323,11 @@
         this.realtimeChannel = null;
         this.userSyncChannel = null;
         this.collabChannel = null;
-        this.updateUI();
+        if (wasAuth) {
+          this.resetLocalDataToZero();
+        } else {
+          this.updateUI();
+        }
       }
     },
 
@@ -477,6 +482,68 @@
     },
 
     // 4. Sign Out
+        // Reset all local memory and storage to 0 upon sign-out to protect user privacy
+    resetLocalDataToZero() {
+      if (window.appState) {
+        window.appState.userProfile = null;
+        window.appState.animals = [];
+        window.appState.expenses = [];
+        window.appState.sales = [];
+        window.appState.incubatorBatches = [];
+        window.appState.eggHarvests = [];
+        window.appState.eggStock = 0;
+        window.appState.milkStock = 0;
+        window.appState.milkHarvests = [];
+        window.appState.feedDistributions = [];
+        window.appState.feedTypes = [];
+        window.appState.feedStockKg = null;
+        window.appState.feedStockDate = null;
+        window.appState.feedStockCostPerKg = 1.0;
+        window.appState.feedStockUpdatedAt = null;
+        window.appState.feedRationMode = 'custom';
+        window.appState.customDailyFeedKg = null;
+        window.appState.sicamCansCount = null;
+        window.appState.calendarEvents = [];
+        window.appState.deletedFeedIds = [];
+        window.appState.deletedFeedFamilies = [];
+      }
+
+      try {
+        localStorage.removeItem('fermegest_state');
+        localStorage.removeItem('fermegest_state_backup');
+        localStorage.removeItem('fermegest_user_profile');
+        localStorage.removeItem('fermegest_farm_code');
+        localStorage.removeItem('fermegest_farm_role');
+        localStorage.removeItem('fermegest_farm_owner_email');
+        localStorage.removeItem('fermegest_managed_animal_types');
+        localStorage.removeItem('fermegest_onboarding_completed');
+        localStorage.removeItem('fermegest_animals_selection_completed');
+        localStorage.removeItem('fermegest_guest_acknowledged');
+        localStorage.removeItem('fermegest_guest_mode');
+      } catch (e) {}
+
+      const headerUserText = document.getElementById('headerUserText');
+      if (headerUserText) headerUserText.textContent = '';
+      const headerUserInitial = document.getElementById('headerUserInitial');
+      if (headerUserInitial) headerUserInitial.innerHTML = '👤';
+      const mobileUserInitial = document.getElementById('mobileUserInitial');
+      if (mobileUserInitial) mobileUserInitial.innerHTML = '👤';
+
+      if (window.app) {
+        if (typeof app.updateLivestockUIThemeAndVisibility === 'function') {
+          app.updateLivestockUIThemeAndVisibility();
+        }
+        if (typeof app.renderAll === 'function') {
+          app.renderAll();
+        }
+        if (typeof app.switchTab === 'function') {
+          app.switchTab('dashboard');
+        }
+      }
+
+      this.updateUI();
+    },
+
     async signOut() {
       if (!this.client) return;
       const doSignOut = async () => {

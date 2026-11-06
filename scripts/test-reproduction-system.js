@@ -138,7 +138,7 @@ assert.strictEqual(gestations[1].totalDays, 150);
 console.log('✔ Test 1 passed: getActiveGestations returns both cows and sheep accurately!');
 
 // 2. Test renderReproductionTab for Mammals only
-app.renderReproductionTab();
+app.setReproductionFilter('gestation');
 assert.strictEqual(domElements.btnOpenIncubatorModal.style.display, 'none');
 assert.strictEqual(domElements.btnOpenGestationModal.style.display, '');
 assert.strictEqual(domElements.incubatorSectionWrapper.style.display, 'none');

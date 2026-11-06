@@ -1414,11 +1414,18 @@ const app = {
     const hasCattle = managed.includes('cattle');
     const hasSheep = managed.includes('sheep');
 
-    // 1. Navigation items (Incubator tab in sidebar & mobile footer)
+    // 1. Navigation items (Reproduction & Incubator tab in sidebar & mobile footer)
     const incNavItems = document.querySelectorAll('[data-tab="incubator"]');
     incNavItems.forEach(el => {
-      el.style.display = hasPoultry ? '' : 'none';
+      el.style.display = ''; // Always visible for any farm type
     });
+
+    const countBadge = document.getElementById('countIncubatorBadge');
+    if (countBadge) {
+      const activeBatches = (appState.incubatorBatches || []).length;
+      const activeGest = (typeof this.getActiveGestations === 'function') ? this.getActiveGestations().length : 0;
+      countBadge.textContent = String(activeBatches + activeGest);
+    }
 
     // 2. Overview cards: Daily egg alert, Egg stock card, Egg production chart
     const dailyEggBanner = document.getElementById('dailyEggAlertBanner');
@@ -12140,29 +12147,26 @@ const app = {
     const gestWrapper = document.getElementById('gestationSectionWrapper');
     const gestSubheader = document.getElementById('gestationSubheader');
 
-    const filter = appState.reproductionFilter || 'all';
+    let filter = appState.reproductionFilter;
+    if (!filter) {
+      if (hasMammals && !hasPoultry) filter = 'gestation';
+      else filter = 'all';
+      appState.reproductionFilter = filter;
+    }
 
-    if (hasMammals && !hasPoultry) {
-      // Mammals only (Cattle and/or Sheep)
-      if (titleEl) {
-        titleEl.setAttribute('data-i18n', 'section_gestation_title');
-        titleEl.textContent = this.t('section_gestation_title');
-      }
-      if (descEl) {
-        descEl.setAttribute('data-i18n', 'section_gestation_desc');
-        descEl.textContent = this.t('section_gestation_desc');
-      }
-      if (btnInc) btnInc.style.display = 'none';
-      if (btnGest) btnGest.style.display = '';
-      if (filterPills) filterPills.style.display = 'none';
-      if (incWrapper) incWrapper.style.display = 'none';
-      if (gestWrapper) {
-        gestWrapper.style.display = '';
-        gestWrapper.style.marginTop = '0';
-      }
-      if (gestSubheader) gestSubheader.style.display = 'none';
-    } else if (hasPoultry && !hasMammals) {
-      // Poultry only
+    if (filterPills) {
+      filterPills.style.display = '';
+      const buttons = filterPills.querySelectorAll('.reproduction-filter-btn');
+      buttons.forEach(btn => {
+        if (btn.getAttribute('data-filter') === filter) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    if (filter === 'incubator') {
       if (titleEl) {
         titleEl.setAttribute('data-i18n', 'section_incubator_title');
         titleEl.textContent = this.t('section_incubator_title');
@@ -12173,12 +12177,27 @@ const app = {
       }
       if (btnInc) btnInc.style.display = '';
       if (btnGest) btnGest.style.display = 'none';
-      if (filterPills) filterPills.style.display = 'none';
       if (incWrapper) incWrapper.style.display = '';
       if (incSubheader) incSubheader.style.display = 'none';
       if (gestWrapper) gestWrapper.style.display = 'none';
+    } else if (filter === 'gestation') {
+      if (titleEl) {
+        titleEl.setAttribute('data-i18n', 'section_gestation_title');
+        titleEl.textContent = this.t('section_gestation_title');
+      }
+      if (descEl) {
+        descEl.setAttribute('data-i18n', 'section_gestation_desc');
+        descEl.textContent = this.t('section_gestation_desc');
+      }
+      if (btnInc) btnInc.style.display = 'none';
+      if (btnGest) btnGest.style.display = '';
+      if (incWrapper) incWrapper.style.display = 'none';
+      if (gestWrapper) {
+        gestWrapper.style.display = '';
+        gestWrapper.style.marginTop = '0';
+      }
+      if (gestSubheader) gestSubheader.style.display = 'none';
     } else {
-      // Mixed farm (Poultry AND Mammals)
       if (titleEl) {
         titleEl.setAttribute('data-i18n', 'section_reproduction_mixed_title');
         titleEl.textContent = this.t('section_reproduction_mixed_title');
@@ -12189,32 +12208,15 @@ const app = {
       }
       if (btnInc) btnInc.style.display = '';
       if (btnGest) btnGest.style.display = '';
-      if (filterPills) filterPills.style.display = '';
-
-      if (filter === 'incubator') {
-        if (incWrapper) incWrapper.style.display = '';
-        if (incSubheader) incSubheader.style.display = 'none';
-        if (gestWrapper) gestWrapper.style.display = 'none';
-      } else if (filter === 'gestation') {
-        if (incWrapper) incWrapper.style.display = 'none';
-        if (gestWrapper) {
-          gestWrapper.style.display = '';
-          gestWrapper.style.marginTop = '0';
-        }
-        if (gestSubheader) gestSubheader.style.display = 'none';
-      } else {
-        // All
-        if (incWrapper) incWrapper.style.display = '';
-        if (incSubheader) incSubheader.style.display = 'flex';
-        if (gestWrapper) {
-          gestWrapper.style.display = '';
-          gestWrapper.style.marginTop = '1.75rem';
-        }
-        if (gestSubheader) gestSubheader.style.display = 'flex';
+      if (incWrapper) incWrapper.style.display = '';
+      if (incSubheader) incSubheader.style.display = 'flex';
+      if (gestWrapper) {
+        gestWrapper.style.display = '';
+        gestWrapper.style.marginTop = '1.75rem';
       }
+      if (gestSubheader) gestSubheader.style.display = 'flex';
     }
 
-    // Render contents
     this.renderIncubatorBatches();
     this.renderGestations();
 
@@ -13239,8 +13241,9 @@ const app = {
       );
     });
 
+    const newOptLabel = isAr ? '➕ إضافة أنثى جديدة مباشرة (بقرة / نعجة)...': (isEn ? '➕ Add new female directly (Cow / Ewe)...': '➕ Saisie directe nouvelle femelle (Vache / Brebis)...');
     if (femaleAnimals.length > 0) {
-      animalSelect.innerHTML = femaleAnimals.map(a => {
+      const optionsHtml = femaleAnimals.map(a => {
         const icon = this.getSpeciesIcon(a.species);
         const name = this.getAnimalDisplayName(a);
         const stage = this.translateStage(a.stage);
@@ -13248,11 +13251,17 @@ const app = {
         const headsLabel = isAr ? 'رأس' : (isEn ? 'heads' : 'têtes');
         return `<option value="${a.id}">${icon} ${name} (${stage} • ${qty} ${headsLabel})</option>`;
       }).join('');
+      animalSelect.innerHTML = optionsHtml + `<option value="__new__">${newOptLabel}</option>`;
       if (defaultAnimalId && femaleAnimals.some(a => a.id === defaultAnimalId)) {
         animalSelect.value = defaultAnimalId;
       }
     } else {
-      animalSelect.innerHTML = `<option value="">${isAr ? 'لا توجد إناث أو مواشي مسجلة' : (isEn ? 'No female animals registered' : 'Aucune femelle ou cheptel enregistré')}</option>`;
+      animalSelect.innerHTML = `<option value="__new__" selected>${newOptLabel}</option>`;
+    }
+
+    const newBox = document.getElementById('gestationNewAnimalBox');
+    if (newBox) {
+      newBox.style.display = (animalSelect.value === '__new__') ? 'block' : 'none';
     }
 
     const dateInput = document.getElementById('gestationMatingDate');
@@ -13263,6 +13272,10 @@ const app = {
   },
 
   handleGestationAnimalChange(animalId) {
+    const newBox = document.getElementById('gestationNewAnimalBox');
+    if (newBox) {
+      newBox.style.display = (animalId === '__new__') ? 'block' : 'none';
+    }
     this.updateGestationPreview();
   },
 
@@ -13275,8 +13288,14 @@ const app = {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
 
-    const animal = (appState.animals || []).find(a => a.id === animalId);
-    const sp = (animal?.species || 'vache_laitiere').toLowerCase();
+    const isNew = (animalId === '__new__');
+    let sp = 'vache_laitiere';
+    if (isNew) {
+      sp = (document.getElementById('gestationNewSpecies')?.value || 'vache_laitiere').toLowerCase();
+    } else {
+      const animal = (appState.animals || []).find(a => a.id === animalId);
+      sp = (animal?.species || 'vache_laitiere').toLowerCase();
+    }
     const isBovine = (sp.includes('vache') || sp.includes('bovin') || sp.includes('genisse'));
 
     const totalGestationDays = isBovine ? 283 : 150;
@@ -13347,11 +13366,34 @@ const app = {
       return;
     }
 
-    const animal = (appState.animals || []).find(a => a.id === animalId);
-    if (!animal) return;
-
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
+
+    let animal = (appState.animals || []).find(a => a.id === animalId);
+    if (!animal || animalId === '__new__') {
+      const newName = document.getElementById('gestationNewName')?.value?.trim();
+      const newSpecies = document.getElementById('gestationNewSpecies')?.value || 'vache_laitiere';
+      const isBov = newSpecies.includes('vache') || newSpecies.includes('genisse') || newSpecies.includes('bovin');
+      const defaultName = isBov 
+        ? (isAr ? 'بقرة عشار' : (isEn ? 'Pregnant Cow' : 'Vache Gestante')) 
+        : (isAr ? 'نعجة حامل' : (isEn ? 'Pregnant Ewe' : 'Brebis Gestante'));
+
+      animal = {
+        id: 'anim-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
+        name: newName || defaultName,
+        species: newSpecies,
+        category: isBov ? 'cattle' : 'sheep',
+        stage: isAr ? 'عشار / حامل' : (isEn ? 'Pregnant' : 'Gestante'),
+        quantity: 1,
+        currentQuantity: 1,
+        purchaseDate: matingDate,
+        entryDate: matingDate
+      };
+      if (!Array.isArray(appState.animals)) appState.animals = [];
+      appState.animals.push(animal);
+      animalId = animal.id;
+    }
+
     const sp = (animal.species || 'vache_laitiere').toLowerCase();
     const isBovine = (sp.includes('vache') || sp.includes('bovin') || sp.includes('genisse'));
     const animalName = this.getAnimalDisplayName(animal);
