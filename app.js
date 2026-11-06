@@ -1178,12 +1178,17 @@ const app = {
     if (hasError) return;
 
     const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
+    const prevManaged = (appState.userProfile && appState.userProfile.managedAnimals) || (function() {
+      try { return JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null'); } catch(e) { return ['poultry']; }
+    })();
+
     const profile = {
       name: name,
       birthDate: birthDate,
       age: age,
       avatar: avatarId,
       gender: avatar ? avatar.gender : 'male',
+      managedAnimals: prevManaged,
       updatedAt: Date.now()
     };
 
@@ -1351,18 +1356,35 @@ const app = {
   },
 
   getUserManagedAnimalTypes() {
+    let types = [];
     if (appState.userProfile && Array.isArray(appState.userProfile.managedAnimals) && appState.userProfile.managedAnimals.length > 0) {
-      const filtered = appState.userProfile.managedAnimals.filter(t => t !== 'equine');
-      if (filtered.length > 0) return filtered;
+      types = [...appState.userProfile.managedAnimals.filter(t => t !== 'equine')];
     }
-    try {
-      const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
-      if (Array.isArray(raw) && raw.length > 0) {
-        const filtered = raw.filter(t => t !== 'equine');
-        if (filtered.length > 0) return filtered;
-      }
-    } catch(e) {}
-    return ['poultry'];
+    if (types.length === 0) {
+      try {
+        const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
+        if (Array.isArray(raw) && raw.length > 0) {
+          types = [...raw.filter(t => t !== 'equine')];
+        }
+      } catch(e) {}
+    }
+
+    // Also auto-detect animal types from living lots in appState.animals
+    if (Array.isArray(appState.animals)) {
+      appState.animals.forEach(a => {
+        if (!a || (Number(a.currentQuantity) || 0) <= 0) return;
+        const sp = String(a.species || '').toLowerCase();
+        if (sp.includes('vache') || sp.includes('bovin') || sp.includes('taurillon') || sp.includes('veau') || sp.includes('cow') || sp.includes('cattle')) {
+          if (!types.includes('cattle')) types.push('cattle');
+        } else if (sp.includes('mouton') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('chevre') || sp.includes('caprin') || sp.includes('sheep')) {
+          if (!types.includes('sheep')) types.push('sheep');
+        } else {
+          if (!types.includes('poultry')) types.push('poultry');
+        }
+      });
+    }
+
+    return types.length > 0 ? types : ['poultry'];
   },
 
   updateLivestockUIThemeAndVisibility() {
@@ -1383,7 +1405,12 @@ const app = {
       dailyEggBanner.style.display = 'none';
     }
 
-    const eggStockCard = document.querySelector('.egg-stock-card');
+    const dailyMilkBanner = document.getElementById('dailyMilkAlertBanner');
+    if (dailyMilkBanner && !hasCattle) {
+      dailyMilkBanner.style.display = 'none';
+    }
+
+    const eggStockCard = document.getElementById('eggStockCard') || document.querySelector('.egg-stock-card');
     if (eggStockCard) {
       eggStockCard.style.display = hasPoultry ? '' : 'none';
     }
@@ -1403,13 +1430,35 @@ const app = {
       milkChartCard.style.display = hasCattle ? '' : 'none';
     }
 
+    const drawerEggBtn = document.getElementById('drawerEggHarvestBtn');
+    if (drawerEggBtn) {
+      drawerEggBtn.style.display = hasPoultry ? '' : 'none';
+    }
+
     const drawerMilkBtn = document.getElementById('drawerMilkHarvestBtn');
     if (drawerMilkBtn) {
       drawerMilkBtn.style.display = hasCattle ? '' : 'none';
     }
 
 
-    // 3. KPI Livestock Subtitle
+    // 3. KPI Livestock Title & Subtitle
+    const kpiLivestockTitle = document.querySelector('.card-livestock .metric-title');
+    if (kpiLivestockTitle) {
+      if (hasCattle && !hasPoultry && !hasSheep) {
+        kpiLivestockTitle.setAttribute('data-i18n', 'kpi_livestock_title_bovins');
+        kpiLivestockTitle.textContent = this.t('kpi_livestock_title_bovins');
+      } else if (hasSheep && !hasPoultry && !hasCattle) {
+        kpiLivestockTitle.setAttribute('data-i18n', 'kpi_livestock_title_ovins');
+        kpiLivestockTitle.textContent = this.t('kpi_livestock_title_ovins');
+      } else if ((hasCattle || hasSheep) && hasPoultry) {
+        kpiLivestockTitle.setAttribute('data-i18n', 'kpi_livestock_title_mixed');
+        kpiLivestockTitle.textContent = this.t('kpi_livestock_title_mixed');
+      } else {
+        kpiLivestockTitle.setAttribute('data-i18n', 'kpi_livestock_title');
+        kpiLivestockTitle.textContent = this.t('kpi_livestock_title');
+      }
+    }
+
     const kpiAnimalsSub = document.getElementById('kpiAnimalsBreakdown');
     if (kpiAnimalsSub) {
       if (hasPoultry && hasCattle && hasSheep) {
@@ -2213,6 +2262,7 @@ const app = {
 
     this.saveState();
     this.closeModal('modalDailyMilk');
+    this.dismissDailyMilkAlert();
     this.renderMilkStock();
     this.renderMilkProductionChart();
     this.showToast(this.t('toast_milk_saved', { liters: liters, total: Number.isInteger(appState.milkStock) ? appState.milkStock : appState.milkStock.toFixed(1) }));
@@ -2885,6 +2935,45 @@ const app = {
     }
   },
 
+  checkDailyMilkInAppAlert() {
+    const banner = document.getElementById('dailyMilkAlertBanner');
+    if (!banner) return;
+    const managed = this.getUserManagedAnimalTypes();
+    if (!managed.includes('cattle')) {
+      banner.style.display = 'none';
+      return;
+    }
+    const now = new Date();
+    const todayStr = this.getTodayStr();
+    const isAfter17 = now.getHours() >= 17;
+    const isDismissed = localStorage.getItem('fermegest_milk_banner_dismissed') === todayStr;
+    const alreadyMilkedToday = (appState.milkHarvests || []).some(h => {
+      if (!h || !h.date) return false;
+      return String(h.date).split('T')[0] === todayStr && (Number(h.liters) || 0) > 0;
+    });
+
+    if (isAfter17 && !isDismissed && !alreadyMilkedToday) {
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  },
+
+  dismissDailyMilkAlert() {
+    const todayStr = this.getTodayStr();
+    localStorage.setItem('fermegest_milk_banner_dismissed', todayStr);
+    const banner = document.getElementById('dailyMilkAlertBanner');
+    if (banner) {
+      banner.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      banner.style.opacity = '0';
+      banner.style.transform = 'translateY(-10px) scale(0.98)';
+      setTimeout(() => {
+        banner.style.display = 'none';
+        banner.style.opacity = '';
+        banner.style.transform = '';
+      }, 300);
+    }
+  },
   checkDailyEggInAppAlert() {
     const banner = document.getElementById('dailyEggAlertBanner');
     if (!banner) return;
@@ -4242,6 +4331,7 @@ const app = {
   // RENDER MASTER
   // ==========================================
   renderAll() {
+    this.updateLivestockUIThemeAndVisibility();
     try { this.renderDashboard(); } catch (e) { console.warn('renderDashboard error:', e); }
     try { this.renderEggStock(); } catch (e) { console.warn('renderEggStock error:', e); }
     try { this.renderEggProductionChart(); } catch (e) { console.warn('renderEggProductionChart error:', e); }
@@ -4273,6 +4363,7 @@ const app = {
   renderDashboard() {
     this.checkDailyFeedInAppAlert();
     this.checkDailyEggInAppAlert();
+    this.checkDailyMilkInAppAlert();
 
     // Financial calculations
     const totalRevenue = appState.sales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
@@ -4315,7 +4406,20 @@ const app = {
     }
 
     const kpiAnimals = document.getElementById('kpiTotalAnimals');
-    if (kpiAnimals) kpiAnimals.textContent = this.t('kpi_animals_unit', { n: totalAnimals });
+    if (kpiAnimals) {
+      const managed = this.getUserManagedAnimalTypes();
+      const hasPoultry = managed.includes('poultry');
+      const hasMammals = managed.includes('cattle') || managed.includes('sheep');
+      let unitKey = 'kpi_animals_unit_heads';
+      if (hasPoultry && !hasMammals) {
+        unitKey = 'kpi_animals_unit_poultry';
+      } else if (!hasPoultry && hasMammals) {
+        unitKey = 'kpi_animals_unit_cattle';
+      } else {
+        unitKey = 'kpi_animals_unit_heads';
+      }
+      kpiAnimals.textContent = this.t(unitKey, { n: totalAnimals }) || this.t('kpi_animals_unit', { n: totalAnimals });
+    }
 
     // Sidebar Summary Box (Santé de l'Exploitation)
     const sideMargin = document.getElementById('sidebarMarginVal');
@@ -5808,6 +5912,9 @@ const app = {
   detectFeedTypeFromText(text) {
     if (!text) return null;
     const s = String(text);
+    if (/(?<!\p{L})(foin|قرط|القرط|hay)(?!\p{L})/iu.test(s)) return 'foin';
+    if (/(?<!\p{L})(paille|تبن|التبن|straw)(?!\p{L})/iu.test(s)) return 'paille';
+    if (/(?<!\p{L})(luzerne|فصة|فصفصة|الفصة|alfalfa)(?!\p{L})/iu.test(s)) return 'luzerne';
     if (/(?<!\p{L})(bouchon|bouchons|ponte|بوشون|بياض|بياضة)(?!\p{L})/iu.test(s)) return 'bouchon';
     if (/(?<!\p{L})(son|نخالة|النخالة|sedari|سداري|السداري)(?!\p{L})/iu.test(s)) return 'son';
     if (/(?<!\p{L})(blé|ble|قمح|القمح|بليه|البليه)(?!\p{L})/iu.test(s)) return 'ble';
@@ -6037,6 +6144,36 @@ const app = {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const numPrice = Math.max(0, Number(pricePerKg) || 0);
+    if (family === 'foin') {
+      return {
+        id: 'feed-foin',
+        name: isAr ? 'قرط فصة' : (isEn ? 'Alfalfa Hay' : 'Foin de luzerne'),
+        stockKg: 0,
+        pricePerKg: numPrice,
+        texture: 'grain',
+        kgPerCan: 0.25
+      };
+    }
+    if (family === 'paille') {
+      return {
+        id: 'feed-paille',
+        name: isAr ? 'تبن' : (isEn ? 'Bedding Straw' : 'Paille'),
+        stockKg: 0,
+        pricePerKg: numPrice,
+        texture: 'grain',
+        kgPerCan: 0.20
+      };
+    }
+    if (family === 'luzerne') {
+      return {
+        id: 'feed-luzerne',
+        name: isAr ? 'فصة' : (isEn ? 'Alfalfa' : 'Luzerne'),
+        stockKg: 0,
+        pricePerKg: numPrice,
+        texture: 'grain',
+        kgPerCan: 0.25
+      };
+    }
     if (family === 'bouchon') {
       return {
         id: 'feed-bouchon',
@@ -9337,6 +9474,7 @@ const app = {
       appState.animals.unshift(newAnimal);
       this.saveState();
       this.closeModal('modalAddAnimal');
+      this.updateLivestockUIThemeAndVisibility();
       this.renderAll();
       this.showToast(this.t('toast_lot_saved', { name: this.getAnimalDisplayName(newAnimal) }));
 
@@ -9826,7 +9964,11 @@ const app = {
 
       this.populateExpenseFeedTypes();
       this.renderFeedExpenseSuggestions();
-      this.setFeedPurchaseMode(appState.currentFeedPurchaseMode || 'sac');
+      const managed = this.getUserManagedAnimalTypes();
+      const hasRuminants = managed.includes('cattle') || managed.includes('sheep');
+      const hasPoultryOnly = managed.includes('poultry') && !hasRuminants;
+      const defaultMode = (!hasPoultryOnly && hasRuminants) ? 'botte' : 'sac';
+      this.setFeedPurchaseMode(appState.currentFeedPurchaseMode || defaultMode);
     } else if (cat === 'electricite_couveuse') {
       if (feedPurchaseBlock) feedPurchaseBlock.style.display = 'none';
       if (standardRow) standardRow.style.display = 'flex';
@@ -9918,22 +10060,57 @@ const app = {
     appState.currentFeedPurchaseMode = mode;
 
     const btnSac = document.getElementById('btnFeedModeSac');
+    const btnBotte = document.getElementById('btnFeedModeBotte');
     const btnKg = document.getElementById('btnFeedModeKg');
     const btnBoite = document.getElementById('btnFeedModeBoite');
 
     if (btnSac) btnSac.classList.toggle('active-feed-mode-btn', mode === 'sac');
+    if (btnBotte) btnBotte.classList.toggle('active-feed-mode-btn', mode === 'botte');
     if (btnKg) btnKg.classList.toggle('active-feed-mode-btn', mode === 'kg');
     if (btnBoite) btnBoite.classList.toggle('active-feed-mode-btn', mode === 'boite');
 
     const subSac = document.getElementById('subformFeedSac');
+    const subBotte = document.getElementById('subformFeedBotte');
     const subKg = document.getElementById('subformFeedKg');
     const subBoite = document.getElementById('subformFeedBoite');
 
     if (subSac) subSac.style.display = (mode === 'sac') ? 'block' : 'none';
+    if (subBotte) subBotte.style.display = (mode === 'botte') ? 'block' : 'none';
     if (subKg) subKg.style.display = (mode === 'kg') ? 'block' : 'none';
     if (subBoite) subBoite.style.display = (mode === 'boite') ? 'block' : 'none';
 
     this.calcFeedPurchaseFields();
+  },
+
+  setFeedBotteWeightQuick(w) {
+    const input = document.getElementById('feedBotteWeight');
+    if (input) {
+      input.value = w;
+      this.calcFeedPurchaseFields();
+    }
+  },
+
+  updateQuickBotteWeightButtonsState(activeWeight) {
+    [15, 20, 25, 250].forEach(val => {
+      const btn = document.getElementById(`quickBotteWeightBtn_${val}`);
+      if (btn) {
+        if (Number(activeWeight) === val) {
+          btn.classList.remove('btn-outline');
+          btn.classList.add('btn-emerald');
+        } else {
+          btn.classList.add('btn-outline');
+          btn.classList.remove('btn-emerald');
+        }
+      }
+    });
+  },
+
+  setFeedBotteCountQuick(c) {
+    const input = document.getElementById('feedBotteCount');
+    if (input) {
+      input.value = c;
+      this.calcFeedPurchaseFields();
+    }
   },
 
   setFeedBagWeightQuick(w) {
@@ -9988,6 +10165,16 @@ const app = {
       addedKg = bagCount * bagWeight;
       quantity = bagCount;
       unitPrice = bagPrice;
+    } else if (mode === 'botte') {
+      const botteCount = parseFloat(document.getElementById('feedBotteCount')?.value) || 0;
+      const botteWeight = parseFloat(document.getElementById('feedBotteWeight')?.value) || 20;
+      const bottePrice = parseFloat(document.getElementById('feedBottePrice')?.value) || 0;
+      this.updateQuickBotteWeightButtonsState(botteWeight);
+
+      total = botteCount * bottePrice;
+      addedKg = botteCount * botteWeight;
+      quantity = botteCount;
+      unitPrice = bottePrice;
     } else if (mode === 'kg') {
       const kgCount = parseFloat(document.getElementById('feedKgCount')?.value) || 0;
       const kgPrice = parseFloat(document.getElementById('feedKgPrice')?.value) || 0;
@@ -10028,6 +10215,8 @@ const app = {
         extraNote = isAr ? ' (حكك سيكام)' : ' (boîtes Sicam)';
       } else if (mode === 'sac') {
         extraNote = isAr ? ' (أكياس)' : ' (sacs)';
+      } else if (mode === 'botte') {
+        extraNote = isAr ? ' (بالات)' : ' (bottes)';
       }
       recapKg.textContent = `${addedKg.toFixed(1)} ${unitKg}${extraNote}`;
     }
@@ -10081,6 +10270,10 @@ const app = {
         const prefix = isAr ? 'شراء علف' : (isEn ? 'Feed purchase' : 'Achat');
         titleInput.value = `${prefix} ${this.getFeedDisplayName(ft)}`;
       }
+      const fam = this.detectFeedTypeFromText(ft?.name) || this.detectFeedTypeFromText(ft?.id);
+      if (fam === 'foin' || fam === 'paille' || fam === 'luzerne' || fam === 'ensilage') {
+        this.setFeedPurchaseMode('botte');
+      }
     }
     this.calcFeedPurchaseFields();
   },
@@ -10112,6 +10305,9 @@ const app = {
         select.selectedIndex = matchedIndex;
       } else {
         select.value = '__new__';
+      }
+      if (family === 'foin' || family === 'paille' || family === 'luzerne' || family === 'ensilage') {
+        this.setFeedPurchaseMode('botte');
       }
     }
     this.calcFeedPurchaseFields();
@@ -10179,6 +10375,20 @@ const app = {
           if (!title) {
             const sacWord = isAr ? 'أكياس' : (isEn ? 'Bags' : 'Sacs');
             title = `${bagCount} ${sacWord} (${bagWeight}kg)`;
+          }
+        } else if (mode === 'botte') {
+          const botteCount = parseFloat(document.getElementById('feedBotteCount')?.value) || 1;
+          const botteWeight = parseFloat(document.getElementById('feedBotteWeight')?.value) || 20;
+          const bottePrice = parseFloat(document.getElementById('feedBottePrice')?.value) || 0;
+
+          quantity = botteCount;
+          unitPrice = bottePrice;
+          total = botteCount * bottePrice;
+          addedKg = botteCount * botteWeight;
+
+          if (!title) {
+            const botteWord = isAr ? 'بالات' : (isEn ? 'Bales' : 'Bottes');
+            title = `${botteCount} ${botteWord} (${botteWeight}kg)`;
           }
         } else if (mode === 'kg') {
           const kgCount = parseFloat(document.getElementById('feedKgCount')?.value) || 1;
@@ -12773,6 +12983,16 @@ const app = {
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
 
+    const managed = this.getUserManagedAnimalTypes();
+    const hasPoultry = managed.includes('poultry');
+    const hasMammals = managed.includes('cattle') || managed.includes('sheep');
+
+    const btnIncubator = document.getElementById('btnDayEventIncubator');
+    if (btnIncubator) btnIncubator.style.display = hasPoultry ? '' : 'none';
+
+    const btnGestation = document.getElementById('btnDayEventGestation');
+    if (btnGestation) btnGestation.style.display = hasMammals ? '' : 'none';
+
     // 1. Gather calendarEvents
     const dayCalendarEvents = (appState.calendarEvents || []).filter(e => e.date === dateStr);
 
@@ -12800,7 +13020,14 @@ const app = {
         <div style="text-align: center; padding: 1.5rem 1rem; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-md);">
           <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">📅</div>
           <div style="font-weight: 600;">${isAr ? 'لا توجد مواعيد مسجلة في هذا اليوم' : (isEn ? 'No events scheduled on this day' : 'Aucun événement programmé ce jour-là')}</div>
-          <div style="font-size: 0.78rem; margin-top: 0.25rem;">${isAr ? 'يمكنك إضافة موعد تلقيح أو تطعيم بالأزرار أدناه.' : (isEn ? 'You can add a breeding milestone or vaccine using the buttons below.' : 'Utilisez les boutons ci-dessous pour programmer un vêlage ou un vaccin.')}</div>
+          <div style="font-size: 0.78rem; margin-top: 0.25rem;">${
+            hasPoultry && !hasMammals
+              ? (isAr ? 'يمكنك برمجة حضانة تفقيس أو تطعيم بالأزرار أدناه.' : (isEn ? 'Use the buttons below to start an incubation batch or schedule a vaccine.' : 'Utilisez les boutons ci-dessous pour lancer une couveuse ou programmer un vaccin.'))
+              : (!hasPoultry && hasMammals
+                  ? (isAr ? 'يمكنك برمجة موعد ولادة/عشار أو تطعيم بالأزرار أدناه.' : (isEn ? 'Use the buttons below to schedule a gestation milestone or vaccine.' : 'Utilisez les boutons ci-dessous pour programmer un vêlage ou un vaccin.'))
+                  : (isAr ? 'يمكنك برمجة حضانة تفقيس، ولادة أو تطعيم بالأزرار أدناه.' : (isEn ? 'Use the buttons below to schedule an incubation, gestation or vaccine.' : 'Utilisez les boutons ci-dessous pour programmer une couveuse, un vêlage ou un vaccin.'))
+                )
+          }</div>
         </div>
       `;
     } else {
@@ -12889,6 +13116,11 @@ const app = {
       const dInput = document.getElementById('gestationMatingDate');
       if (dInput) dInput.value = curDate;
       this.updateGestationPreview();
+    } else if (type === 'incubator') {
+      this.openModal('modalAddBatch');
+      const dInput = document.getElementById('batchStartDate');
+      if (dInput) dInput.value = curDate;
+      this.updateIncubationPresetInfo();
     } else {
       this.openModal('modalAddVaccine');
       const dInput = document.getElementById('vaccineDate');

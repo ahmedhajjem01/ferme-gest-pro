@@ -268,7 +268,7 @@
               <span>⚙️</span>
               <span data-i18n="btn_manage_data">Options & Sauvegarde</span>
             </button>
-            <button type="button" class="btn btn-primary btn-full drawer-btn" style="margin-top: 0.45rem; background: linear-gradient(135deg, #10b981, #059669); border:none;" onclick="app.closeMobileMenu(); app.openDailyEggModal();">
+            <button type="button" id="drawerEggHarvestBtn" class="btn btn-primary btn-full drawer-btn" style="margin-top: 0.45rem; background: linear-gradient(135deg, #10b981, #059669); border:none;" onclick="app.closeMobileMenu(); app.openDailyEggModal();">
               <span>🥚</span>
               <span data-i18n="daily_eggs_menu_btn">🥚 Récolte Quotidienne des Œufs</span>
             </button>
@@ -491,8 +491,9 @@
 
           </div>
 
+<div class="harvest-cards-grid">
           <!-- Stock d'Œufs & Récolte Card -->
-          <div class="egg-stock-card">
+          <div class="egg-stock-card" id="eggStockCard">
             <div class="egg-stock-info-group">
               <div class="egg-stock-icon-bubble">🥚</div>
               <div>
@@ -523,6 +524,26 @@
               <button type="button" class="btn btn-outline egg-stock-btn" onclick="app.openConsumeEggsModal()" data-i18n="btn_consume_stock" title="Déduire consommation ou pertes">
                 🍽️ Conso
               </button>
+            </div>
+          </div>
+
+          
+          <!-- Stock de Lait & Réserve / Tank à Lait Card (Bovins) -->
+          <div id="milkStockCard" class="milk-stock-card" style="display: none;">
+            <div class="milk-stock-info-group">
+              <div class="milk-stock-icon-bubble">🥛</div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0;" data-i18n="milk_stock_title">Tank à Lait & Réserve</h3>
+                  <span class="badge-pill text-sky" data-i18n="milk_stock_badge" style="font-size: 0.72rem; background: rgba(2, 132, 199, 0.15); color: #0284c7;">Frais & Disponible</span>
+                </div>
+                <div style="font-size: 1.7rem; font-weight: 900; color: var(--text-main); line-height: 1.15;">
+                  <span id="milkStockMainCount">0</span> <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);" data-i18n="unit_liters">Litres</span>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;" id="milkStockEquiv">
+                  ~0 Bidons (20L)
+                </div>
+              </div>
             </div>
           </div>
 
@@ -559,23 +580,7 @@
             </div>
           </div>
 
-          <!-- Stock de Lait & Réserve / Tank à Lait Card (Bovins) -->
-          <div id="milkStockCard" class="milk-stock-card" style="display: none;">
-            <div class="milk-stock-info-group">
-              <div class="milk-stock-icon-bubble">🥛</div>
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
-                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0;" data-i18n="milk_stock_title">Tank à Lait & Réserve</h3>
-                  <span class="badge-pill text-sky" data-i18n="milk_stock_badge" style="font-size: 0.72rem; background: rgba(2, 132, 199, 0.15); color: #0284c7;">Frais & Disponible</span>
-                </div>
-                <div style="font-size: 1.7rem; font-weight: 900; color: var(--text-main); line-height: 1.15;">
-                  <span id="milkStockMainCount">0</span> <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);" data-i18n="unit_liters">Litres</span>
-                </div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;" id="milkStockEquiv">
-                  ~0 Bidons (20L)
-                </div>
-              </div>
-            </div>
+          
 
             <!-- Action buttons: 2x2 grid -->
             <div class="egg-stock-actions-grid">
@@ -1817,9 +1822,12 @@
             <!-- Mode Selector -->
             <div style="margin-bottom: 0.75rem;">
               <label style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.35rem;" data-i18n="lbl_feed_purchase_mode">Comment achetez-vous cet aliment ?</label>
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.4rem;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 0.35rem;">
                 <button type="button" id="btnFeedModeSac" class="btn btn-sm btn-outline active-feed-mode-btn" style="font-size: 0.78rem; font-weight: 800; padding: 0.45rem 0.2rem; text-align: center;" onclick="app.setFeedPurchaseMode('sac')">
                   🛍️ <span data-i18n="opt_mode_sac">Par Sac</span>
+                </button>
+                <button type="button" id="btnFeedModeBotte" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 800; padding: 0.45rem 0.2rem; text-align: center;" onclick="app.setFeedPurchaseMode('botte')">
+                  🌾 <span data-i18n="opt_mode_botte">Par Botte</span>
                 </button>
                 <button type="button" id="btnFeedModeKg" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 800; padding: 0.45rem 0.2rem; text-align: center;" onclick="app.setFeedPurchaseMode('kg')">
                   ⚖️ <span data-i18n="opt_mode_kg">Au Kilo</span>
@@ -1849,6 +1857,36 @@
                 <div class="form-group flex-1" style="margin-bottom: 0;">
                   <label for="feedBagPrice" style="font-size: 0.74rem; font-weight: 700;"><span data-i18n="lbl_bag_price">Prix du sac</span> (<span class="currency-label">DT</span>)</label>
                   <input type="number" id="feedBagPrice" class="input-field" step="0.01" min="0" oninput="app.calcFeedPurchaseFields()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Subform 1bis: Par Botte / Balle (Fourrage, foin, paille pour vaches et moutons) -->
+            <div id="subformFeedBotte" style="display: none;">
+              <div class="form-row" style="margin-bottom: 0.65rem; gap: 0.5rem; align-items: flex-start;">
+                <div class="form-group flex-1" style="margin-bottom: 0;">
+                  <label for="feedBotteCount" style="font-size: 0.74rem; font-weight: 700;" data-i18n="lbl_botte_count">Nombre de bottes / balles</label>
+                  <input type="number" id="feedBotteCount" class="input-field" step="1" min="1" value="10" oninput="app.calcFeedPurchaseFields()">
+                  <div style="display: flex; gap: 0.25rem; margin-top: 0.35rem; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteCountQuick(10)">10</button>
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteCountQuick(25)">25</button>
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteCountQuick(50)">50</button>
+                    <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteCountQuick(100)">100</button>
+                  </div>
+                </div>
+                <div class="form-group flex-1" style="margin-bottom: 0;">
+                  <label for="feedBotteWeight" style="font-size: 0.74rem; font-weight: 700;" data-i18n="lbl_botte_weight">Poids par botte (kg)</label>
+                  <input type="number" id="feedBotteWeight" class="input-field" step="1" min="1" value="20" oninput="app.calcFeedPurchaseFields()">
+                  <div style="display: flex; gap: 0.25rem; margin-top: 0.35rem; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" id="quickBotteWeightBtn_15" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteWeightQuick(15)">15 kg</button>
+                    <button type="button" id="quickBotteWeightBtn_20" class="btn btn-xs btn-emerald" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteWeightQuick(20)">20 kg</button>
+                    <button type="button" id="quickBotteWeightBtn_25" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteWeightQuick(25)">25 kg</button>
+                    <button type="button" id="quickBotteWeightBtn_250" class="btn btn-xs btn-outline" style="font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" onclick="app.setFeedBotteWeightQuick(250)">250 kg</button>
+                  </div>
+                </div>
+                <div class="form-group flex-1" style="margin-bottom: 0;">
+                  <label for="feedBottePrice" style="font-size: 0.74rem; font-weight: 700;"><span data-i18n="lbl_botte_price">Prix de la botte</span> (<span class="currency-label">DT</span>)</label>
+                  <input type="number" id="feedBottePrice" class="input-field" step="0.1" min="0" oninput="app.calcFeedPurchaseFields()">
                 </div>
               </div>
             </div>
@@ -2397,6 +2435,14 @@
               </div>
             </div>
           </div>
+
+          <button type="submit" class="btn btn-primary btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem;" data-i18n="btn_save_stock_magasin">
+            Enregistrer les Stocks Magasin
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Modal: Enregistrement Traite Quotidienne du Lait -->
   <div id="modalDailyMilk" class="modal-overlay hidden">
@@ -3140,12 +3186,15 @@
           <!-- Dynamically populated -->
         </div>
       </div>
-      <div class="modal-footer" style="justify-content: space-between;">
-        <div style="display: flex; gap: 0.4rem;">
-          <button type="button" class="btn btn-sm btn-outline bold" onclick="app.openAddEventForDate('gestation')">
+      <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+          <button type="button" id="btnDayEventIncubator" class="btn btn-sm btn-outline bold" onclick="app.openAddEventForDate('incubator')">
+            <span data-i18n="btn_add_incubator_short">🐣 + Couveuse</span>
+          </button>
+          <button type="button" id="btnDayEventGestation" class="btn btn-sm btn-outline bold" onclick="app.openAddEventForDate('gestation')">
             <span data-i18n="btn_add_gestation_short">🤰 + Gestation</span>
           </button>
-          <button type="button" class="btn btn-sm btn-outline bold" onclick="app.openAddEventForDate('vaccine')">
+          <button type="button" id="btnDayEventVaccine" class="btn btn-sm btn-outline bold" onclick="app.openAddEventForDate('vaccine')">
             <span data-i18n="btn_add_vaccine_short">💉 + Vaccin</span>
           </button>
         </div>

@@ -4774,3 +4774,24 @@ label {
     gap: 0.9rem;
   }
 }
+
+
+/* Responsive container when both egg & milk harvest cards are visible */
+.harvest-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  margin-bottom: 1.35rem;
+}
+@media (min-width: 960px) {
+  .harvest-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    align-items: stretch;
+  }
+  .harvest-cards-grid .egg-stock-card,
+  .harvest-cards-grid .milk-stock-card {
+    margin-bottom: 0;
+    height: 100%;
+  }
+}

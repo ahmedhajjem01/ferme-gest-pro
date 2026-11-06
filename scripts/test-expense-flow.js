@@ -121,4 +121,27 @@ const secondExp = window.appState.expenses[0];
 assert(secondExp.title.includes('50kg'), `Auto-generated title should contain "50kg", got "${secondExp.title}"`);
 console.log('✔ Test 2 passed: Empty title correctly auto-generates description:', secondExp.title);
 
+// Test 3: Feed expense with 'botte' mode (15 bottes de foin à 20kg = 300kg, 12 DT/botte = 180 DT)
+window.appState.currentFeedPurchaseMode = 'botte';
+document.getElementById('expenseTitle').value = 'Foin de luzerne pour vaches';
+document.getElementById('feedBotteCount').value = '15';
+document.getElementById('feedBotteWeight').value = '20';
+document.getElementById('feedBottePrice').value = '12';
+document.getElementById('expenseFeedTypeSelect').value = '__new__';
+
+app.handleSaveExpense({ preventDefault: () => {} });
+
+assert.strictEqual(window.appState.expenses.length, 3);
+const botteExp = window.appState.expenses[0];
+assert.strictEqual(botteExp.total, 180, 'Total should be 15 * 12 = 180 DT');
+assert.strictEqual(botteExp.feedStockAddedKg, 300, 'Feed stock added should be 15 * 20 = 300 kg');
+assert.strictEqual(botteExp.quantity, 15, 'Quantity should be 15 bottes');
+assert.strictEqual(botteExp.unitPrice, 12, 'Unit price should be 12 DT/botte');
+
+const foinFeed = window.appState.feedTypes.find(f => f.id === 'feed-foin' || f.name.toLowerCase().includes('foin') || f.name.toLowerCase().includes('قرط'));
+assert(foinFeed, 'Feed for foin should have been created');
+assert.strictEqual(foinFeed.stockKg, 300, 'Stock of foin should be 300 kg');
+assert.strictEqual(foinFeed.pricePerKg, 0.6, 'Price per kg should be 180 / 300 = 0.6 DT/kg');
+console.log('✔ Test 3 passed: Botte/Balle mode successfully registered 15 bottes = 300kg foin @ 180 DT!');
+
 console.log('\n🎉 ALL EXPENSE PURCHASE TESTS PASSED SUCCESSFULLY!');
