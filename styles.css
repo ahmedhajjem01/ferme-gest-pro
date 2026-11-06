@@ -895,7 +895,8 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   transform: scale(0.97);
 }
 @media (max-width: 680px) {
-  .egg-stock-card {
+  .egg-stock-card,
+  .milk-stock-card {
     flex-direction: column;
     align-items: stretch;
     padding: 1rem;
@@ -4778,15 +4779,14 @@ label {
 
 /* Responsive container when both egg & milk harvest cards are visible */
 .harvest-cards-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 1.15rem;
   margin-bottom: 1.35rem;
 }
-@media (min-width: 960px) {
+@media (min-width: 1024px) {
   .harvest-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
     align-items: stretch;
   }
   .harvest-cards-grid .egg-stock-card,

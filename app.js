@@ -1430,6 +1430,11 @@ const app = {
       milkChartCard.style.display = hasCattle ? '' : 'none';
     }
 
+    const harvestCardsGrid = document.querySelector('.harvest-cards-grid');
+    if (harvestCardsGrid) {
+      harvestCardsGrid.style.display = (hasPoultry || hasCattle) ? '' : 'none';
+    }
+
     const drawerEggBtn = document.getElementById('drawerEggHarvestBtn');
     if (drawerEggBtn) {
       drawerEggBtn.style.display = hasPoultry ? '' : 'none';

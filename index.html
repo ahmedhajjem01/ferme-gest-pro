@@ -527,7 +527,6 @@
             </div>
           </div>
 
-          
           <!-- Stock de Lait & Réserve / Tank à Lait Card (Bovins) -->
           <div id="milkStockCard" class="milk-stock-card" style="display: none;">
             <div class="milk-stock-info-group">
@@ -545,42 +544,6 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Statistiques & Courbe de Récolte des Œufs (Line Chart) -->
-          <div id="eggProductionChartCard" class="panel-card egg-chart-panel">
-            <div class="panel-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 1.3rem;">📈</span>
-                <div>
-                  <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800;" data-i18n="egg_chart_title">Statistiques & Courbe des Œufs</h3>
-                  <small class="text-muted" data-i18n="egg_chart_sub">Évolution journalière de la récolte (Axe X : Date &bull; Axe Y : Nombre d'œufs)</small>
-                </div>
-              </div>
-
-              <!-- Filtres de période : 7j, 14j, 30j, Tout -->
-              <div class="egg-chart-period-filters" style="display: inline-flex; gap: 0.25rem; background: var(--bg-card); padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-                <button type="button" class="egg-period-btn active" data-period="7d" onclick="app.setEggChartPeriod('7d')" data-i18n="egg_chart_period_7d">7j</button>
-                <button type="button" class="egg-period-btn" data-period="14d" onclick="app.setEggChartPeriod('14d')" data-i18n="egg_chart_period_14d">14j</button>
-                <button type="button" class="egg-period-btn" data-period="30d" onclick="app.setEggChartPeriod('30d')" data-i18n="egg_chart_period_30d">30j</button>
-                <button type="button" class="egg-period-btn" data-period="all" onclick="app.setEggChartPeriod('all')" data-i18n="egg_chart_period_all">Tout</button>
-              </div>
-            </div>
-
-            <!-- Bandeau Métriques Clés (Total, Moyenne/j, Record Pic, Taux de ponte) -->
-            <div class="egg-chart-metrics-strip" id="eggChartMetricsStrip">
-              <!-- Rempli dynamiquement -->
-            </div>
-
-            <!-- Conteneur du Graphique Vectoriel (SVG Line Chart) -->
-            <div class="panel-body" style="padding: 0.75rem 0.65rem 0.5rem 0.65rem; overflow-x: auto;">
-              <div id="eggChartContainer" style="width: 100%; min-width: 300px; position: relative;">
-                <!-- Rendu dynamique du graphique -->
-              </div>
-            </div>
-          </div>
-
-          
 
             <!-- Action buttons: 2x2 grid -->
             <div class="egg-stock-actions-grid">
@@ -598,43 +561,75 @@
               </button>
             </div>
           </div>
+        </div>
 
-          <!-- Statistiques & Courbe de Traite / Production de Lait (Line Chart) -->
-          <div id="milkProductionChartCard" class="panel-card milk-chart-panel" style="display: none;">
-            <div class="panel-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 1.3rem;">🥛</span>
-                <div>
-                  <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800;" data-i18n="milk_chart_title">Statistiques & Courbe du Lait</h3>
-                  <small class="text-muted" data-i18n="milk_chart_sub">Évolution journalière de la traite (Axe X : Date • Axe Y : Litres de lait)</small>
-                </div>
-              </div>
-
-              <!-- Filtres de période : 7j, 14j, 30j, Tout -->
-              <div class="milk-chart-period-filters" style="display: inline-flex; gap: 0.25rem; background: var(--bg-card); padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-                <button type="button" class="milk-period-btn active" data-period="7d" onclick="app.setMilkChartPeriod('7d')" data-i18n="milk_chart_period_7d">7j</button>
-                <button type="button" class="milk-period-btn" data-period="14d" onclick="app.setMilkChartPeriod('14d')" data-i18n="milk_chart_period_14d">14j</button>
-                <button type="button" class="milk-period-btn" data-period="30d" onclick="app.setMilkChartPeriod('30d')" data-i18n="milk_chart_period_30d">30j</button>
-                <button type="button" class="milk-period-btn" data-period="all" onclick="app.setMilkChartPeriod('all')" data-i18n="milk_chart_period_all">Tout</button>
+        <!-- Statistiques & Courbe de Récolte des Œufs (Line Chart) -->
+        <div id="eggProductionChartCard" class="panel-card egg-chart-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 1.3rem;">📈</span>
+              <div>
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800;" data-i18n="egg_chart_title">Statistiques & Courbe des Œufs</h3>
+                <small class="text-muted" data-i18n="egg_chart_sub">Évolution journalière de la récolte (Axe X : Date &bull; Axe Y : Nombre d'œufs)</small>
               </div>
             </div>
 
-            <!-- Bandeau Métriques Clés (Total L, Moyenne L/j, Record Pic, Rendement/vache) -->
-            <div class="milk-chart-metrics-strip" id="milkChartMetricsStrip">
-              <!-- Rempli dynamiquement -->
-            </div>
-
-            <!-- Conteneur du Graphique Vectoriel (SVG Line Chart) -->
-            <div class="panel-body" style="padding: 0.75rem 0.65rem 0.5rem 0.65rem; overflow-x: auto;">
-              <div id="milkChartContainer" style="width: 100%; min-width: 300px; position: relative;">
-                <!-- Rendu dynamique du graphique -->
-              </div>
+            <!-- Filtres de période : 7j, 14j, 30j, Tout -->
+            <div class="egg-chart-period-filters" style="display: inline-flex; gap: 0.25rem; background: var(--bg-card); padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <button type="button" class="egg-period-btn active" data-period="7d" onclick="app.setEggChartPeriod('7d')" data-i18n="egg_chart_period_7d">7j</button>
+              <button type="button" class="egg-period-btn" data-period="14d" onclick="app.setEggChartPeriod('14d')" data-i18n="egg_chart_period_14d">14j</button>
+              <button type="button" class="egg-period-btn" data-period="30d" onclick="app.setEggChartPeriod('30d')" data-i18n="egg_chart_period_30d">30j</button>
+              <button type="button" class="egg-period-btn" data-period="all" onclick="app.setEggChartPeriod('all')" data-i18n="egg_chart_period_all">Tout</button>
             </div>
           </div>
 
+          <!-- Bandeau Métriques Clés (Total, Moyenne/j, Record Pic, Taux de ponte) -->
+          <div class="egg-chart-metrics-strip" id="eggChartMetricsStrip">
+            <!-- Rempli dynamiquement -->
+          </div>
 
+          <!-- Conteneur du Graphique Vectoriel (SVG Line Chart) -->
+          <div class="panel-body" style="padding: 0.75rem 0.65rem 0.5rem 0.65rem; overflow-x: auto;">
+            <div id="eggChartContainer" style="width: 100%; min-width: 300px; position: relative;">
+              <!-- Rendu dynamique du graphique -->
+            </div>
+          </div>
+        </div>
 
-          <!-- Farm Daily Feed & Ration Card (Table Agronomique Réelle) -->
+        <!-- Statistiques & Courbe de Traite / Production de Lait (Line Chart) -->
+        <div id="milkProductionChartCard" class="panel-card milk-chart-panel" style="display: none;">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 1.3rem;">🥛</span>
+              <div>
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800;" data-i18n="milk_chart_title">Statistiques & Courbe du Lait</h3>
+                <small class="text-muted" data-i18n="milk_chart_sub">Évolution journalière de la traite (Axe X : Date • Axe Y : Litres de lait)</small>
+              </div>
+            </div>
+
+            <!-- Filtres de période : 7j, 14j, 30j, Tout -->
+            <div class="milk-chart-period-filters" style="display: inline-flex; gap: 0.25rem; background: var(--bg-card); padding: 0.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <button type="button" class="milk-period-btn active" data-period="7d" onclick="app.setMilkChartPeriod('7d')" data-i18n="milk_chart_period_7d">7j</button>
+              <button type="button" class="milk-period-btn" data-period="14d" onclick="app.setMilkChartPeriod('14d')" data-i18n="milk_chart_period_14d">14j</button>
+              <button type="button" class="milk-period-btn" data-period="30d" onclick="app.setMilkChartPeriod('30d')" data-i18n="milk_chart_period_30d">30j</button>
+              <button type="button" class="milk-period-btn" data-period="all" onclick="app.setMilkChartPeriod('all')" data-i18n="milk_chart_period_all">Tout</button>
+            </div>
+          </div>
+
+          <!-- Bandeau Métriques Clés (Total L, Moyenne L/j, Record Pic, Rendement/vache) -->
+          <div class="milk-chart-metrics-strip" id="milkChartMetricsStrip">
+            <!-- Rempli dynamiquement -->
+          </div>
+
+          <!-- Conteneur du Graphique Vectoriel (SVG Line Chart) -->
+          <div class="panel-body" style="padding: 0.75rem 0.65rem 0.5rem 0.65rem; overflow-x: auto;">
+            <div id="milkChartContainer" style="width: 100%; min-width: 300px; position: relative;">
+              <!-- Rendu dynamique du graphique -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Farm Daily Feed & Ration Card (Table Agronomique Réelle) -->
           <div id="farmFeedSummaryCard" class="farm-feed-summary-card">
             
             <!-- Diminished Initial Mode (si aucune donnée saisie dans le début) -->
