@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="fr" data-theme="dark">
 <head>
+  <script>
+    // Clean public domain redirect: remove personal vercel account slug from URL
+    (function() {
+      try {
+        var h = window.location.hostname;
+        if (h && (h.indexOf('ahmedhajjem') !== -1 || h.indexOf('-projects.vercel.app') !== -1)) {
+          window.location.replace('https://fermegestpro.vercel.app' + window.location.pathname + window.location.search + window.location.hash);
+        }
+      } catch(e) {}
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0b1120">
