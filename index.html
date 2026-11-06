@@ -2251,10 +2251,7 @@
               <label for="dailyEggCount" class="form-label" data-i18n="daily_eggs_input_lbl" style="font-weight: 700;">
                 Nombre d'œufs récoltés
               </label>
-              <div style="position: relative;">
-                <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" required oninput="app.updateDailyEggPreview()" style="font-size: 1.35rem; font-weight: 800; padding: 0.65rem 0.85rem; color: var(--primary); letter-spacing: 0.03em;">
-                <span style="position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted); font-size: 0.85rem;" data-i18n="unit_eggs">🥚 Œufs</span>
-              </div>
+              <input type="number" id="dailyEggCount" class="input-field" min="1" max="100000" required oninput="app.updateDailyEggPreview()" placeholder="0" style="font-size: 1.35rem; font-weight: 800; padding: 0.65rem 0.85rem; color: var(--primary); letter-spacing: 0.03em;">
             </div>
           </div>
 
@@ -2432,10 +2429,7 @@
             <label for="dailyMilkLiters" class="form-label" data-i18n="lbl_milk_liters" style="font-weight: 700;">
               Volume de lait récolté (Litres)
             </label>
-            <div style="position: relative;">
-              <input type="number" id="dailyMilkLiters" class="input-field" step="0.5" min="0.5" max="100000" required oninput="app.updateDailyMilkPreview()" style="font-size: 1.35rem; font-weight: 800; padding: 0.65rem 0.85rem; color: #0284c7; letter-spacing: 0.03em;">
-              <span style="position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted); font-size: 0.85rem;" data-i18n="unit_liters_short">L</span>
-            </div>
+            <input type="number" id="dailyMilkLiters" class="input-field" step="0.5" min="0.5" max="100000" required oninput="app.updateDailyMilkPreview()" placeholder="0" style="font-size: 1.35rem; font-weight: 800; padding: 0.65rem 0.85rem; color: #0284c7; letter-spacing: 0.03em;">
           </div>
 
           <div class="form-group" style="margin-bottom: 1.15rem;">
