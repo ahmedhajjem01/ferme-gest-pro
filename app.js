@@ -800,7 +800,7 @@ const app = {
         const input = document.getElementById('dailyEggCount');
         if (input) {
           input.value = '';
-          input.placeholder = '0';
+          input.placeholder = '';
         }
       }
 
@@ -2183,7 +2183,7 @@ const app = {
     }
     if (input) {
       input.value = '';
-      input.placeholder = '0';
+      input.placeholder = '';
       setTimeout(() => {
         input.focus();
         input.select();

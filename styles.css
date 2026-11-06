@@ -4795,3 +4795,11 @@ label {
     height: 100%;
   }
 }
+
+
+/* Clean input focusing - never show placeholder when focused */
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
+}
