@@ -3915,7 +3915,19 @@ const app = {
 
     // Ne jamais accumuler plus de 2 notifications simultanées pour ne pas masquer les formulaires
     while (container.children.length >= 2) {
-      if (container.firstElementChild) container.firstElementChild.remove();
+      const prevCount = container.children.length;
+      if (container.firstElementChild && typeof container.firstElementChild.remove === 'function') {
+        container.firstElementChild.remove();
+      }
+      if (container.children.length >= prevCount) {
+        if (typeof container.removeChild === 'function' && container.children[0]) {
+          container.removeChild(container.children[0]);
+        } else if (Array.isArray(container.children)) {
+          container.children.shift();
+        } else {
+          break;
+        }
+      }
     }
 
     if (window.MobileBridge) {
@@ -4438,18 +4450,31 @@ const app = {
       kpiBadge.style.color = marginPercent >= 0 ? 'var(--primary)' : 'var(--accent-rose)';
     }
 
-    const kpiAnimals = document.getElementById('kpiTotalAnimals');
+        const kpiAnimals = document.getElementById('kpiTotalAnimals');
     if (kpiAnimals) {
-      const managed = this.getUserManagedAnimalTypes();
-      const hasPoultry = managed.includes('poultry');
-      const hasMammals = managed.includes('cattle') || managed.includes('sheep');
+      const livingLots = (appState.animals || []).filter(a => (Number(a.currentQuantity) || 0) > 0);
       let unitKey = 'kpi_animals_unit_heads';
-      if (hasPoultry && !hasMammals) {
-        unitKey = 'kpi_animals_unit_poultry';
-      } else if (!hasPoultry && hasMammals) {
-        unitKey = 'kpi_animals_unit_cattle';
+      if (livingLots.length > 0) {
+        const hasActualPoultry = livingLots.some(a => !this.isMammalSpecies(a.species));
+        const hasActualMammals = livingLots.some(a => this.isMammalSpecies(a.species));
+        if (hasActualPoultry && !hasActualMammals) {
+          unitKey = 'kpi_animals_unit_poultry';
+        } else if (!hasActualPoultry && hasActualMammals) {
+          unitKey = 'kpi_animals_unit_cattle';
+        } else {
+          unitKey = 'kpi_animals_unit_heads';
+        }
       } else {
-        unitKey = 'kpi_animals_unit_heads';
+        const managed = this.getUserManagedAnimalTypes();
+        const hasPoultry = managed.includes('poultry');
+        const hasMammals = managed.includes('cattle') || managed.includes('sheep');
+        if (hasPoultry && !hasMammals) {
+          unitKey = 'kpi_animals_unit_poultry';
+        } else if (!hasPoultry && hasMammals) {
+          unitKey = 'kpi_animals_unit_cattle';
+        } else {
+          unitKey = 'kpi_animals_unit_heads';
+        }
       }
       kpiAnimals.textContent = this.t(unitKey, { n: totalAnimals }) || this.t('kpi_animals_unit', { n: totalAnimals });
     }
@@ -9664,7 +9689,7 @@ const app = {
       const stageStr = this.translateStage(lot.stage);
       breedEl.textContent = lotNum ? `${lotNum} • ${stageStr}` : stageStr;
     }
-    if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? 'طائر' : 'sujets'}`;
+    if (flockEl) flockEl.textContent = `${lot.currentQuantity} ${appState.lang === 'ar' ? (this.isMammalSpecies(lot.species) ? 'رأس' : 'طائر') : (this.isMammalSpecies(lot.species) ? 'têtes' : 'sujets')}`;
     if (countInput) {
       countInput.value = '';
       countInput.placeholder = '';
@@ -11487,7 +11512,7 @@ const app = {
     // Déduction automatique du lot lié
     if (linkedLotId && linkedLotId !== 'none') {
       const lot = appState.animals.find(a => a.id === linkedLotId);
-      if (lot && (productType === 'poulet' || productType === 'poussin' || productType === 'pintade' || productType === 'canard' || productType.startsWith('poulet') || productType.startsWith('poussin'))) {
+      if (lot && (productType === 'poulet' || productType === 'poussin' || productType === 'pintade' || productType === 'canard' || productType.startsWith('poulet') || productType.startsWith('poussin') || this.isMammalSpecies(lot.species) || this.isMammalSpecies(productType))) {
         if (quantity > lot.currentQuantity) {
           const isAr = appState.lang === 'ar';
           this.confirmDialog({
