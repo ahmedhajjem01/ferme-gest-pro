@@ -187,6 +187,16 @@
             this.handleAuthStateChange('INITIAL_SESSION', data.session);
           } else {
             this.updateUI();
+      if (window.app) {
+        if (typeof app.updateUserHeaderUI === 'function') app.updateUserHeaderUI();
+        if (typeof app.updateLivestockUIThemeAndVisibility === 'function') app.updateLivestockUIThemeAndVisibility();
+        if (typeof app.closeModal === 'function') {
+          app.closeModal('modalOnboarding');
+          app.closeModal('modalAnimalSelection');
+          app.closeModal('modalAuthPrompt');
+          app.closeModal('modalAuth');
+        }
+      }
           }
         }).catch(err => {
           console.warn('[SupabaseAuth] getSession error:', err);
@@ -275,8 +285,9 @@
           } catch (e) {}
         }
 
-        // Close auth prompt modals
+        // Close all onboarding and auth prompt modals
         if (window.app && typeof app.closeModal === 'function') {
+          app.closeModal('modalOnboarding');
           app.closeModal('modalAuthPrompt');
           app.closeModal('modalGuestWarning');
           app.closeModal('modalAuth');
@@ -289,7 +300,9 @@
             }, 400);
           }
         }
-
+        try {
+          localStorage.setItem('fermegest_onboarding_completed', 'true');
+        } catch (e) {}
         this.updateUI();
         await this.syncNow(false);
         this.subscribeRealtime();
@@ -625,6 +638,21 @@
         this.updateSyncBadge('connected');
         this.updateProfileModalUI();
 
+        if (state.userProfile && this.client && this.client.auth) {
+          try {
+            this.client.auth.updateUser({
+              data: {
+                full_name: state.userProfile.name,
+                farmer_name: state.userProfile.name,
+                birth_date: state.userProfile.birthDate,
+                age: state.userProfile.age,
+                avatar: state.userProfile.avatar,
+                gender: state.userProfile.gender
+              }
+            }).catch(() => {});
+          } catch (e) {}
+        }
+
         // Broadcast to other sessions/devices
         this.broadcastCurrentState();
 
@@ -840,16 +868,40 @@
         state.lang = cloudData.lang;
       }
 
-      // Restore userProfile if provided by cloud
-      if (cloudData.userProfile && typeof cloudData.userProfile === 'object') {
-        const localProf = state.userProfile;
-        if (!localProf || (cloudData.userProfile.updatedAt && Number(cloudData.userProfile.updatedAt) >= Number(localProf.updatedAt || 0))) {
-          state.userProfile = cloudData.userProfile;
-          try {
-            localStorage.setItem('fermegest_user_profile', JSON.stringify(cloudData.userProfile));
-            localStorage.setItem('fermegest_onboarding_completed', 'true');
-          } catch (e) {}
-        }
+      // Restore userProfile if provided by cloud (canonical source of truth for this account)
+      if (cloudData.userProfile && typeof cloudData.userProfile === 'object' && cloudData.userProfile.name) {
+        state.userProfile = {
+          ...cloudData.userProfile,
+          avatar: cloudData.userProfile.avatar || 'avatar-m1'
+        };
+        try {
+          localStorage.setItem('fermegest_user_profile', JSON.stringify(state.userProfile));
+          localStorage.setItem('fermegest_onboarding_completed', 'true');
+          if (Array.isArray(state.userProfile.managedAnimals) && state.userProfile.managedAnimals.length > 0) {
+            localStorage.setItem('fermegest_managed_animal_types', JSON.stringify(state.userProfile.managedAnimals));
+            localStorage.setItem('fermegest_animals_selection_completed', 'true');
+          }
+        } catch (e) {}
+      } else if (this.currentUser && this.currentUser.user_metadata && (this.currentUser.user_metadata.full_name || this.currentUser.user_metadata.farmer_name || this.currentUser.user_metadata.name)) {
+        const meta = this.currentUser.user_metadata;
+        const metaName = meta.farmer_name || meta.full_name || meta.name || (this.currentUser.email ? this.currentUser.email.split('@')[0] : 'Éleveur');
+        const metaAvatar = meta.avatar || 'avatar-m1';
+        const metaBirth = meta.birth_date || meta.birthDate || null;
+        const metaAge = meta.age ? Number(meta.age) : (metaBirth && window.app && typeof app.calculateAge === 'function' ? app.calculateAge(metaBirth) : null);
+
+        state.userProfile = {
+          name: metaName,
+          birthDate: metaBirth,
+          age: metaAge,
+          avatar: metaAvatar,
+          gender: (metaAvatar && metaAvatar.includes('-f')) ? 'female' : 'male',
+          managedAnimals: state.userProfile?.managedAnimals || ['poultry'],
+          updatedAt: Date.now()
+        };
+        try {
+          localStorage.setItem('fermegest_user_profile', JSON.stringify(state.userProfile));
+          localStorage.setItem('fermegest_onboarding_completed', 'true');
+        } catch (e) {}
       }
 
       // Egg & feed stock handling
@@ -953,6 +1005,7 @@
 
       // Sync window.appState
       if (window.appState) {
+        window.appState.userProfile = state.userProfile;
         window.appState.currency = state.currency;
         window.appState.lang = state.lang;
         window.appState.theme = state.theme;
@@ -1009,6 +1062,14 @@
 
       if (window.app) {
         if (app.updateCurrencySymbols) app.updateCurrencySymbols();
+        if (app.updateUserHeaderUI) app.updateUserHeaderUI();
+        if (app.updateLivestockUIThemeAndVisibility) app.updateLivestockUIThemeAndVisibility();
+        if (app.closeModal) {
+          app.closeModal('modalOnboarding');
+          app.closeModal('modalAnimalSelection');
+          app.closeModal('modalAuthPrompt');
+          app.closeModal('modalAuth');
+        }
         if (app.renderAll) app.renderAll();
       }
     },

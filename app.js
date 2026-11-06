@@ -215,12 +215,26 @@ const app = {
     this.renderAll();
     document.querySelectorAll('#animalPortionBanner, [id*="PortionBanner"]').forEach(el => el.remove());
 
-    // First-time User Onboarding & Animal Types check
-    const onboardingDone = localStorage.getItem('fermegest_onboarding_completed') === 'true';
+        // First-time User Onboarding & Animal Types check
+    const hasSupabaseSession = (function() {
+      try {
+        if (window.appAuth && window.appAuth.currentUser) return true;
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && ((k.startsWith('sb-') && k.endsWith('-auth-token')) || k === 'supabase.auth.token')) {
+            const val = localStorage.getItem(k);
+            if (val && val.includes('access_token')) return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    })();
+
+    const onboardingDone = localStorage.getItem('fermegest_onboarding_completed') === 'true' || hasSupabaseSession;
     const animalsDone = localStorage.getItem('fermegest_animals_selection_completed') === 'true';
     if (!onboardingDone) {
       this.openOnboardingModal();
-    } else if (!animalsDone) {
+    } else if (!animalsDone && !hasSupabaseSession) {
       this.updateUserHeaderUI();
       setTimeout(() => this.openAnimalSelectionModal(), 400);
     } else {
@@ -1046,6 +1060,13 @@ const app = {
       } else {
         badge.classList.add('hidden');
       }
+    }
+  },
+
+  switchToLoginFromOnboarding() {
+    this.closeModal('modalOnboarding');
+    if (window.appAuth && typeof window.appAuth.openModal === 'function') {
+      window.appAuth.openModal();
     }
   },
 
