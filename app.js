@@ -12288,23 +12288,6 @@ const app = {
           <span>🥛 <strong>${g.isBovine ? (isAr ? 'التجفيف: ' : 'Tarissement : ') : (isAr ? 'التطعيم: ' : 'Vaccin : ')}${this.formatDateFR(g.dryDate)}</strong></span>
         </div>
 
-        <div style="margin: 0.65rem 0 0.45rem; padding-top: 0.45rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem;">
-          ${(batch.eggSource === 'farm' || batch.stockDeducted) ? `
-            <span class="badge-pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; font-size: 0.75rem;">
-              🏡 Œufs de la ferme (Déduit)
-            </span>
-          ` : `
-            <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
-              <span class="badge-pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 700; font-size: 0.75rem;">
-                🛒 Non déduit du stock
-              </span>
-              <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.73rem; padding: 0.15rem 0.5rem;" onclick="app.deductBatchFromFarmStock('${batch.id}')">
-                🏡 Déduire du stock
-              </button>
-            </div>
-          `}
-        </div>
-
         <div class="batch-card-actions" style="display: flex; gap: 0.5rem; margin-top: auto;">
           <button type="button" class="btn btn-sm btn-primary flex-1 bold" style="background: linear-gradient(135deg, #ec4899, #be185d); border: none;" onclick="app.openRecordBirthModal('${g.animalId}')">
             <span>🍼</span> <span>${this.t('btn_record_birth')}</span>
@@ -12760,6 +12743,23 @@ const app = {
           <span>📅 <strong>${this.formatDateFR(batch.startDate)}</strong></span>
         </div>
 
+        <div style="margin: 0.65rem 0 0.45rem; padding-top: 0.45rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem;">
+          ${batch.stockDeducted ? `
+            <span class="badge-pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; font-size: 0.75rem;">
+              🏡 Œufs de la ferme (Déduit du stock)
+            </span>
+          ` : `
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; width: 100%; justify-content: space-between;">
+              <span class="badge-pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 700; font-size: 0.75rem;">
+                ${batch.eggSource === 'farm' ? '⚠️ Stock non encore déduit' : '🛒 Œufs achetés'}
+              </span>
+              <button type="button" class="btn btn-xs btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.6rem; border-color: #f59e0b; color: #f59e0b; font-weight: 700; border-radius: 4px;" onclick="app.deductBatchFromFarmStock('${batch.id}')">
+                🏡 Déduire ces ${batch.eggsCount} œufs
+              </button>
+            </div>
+          `}
+        </div>
+
         <div class="batch-card-actions" style="display: flex; gap: 0.5rem; margin-top: auto;">
           <button class="btn btn-sm btn-amber flex-1" onclick="app.convertBatchToFlock('${batch.id}')">
             ${this.t('btn_declare_hatched_action')}
@@ -12850,6 +12850,8 @@ const app = {
     const src = document.getElementById('batchEggSource')?.value || 'purchased';
     const lblCost = document.getElementById('lblBatchEggCost');
     const costInput = document.getElementById('batchEggCost');
+    const helpCost = document.getElementById('helpBatchEggCost');
+    const isAr = (appState.lang || this.currentLang) === 'ar';
     if (!lblCost) return;
 
     const notice = document.getElementById('batchEggStockDeductNotice');
@@ -12857,23 +12859,33 @@ const app = {
     if (src === 'purchased') {
       lblCost.textContent = this.t('lbl_egg_cost_total') || 'Coût d\'achat total des œufs (DT)';
       if (costInput) costInput.placeholder = 'ex: 120.000 DT';
+      if (helpCost) helpCost.textContent = isAr 
+        ? '💡 هذا المبلغ سيُسجل كمصروف شراء في حسابات المزرعة.' 
+        : '💡 Montant payé pour acheter les œufs (sera enregistré dans les dépenses).';
       if (notice) {
         notice.style.background = 'rgba(245, 158, 11, 0.1)';
         notice.style.borderColor = 'rgba(245, 158, 11, 0.3)';
         notice.style.color = '#f59e0b';
-        if (noticeText) noticeText.textContent = '🛒 Œufs achetés à l\'extérieur : aucun œuf ne sera déduit de votre stock de la ferme.';
+        if (noticeText) noticeText.textContent = isAr 
+          ? '🛒 بيض مشترى من الخارج: لن يتم خصم أي بيضة من رصيد المزرعة.'
+          : '🛒 Œufs achetés à l\'extérieur : aucun œuf ne sera déduit de votre stock de la ferme.';
       }
     } else {
-      lblCost.textContent = this.t('lbl_farm_egg_val') || 'Valeur / Coût des œufs de la ferme (DT)';
+      lblCost.textContent = this.t('lbl_farm_egg_val') || 'Valeur estimée des œufs de la ferme (DT)';
       if (costInput && (!costInput.value || Number(costInput.value) === 0)) {
         const count = parseInt(document.getElementById('batchEggsCount')?.value, 10) || 0;
         if (count > 0) costInput.value = (count * 0.350).toFixed(3);
       }
+      if (helpCost) helpCost.textContent = isAr 
+        ? '💡 لحساب كلفة إنتاج الكتكوت فقط (لا يُخصم أي دينار من الصندوق). يمكنك وضع 0.000 DT.' 
+        : '💡 Sert uniquement à calculer le coût de revient du futur poussin (aucun argent retiré de votre caisse). Vous pouvez mettre 0.000 DT.';
       if (notice) {
         notice.style.background = 'rgba(16, 185, 129, 0.1)';
         notice.style.borderColor = 'rgba(16, 185, 129, 0.3)';
         notice.style.color = 'var(--accent-emerald)';
-        if (noticeText) noticeText.textContent = '🏡 Œufs de la ferme : ces œufs seront déduits immédiatement de votre réserve.';
+        if (noticeText) noticeText.textContent = isAr 
+          ? '🏡 بيض المزرعة: سيتم خصم هذا العدد تلقائياً من مخزون البيض.' 
+          : '🏡 Œufs de la ferme : ces œufs seront déduits immédiatement de votre réserve.';
       }
     }
   },
@@ -12956,37 +12968,16 @@ const app = {
 
     // Déduire du stock uniquement si ce sont les œufs de la ferme
     if (eggSource === 'farm') {
-      if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
-        appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
-      }
-      const targetSpecies = (eggSpecies === 'canard' || eggSpecies === 'canard_barbarie') ? 'canard_barbarie' : (eggSpecies || 'poule');
-      
-      // Si le stock de cette espèce est à 0 mais que le stock global est disponible, l'attribuer
-      if ((!appState.eggStocks[targetSpecies] || Number(appState.eggStocks[targetSpecies]) === 0) && Number(appState.eggStock) > 0) {
-        appState.eggStocks[targetSpecies] = Number(appState.eggStock);
-      }
-
-      const curSpeciesStock = Number(appState.eggStocks[targetSpecies]) || 0;
-      const curTotalStock = Number(appState.eggStock) || 0;
-
-      if (eggsCount > curSpeciesStock && eggsCount > curTotalStock) {
+      const curTotalStock = Object.values(appState.eggStocks || {}).reduce((s, v) => s + (Number(v) || 0), 0) || Number(appState.eggStock) || 0;
+      if (curTotalStock < eggsCount) {
         const isAr = (appState.lang || this.currentLang) === 'ar';
-        const spLabel = targetSpecies === 'canard_barbarie' ? 'Canard de Barbarie' : 'Poule';
         this.showToast(isAr 
-          ? `رصيد بيض (${spLabel}) غير كافٍ (المتوفر: ${curSpeciesStock} بيضة).` 
-          : `Stock d'œufs de ${spLabel} insuffisant (disponible: ${curSpeciesStock} œufs).`, 
+          ? `تنبيه: رصيد البيض المتوفر (${curTotalStock}) أقل من العدد المطلوب (${eggsCount}).` 
+          : `Attention : stock disponible (${curTotalStock}) inférieur aux ${eggsCount} œufs demandés.`, 
           'warning'
         );
-        return;
       }
-      
-      // Déduction stricte sur l'espèce et sur le stock global
-      if (curSpeciesStock >= eggsCount) {
-        appState.eggStocks[targetSpecies] = curSpeciesStock - eggsCount;
-      } else {
-        appState.eggStocks[targetSpecies] = 0;
-      }
-      appState.eggStock = Math.max(0, curTotalStock - eggsCount);
+      this.deductEggsFromFarmStock(eggsCount, eggSpecies);
       newBatch.stockDeducted = true;
     } else if (eggSource === 'purchased' && eggCost > 0) {
       // Enregistrer automatiquement la dépense d'achat d'œufs
@@ -13020,35 +13011,72 @@ const app = {
   },
 
   // Ouvrir la notification interactive d'éclosion
+  deductEggsFromFarmStock(count, targetSpecies = 'poule') {
+    const eggsCount = Math.max(0, Number(count) || 0);
+    if (eggsCount <= 0) return 0;
+
+    if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
+      appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+    }
+
+    const spKey = (targetSpecies === 'canard' || targetSpecies === 'canard_barbarie') ? 'canard_barbarie' : (targetSpecies || 'poule');
+
+    // Total available
+    let totalAvail = Object.values(appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+    if (totalAvail === 0 && Number(appState.eggStock) > 0) {
+      appState.eggStocks.poule = Number(appState.eggStock);
+      totalAvail = Number(appState.eggStock);
+    }
+
+    let remainingToDeduct = Math.min(eggsCount, totalAvail);
+    const actuallyDeducted = remainingToDeduct;
+
+    // 1. Déduire en priorité sur l'espèce de la couvée
+    const curSp = Number(appState.eggStocks[spKey]) || 0;
+    if (curSp > 0) {
+      const take = Math.min(curSp, remainingToDeduct);
+      appState.eggStocks[spKey] = curSp - take;
+      remainingToDeduct -= take;
+    }
+
+    // 2. Si le stock spécifique était inférieur (ex: ancien stock global non typé), déduire du reste disponible
+    if (remainingToDeduct > 0) {
+      for (const k of Object.keys(appState.eggStocks)) {
+        if (remainingToDeduct <= 0) break;
+        if (k === spKey) continue;
+        const cur = Number(appState.eggStocks[k]) || 0;
+        if (cur > 0) {
+          const take = Math.min(cur, remainingToDeduct);
+          appState.eggStocks[k] = cur - take;
+          remainingToDeduct -= take;
+        }
+      }
+    }
+
+    // 3. Recalculer le stock global agrégé
+    appState.eggStock = Object.values(appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+    return actuallyDeducted;
+  },
+
   deductBatchFromFarmStock(batchId) {
     const batch = (appState.incubatorBatches || []).find(b => b.id === batchId);
     if (!batch) return;
     const eggsCount = Number(batch.eggsCount) || 0;
     if (eggsCount <= 0) return;
 
-    if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
-      appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+    if (batch.stockDeducted) {
+      this.showToast('Ces œufs ont déjà été déduits du stock.', 'info');
+      return;
     }
-    const targetSpecies = (batch.eggSpecies === 'canard' || batch.eggSpecies === 'canard_barbarie') ? 'canard_barbarie' : (batch.eggSpecies || 'poule');
-    if ((!appState.eggStocks[targetSpecies] || Number(appState.eggStocks[targetSpecies]) === 0) && Number(appState.eggStock) > 0) {
-      appState.eggStocks[targetSpecies] = Number(appState.eggStock);
-    }
-    const curSpeciesStock = Number(appState.eggStocks[targetSpecies]) || 0;
-    const curTotalStock = Number(appState.eggStock) || 0;
 
-    if (curSpeciesStock >= eggsCount) {
-      appState.eggStocks[targetSpecies] = curSpeciesStock - eggsCount;
-    } else {
-      appState.eggStocks[targetSpecies] = 0;
-    }
-    appState.eggStock = Math.max(0, curTotalStock - eggsCount);
+    const deducted = this.deductEggsFromFarmStock(eggsCount, batch.eggSpecies);
     batch.eggSource = 'farm';
     batch.stockDeducted = true;
 
     this.saveState();
     this.renderAll();
     this.renderEggStock();
-    this.showToast(`🏡 -${eggsCount} œufs déduits du stock de la ferme pour ${batch.name} ! (Reste : ${appState.eggStock} œufs)`);
+    this.showToast(`🏡 -${deducted} œufs déduits du stock de la ferme pour "${batch.name}" ! (Reste : ${appState.eggStock} œufs)`);
   },
 
   triggerHatchNotification(batchId) {
