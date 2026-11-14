@@ -649,10 +649,10 @@ const TRANSLATIONS = {
     mobile_share_toast_copied: "Lien de téléchargement APK copié dans le presse-papiers !",
 
     // Daily 16h Feed Notification
-    notif_daily_feed_title: "🌾 FermeGest Pro - Alimentation des animaux",
-    notif_daily_feed_body: "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas de distribuer la ration !",
-    daily_feed_banner_title: "🌾 Alimentation des Animaux (16h00)",
-    daily_feed_banner_body: "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas d'enregistrer la ration distribuée !",
+    notif_daily_feed_title: "🌾 Les animaux ont faim !",
+    notif_daily_feed_body: "16h00 : Vos animaux ont faim ! N'oubliez pas la distribution journalière de nourriture.",
+    daily_feed_banner_title: "🌾 Les animaux ont faim ! (Rappel 16h00)",
+    daily_feed_banner_body: "16h00 : Aucune distribution d'aliment enregistrée aujourd'hui. Pensez à nourrir vos animaux !",
     daily_feed_banner_btn_dismiss: "Supprimer",
     daily_feed_banner_btn_record: "Enregistrer l'aliment 🌾",
 
@@ -1712,10 +1712,10 @@ const TRANSLATIONS = {
     mobile_share_toast_copied: "تم نسخ رابط تحميل التطبيق في الحافظة!",
 
     // Daily 16h Feed Notification
-    notif_daily_feed_title: "🌾 فيرم-جست برو - تغذية الحيوانات",
-    notif_daily_feed_body: "16:00 : هل وضعت العلف للحيوانات؟ تذكير بتوزيع وجبة العصر !",
-    daily_feed_banner_title: "🌾 وجبة العصر والأعلاف (16:00)",
-    daily_feed_banner_body: "16:00 : هل وضعت العلف للحيوانات؟ لا تنسَ تسجيل توزيع الوجبة !",
+    notif_daily_feed_title: "🌾 الحيوانات جائعة !",
+    notif_daily_feed_body: "16:00 : الحيوانات جائعة ! لا تنسَ تقديم وجبة العلف اليومية.",
+    daily_feed_banner_title: "🌾 الحيوانات جائعة ! (تذكير 16:00)",
+    daily_feed_banner_body: "16:00 : لم يتم تسجيل أي وجبة علف اليوم. تذكير بتغذية الحيوانات !",
     daily_feed_banner_btn_dismiss: "حذف الإشعار",
     daily_feed_banner_btn_record: "تسجيل العلف 🌾",
 
@@ -2775,10 +2775,10 @@ const TRANSLATIONS = {
     mobile_share_toast_copied: "APK download link copied to clipboard!",
 
     // Daily 16h Feed Notification
-    notif_daily_feed_title: "🌾 FermeGest Pro - Animal Feeding",
-    notif_daily_feed_body: "4:00 PM: Did you put food for the animals? Don't forget their afternoon feed!",
-    daily_feed_banner_title: "🌾 Animal Feeding (4:00 PM)",
-    daily_feed_banner_body: "4:00 PM: Did you put food for the animals? Don't forget to log their feed distribution!",
+    notif_daily_feed_title: "🌾 The animals are hungry!",
+    notif_daily_feed_body: "4:00 PM: The animals are hungry! Don't forget their daily feed ration.",
+    daily_feed_banner_title: "🌾 The animals are hungry! (4:00 PM Reminder)",
+    daily_feed_banner_body: "4:00 PM: No feed distribution recorded today. Remember to feed your animals!",
     daily_feed_banner_btn_dismiss: "Dismiss",
     daily_feed_banner_btn_record: "Log Feeding 🌾",
 

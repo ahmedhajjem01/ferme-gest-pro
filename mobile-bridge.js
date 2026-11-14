@@ -206,16 +206,78 @@ const MobileBridge = {
     const l = ['fr', 'ar', 'en'].includes(lang) ? lang : 'fr';
     if (typeof TRANSLATIONS !== 'undefined' && TRANSLATIONS[l]) {
       return {
-        title: TRANSLATIONS[l].notif_daily_feed_title || "🌾 FermeGest Pro - Alimentation des animaux",
-        body: TRANSLATIONS[l].notif_daily_feed_body || "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas de distribuer la ration !"
+        title: TRANSLATIONS[l].notif_daily_feed_title || "🌾 Les animaux ont faim !",
+        body: TRANSLATIONS[l].notif_daily_feed_body || "16h00 : Vos animaux ont faim ! N'oubliez pas la distribution journalière de nourriture."
       };
     }
     const fallback = {
-      fr: { title: "🌾 FermeGest Pro - Alimentation des animaux", body: "16h00 : T'as mis de la nourriture aux animaux ? N'oublie pas de distribuer la ration !" },
-      ar: { title: "🌾 فيرم-جست برو - تغذية الحيوانات", body: "16:00 : هل وضعت العلف للحيوانات؟ تذكير بتوزيع وجبة العصر !" },
-      en: { title: "🌾 FermeGest Pro - Animal Feeding", body: "4:00 PM: Did you put food for the animals? Don't forget their afternoon feed!" }
+      fr: { title: "🌾 Les animaux ont faim !", body: "16h00 : Vos animaux ont faim ! N'oubliez pas la distribution journalière de nourriture." },
+      ar: { title: "🌾 الحيوانات جائعة !", body: "16:00 : الحيوانات جائعة ! لا تنسَ تقديم وجبة العلف اليومية." },
+      en: { title: "🌾 The animals are hungry!", body: "4:00 PM: The animals are hungry! Don't forget their daily feed ration." }
     };
     return fallback[l] || fallback.fr;
+  },
+
+  async cancelDailyFeedNotificationForToday() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      localStorage.setItem('fermegest_feed_banner_dismissed', todayStr);
+      localStorage.setItem('fermegest_last_feed_notif_date', todayStr);
+    } catch (e) {}
+
+    if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
+      try {
+        const LocalNotifications = this.plugins.LocalNotifications;
+        await LocalNotifications.cancel({ notifications: [{ id: 1600 }] });
+        if (typeof LocalNotifications.removeDeliveredNotifications === 'function') {
+          await LocalNotifications.removeDeliveredNotifications({ notifications: [{ id: 1600 }] });
+        }
+        console.log('[MobileBridge] Notification 16h annulée pour aujourd\'hui (animaux déjà nourris).');
+      } catch (e) {
+        console.warn('[MobileBridge] cancelDailyFeedNotificationForToday error:', e);
+      }
+    }
+  },
+
+  async triggerDailyFeedNotificationNowIfUnsent() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastNotifiedDate = localStorage.getItem('fermegest_last_feed_notif_date');
+    if (lastNotifiedDate === todayStr) return;
+
+    if (window.app && typeof app.isFeedDistributedToday === 'function' && app.isFeedDistributedToday()) {
+      return;
+    }
+
+    const currentLang = (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
+    const { title, body } = this.getDailyFeedStrings(currentLang);
+
+    localStorage.setItem('fermegest_last_feed_notif_date', todayStr);
+
+    if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
+      try {
+        const LocalNotifications = this.plugins.LocalNotifications;
+        await this.requestNotificationPermissions();
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: 1600,
+              title: title,
+              body: body,
+              channelId: 'fermegest_daily_feed_alerts',
+              sound: 'beep.wav',
+              smallIcon: 'ic_stat_icon_config_sample',
+              extra: { type: 'daily_feed_reminder' },
+              actionTypeId: 'FEED_DISTRIBUTION_ACTIONS'
+            }
+          ]
+        });
+        console.log('[MobileBridge] Native 16h feed notification déclenchée immédiatement !');
+      } catch (e) {
+        console.warn('[MobileBridge] triggerDailyFeedNotificationNowIfUnsent native error:', e);
+      }
+    } else {
+      this.showBrowserFeedNotification(title, body);
+    }
   },
 
   getDailyEggStrings(lang) {
@@ -243,6 +305,14 @@ const MobileBridge = {
   async scheduleDailyFeedNotification(lang) {
     const currentLang = lang || (typeof appState !== 'undefined' ? appState.lang : null) || localStorage.getItem('fermegest_lang') || 'fr';
     const { title, body } = this.getDailyFeedStrings(currentLang);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const isFed = (window.app && typeof app.isFeedDistributedToday === 'function') ? app.isFeedDistributedToday() : false;
+
+    // Si les animaux ont déjà été nourris aujourd'hui, annuler tout rappel pour aujourd'hui
+    if (isFed) {
+      await this.cancelDailyFeedNotificationForToday();
+    }
 
     // A) Native Capacitor Local Notifications (Android APK & iOS)
     if (this.isNative && this.plugins && this.plugins.LocalNotifications) {
@@ -298,36 +368,46 @@ const MobileBridge = {
           }
         }
 
-        // Cancel previous ID 1600 to update language / text
+        // Cancel previous ID 1600 before rescheduling
         try {
           await LocalNotifications.cancel({ notifications: [{ id: 1600 }] });
         } catch (e) {}
 
-        // Schedule daily recurring at 16:00 (4:00 PM)
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              id: 1600,
-              title: title,
-              body: body,
-              channelId: 'fermegest_daily_feed_alerts',
-              schedule: {
-                on: {
-                  hour: 16,
-                  minute: 0
-                },
-                allowWhileIdle: true
-              },
-              sound: 'beep.wav',
-              smallIcon: 'ic_stat_icon_config_sample',
-              extra: { type: 'daily_feed_reminder' },
-              actionTypeId: 'FEED_DISTRIBUTION_ACTIONS'
+        if (!isFed) {
+          if (now.getHours() >= 16) {
+            // Déjà après 16h et animaux pas encore nourris : déclencher immédiatement si pas encore notifié
+            const lastNotifiedDate = localStorage.getItem('fermegest_last_feed_notif_date');
+            if (lastNotifiedDate !== todayStr) {
+              await this.triggerDailyFeedNotificationNowIfUnsent();
             }
-          ]
-        });
+          } else {
+            // Programmer l'alarme précisément pour 16h00 aujourd'hui
+            await LocalNotifications.schedule({
+              notifications: [
+                {
+                  id: 1600,
+                  title: title,
+                  body: body,
+                  channelId: 'fermegest_daily_feed_alerts',
+                  schedule: {
+                    on: {
+                      hour: 16,
+                      minute: 0
+                    },
+                    allowWhileIdle: true
+                  },
+                  sound: 'beep.wav',
+                  smallIcon: 'ic_stat_icon_config_sample',
+                  extra: { type: 'daily_feed_reminder' },
+                  actionTypeId: 'FEED_DISTRIBUTION_ACTIONS'
+                }
+              ]
+            });
+            console.log(`[MobileBridge] Native 16h feed notification programmée pour 16h00 (${currentLang})`);
+          }
+        }
 
         this.ensureNotificationListenerAttached();
-        console.log(`[MobileBridge] Native 16h feed notification active in (${currentLang})`);
       } catch (err) {
         console.warn('[MobileBridge] scheduleDailyFeedNotification native error:', err);
       }
@@ -356,6 +436,11 @@ const MobileBridge = {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const lastNotifiedDate = localStorage.getItem('fermegest_last_feed_notif_date');
+    const isFed = (window.app && typeof app.isFeedDistributedToday === 'function') ? app.isFeedDistributedToday() : false;
+
+    if (isFed) {
+      return;
+    }
 
     // Trigger at 16:00 or if opened after 16:00 and not yet notified today
     if (now.getHours() >= 16 && lastNotifiedDate !== todayStr) {
@@ -608,8 +693,11 @@ const MobileBridge = {
           app.dismissDailyEggAlert();
         }
       } else if (actionId === 'enter_feed' || notifId === 1600 || notifType === 'daily_feed_reminder') {
-        if (window.app && app.openModal) {
+        if (window.app && typeof app.openModal === 'function') {
           app.openModal('modalFeedDistribution');
+        } else {
+          window._pendingModal = 'modalFeedDistribution';
+          try { localStorage.setItem('fermegest_pending_action', 'open_feed_modal'); } catch (e) {}
         }
       } else {
         if (window.app && app.openDailyEggModal) {

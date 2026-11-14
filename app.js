@@ -265,7 +265,10 @@ const app = {
     // Deep link or action parameter from notification click
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('action') === 'feed_distribution') {
+      const pendingModal = window._pendingModal || localStorage.getItem('fermegest_pending_action');
+      if (urlParams.get('action') === 'feed_distribution' || pendingModal === 'modalFeedDistribution' || pendingModal === 'open_feed_modal') {
+        window._pendingModal = null;
+        try { localStorage.removeItem('fermegest_pending_action'); } catch (e) {}
         setTimeout(() => this.openModal('modalFeedDistribution'), 600);
       } else if (urlParams.get('action') === 'daily_eggs') {
         setTimeout(() => this.openDailyEggModal(), 600);
@@ -3370,20 +3373,43 @@ const app = {
     }
   },
 
+  isFeedDistributedToday() {
+    const todayStr = (this.getTodayStr && typeof this.getTodayStr === 'function') ? this.getTodayStr() : new Date().toISOString().split('T')[0];
+    const distributions = Array.isArray(appState.feedDistributions) ? appState.feedDistributions : [];
+    return distributions.some(d => {
+      if (!d) return false;
+      const dDate = d.date ? (String(d.date).split('T')[0]) : null;
+      if (dDate !== todayStr) return false;
+      const hasKg = (Number(d.totalKg) || Number(d.quantityKg) || Number(d.kg) || 0) > 0;
+      const hasItems = Array.isArray(d.items) && d.items.length > 0 && d.items.some(it => (Number(it.kg) || Number(it.quantity) || 0) > 0);
+      const hasCans = (Number(d.cans) || 0) > 0;
+      return hasKg || hasItems || hasCans;
+    });
+  },
+
   checkDailyFeedInAppAlert() {
     const banner = document.getElementById('dailyFeedAlertBanner');
-    if (!banner) return;
     const now = new Date();
-    const todayStr = this.getTodayStr();
+    const todayStr = (this.getTodayStr && typeof this.getTodayStr === 'function') ? this.getTodayStr() : now.toISOString().split('T')[0];
     const isAfter16 = now.getHours() >= 16;
     const isDismissed = localStorage.getItem('fermegest_feed_banner_dismissed') === todayStr;
-    const todayDistributions = (appState.feedDistributions || []).filter(d => d && (d.date === todayStr || (d.date && String(d.date).split('T')[0] === todayStr)));
-    const alreadyFedToday = todayDistributions.reduce((s, d) => s + (Number(d.totalKg) || Number(d.quantityKg) || 0), 0) > 0;
+    const alreadyFedToday = this.isFeedDistributedToday();
+
+    if (alreadyFedToday) {
+      if (banner) banner.style.display = 'none';
+      if (window.MobileBridge && typeof window.MobileBridge.cancelDailyFeedNotificationForToday === 'function') {
+        window.MobileBridge.cancelDailyFeedNotificationForToday();
+      }
+      return;
+    }
 
     if (isAfter16 && !isDismissed && !alreadyFedToday) {
-      banner.style.display = 'flex';
+      if (banner) banner.style.display = 'flex';
+      if (window.MobileBridge && typeof window.MobileBridge.triggerDailyFeedNotificationNowIfUnsent === 'function') {
+        window.MobileBridge.triggerDailyFeedNotificationNowIfUnsent();
+      }
     } else {
-      banner.style.display = 'none';
+      if (banner) banner.style.display = 'none';
     }
   },
 
@@ -3399,8 +3425,11 @@ const app = {
         banner.style.transform = 'none';
       }, 300);
     }
-    const todayStr = this.getTodayStr();
+    const todayStr = (this.getTodayStr && typeof this.getTodayStr === 'function') ? this.getTodayStr() : new Date().toISOString().split('T')[0];
     localStorage.setItem('fermegest_feed_banner_dismissed', todayStr);
+    if (window.MobileBridge && typeof window.MobileBridge.cancelDailyFeedNotificationForToday === 'function') {
+      window.MobileBridge.cancelDailyFeedNotificationForToday();
+    }
     const isAr = (appState.lang || this.currentLang) === 'ar';
     const isEn = (appState.lang || this.currentLang) === 'en';
     this.showToast(isAr ? 'تم إخفاء تذكير العلف لليوم.' : (isEn ? 'Daily feed reminder dismissed for today.' : 'Rappel nourriture masqué pour aujourd\'hui.'));
