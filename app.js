@@ -3125,7 +3125,8 @@ const app = {
     appState.eggHarvests.unshift({
       id: 'harvest-' + Date.now().toString(36),
       date: harvestDate,
-      count: count
+      count: count,
+      updatedAt: Date.now()
     });
 
     localStorage.setItem('fermegest_last_egg_notif_date', harvestDate);
@@ -9548,7 +9549,8 @@ const app = {
         arrivalAgeDays,
         costPerHead,
         stage,
-        notes
+        notes,
+        updatedAt: Date.now()
       };
 
       appState.animals.unshift(newAnimal);
@@ -10624,7 +10626,8 @@ const app = {
         linkedLotId,
         linkedLotIds,
         feedStockAddedKg,
-        feedTypeId
+        feedTypeId,
+        updatedAt: Date.now()
       };
 
       if (category === 'electricite_couveuse') {
@@ -11511,7 +11514,8 @@ const app = {
         unitPrice,
         total,
         linkedLotId,
-        ageText
+        ageText,
+        updatedAt: Date.now()
       };
 
       appState.sales.unshift(newSale);
@@ -12744,7 +12748,8 @@ const app = {
       temp: method === 'poule' ? 38.0 : temp,
       humidity: method === 'poule' ? 55 : humidity,
       notes,
-      status: 'incubating'
+      status: 'incubating',
+      updatedAt: Date.now()
     };
 
     // Déduire du stock uniquement si ce sont les œufs de la ferme

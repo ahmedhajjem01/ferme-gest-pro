@@ -90,7 +90,28 @@
       const deletedIds = this.getDeletedIds();
 
       const getTs = (item) => {
-        return Number(item.updatedAt || item.timestamp || (item.date ? new Date(item.date).getTime() : 0)) || 0;
+        if (!item) return 0;
+        if (item.updatedAt && !isNaN(Number(item.updatedAt))) return Number(item.updatedAt);
+        if (item.timestamp && !isNaN(Number(item.timestamp))) return Number(item.timestamp);
+        if (item.createdAt && !isNaN(Number(item.createdAt))) return Number(item.createdAt);
+        if (item.startDate) {
+          const d = new Date(item.startDate).getTime();
+          if (!isNaN(d)) return d;
+        }
+        if (item.date) {
+          const d = new Date(item.date).getTime();
+          if (!isNaN(d)) return d;
+        }
+        if (typeof item.id === 'string') {
+          const numMatch = item.id.match(/\d{10,13}/);
+          if (numMatch) return Number(numMatch[0]);
+          const base36Match = item.id.match(/^[a-z]+-([0-9a-z]{7,10})$/i);
+          if (base36Match) {
+            const parsed = parseInt(base36Match[1], 36);
+            if (parsed > 1600000000000 && parsed < 2500000000000) return parsed;
+          }
+        }
+        return 0;
       };
 
       const localMap = new Map();
@@ -115,20 +136,33 @@
           const cloudTs = Math.min(getTs(cloudItem), now);
           const localTs = Math.min(getTs(localItem), now);
 
-          // Priorité aux ajustements manuels récents de l'éleveur local
-          // et protection absolue des stocks d'aliments :
-          // 1. Si le stock local a été décrémenté par distribution (local < cloud), préserver strictement local
-          // 2. Si le stock local a été ajusté manuellement ou avec un horodatage >= cloud, préserver local
+          // Protection absolue des stocks d'aliments et synchronisation intelligente :
+          // Ne JAMAIS écraser un stock existant (> 0) par 0 kg d'un feed par défaut non initialisé !
           const isFeedType = key.startsWith('feed-') || localItem.stockKg !== undefined;
           if (isFeedType) {
-            if (Number(localItem.stockKg) < Number(cloudItem.stockKg)) {
+            const localStock = Number(localItem.stockKg) || 0;
+            const cloudStock = Number(cloudItem.stockKg) || 0;
+
+            if (cloudStock > 0 && localStock === 0 && (!localItem.updatedAt || localTs <= 0)) {
+              merged.push({ ...localItem, ...cloudItem });
+            } else if (localStock > 0 && cloudStock === 0 && (!cloudItem.updatedAt || cloudTs <= 0)) {
               merged.push({ ...cloudItem, ...localItem });
-            } else if (localTs >= cloudTs) {
+            } else if (localTs && cloudTs) {
+              if (localTs > cloudTs) {
+                merged.push({ ...cloudItem, ...localItem });
+              } else {
+                merged.push({ ...localItem, ...cloudItem });
+              }
+            } else if (localTs > 0 && !cloudTs) {
               merged.push({ ...cloudItem, ...localItem });
-            } else if (cloudTs > localTs && !localItem.manuallyAdjusted) {
+            } else if (cloudTs > 0 && !localTs) {
               merged.push({ ...localItem, ...cloudItem });
             } else {
-              merged.push({ ...cloudItem, ...localItem });
+              if (cloudStock > localStock) {
+                merged.push({ ...localItem, ...cloudItem });
+              } else {
+                merged.push({ ...cloudItem, ...localItem });
+              }
             }
           } else if (localItem.manuallyAdjusted && localTs >= cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
@@ -139,7 +173,7 @@
           } else if (cloudTs && !localTs) {
             merged.push({ ...localItem, ...cloudItem });
           } else {
-            // Priorité absolue aux modifications locales sur l'appareil actuel si aucun timestamp explicite
+            // Priorité absolue aux données locales si aucun conflit
             merged.push({ ...cloudItem, ...localItem });
           }
         } else {
@@ -186,20 +220,36 @@
           if (data && data.session) {
             this.handleAuthStateChange('INITIAL_SESSION', data.session);
           } else {
+            // Check if we have a cached user session before falling back to guest mode
+            try {
+              const cached = JSON.parse(localStorage.getItem('fermegest_cached_auth_user') || 'null');
+              if (cached && cached.id) {
+                this.currentUser = cached;
+              }
+            } catch (e) {}
             this.updateUI();
-      if (window.app) {
-        if (typeof app.updateUserHeaderUI === 'function') app.updateUserHeaderUI();
-        if (typeof app.updateLivestockUIThemeAndVisibility === 'function') app.updateLivestockUIThemeAndVisibility();
-        if (typeof app.closeModal === 'function') {
-          app.closeModal('modalOnboarding');
-          app.closeModal('modalAnimalSelection');
-          app.closeModal('modalAuthPrompt');
-          app.closeModal('modalAuth');
-        }
-      }
+            if (this.currentUser) {
+              this.syncNow(false);
+            }
+            if (window.app) {
+              if (typeof app.updateUserHeaderUI === 'function') app.updateUserHeaderUI();
+              if (typeof app.updateLivestockUIThemeAndVisibility === 'function') app.updateLivestockUIThemeAndVisibility();
+              if (typeof app.closeModal === 'function') {
+                app.closeModal('modalOnboarding');
+                app.closeModal('modalAnimalSelection');
+                app.closeModal('modalAuthPrompt');
+                app.closeModal('modalAuth');
+              }
+            }
           }
         }).catch(err => {
           console.warn('[SupabaseAuth] getSession error:', err);
+          try {
+            const cached = JSON.parse(localStorage.getItem('fermegest_cached_auth_user') || 'null');
+            if (cached && cached.id) {
+              this.currentUser = cached;
+            }
+          } catch (e) {}
           this.updateUI();
         });
 
@@ -267,6 +317,13 @@
     async handleAuthStateChange(event, session) {
       if (session && session.user) {
         this.currentUser = session.user;
+        try {
+          localStorage.setItem('fermegest_cached_auth_user', JSON.stringify({
+            id: session.user.id,
+            email: session.user.email,
+            user_metadata: session.user.user_metadata
+          }));
+        } catch (e) {}
 
         // Connect userProfile (Name, Age, Avatar) to Supabase user metadata
         const profile = (window.appState && window.appState.userProfile) || (function() {
@@ -309,7 +366,6 @@
         this.subscribeUserSync();
         this.subscribeCollaborativeRealtime();
       } else {
-        const wasAuth = !!this.currentUser;
         this.currentUser = null;
         if (this.realtimeChannel && this.client) {
           try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
@@ -323,11 +379,8 @@
         this.realtimeChannel = null;
         this.userSyncChannel = null;
         this.collabChannel = null;
-        if (wasAuth) {
-          this.resetLocalDataToZero();
-        } else {
-          this.updateUI();
-        }
+        // CRITICAL BUG FIX: NE JAMAIS écraser les données locales lors d'une déconnexion réseau ou expiration de token !
+        this.updateUI();
       }
     },
 
@@ -550,6 +603,9 @@
         try {
           await this.client.auth.signOut();
           this.currentUser = null;
+          try {
+            localStorage.removeItem('fermegest_cached_auth_user');
+          } catch (e) {}
           this.updateUI();
           this.closeProfileModal();
           if (window.app && app.showToast) {
@@ -937,8 +993,13 @@
 
       // Restore userProfile if provided by cloud (canonical source of truth for this account)
       if (cloudData.userProfile && typeof cloudData.userProfile === 'object' && cloudData.userProfile.name) {
+        const localManaged = (state.userProfile && Array.isArray(state.userProfile.managedAnimals)) ? state.userProfile.managedAnimals : [];
+        const cloudManaged = Array.isArray(cloudData.userProfile.managedAnimals) ? cloudData.userProfile.managedAnimals : [];
+        const mergedManaged = Array.from(new Set([...cloudManaged, ...localManaged]));
+
         state.userProfile = {
           ...cloudData.userProfile,
+          managedAnimals: mergedManaged.length > 0 ? mergedManaged : ['poultry'],
           avatar: cloudData.userProfile.avatar || 'avatar-m1'
         };
         try {
@@ -1054,6 +1115,22 @@
 
       // Preserve all animal species (bovins, ovins, volailles)
       state.animals = Array.isArray(state.animals) ? state.animals : [];
+      if (state.animals.length > 0 && state.userProfile) {
+        state.userProfile.managedAnimals = Array.isArray(state.userProfile.managedAnimals) ? state.userProfile.managedAnimals : ['poultry'];
+        state.animals.forEach(a => {
+          const sp = (a.species || '').toLowerCase();
+          const isBovine = sp.includes('vache') || sp.includes('bovin') || sp.includes('genisse') || sp.includes('veau') || sp.includes('taureau');
+          const isOvine = sp.includes('mouton') || sp.includes('ovin') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('belier') || sp.includes('chevre') || sp.includes('caprin');
+          const isPoultry = sp.includes('poulet') || sp.includes('poule') || sp.includes('poussin') || sp.includes('dinde') || sp.includes('canard') || sp.includes('caille');
+          if (isBovine && !state.userProfile.managedAnimals.includes('bovine')) state.userProfile.managedAnimals.push('bovine');
+          if (isOvine && !state.userProfile.managedAnimals.includes('ovine')) state.userProfile.managedAnimals.push('ovine');
+          if (isPoultry && !state.userProfile.managedAnimals.includes('poultry')) state.userProfile.managedAnimals.push('poultry');
+        });
+        try {
+          localStorage.setItem('fermegest_managed_animal_types', JSON.stringify(state.userProfile.managedAnimals));
+          localStorage.setItem('fermegest_user_profile', JSON.stringify(state.userProfile));
+        } catch (e) {}
+      }
 
       // Keep farm code in sync
       if (cloudData.farmCode) {
