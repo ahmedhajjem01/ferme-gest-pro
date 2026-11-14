@@ -34,3 +34,4 @@ ios/App/.symlinks/
 multi_agent_dev.py
 run_couveuse_agents.py
 run_egg_filter_agents.py
+run_incubator_stock_agents.py

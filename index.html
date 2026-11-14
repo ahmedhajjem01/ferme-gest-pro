@@ -2204,14 +2204,20 @@
             <div class="form-group flex-1">
               <label for="batchEggSource" data-i18n="lbl_egg_source">Origine des Œufs</label>
               <select id="batchEggSource" class="input-field" required onchange="app.handleBatchEggSourceChange()">
+                <option value="farm" selected data-i18n="opt_egg_source_farm">🏡 Œufs de la ferme (Déduit du stock d'œufs)</option>
                 <option value="purchased" data-i18n="opt_egg_source_purchased">🛒 Achetés à l'extérieur (Ne déduit pas du stock)</option>
-                <option value="farm" data-i18n="opt_egg_source_farm">🏡 Œufs de la ferme (Déduit du stock d'œufs)</option>
               </select>
             </div>
             <div class="form-group flex-1">
               <label id="lblBatchEggCost" for="batchEggCost" data-i18n="lbl_egg_cost_total">Coût d'achat total des œufs (DT)</label>
               <input type="number" id="batchEggCost" class="input-field" step="0.001" min="0" placeholder="0.000 DT">
             </div>
+          </div>
+
+          <!-- Live Egg Stock Deduction Banner -->
+          <div id="batchEggStockDeductNotice" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); padding: 0.55rem 0.8rem; margin-bottom: 0.85rem; font-size: 0.82rem; color: var(--accent-emerald); font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🏡</span>
+            <span id="batchEggStockDeductNoticeText">Ces œufs seront automatiquement déduits de votre stock d'œufs de la ferme.</span>
           </div>
 
           <div class="form-row">
