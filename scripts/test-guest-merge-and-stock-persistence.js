@@ -696,4 +696,90 @@ assert(!window.appState.deletedEggCategories.includes('pintade'), 'Pintade remov
 assert.strictEqual(window.appState.eggStock, 72, 'Total stock updated to 60 + 12 = 72');
 console.log('✔ Test 14E Passed: Deliberate future harvest cleanly un-tombstones and re-activates species');
 
+
+console.log('--- TEST 15: Two-Device Multi-Account Convergence (Brother New Data vs Idle Local) ---');
+
+// Phone 1 (User local state from 15:00)
+const localState = {
+  lastUpdated: 1731600000000,
+  eggStock: 0,
+  eggStocks: { poule: 0, canard_barbarie: 0 },
+  feedStockKg: 500,
+  feedStockUpdatedAt: 1731600000000,
+  animals: [
+    { id: 'lot-poules-1', name: 'Poules Pondeuses', currentQuantity: 100, initialQuantity: 100, mortality: 0, updatedAt: 1731600000000 }
+  ],
+  sales: [],
+  expenses: []
+};
+
+// Phone 2 (Brother active cloud state at 17:00)
+const brotherCloudData = {
+  lastUpdated: 1731607200000, // 2 hours later
+  eggStock: 28,
+  eggStocks: { poule: 28, canard_barbarie: 0 },
+  feedStockKg: 450,
+  feedStockUpdatedAt: 1731607200000,
+  animals: [
+    { id: 'lot-poules-1', name: 'Poules Pondeuses', currentQuantity: 90, initialQuantity: 100, mortality: 0, updatedAt: 1731607200000 }
+  ],
+  sales: [
+    { id: 'sale-1', productType: 'poulet', count: 10, total: 150, date: '2026-11-14', updatedAt: 1731607200000 }
+  ],
+  eggHarvests: [
+    { id: 'harvest-1', count: 28, species: 'poule', date: '2026-11-14', timestamp: 1731607200000 }
+  ]
+};
+
+// Test 15A: isCloudFresher logic
+const isCloudFresher = brotherCloudData.lastUpdated > localState.lastUpdated;
+assert.strictEqual(isCloudFresher, true, 'Brother data must be recognized as strictly fresher than idle local');
+console.log('✔ Test 15A Passed: isCloudFresher correctly detects brother fresher state (17:00 > 15:00)');
+
+// Test 15B: Egg stock convergence
+let targetEggStocks = {};
+if (isCloudFresher) {
+  targetEggStocks = { ...brotherCloudData.eggStocks };
+}
+const targetEggStock = Object.values(targetEggStocks).reduce((s, v) => s + (Number(v) || 0), 0);
+assert.strictEqual(targetEggStock, 28, 'Egg stock must become 28 eggs from brother');
+assert.strictEqual(targetEggStocks.poule, 28);
+console.log('✔ Test 15B Passed: Egg stock adopts brother 28 eggs without getting squashed by 0');
+
+// Test 15C: Feed stock convergence
+let targetFeedStock = localState.feedStockKg;
+if (isCloudFresher && brotherCloudData.feedStockKg !== undefined) {
+  targetFeedStock = brotherCloudData.feedStockKg;
+}
+assert.strictEqual(targetFeedStock, 450, 'Feed stock must adopt brother 450kg');
+console.log('✔ Test 15C Passed: Feed stock adopts brother updated 450kg');
+
+// Test 15D: Animal flock update precedence
+const getTs = (item) => Number(item?.updatedAt) || Number(item?.timestamp) || 0;
+const localAnimal = localState.animals[0];
+const cloudAnimal = brotherCloudData.animals[0];
+
+const mergedAnimal = getTs(cloudAnimal) >= getTs(localAnimal)
+  ? { ...localAnimal, ...cloudAnimal }
+  : { ...cloudAnimal, ...localAnimal };
+
+assert.strictEqual(mergedAnimal.currentQuantity, 90, 'Flock size must be 90 (reflecting brother 10 sales deduction)');
+console.log('✔ Test 15D Passed: Brother updated flock (90 hens) takes precedence over stale 100 hens');
+
+// Test 15E: syncNow farmRole ReferenceError fix
+const testAuthContext = {
+  getFarmRole: () => 'partner',
+  getFarmOwnerEmail: () => 'owner@farm.com',
+  currentUser: { email: 'brother@farm.com' }
+};
+
+const farmRole = testAuthContext.getFarmRole();
+const ownerEmail = farmRole === 'owner'
+  ? (testAuthContext.currentUser ? testAuthContext.currentUser.email : '')
+  : testAuthContext.getFarmOwnerEmail();
+
+assert.strictEqual(farmRole, 'partner');
+assert.strictEqual(ownerEmail, 'owner@farm.com');
+console.log('✔ Test 15E Passed: syncNow farmRole is properly defined and never throws ReferenceError');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

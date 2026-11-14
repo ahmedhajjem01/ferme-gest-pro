@@ -168,14 +168,14 @@
           } else if (localItem.manuallyAdjusted && localTs >= cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
           } else if (cloudTs && localTs) {
-            merged.push(cloudTs > localTs ? { ...localItem, ...cloudItem } : { ...cloudItem, ...localItem });
-          } else if (localTs && !cloudTs) {
-            merged.push({ ...cloudItem, ...localItem });
+            merged.push(cloudTs >= localTs ? { ...localItem, ...cloudItem } : { ...cloudItem, ...localItem });
           } else if (cloudTs && !localTs) {
             merged.push({ ...localItem, ...cloudItem });
-          } else {
-            // Priorité absolue aux données locales si aucun conflit
+          } else if (localTs && !cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
+          } else {
+            // Priorité aux données du cloud (frère/associé) si timestamps identiques ou absents
+            merged.push({ ...localItem, ...cloudItem });
           }
         } else {
           // Exists on cloud, add to local
@@ -768,6 +768,7 @@
 
         // 2. Push unified merged data back to user_farms
         const state = this.getAppState();
+        const farmRole = this.getFarmRole();
         const ownerEmail = farmRole === 'owner'
           ? (this.currentUser ? this.currentUser.email : '')
           : this.getFarmOwnerEmail();
@@ -1112,8 +1113,19 @@
       });
       state.deletedEggCategories = Array.from(deletedEggCats);
 
+      const cloudLastUpdated = Number(cloudData.lastUpdated) || 0;
+      const localLastUpdated = Number(state.lastUpdated) || Number(localStorage.getItem('fermegest_last_local_edit')) || 0;
+      const isCloudFresher = cloudLastUpdated > localLastUpdated;
+
+      if (cloudLastUpdated > 0) {
+        state.lastUpdated = Math.max(Number(state.lastUpdated) || 0, cloudLastUpdated);
+        try {
+          localStorage.setItem('fermegest_last_local_edit', String(state.lastUpdated));
+        } catch (e) {}
+      }
+
       if (cloudData.eggStocks && typeof cloudData.eggStocks === 'object') {
-        if (!doMerge) {
+        if (!doMerge || isCloudFresher) {
           state.eggStocks = { ...cloudData.eggStocks };
         } else {
           // Fusion intelligente espèce par espèce
@@ -1124,14 +1136,20 @@
           allSpecies.forEach(sp => {
             const localVal = Number(state.eggStocks[sp]) || 0;
             const cloudVal = Number(cloudData.eggStocks[sp]) || 0;
-            state.eggStocks[sp] = Math.max(localVal, cloudVal);
+            if (localVal === 0 && cloudVal > 0) {
+              state.eggStocks[sp] = cloudVal;
+            } else if (localVal > 0 && cloudVal === 0 && isCloudFresher) {
+              state.eggStocks[sp] = 0;
+            } else {
+              state.eggStocks[sp] = Math.max(localVal, cloudVal);
+            }
           });
         }
       } else if (cloudData.eggStock !== undefined) {
         const cloudEggs = Number(cloudData.eggStock) || 0;
         const localEggs = Number(state.eggStock) || 0;
-        const bestEggs = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
-        if ((Number(state.eggStocks.poule) || 0) < bestEggs) {
+        const bestEggs = (!doMerge || isCloudFresher) ? cloudEggs : Math.max(localEggs, cloudEggs);
+        if ((Number(state.eggStocks.poule) || 0) < bestEggs || isCloudFresher) {
           state.eggStocks.poule = bestEggs;
         }
       }
@@ -1188,7 +1206,7 @@
         const cloudTs = Number(cloudData.feedStockUpdatedAt) || 0;
         const localTs = Number(state.feedStockUpdatedAt) || 0;
         const cloudStock = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
-        const shouldAcceptCloud = !doMerge || (cloudTs > localTs && cloudStock !== null);
+        const shouldAcceptCloud = !doMerge || isCloudFresher || (cloudTs >= localTs && cloudStock !== null);
         if (shouldAcceptCloud) {
           state.feedStockKg = cloudStock;
           state.feedStockDate = cloudData.feedStockDate || null;

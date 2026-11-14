@@ -290,7 +290,12 @@ const app = {
   // State Persistence
   saveState() {
     try {
+      appState.lastUpdated = Date.now();
+      try {
+        localStorage.setItem('fermegest_last_local_edit', String(appState.lastUpdated));
+      } catch (e) {}
       const serializedState = JSON.stringify({
+        lastUpdated: appState.lastUpdated,
         version: '2.2.0-poultry',
         currency: appState.currency,
         lang: appState.lang || 'fr',
@@ -352,6 +357,7 @@ const app = {
       }
       if (saved) {
         const parsed = JSON.parse(saved);
+        appState.lastUpdated = Number(parsed.lastUpdated) || Number(localStorage.getItem('fermegest_last_local_edit')) || 0;
         appState.currency = 'TND'; // Verrouillé définitivement au Dinar Tunisien (TND)
         if (parsed.farmCode && !localStorage.getItem('fermegest_farm_code')) {
           localStorage.setItem('fermegest_farm_code', parsed.farmCode);
@@ -9418,7 +9424,7 @@ const app = {
       }
       animal.costPerHead = costPerHead;
       animal.notes = notes;
-
+      animal.updatedAt = Date.now();
       this.saveState();
       this.closeModal('modalEditAnimal');
       this.renderAll();
@@ -10373,6 +10379,7 @@ const app = {
     }
     lot.currentQuantity -= count;
     lot.mortality = (lot.mortality || 0) + count;
+    lot.updatedAt = Date.now();
     if (lot.currentQuantity <= 0 && !lot.exitDate) {
       lot.exitDate = this.getTodayStr();
     }
@@ -10454,6 +10461,7 @@ const app = {
     const unitPrice = Math.max(0, parseFloat(priceInput?.value) || 0);
     lot.currentQuantity += count;
     lot.initialQuantity += count;
+    lot.updatedAt = Date.now();
     if (unitPrice > 0) {
       const todayStr = new Date().toISOString().split('T')[0];
       appState.expenses.unshift({
@@ -12167,6 +12175,7 @@ const app = {
             confirmText: isAr ? 'متابعة' : 'Continuer',
             onConfirm: () => {
               lot.currentQuantity = Math.max(0, lot.currentQuantity - quantity);
+              lot.updatedAt = Date.now();
               if (lot.currentQuantity <= 0 && !lot.exitDate) {
                 lot.exitDate = date;
               }
@@ -12176,6 +12185,7 @@ const app = {
           return;
         }
         lot.currentQuantity = Math.max(0, lot.currentQuantity - quantity);
+        lot.updatedAt = Date.now();
         if (lot.currentQuantity <= 0 && !lot.exitDate) {
           lot.exitDate = date;
         }
@@ -12201,6 +12211,7 @@ const app = {
             if (lot) {
               const qty = Number(saleToDelete.quantity) || 0;
               lot.currentQuantity = Math.min(Number(lot.initialQuantity) || 9999, (Number(lot.currentQuantity) || 0) + qty);
+              lot.updatedAt = Date.now();
               if (lot.currentQuantity > 0) {
                 lot.exitDate = null;
               }
@@ -13829,6 +13840,7 @@ const app = {
 
           targetLot.currentQuantity = newQty;
           targetLot.initialQuantity = (Number(targetLot.initialQuantity) || prevQty) + liveCount;
+          targetLot.updatedAt = Date.now();
           targetLot.costPerHead = Number(weightedCost.toFixed(3));
           targetLot.notes = (targetLot.notes || '') + ` [Ajout +${liveCount} poussins éclos de ${batch.name} (coût éclosion: ${this.formatMoney(costPerChick)}/tête)]`;
         } else {
