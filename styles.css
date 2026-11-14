@@ -2091,6 +2091,9 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   display: flex;
   flex-direction: column;
   transition: var(--transition);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 .calendar-day-cell:hover {
   border-color: var(--primary);
@@ -2102,21 +2105,101 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   border-color: var(--primary);
   background-color: var(--primary-light);
 }
+.calendar-day-cell.selected-day {
+  border-color: var(--accent-emerald) !important;
+  box-shadow: 0 0 0 2px var(--primary-glow);
+  background-color: rgba(16, 185, 129, 0.12) !important;
+}
 .day-number {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-main);
   margin-bottom: 4px;
 }
+.today .day-number {
+  color: var(--primary);
+}
+
+/* Event tags for Desktop */
+.cal-events-desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .day-event-tag {
   font-size: 0.65rem;
   font-weight: 600;
   padding: 1px 4px;
   border-radius: 4px;
-  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Compact Event Dots for Mobile */
+.cal-events-mobile {
+  display: none;
+  width: 100%;
+}
+.cal-dots-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+.cal-event-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.cal-event-counter {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  line-height: 1;
+  margin-left: 1px;
+}
+
+/* Responsive Mobile Calendar (< 768px): Élimination complète de la saturation */
+@media (max-width: 768px) {
+  .calendar-grid-wrapper {
+    padding: 0.5rem 0.25rem 0.75rem !important;
+  }
+  .calendar-days-grid {
+    gap: 2.5px !important;
+    margin-top: 4px !important;
+  }
+  .calendar-day-cell {
+    min-height: 48px !important;
+    height: 52px !important;
+    padding: 3px 2px !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-radius: 6px !important;
+  }
+  .calendar-day-cell .day-number {
+    font-size: 0.72rem !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+  .cal-events-desktop {
+    display: none !important;
+  }
+  .cal-events-mobile {
+    display: flex !important;
+    justify-content: center !important;
+  }
+}
+
+html[dir="rtl"] .cal-dots-container {
+  direction: rtl;
 }
 .event-hatch {
   background: var(--accent-amber-light);

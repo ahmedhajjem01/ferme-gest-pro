@@ -14315,6 +14315,14 @@ const app = {
     this.showToast(this.t('toast_vaccine_saved') || '💉 Vaccin / Soin programmé avec succès !');
   },
 
+  handleCalendarDayClick(dateStr) {
+    appState.calendarSelectedDate = dateStr;
+    document.querySelectorAll('.calendar-day-cell').forEach(c => {
+      c.classList.toggle('selected-day', c.getAttribute('data-date') === dateStr);
+    });
+    this.showDayEvents(dateStr);
+  },
+
   showDayEvents(dateStr) {
     const modal = document.getElementById('modalDayEventsDetail');
     const titleLabel = document.getElementById('dayEventsDateLabel');
@@ -14344,7 +14352,10 @@ const app = {
     const dayIncubator = [];
     (appState.incubatorBatches || []).forEach(b => {
       if (b.hatchDate === dateStr) {
-        dayIncubator.push({ id: b.id, type: 'hatch', title: `🐣 ${this.t('cal_legend_hatch')} ${b.name}`, details: `${b.eggCount || 0} ${this.t('unit_eggs')}` });
+        dayIncubator.push({ id: b.id, type: 'hatch', title: `🐣 ${this.t('cal_legend_hatch')} ${b.name}`, details: `${b.eggsCount || b.eggCount || 0} ${this.t('unit_eggs')}` });
+      }
+      if (b.startDate === dateStr) {
+        dayIncubator.push({ id: b.id, type: 'mirage', title: `🥚 ${this.t('stage_header_start') || 'Mise en couveuse'} (${b.name})`, details: '' });
       }
       if (b.candling1Date === dateStr) {
         dayIncubator.push({ id: b.id, type: 'mirage', title: `🔍 ${this.t('stage_header_candling1')} (${b.name})`, details: '' });
@@ -14357,9 +14368,25 @@ const app = {
     // 3. Sales
     const daySales = (appState.sales || []).filter(s => s.date === dateStr);
 
+    // 4. Poultry flock automatic milestones (Newcastle j14, Vente j35)
+    const dayFlockEvents = [];
+    (appState.animals || []).forEach(a => {
+      if (a.species === 'poulet' || a.species === 'poussin') {
+        const bDate = new Date(a.birthDate);
+        const j14 = new Date(bDate); j14.setDate(j14.getDate() + 14);
+        const j35 = new Date(bDate); j35.setDate(j35.getDate() + 35);
+        if (j14.toISOString().split('T')[0] === dateStr) {
+          dayFlockEvents.push({ id: a.id + '-v14', type: 'vaccine', title: `💉 ${this.t('cal_legend_vaccine') || 'Vaccin'} (${a.name})`, details: 'Rappel Newcastle / Gumboro (J14)' });
+        }
+        if (j35.toISOString().split('T')[0] === dateStr) {
+          dayFlockEvents.push({ id: a.id + '-s35', type: 'sale', title: `🍗 ${a.name} (${this.t('cal_legend_sale') || 'Vente'})`, details: 'Fin de cycle engraissement (J35)' });
+        }
+      }
+    });
+
     let html = '';
 
-    if (dayCalendarEvents.length === 0 && dayIncubator.length === 0 && daySales.length === 0) {
+    if (dayCalendarEvents.length === 0 && dayIncubator.length === 0 && daySales.length === 0 && dayFlockEvents.length === 0) {
       html = `
         <div style="text-align: center; padding: 1.5rem 1rem; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--radius-md);">
           <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">📅</div>
@@ -14410,6 +14437,16 @@ const app = {
           <div class="panel-card" style="padding: 0.75rem 0.9rem; margin: 0; border: 1px solid rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.05); border-radius: var(--radius-md);">
             <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-amber);">${b.title}</div>
             ${b.details ? `<div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem;">${b.details}</div>` : ''}
+          </div>
+        `;
+      });
+
+      // Render Flock Milestones
+      dayFlockEvents.forEach(f => {
+        html += `
+          <div class="panel-card" style="padding: 0.75rem 0.9rem; margin: 0; border: 1px solid rgba(192, 132, 252, 0.3); background: rgba(192, 132, 252, 0.05); border-radius: var(--radius-md);">
+            <div style="font-weight: 700; font-size: 0.88rem; color: #c084fc;">${f.title}</div>
+            ${f.details ? `<div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem;">${f.details}</div>` : ''}
           </div>
         `;
       });
@@ -14670,69 +14707,124 @@ const app = {
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const cell = document.createElement('div');
-      cell.className = 'calendar-day-cell' + (dateStr === todayStr ? ' today' : '');
+      const isToday = (dateStr === todayStr);
+      const isSelected = (appState.calendarSelectedDate === dateStr);
+      cell.className = 'calendar-day-cell' + (isToday ? ' today' : '') + (isSelected ? ' selected-day' : '');
+      cell.setAttribute('data-date', dateStr);
       
-      let dayHtml = `<span class="day-number">${day}</span>`;
+      // Collect all events for this day
+      const dayEvents = [];
 
-      // 1. Check Hatching events (Date d'éclosion des couveuses)
-      appState.incubatorBatches.forEach(b => {
+      // 1. Couveuses (Hatching, Start, Candling, Lockdown)
+      (appState.incubatorBatches || []).forEach(b => {
         if (b.hatchDate === dateStr) {
-          dayHtml += `<div class="day-event-tag event-hatch" title="${this.t('cal_legend_hatch')} ${b.name}">🐣 ${this.t('cal_legend_hatch')} ${b.name}</div>`;
+          dayEvents.push({ type: 'hatch', icon: '🐣', title: `${this.t('cal_legend_hatch') || 'Éclosion'} ${b.name}`, tagClass: 'event-hatch', dotColor: '#f59e0b' });
         }
         if (b.startDate === dateStr) {
-          dayHtml += `<div class="day-event-tag event-mirage" title="${this.t('stage_header_start')}">🥚 ${this.t('stage_header_start')}</div>`;
+          dayEvents.push({ type: 'mirage', icon: '🥚', title: this.t('stage_header_start') || 'Début', tagClass: 'event-mirage', dotColor: '#38bdf8' });
         }
         if (b.candling1Date === dateStr) {
-          dayHtml += `<div class="day-event-tag event-mirage" title="${this.t('stage_header_candling1')}">🔍 ${this.t('stage_header_candling1')}</div>`;
+          dayEvents.push({ type: 'mirage', icon: '🔍', title: this.t('stage_header_candling1') || 'Mirage', tagClass: 'event-mirage', dotColor: '#38bdf8' });
         }
         if (b.lockdownDate === dateStr) {
-          dayHtml += `<div class="day-event-tag event-mirage" title="${this.t('stage_header_lockdown')}">🛑 ${this.t('stage_header_lockdown')}</div>`;
+          dayEvents.push({ type: 'mirage', icon: '🛑', title: this.t('stage_header_lockdown') || 'Éclosoir', tagClass: 'event-mirage', dotColor: '#ef4444' });
         }
       });
 
-      // 2. Check Vaccination / Flock events (Vaccin Newcastle / Gumboro for chicks)
-      appState.animals.forEach(a => {
+      // 2. Volailles / Vaccins chicks
+      (appState.animals || []).forEach(a => {
         if (a.species === 'poulet' || a.species === 'poussin') {
           const bDate = new Date(a.birthDate);
           const j14 = new Date(bDate); j14.setDate(j14.getDate() + 14);
           const j35 = new Date(bDate); j35.setDate(j35.getDate() + 35);
 
           if (j14.toISOString().split('T')[0] === dateStr) {
-            dayHtml += `<div class="day-event-tag event-vaccine" title="${this.t('cal_legend_vaccine')}">💉 ${this.t('cal_legend_vaccine')} (${a.name})</div>`;
+            dayEvents.push({ type: 'vaccine', icon: '💉', title: `${this.t('cal_legend_vaccine') || 'Vaccin'} (${a.name})`, tagClass: 'event-vaccine', dotColor: '#c084fc' });
           }
           if (j35.toISOString().split('T')[0] === dateStr) {
-            dayHtml += `<div class="day-event-tag event-sale" title="${this.t('cal_legend_sale')}">🍗 ${a.name}</div>`;
+            dayEvents.push({ type: 'sale', icon: '🍗', title: `${a.name}`, tagClass: 'event-sale', dotColor: '#34d399' });
           }
         }
       });
 
-      // 3. Check Custom Calendar Events (Gestation, Calvings, Lambings, Dry-offs, Vaccines)
+      // 3. Custom calendar events (Gestation, Calvings, Lambings, Dry-offs, Vaccines)
       (appState.calendarEvents || []).forEach(evt => {
         if (evt.date === dateStr) {
           const isDone = Boolean(evt.isDone);
-          const doneStyle = isDone ? 'opacity: 0.65; text-decoration: line-through;' : '';
+          let icon = '💉';
+          let tagClass = 'event-vaccine';
+          let dotColor = '#a78bfa';
+
           if (evt.type === 'mise_bas') {
-            dayHtml += `<div class="day-event-tag event-gestation" style="${doneStyle}" title="${evt.title}">🍼 ${evt.title}</div>`;
+            icon = '🍼';
+            tagClass = 'event-gestation';
+            dotColor = '#ec4899';
           } else if (evt.type === 'tarissement') {
-            dayHtml += `<div class="day-event-tag event-dryoff" style="${doneStyle}" title="${evt.title}">🥛 ${evt.title}</div>`;
+            icon = '🥛';
+            tagClass = 'event-dryoff';
+            dotColor = '#f59e0b';
           } else if (evt.type === 'echographie') {
-            dayHtml += `<div class="day-event-tag event-mirage" style="${doneStyle}" title="${evt.title}">🔍 ${evt.title}</div>`;
-          } else {
-            dayHtml += `<div class="day-event-tag event-vaccine" style="${doneStyle}" title="${evt.title}">💉 ${evt.title}</div>`;
+            icon = '🔍';
+            tagClass = 'event-mirage';
+            dotColor = '#38bdf8';
           }
+
+          dayEvents.push({
+            type: evt.type,
+            icon,
+            title: evt.title,
+            tagClass,
+            dotColor,
+            isDone
+          });
         }
       });
 
-      // 4. Check Sales recorded on this date
-      appState.sales.forEach(s => {
+      // 4. Sales
+      (appState.sales || []).forEach(s => {
         if (s.date === dateStr) {
-          dayHtml += `<div class="day-event-tag event-sale" title="${s.description}">💰 ${this.t('cal_legend_sale')} (${this.formatMoney(s.total)})</div>`;
+          dayEvents.push({
+            type: 'sale',
+            icon: '💰',
+            title: `${this.t('cal_legend_sale') || 'Vente'} (${this.formatMoney(s.total)})`,
+            tagClass: 'event-sale',
+            dotColor: '#10b981'
+          });
         }
       });
+
+      // Desktop HTML (structured tags)
+      let desktopHtml = '';
+      const maxDesktopVisible = 2;
+      dayEvents.slice(0, maxDesktopVisible).forEach(ev => {
+        const doneStyle = ev.isDone ? 'opacity: 0.65; text-decoration: line-through;' : '';
+        desktopHtml += `<div class="day-event-tag ${ev.tagClass}" style="${doneStyle}" title="${ev.title}">${ev.icon} ${ev.title}</div>`;
+      });
+      if (dayEvents.length > maxDesktopVisible) {
+        desktopHtml += `<div class="day-event-tag" style="background: rgba(255,255,255,0.06); color: var(--text-muted); font-size: 0.6rem; text-align: center;">+${dayEvents.length - maxDesktopVisible}</div>`;
+      }
+
+      // Mobile HTML (uncluttered compact dots)
+      let mobileHtml = '';
+      if (dayEvents.length > 0) {
+        const maxMobileDots = 2;
+        let dotsHtml = '';
+        dayEvents.slice(0, maxMobileDots).forEach(ev => {
+          dotsHtml += `<span class="cal-event-dot" style="background-color: ${ev.dotColor};" title="${ev.title}"></span>`;
+        });
+        const remaining = dayEvents.length - maxMobileDots;
+        const counterHtml = remaining > 0 ? `<span class="cal-event-counter">+${remaining}</span>` : '';
+        mobileHtml = `<div class="cal-dots-container">${dotsHtml}${counterHtml}</div>`;
+      }
+
+      cell.innerHTML = `
+        <span class="day-number">${day}</span>
+        <div class="cal-events-desktop">${desktopHtml}</div>
+        <div class="cal-events-mobile">${mobileHtml}</div>
+      `;
 
       cell.style.cursor = 'pointer';
-      cell.setAttribute('onclick', `app.showDayEvents('${dateStr}')`);
-      cell.innerHTML = dayHtml;
+      cell.setAttribute('onclick', `app.handleCalendarDayClick('${dateStr}')`);
       grid.appendChild(cell);
     }
   },
