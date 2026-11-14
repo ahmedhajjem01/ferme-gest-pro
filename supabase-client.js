@@ -255,7 +255,11 @@
 
         const handleWakeup = () => {
           if (this.currentUser) {
-            this.pullData(true);
+            if (localStorage.getItem('fermegest_pending_push') === 'true') {
+              this.syncNow(false);
+            } else {
+              this.pullData(true);
+            }
             this.reconnectRealtimeIfNeeded();
           }
         };
@@ -285,7 +289,11 @@
         if (!this._heartbeatInterval) {
           this._heartbeatInterval = setInterval(() => {
             if (this.currentUser && !document.hidden && !this.isSyncing) {
-              this.pullData(true);
+              if (localStorage.getItem('fermegest_pending_push') === 'true') {
+                this.syncNow(false);
+              } else {
+                this.pullData(true);
+              }
             }
           }, 20000);
         }
@@ -757,6 +765,7 @@
 
         if (upsertErr) throw upsertErr;
 
+        localStorage.removeItem('fermegest_pending_push');
         this.lastSyncedAt = new Date();
         this.updateSyncBadge('connected');
         this.updateProfileModalUI();
@@ -863,6 +872,7 @@
 
         if (error) throw error;
 
+        localStorage.removeItem('fermegest_pending_push');
         this.lastSyncedAt = new Date();
         this.updateSyncBadge('connected');
 
@@ -874,6 +884,7 @@
         }
       } catch (err) {
         console.error('[SupabaseAuth] Push error:', err);
+        localStorage.setItem('fermegest_pending_push', 'true');
         this.updateSyncBadge('error');
       } finally {
         this.isSyncing = false;
@@ -1081,6 +1092,27 @@
       state.sicamCansCount = null;
 
       if (doMerge) {
+        // Réconciliation différentielle des distributions multi-appareils (Event Sourcing)
+        if (Array.isArray(cloudData.feedDistributions) && Array.isArray(state.feedDistributions)) {
+          const localDistribIds = new Set(state.feedDistributions.map(d => String(d.id)));
+          const incomingNewDistribs = cloudData.feedDistributions.filter(d => d && d.id && !localDistribIds.has(String(d.id)));
+          
+          if (incomingNewDistribs.length > 0 && Array.isArray(state.feedTypes)) {
+            incomingNewDistribs.forEach(dist => {
+              if (Array.isArray(dist.items)) {
+                dist.items.forEach(it => {
+                  const targetFt = state.feedTypes.find(f => f && (f.id === it.feedTypeId || f.name === it.name));
+                  if (targetFt && Number(targetFt.stockKg) > 0) {
+                    const deductKg = Number(it.kg) || 0;
+                    targetFt.stockKg = Math.max(0, parseFloat((Number(targetFt.stockKg) - deductKg).toFixed(2)));
+                    targetFt.updatedAt = Date.now();
+                  }
+                });
+              }
+            });
+          }
+        }
+
         state.animals = this.mergeCollections(state.animals, cloudData.animals || []);
         state.expenses = this.mergeCollections(state.expenses, cloudData.expenses || []);
         state.sales = this.mergeCollections(state.sales, cloudData.sales || []);
@@ -1205,16 +1237,16 @@
       } catch (e) {}
 
       if (window.app) {
-        if (app.updateCurrencySymbols) app.updateCurrencySymbols();
-        if (app.updateUserHeaderUI) app.updateUserHeaderUI();
-        if (app.updateLivestockUIThemeAndVisibility) app.updateLivestockUIThemeAndVisibility();
-        if (app.closeModal) {
-          app.closeModal('modalOnboarding');
-          app.closeModal('modalAnimalSelection');
-          app.closeModal('modalAuthPrompt');
-          app.closeModal('modalAuth');
+        if (typeof window.app.updateCurrencySymbols === 'function') window.app.updateCurrencySymbols();
+        if (typeof window.app.updateUserHeaderUI === 'function') window.app.updateUserHeaderUI();
+        if (typeof window.app.updateLivestockUIThemeAndVisibility === 'function') window.app.updateLivestockUIThemeAndVisibility();
+        if (typeof window.app.closeModal === 'function') {
+          window.app.closeModal('modalOnboarding');
+          window.app.closeModal('modalAnimalSelection');
+          window.app.closeModal('modalAuthPrompt');
+          window.app.closeModal('modalAuth');
         }
-        if (app.renderAll) app.renderAll();
+        if (typeof window.app.renderAll === 'function') window.app.renderAll();
       }
     },
 

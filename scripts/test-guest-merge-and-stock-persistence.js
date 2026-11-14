@@ -92,4 +92,23 @@ assert(stateAfter.animals.length === 1, 'Local animals must NOT be erased on ses
 assert.strictEqual(stateAfter.eggStock, 100, 'Egg stock must NOT be wiped!');
 console.log('✔ Test 4 Passed: Offline / session null did NOT wipe farm data!');
 
+console.log('--- TEST 5: Differential Multi-Device Feed Distribution Sync ---');
+window.appState = {
+  feedTypes: [{ id: 'feed-ponte', name: 'Aliment ponte', stockKg: 90, pricePerKg: 1.2 }],
+  feedDistributions: [{ id: 'dist-phone-1', totalKg: 10, items: [{ feedTypeId: 'feed-ponte', kg: 10 }] }],
+  feedStockKg: 90
+};
+
+const incomingCloudData = {
+  feedDistributions: [
+    { id: 'dist-phone-1', totalKg: 10, items: [{ feedTypeId: 'feed-ponte', kg: 10 }] },
+    { id: 'dist-phone-2', totalKg: 15, items: [{ feedTypeId: 'feed-ponte', kg: 15 }] }
+  ]
+};
+
+appAuth.applyCloudData(incomingCloudData, true);
+console.log('Stock after Phone 2 distribution merged:', window.appState.feedStockKg);
+assert.strictEqual(window.appState.feedStockKg, 75, 'Differential sync must deduct Phone 2 distribution (90 - 15 = 75 kg)!');
+console.log('✔ Test 5 Passed: Multi-device distribution differential reconciliation works with mathematical precision!');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');
