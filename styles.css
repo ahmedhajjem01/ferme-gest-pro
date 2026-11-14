@@ -828,7 +828,7 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08));
   border: 1.5px solid rgba(16, 185, 129, 0.35);
   border-radius: var(--radius-lg);
-  padding: 1.15rem 1.35rem;
+  padding: 1.15rem 1.25rem;
   margin-bottom: 1.35rem;
   display: flex;
   align-items: center;
@@ -837,6 +837,10 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   gap: 1.15rem;
   box-shadow: var(--shadow-sm);
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .egg-stock-card:hover {
   border-color: rgba(16, 185, 129, 0.55);
@@ -845,13 +849,15 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
 .egg-stock-info-group {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  min-width: 200px;
+  gap: 0.9rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .egg-stock-icon-bubble {
   font-size: 2.2rem;
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   background: rgba(16, 185, 129, 0.2);
   border: 1.5px solid rgba(16, 185, 129, 0.4);
@@ -865,27 +871,62 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
 .egg-stock-card:hover .egg-stock-icon-bubble {
   transform: scale(1.06);
 }
+
+.egg-species-filter-bar {
+  display: flex;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.egg-species-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+#eggSpeciesBreakdownStrip {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .egg-stock-actions-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(125px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.55rem;
   width: 100%;
   max-width: 310px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 .egg-stock-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  padding: 0.52rem 0.8rem;
+  padding: 0.52rem 0.5rem;
   border-radius: var(--radius-md);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  word-break: break-word;
   min-height: 40px;
   transition: var(--transition);
   cursor: pointer;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .egg-stock-btn:hover {
   transform: translateY(-2px);
@@ -899,13 +940,46 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   .milk-stock-card {
     flex-direction: column;
     align-items: stretch;
-    padding: 1rem;
-    gap: 0.9rem;
+    padding: 0.95rem 1rem;
+    gap: 0.85rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .egg-stock-icon-bubble {
+    width: 48px;
+    height: 48px;
+    font-size: 1.85rem;
   }
   .egg-stock-actions-grid {
     max-width: 100%;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+  .egg-stock-btn {
+    font-size: 0.79rem;
+    padding: 0.48rem 0.35rem;
+    min-height: 39px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+  .egg-stock-card,
+  .milk-stock-card {
+    padding: 0.85rem 0.85rem;
+  }
+  .egg-stock-actions-grid {
+    gap: 0.4rem;
+  }
+  .egg-stock-btn {
+    font-size: 0.76rem;
+    padding: 0.45rem 0.25rem;
   }
 }
 
@@ -4808,6 +4882,9 @@ label {
   grid-template-columns: 1fr;
   gap: 1.15rem;
   margin-bottom: 1.35rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 @media (min-width: 1024px) {
   .harvest-cards-grid {

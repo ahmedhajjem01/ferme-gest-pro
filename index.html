@@ -495,10 +495,10 @@
           <div class="egg-stock-card" id="eggStockCard">
             <div class="egg-stock-info-group">
               <div class="egg-stock-icon-bubble">🥚</div>
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
-                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0;" data-i18n="egg_stock_title">Stock d'Œufs & Réserve</h3>
-                  <span class="badge-pill text-emerald" data-i18n="egg_stock_badge" style="font-size: 0.72rem;">Disponible</span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.15rem; flex-wrap: wrap;">
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; word-break: break-word;" data-i18n="egg_stock_title">Stock d'Œufs & Réserve</h3>
+                  <span class="badge-pill text-emerald" data-i18n="egg_stock_badge" style="font-size: 0.72rem; flex-shrink: 0;">Disponible</span>
                 </div>
                 <div style="font-size: 1.7rem; font-weight: 900; color: var(--text-main); line-height: 1.15;">
                   <span id="eggStockMainCount">0</span> <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);" data-i18n="unit_eggs">œufs</span>
@@ -510,13 +510,13 @@
             </div>
 
             <!-- Multi-Species Egg Filter Bar -->
-            <div class="egg-species-filter-bar" style="display: flex; gap: 0.35rem; margin: 0.75rem 0 0.35rem; overflow-x: auto; padding-bottom: 2px;">
+            <div class="egg-species-filter-bar">
               <button type="button" class="btn-filter-pill active" data-egg-filter="all" onclick="app.setEggFilter('all')" data-i18n="egg_filter_all">🌐 Tous</button>
               <button type="button" class="btn-filter-pill" data-egg-filter="poule" onclick="app.setEggFilter('poule')" data-i18n="egg_filter_chicken">🥚 Poule</button>
               <button type="button" class="btn-filter-pill" data-egg-filter="canard_barbarie" onclick="app.setEggFilter('canard_barbarie')" data-i18n="egg_filter_duck">🦆 Canard</button>
             </div>
             <!-- Multi-Species Breakdown strip -->
-            <div id="eggSpeciesBreakdownStrip" style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.4rem;">
+            <div id="eggSpeciesBreakdownStrip">
             </div>
 
             <!-- Action buttons: 2 buttons per line grid -->
@@ -540,10 +540,10 @@
           <div id="milkStockCard" class="milk-stock-card" style="display: none;">
             <div class="milk-stock-info-group">
               <div class="milk-stock-icon-bubble">🥛</div>
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
-                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0;" data-i18n="milk_stock_title">Tank à Lait & Réserve</h3>
-                  <span class="badge-pill text-sky" data-i18n="milk_stock_badge" style="font-size: 0.72rem; background: rgba(2, 132, 199, 0.15); color: #0284c7;">Frais & Disponible</span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.15rem; flex-wrap: wrap;">
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; word-break: break-word;" data-i18n="milk_stock_title">Tank à Lait & Réserve</h3>
+                  <span class="badge-pill text-sky" data-i18n="milk_stock_badge" style="font-size: 0.72rem; background: rgba(2, 132, 199, 0.15); color: #0284c7; flex-shrink: 0;">Frais & Disponible</span>
                 </div>
                 <div style="font-size: 1.7rem; font-weight: 900; color: var(--text-main); line-height: 1.15;">
                   <span id="milkStockMainCount">0</span> <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);" data-i18n="unit_liters">Litres</span>

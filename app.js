@@ -2997,15 +2997,15 @@ const app = {
       const isPouleActive = filter === 'poule' || filter === 'all';
       const isDuckActive = filter === 'canard_barbarie' || filter === 'all';
       breakdownStrip.innerHTML = `
-        <span class="badge-pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.78rem; padding: 0.2rem 0.55rem; font-weight: 700;">
-          🥚 ${this.t('opt_egg_species_poule') || 'Poule'}: <strong>${chickenStock}</strong>
+        <span class="badge-pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
+          ${this.t('opt_egg_species_poule') || '🥚 Poule'}: <strong>${chickenStock}</strong>
         </span>
-        <span class="badge-pill" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); font-size: 0.78rem; padding: 0.2rem 0.55rem; font-weight: 700;">
-          🦆 ${this.t('opt_egg_species_canard') || 'Canard'}: <strong>${duckStock}</strong>
+        <span class="badge-pill" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
+          ${this.t('opt_egg_species_canard') || '🦆 Canard'}: <strong>${duckStock}</strong>
         </span>
         ${otherStock > 0 ? `
-        <span class="badge-pill" style="background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 0.78rem; padding: 0.2rem 0.55rem; font-weight: 700;">
-          🪶 Autre: <strong>${otherStock}</strong>
+        <span class="badge-pill" style="background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
+          🪶 ${this.t('opt_egg_species_autre') || 'Autre'}: <strong>${otherStock}</strong>
         </span>` : ''}
       `;
     }
