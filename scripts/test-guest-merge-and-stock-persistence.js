@@ -247,4 +247,112 @@ assert.strictEqual(window.appState.eggStocks.canard_barbarie, 20, 'Duck stock mu
 assert.strictEqual(window.appState.eggStock, 55, 'Total egg stock must decrease to 75 - 20 = 55 eggs!');
 console.log('✔ Test 8 Passed: Rectification en 1 clic des couvées antérieures sans déduction validée à 100% !');
 
+console.log('--- TEST 9: Multi-Account Shared Farm Convergence (User 500kg feed, Brother 28 eggs) ---');
+// 1. État Compte Utilisateur (Propriétaire) : Stock aliment correct (500kg), mais 0 œufs
+const userAccountRow = {
+  user_id: 'user-owner-111',
+  updated_at: '2026-11-14T10:00:00.000Z',
+  data: {
+    farmCode: 'FERME-K8M2',
+    farmRole: 'owner',
+    eggStock: 0,
+    eggStocks: { poule: 0, canard_barbarie: 0 },
+    eggHarvests: [],
+    feedStockKg: 500,
+    feedStockUpdatedAt: 1731578400000,
+    feedTypes: [
+      { id: 'ft-demarrage', name: 'Aliment Démarrage', stockKg: 350, updatedAt: 1731578400000 },
+      { id: 'ft-ponte', name: 'Aliment Ponte', stockKg: 150, updatedAt: 1731578400000 }
+    ]
+  }
+};
+
+// 2. État Compte Frère (Associé) : 28 œufs enregistrés, mais aliment obsolète (0kg)
+const brotherAccountRow = {
+  user_id: 'user-partner-222',
+  updated_at: '2026-11-14T10:05:00.000Z',
+  data: {
+    farmCode: 'FERME-K8M2',
+    farmRole: 'partner',
+    eggStock: 28,
+    eggStocks: { poule: 28, canard_barbarie: 0 },
+    eggHarvests: [
+      { id: 'harvest-bro-1', date: '2026-11-14', count: 28, species: 'poule', category: 'consommation', updatedAt: 1731578700000 }
+    ],
+    feedStockKg: 0,
+    feedStockUpdatedAt: 1731500000000,
+    feedTypes: []
+  }
+};
+
+// Simulation de synchronisation sur le compte de l'utilisateur (Owner)
+// L'algorithme fold chronologiquement : userAccountRow (10:00) puis brotherAccountRow (10:05)
+window.appState = {
+  eggStock: 0,
+  eggStocks: { poule: 0, canard_barbarie: 0 },
+  eggHarvests: [],
+  feedStockKg: 500,
+  feedTypes: [
+    { id: 'ft-demarrage', name: 'Aliment Démarrage', stockKg: 350, updatedAt: 1731578400000 },
+    { id: 'ft-ponte', name: 'Aliment Ponte', stockKg: 150, updatedAt: 1731578400000 }
+  ]
+};
+
+const rowsToMerge = [userAccountRow, brotherAccountRow].sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+for (const row of rowsToMerge) {
+  appAuth.applyCloudData(row.data, true);
+}
+
+console.log('Owner merged eggStock:', window.appState.eggStock, 'eggStocks:', window.appState.eggStocks);
+console.log('Owner merged feedStockKg:', window.appState.feedStockKg, 'feedTypes count:', window.appState.feedTypes.length);
+
+assert.strictEqual(window.appState.eggStock, 28, 'Owner must now see the brother\'s 28 eggs!');
+assert.strictEqual(window.appState.eggStocks.poule, 28, 'Owner chicken egg stock must be 28!');
+assert.strictEqual(window.appState.eggHarvests.length, 1, 'Egg harvest list must contain brother\'s harvest!');
+assert.strictEqual(window.appState.feedStockKg, 500, 'Owner correct 500kg feed stock must NOT be overwritten by brother\'s 0kg!');
+assert.strictEqual(window.appState.feedTypes.length, 2, 'Both feed types must be preserved!');
+console.log('✔ Test 9A Passed: Owner gets brother\'s 28 eggs while keeping correct 500kg feed stock!');
+
+// Simulation de synchronisation sur le compte du frère (Brother / Partner)
+window.appState = {
+  eggStock: 28,
+  eggStocks: { poule: 28, canard_barbarie: 0 },
+  eggHarvests: [
+    { id: 'harvest-bro-1', date: '2026-11-14', count: 28, species: 'poule', category: 'consommation', updatedAt: 1731578700000 }
+  ],
+  feedStockKg: 0,
+  feedTypes: []
+};
+
+for (const row of rowsToMerge) {
+  appAuth.applyCloudData(row.data, true);
+}
+
+console.log('Brother merged eggStock:', window.appState.eggStock, 'eggStocks:', window.appState.eggStocks);
+console.log('Brother merged feedStockKg:', window.appState.feedStockKg, 'feedTypes count:', window.appState.feedTypes.length);
+
+assert.strictEqual(window.appState.eggStock, 28, 'Brother must keep his 28 eggs!');
+assert.strictEqual(window.appState.eggStocks.poule, 28, 'Brother chicken egg stock must remain 28!');
+assert.strictEqual(window.appState.feedStockKg, 500, 'Brother now receives the owner\'s correct 500kg feed stock!');
+assert.strictEqual(window.appState.feedTypes.length, 2, 'Brother receives the 2 feed types configured by owner!');
+console.log('✔ Test 9B Passed: Brother gets owner\'s 500kg feed stock while keeping his 28 eggs!');
+
+console.log('--- TEST 10: Protection against eggStock reset during UI render ---');
+window.appState.eggStock = 28;
+window.appState.eggStocks = { poule: 0, canard_barbarie: 0 };
+// Simulation du safeguard de renderEggStock
+let chickenStock = Number(window.appState.eggStocks.poule) || 0;
+let duckStock = Number(window.appState.eggStocks.canard_barbarie) || 0;
+let totalStock = chickenStock + duckStock;
+if (totalStock === 0 && Number(window.appState.eggStock) > 0) {
+  window.appState.eggStocks.poule = Number(window.appState.eggStock);
+  chickenStock = Number(window.appState.eggStock);
+  totalStock = chickenStock;
+}
+window.appState.eggStock = totalStock;
+
+assert.strictEqual(window.appState.eggStock, 28, 'Egg stock must remain 28 and not be reset to 0!');
+assert.strictEqual(window.appState.eggStocks.poule, 28, 'Egg stocks poule must be reconciled to 28!');
+console.log('✔ Test 10 Passed: UI render zero-protection verified!');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

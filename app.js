@@ -2959,10 +2959,16 @@ const app = {
         canard_barbarie: 0
       };
     }
-    const chickenStock = Number(appState.eggStocks.poule) || 0;
-    const duckStock = Number(appState.eggStocks.canard_barbarie) || 0;
-    const otherStock = (Number(appState.eggStocks.pintade) || 0) + (Number(appState.eggStocks.caille) || 0) + (Number(appState.eggStocks.autre) || 0);
-    const totalStock = chickenStock + duckStock + otherStock;
+    let chickenStock = Number(appState.eggStocks.poule) || 0;
+    let duckStock = Number(appState.eggStocks.canard_barbarie) || 0;
+    let otherStock = (Number(appState.eggStocks.pintade) || 0) + (Number(appState.eggStocks.caille) || 0) + (Number(appState.eggStocks.autre) || 0);
+    let totalStock = chickenStock + duckStock + otherStock;
+
+    if (totalStock === 0 && Number(appState.eggStock) > 0) {
+      appState.eggStocks.poule = Number(appState.eggStock);
+      chickenStock = Number(appState.eggStock);
+      totalStock = chickenStock;
+    }
     appState.eggStock = totalStock;
 
     const filter = appState.eggFilter || 'all';

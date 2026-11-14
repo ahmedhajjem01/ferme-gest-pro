@@ -34,6 +34,7 @@
         lang: 'fr',
         theme: 'dark',
         eggStock: 0,
+        eggStocks: { poule: 0, canard_barbarie: 0 },
         milkStock: 0,
         milkHarvests: [],
         eggHarvests: [],
@@ -638,45 +639,57 @@
       }
     },
 
-    // 5. Pull Cloud Data from 'user_farms' with Smart Merging
+    // 5. Pull Cloud Data from 'user_farms' with Smart Multi-Account Merging
     async pullData(isSilent = false) {
       if (!this.client || !this.currentUser || this.isSyncing) return;
       this.isSyncing = true;
 
       try {
         const farmCode = this.getFarmCode();
-        const farmRole = this.getFarmRole();
 
-        let query;
-        if (farmRole === 'partner' && farmCode) {
-          query = this.client
+        let rows = [];
+        if (farmCode) {
+          // Charger toutes les lignes associées à ce code de ferme (propriétaire + associés)
+          // ordonnées par updated_at croissant pour replier les modifications de chaque compte dans l'ordre chronologique
+          const { data, error } = await this.client
             .from('user_farms')
-            .select('data, updated_at')
+            .select('data, updated_at, user_id')
             .contains('data', { farmCode: farmCode })
-            .order('updated_at', { ascending: false })
-            .limit(1);
-        } else {
-          query = this.client
-            .from('user_farms')
-            .select('data, updated_at')
-            .eq('user_id', this.currentUser.id)
-            .maybeSingle();
+            .order('updated_at', { ascending: true });
+
+          if (!error && Array.isArray(data) && data.length > 0) {
+            rows = data;
+          }
         }
 
-        const { data, error } = await query;
-        if (error) throw error;
+        // Repli : si aucun enregistrement trouvé avec farmCode, charger par user_id
+        if (rows.length === 0) {
+          const { data, error } = await this.client
+            .from('user_farms')
+            .select('data, updated_at, user_id')
+            .eq('user_id', this.currentUser.id)
+            .maybeSingle();
 
-        const row = Array.isArray(data) ? data[0] : data;
+          if (!error && data) {
+            rows = [data];
+          }
+        }
 
-        if (row && row.data && Object.keys(row.data).length > 0) {
-          const cloudUpdatedAt = row.updated_at || (row.data && row.data.lastUpdated);
-          if (!isSilent || !this._lastCloudTimestamp || this._lastCloudTimestamp !== cloudUpdatedAt) {
-            this._lastCloudTimestamp = cloudUpdatedAt;
-            this.applyCloudData(row.data, true);
+        if (rows.length > 0) {
+          let hasNewData = false;
+          for (const row of rows) {
+            if (row && row.data && Object.keys(row.data).length > 0) {
+              const cloudUpdatedAt = row.updated_at || (row.data && row.data.lastUpdated);
+              this.applyCloudData(row.data, true);
+              hasNewData = true;
+              this._lastCloudTimestamp = cloudUpdatedAt;
+            }
+          }
+          if (hasNewData) {
             this.lastSyncedAt = new Date();
             this.updateUI();
             if (!isSilent && window.app && app.showToast) {
-              app.showToast('☁️ Données synchronisées avec votre compte !');
+              app.showToast('☁️ Données synchronisées avec votre élevage !');
             }
           }
         } else {
@@ -716,34 +729,41 @@
       this.updateSyncBadge('syncing');
 
       try {
-        // 1. Fetch latest data from user_farms
+        // 1. Fetch all cloud records for this farmCode across all accounts (owner + partners)
         const farmCode = this.getFarmCode();
-        const farmRole = this.getFarmRole();
 
-        let query;
-        if (farmRole === 'partner' && farmCode) {
-          query = this.client
+        let rows = [];
+        if (farmCode) {
+          const { data, error } = await this.client
             .from('user_farms')
-            .select('data, updated_at')
+            .select('data, updated_at, user_id')
             .contains('data', { farmCode: farmCode })
-            .order('updated_at', { ascending: false })
-            .limit(1);
-        } else {
-          query = this.client
-            .from('user_farms')
-            .select('data, updated_at')
-            .eq('user_id', this.currentUser.id)
-            .maybeSingle();
+            .order('updated_at', { ascending: true });
+
+          if (!error && Array.isArray(data) && data.length > 0) {
+            rows = data;
+          }
         }
 
-        const { data, error } = await query;
-        if (error) throw error;
+        if (rows.length === 0) {
+          const { data, error } = await this.client
+            .from('user_farms')
+            .select('data, updated_at, user_id')
+            .eq('user_id', this.currentUser.id)
+            .maybeSingle();
 
-        const row = Array.isArray(data) ? data[0] : data;
+          if (!error && data) {
+            rows = [data];
+          }
+        }
 
-        if (row && row.data && Object.keys(row.data).length > 0) {
-          // Smart merge cloud data with local data
-          this.applyCloudData(row.data, true);
+        if (rows.length > 0) {
+          for (const row of rows) {
+            if (row && row.data && Object.keys(row.data).length > 0) {
+              // Smart merge cloud data with local data sequentially
+              this.applyCloudData(row.data, true);
+            }
+          }
         }
 
         // 2. Push unified merged data back to user_farms
@@ -1075,12 +1095,50 @@
         } catch (e) {}
       }
 
-      // Egg & feed stock handling
-      if (cloudData.eggStock !== undefined) {
+      // 1. Egg & feed stock handling (multi-species support: poule, canard de barbarie, etc.)
+      if (!state.eggStocks || typeof state.eggStocks !== 'object') {
+        state.eggStocks = { poule: Number(state.eggStock) || 0, canard_barbarie: 0 };
+      }
+
+      if (cloudData.eggStocks && typeof cloudData.eggStocks === 'object') {
+        if (!doMerge) {
+          state.eggStocks = { ...cloudData.eggStocks };
+        } else {
+          // Fusion intelligente espèce par espèce
+          const allSpecies = new Set([
+            ...Object.keys(state.eggStocks),
+            ...Object.keys(cloudData.eggStocks)
+          ]);
+          allSpecies.forEach(sp => {
+            const localVal = Number(state.eggStocks[sp]) || 0;
+            const cloudVal = Number(cloudData.eggStocks[sp]) || 0;
+            state.eggStocks[sp] = Math.max(localVal, cloudVal);
+          });
+        }
+      } else if (cloudData.eggStock !== undefined) {
         const cloudEggs = Number(cloudData.eggStock) || 0;
         const localEggs = Number(state.eggStock) || 0;
-        state.eggStock = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
+        const bestEggs = doMerge ? Math.max(localEggs, cloudEggs) : cloudEggs;
+        if ((Number(state.eggStocks.poule) || 0) < bestEggs) {
+          state.eggStocks.poule = bestEggs;
+        }
       }
+
+      // Reconcilier le total eggStock agrégé
+      state.eggStock = Object.values(state.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+
+      // Filet de sécurité : si le stock d'œufs est à 0 mais que des pontes eggHarvests existent
+      if (state.eggStock === 0 && Array.isArray(cloudData.eggHarvests) && cloudData.eggHarvests.length > 0) {
+        const harvestedTotal = cloudData.eggHarvests.reduce((s, h) => s + (Number(h.count) || 0), 0);
+        if (harvestedTotal > 0) {
+          cloudData.eggHarvests.forEach(h => {
+            const sp = (h.species === 'canard' || h.species === 'canard_barbarie') ? 'canard_barbarie' : (h.species || 'poule');
+            state.eggStocks[sp] = (Number(state.eggStocks[sp]) || 0) + (Number(h.count) || 0);
+          });
+          state.eggStock = Object.values(state.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+        }
+      }
+
       if (cloudData.milkStock !== undefined) {
         const cloudMilk = Number(cloudData.milkStock) || 0;
         const localMilk = Number(state.milkStock) || 0;
@@ -1196,18 +1254,14 @@
         } catch (e) {}
       }
 
-      // Keep farm code in sync
-      if (cloudData.farmCode) {
+      // Keep farm code in sync (without overriding local device owner/partner role)
+      if (cloudData.farmCode && !localStorage.getItem('fermegest_farm_code')) {
         localStorage.setItem('fermegest_farm_code', cloudData.farmCode);
       }
-      if (cloudData.farmRole) {
+      if (cloudData.farmRole && !localStorage.getItem('fermegest_farm_role')) {
         localStorage.setItem('fermegest_farm_role', cloudData.farmRole);
       }
-      if (cloudData.farmRole === 'partner' && cloudData.farmCode) {
-        // Auto pull latest shared data from the owner
-        setTimeout(() => this.pullSharedData(cloudData.farmCode), 100);
-      }
-      if (cloudData.ownerEmail) {
+      if (cloudData.ownerEmail && !localStorage.getItem('fermegest_farm_owner_email')) {
         localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
       }
 
@@ -1218,6 +1272,7 @@
         window.appState.lang = state.lang;
         window.appState.theme = state.theme;
         window.appState.eggStock = state.eggStock;
+        window.appState.eggStocks = state.eggStocks ? { ...state.eggStocks } : { poule: state.eggStock, canard_barbarie: 0 };
         window.appState.milkStock = state.milkStock;
         window.appState.milkHarvests = state.milkHarvests;
         window.appState.eggHarvests = state.eggHarvests;
@@ -1245,6 +1300,7 @@
           theme: state.theme,
           userProfile: state.userProfile,
           eggStock: state.eggStock,
+          eggStocks: state.eggStocks,
           milkStock: state.milkStock,
           milkHarvests: state.milkHarvests,
           eggHarvests: state.eggHarvests,
@@ -1269,6 +1325,9 @@
       } catch (e) {}
 
       if (window.app) {
+        if (typeof window.app.renderEggStock === 'function') window.app.renderEggStock();
+        if (typeof window.app.renderEggProductionChart === 'function') window.app.renderEggProductionChart();
+        if (typeof window.app.renderFarmFeedSummary === 'function') window.app.renderFarmFeedSummary();
         if (typeof window.app.updateCurrencySymbols === 'function') window.app.updateCurrencySymbols();
         if (typeof window.app.updateUserHeaderUI === 'function') window.app.updateUserHeaderUI();
         if (typeof window.app.updateLivestockUIThemeAndVisibility === 'function') window.app.updateLivestockUIThemeAndVisibility();
@@ -1724,20 +1783,22 @@
     },
 
     async pullSharedData(code) {
-      if (!this.client) return;
+      if (!this.client || !code) return;
       try {
         const { data, error } = await this.client
           .from('user_farms')
           .select('data, updated_at, user_id')
           .contains('data', { farmCode: code })
-          .order('updated_at', { ascending: false })
-          .limit(1);
+          .order('updated_at', { ascending: true });
 
-        if (!error && data && data.length > 0 && data[0].data) {
-          const cloudData = data[0].data;
-          this.applyCloudData(cloudData, true);
-          if (cloudData.ownerEmail) {
-            localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          for (const row of data) {
+            if (row && row.data && Object.keys(row.data).length > 0) {
+              this.applyCloudData(row.data, true);
+              if (row.data.ownerEmail) {
+                localStorage.setItem('fermegest_farm_owner_email', row.data.ownerEmail);
+              }
+            }
           }
           this.lastSyncedAt = new Date();
           this.updateUI();
