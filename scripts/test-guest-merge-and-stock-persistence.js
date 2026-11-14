@@ -810,4 +810,39 @@ assert.strictEqual(testPhone1State.eggStocks.poule, 28, 'Force pull must set pou
 assert.strictEqual(testPhone1State.feedStockKg, 450, 'Force pull must unconditionally set feedStockKg to 450');
 console.log('✔ Test 16 Passed: forcePullFromCloud cleanly overwrites stale local zeros with freshest Cloud data without needing app uninstall');
 
+console.log('--- TEST 17: User 1 Offline (2 eggs) + User 2 Online (4 eggs) = 6 eggs Delta Convergence ---');
+// User 1 was offline with 0 baseline, harvested 2 eggs locally
+let user1OfflineState = {
+  eggStock: 2,
+  eggStocks: { poule: 2 },
+  eggHarvests: [
+    { id: 'harvest-user1-offline-1', count: 2, species: 'poule', timestamp: 1731600000000 }
+  ],
+  sales: [],
+  deletedEggCategories: []
+};
+
+// User 2 was online with 0 baseline, harvested 4 eggs to Cloud
+let user2CloudState = {
+  eggStock: 4,
+  eggStocks: { poule: 4 },
+  eggHarvests: [
+    { id: 'harvest-user2-online-1', count: 4, species: 'poule', timestamp: 1731601000000 }
+  ],
+  sales: [],
+  deletedEggCategories: []
+};
+
+// User 1 reconnects to WiFi -> applyCloudData runs automatically
+window.appAuth.applyCloudData.call({
+  getAppState: () => user1OfflineState,
+  getDeletedIds: () => new Set(),
+  mergeCollections: window.appAuth.mergeCollections
+}, user2CloudState, true);
+
+assert.strictEqual(user1OfflineState.eggStock, 6, 'Total eggs must be 6 (User 1: 2 offline + User 2: 4 online)');
+assert.strictEqual(user1OfflineState.eggStocks.poule, 6, 'Poule eggs must be 6');
+assert.strictEqual(user1OfflineState.eggHarvests.length, 2, 'Both harvest events must be preserved');
+console.log('✔ Test 17 Passed: 2 offline eggs + 4 online eggs converge automatically to 6 eggs with zero loss');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

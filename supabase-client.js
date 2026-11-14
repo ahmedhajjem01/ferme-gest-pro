@@ -254,15 +254,27 @@
           this.updateUI();
         });
 
+        let wakeupDebounceTimer = null;
         const handleWakeup = () => {
-          if (this.currentUser) {
-            if (localStorage.getItem('fermegest_pending_push') === 'true') {
-              this.syncNow(false);
-            } else {
-              this.pullData(true);
+          clearTimeout(wakeupDebounceTimer);
+          wakeupDebounceTimer = setTimeout(async () => {
+            if (this.isSyncing) return;
+            if (!this.currentUser && this.client) {
+              try {
+                const { data } = await this.client.auth.getSession();
+                if (data && data.session) this.currentUser = data.session.user;
+                else {
+                  const cached = JSON.parse(localStorage.getItem('fermegest_cached_auth_user') || 'null');
+                  if (cached && cached.id) this.currentUser = cached;
+                }
+              } catch (e) {}
             }
-            this.reconnectRealtimeIfNeeded();
-          }
+            if (this.currentUser) {
+              console.log('[AutoSync] 🌐 Network/Wakeup: Automatic background sync starting...');
+              await this.syncNow(false);
+              this.reconnectRealtimeIfNeeded();
+            }
+          }, 300);
         };
 
         // Multi-device wake-up listeners (Mobile screen unlock, returning to tab, reconnecting)
@@ -290,13 +302,9 @@
         if (!this._heartbeatInterval) {
           this._heartbeatInterval = setInterval(() => {
             if (this.currentUser && !document.hidden && !this.isSyncing) {
-              if (localStorage.getItem('fermegest_pending_push') === 'true') {
-                this.syncNow(false);
-              } else {
-                this.pullData(true);
-              }
+              this.syncNow(false);
             }
-          }, 20000);
+          }, 15000);
         }
 
       } catch (e) {
@@ -947,7 +955,7 @@
       if (!this.currentUser) return;
       clearTimeout(this._pushTimer);
       this._pushTimer = setTimeout(() => {
-        this.pushData(false);
+        this.syncNow(false);
       }, 1000);
     },
 
@@ -1118,33 +1126,98 @@
         } catch (e) {}
       }
 
+      // EVENT-SOURCING DELTA RECONCILIATION FOR EGGS & FEED (Add-Only Offline Preservation)
+      const cloudHarvestIds = new Set((cloudData.eggHarvests || []).map(h => h && h.id).filter(Boolean));
+      const localOfflineHarvests = (state.eggHarvests || []).filter(h => h && h.id && !cloudHarvestIds.has(h.id));
+      const offlineHarvestBySpecies = {};
+      localOfflineHarvests.forEach(h => {
+        const sp = (h.species === 'canard' || h.species === 'canard_barbarie') ? 'canard_barbarie' : (h.species || 'poule');
+        offlineHarvestBySpecies[sp] = (offlineHarvestBySpecies[sp] || 0) + (Number(h.count) || 0);
+      });
+
+      const cloudSaleIds = new Set((cloudData.sales || []).map(s => s && s.id).filter(Boolean));
+      const localOfflineSales = (state.sales || []).filter(s => s && s.id && !cloudSaleIds.has(s.id));
+      const offlineEggSalesBySpecies = {};
+      localOfflineSales.forEach(s => {
+        if (s && s.productType === 'oeufs') {
+          const sp = s.eggSpecies || 'poule';
+          let qty = Number(s.quantity) || 0;
+          if (s.format === 'hara') qty *= 4;
+          else if (s.format === 'plateau') qty *= 30;
+          offlineEggSalesBySpecies[sp] = (offlineEggSalesBySpecies[sp] || 0) + qty;
+        }
+      });
+
+      // Récoltes & Ventes distantes reçues du Cloud (ex: saisies par le frère) non encore intégrées localement
+      const localHarvestIds = new Set((state.eggHarvests || []).map(h => h && h.id).filter(Boolean));
+      const incomingCloudHarvests = (cloudData.eggHarvests || []).filter(h => h && h.id && !localHarvestIds.has(h.id));
+      const incomingHarvestBySpecies = {};
+      incomingCloudHarvests.forEach(h => {
+        const sp = (h.species === 'canard' || h.species === 'canard_barbarie') ? 'canard_barbarie' : (h.species || 'poule');
+        incomingHarvestBySpecies[sp] = (incomingHarvestBySpecies[sp] || 0) + (Number(h.count) || 0);
+      });
+
+      const localSaleIds = new Set((state.sales || []).map(s => s && s.id).filter(Boolean));
+      const incomingCloudSales = (cloudData.sales || []).filter(s => s && s.id && !localSaleIds.has(s.id));
+      const incomingEggSalesBySpecies = {};
+      incomingCloudSales.forEach(s => {
+        if (s && s.productType === 'oeufs') {
+          const sp = s.eggSpecies || 'poule';
+          let qty = Number(s.quantity) || 0;
+          if (s.format === 'hara') qty *= 4;
+          else if (s.format === 'plateau') qty *= 30;
+          incomingEggSalesBySpecies[sp] = (incomingEggSalesBySpecies[sp] || 0) + qty;
+        }
+      });
+
       if (cloudData.eggStocks && typeof cloudData.eggStocks === 'object') {
-        if (!doMerge || isCloudFresher) {
+        if (!doMerge) {
           state.eggStocks = { ...cloudData.eggStocks };
         } else {
-          // Fusion intelligente espèce par espèce
+          // Fusion additive par événement : Base Cloud + Récoltes Offline - Ventes Offline
           const allSpecies = new Set([
             ...Object.keys(state.eggStocks),
-            ...Object.keys(cloudData.eggStocks)
+            ...Object.keys(cloudData.eggStocks),
+            ...Object.keys(offlineHarvestBySpecies)
           ]);
           allSpecies.forEach(sp => {
-            const localVal = Number(state.eggStocks[sp]) || 0;
             const cloudVal = Number(cloudData.eggStocks[sp]) || 0;
-            if (localVal === 0 && cloudVal > 0) {
+            const localVal = Number(state.eggStocks[sp]) || 0;
+            const offlineAdded = Number(offlineHarvestBySpecies[sp]) || 0;
+            const incomingAdded = Number(incomingHarvestBySpecies[sp]) || 0;
+            const offlineSold = Number(offlineEggSalesBySpecies[sp]) || 0;
+            const incomingSold = Number(incomingEggSalesBySpecies[sp]) || 0;
+
+            if (offlineAdded > 0 && incomingAdded > 0) {
+              // Concurrence bidirectionnelle : Base Cloud + Récoltes Offline locales
+              state.eggStocks[sp] = Math.max(0, cloudVal + offlineAdded - offlineSold);
+            } else if (offlineAdded > 0) {
+              // Actions locales faites hors-ligne : ajoutées au stock cloud sans rien écraser
+              state.eggStocks[sp] = Math.max(0, cloudVal + offlineAdded - offlineSold);
+            } else if (incomingAdded > 0) {
+              // Nouvelles récoltes arrivées de l'associé : ajoutées au stock local
+              state.eggStocks[sp] = Math.max(0, localVal + incomingAdded - incomingSold);
+            } else if (isCloudFresher) {
               state.eggStocks[sp] = cloudVal;
-            } else if (localVal > 0 && cloudVal === 0 && isCloudFresher) {
-              state.eggStocks[sp] = 0;
             } else {
-              state.eggStocks[sp] = Math.max(localVal, cloudVal);
+              const baseStock = Math.max(localVal, cloudVal);
+              state.eggStocks[sp] = baseStock;
             }
           });
         }
       } else if (cloudData.eggStock !== undefined) {
         const cloudEggs = Number(cloudData.eggStock) || 0;
-        const localEggs = Number(state.eggStock) || 0;
-        const bestEggs = (!doMerge || isCloudFresher) ? cloudEggs : Math.max(localEggs, cloudEggs);
-        if ((Number(state.eggStocks.poule) || 0) < bestEggs || isCloudFresher) {
-          state.eggStocks.poule = bestEggs;
+        const offlineAdded = Number(offlineHarvestBySpecies['poule']) || 0;
+        const offlineSold = Number(offlineEggSalesBySpecies['poule']) || 0;
+        if (!doMerge) {
+          state.eggStocks.poule = cloudEggs;
+        } else if (offlineAdded > 0 || offlineSold > 0) {
+          state.eggStocks.poule = Math.max(0, cloudEggs + offlineAdded - offlineSold);
+        } else if (isCloudFresher) {
+          state.eggStocks.poule = cloudEggs;
+        } else {
+          const localEggs = Number(state.eggStocks.poule) || Number(state.eggStock) || 0;
+          state.eggStocks.poule = Math.max(localEggs, cloudEggs);
         }
       }
 
@@ -1154,7 +1227,7 @@
           delete state.eggStocks[delCat];
         }
       });
-      // Reconcilier le total eggStock agrégé
+      // Réconcilier le total eggStock agrégé
       state.eggStock = Object.values(state.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
 
       // Filet de sécurité : si le stock d'œufs est à 0 mais que des pontes eggHarvests existent
@@ -1200,9 +1273,13 @@
         const cloudTs = Number(cloudData.feedStockUpdatedAt) || 0;
         const localTs = Number(state.feedStockUpdatedAt) || 0;
         const cloudStock = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
+        const cloudDistIds = new Set((cloudData.feedDistributions || []).map(d => d && d.id).filter(Boolean));
+        const localOfflineDists = (state.feedDistributions || []).filter(d => d && d.id && !cloudDistIds.has(d.id));
+        const offlineFeedDeductedKg = localOfflineDists.reduce((s, d) => s + (Number(d.kg) || 0), 0);
+
         const shouldAcceptCloud = !doMerge || isCloudFresher || (cloudTs >= localTs && cloudStock !== null);
         if (shouldAcceptCloud) {
-          state.feedStockKg = cloudStock;
+          state.feedStockKg = Math.max(0, cloudStock - offlineFeedDeductedKg);
           state.feedStockDate = cloudData.feedStockDate || null;
           state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
           state.feedStockUpdatedAt = cloudTs;
