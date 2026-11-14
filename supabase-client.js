@@ -766,11 +766,23 @@
         }
 
         if (rows.length > 0) {
+          const ownerRow = rows.find(r => r.data && r.data.farmRole === 'owner' && r.user_id !== this.currentUser.id);
+          const isPartner = this.getFarmRole() === 'partner';
+
           for (const row of rows) {
             if (row && row.data && Object.keys(row.data).length > 0) {
-              // Smart merge cloud data with local data sequentially
               this.applyCloudData(row.data, true);
             }
+          }
+
+          // Si le compte courant est un associé (ex: le frère), et que le propriétaire a des données plus fraîches ou complètes,
+          // adopter directement la vérité canonique du propriétaire de façon 100% automatique
+          if (isPartner && ownerRow && ownerRow.data) {
+            this.applyCloudData(ownerRow.data, false);
+          }
+
+          if (window.app && typeof app.renderAll === 'function') {
+            app.renderAll();
           }
         }
 
