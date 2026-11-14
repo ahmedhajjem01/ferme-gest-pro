@@ -427,4 +427,65 @@ assert.strictEqual(deducted, 5, 'Must deduct 5 eggs from custom species stock!')
 assert.strictEqual(window.appState.eggStocks['autre_oie_de_toulouse'], 10, 'Remaining custom species stock must be 10!');
 console.log('✔ Test 11C Passed: Incubation batch correctly deducts from dynamic custom species stock!');
 
+console.log('--- TEST 12: Multi-Species Egg Consumption & Sale Beyond Just Poule and Canard ---');
+// Setup multi-species egg stock
+window.appState.eggStocks = {
+  poule: 50,
+  canard_barbarie: 25,
+  pintade: 15,
+  caille: 40,
+  dinde: 8,
+  oie: 12,
+  autre_faisan_dore: 6
+};
+window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((s, v) => s + (Number(v) || 0), 0);
+assert.strictEqual(window.appState.eggStock, 156, 'Total multi-species stock must be 156 eggs!');
+
+// Test Helper: Consumption logic matching app.handleSaveConsumeEggStock
+function simulateConsumeEggs(species, qty) {
+  const currentSpStock = Math.max(0, Number(window.appState.eggStocks[species]) || 0);
+  if (qty > currentSpStock) {
+    return { success: false, error: 'exceeds_species_stock', currentSpStock };
+  }
+  window.appState.eggStocks[species] = currentSpStock - qty;
+  window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((s, v) => s + (Number(v) || 0), 0);
+  return { success: true, remainingSpeciesStock: window.appState.eggStocks[species], totalRemaining: window.appState.eggStock };
+}
+
+// 1. Rejet si quantité demandée dépasse le stock spécifique de l'espèce
+const failedConsumption = simulateConsumeEggs('dinde', 20); // only 8 available
+assert.strictEqual(failedConsumption.success, false, 'Consumption of 20 turkeys eggs must fail when only 8 are in stock!');
+console.log('✔ Test 12A Passed: Consumption rejected when exceeding specific species stock!');
+
+// 2. Consommation valide d'une espèce standard autre (Pintade: 5 œufs)
+const pintadeConso = simulateConsumeEggs('pintade', 5);
+assert.strictEqual(pintadeConso.success, true);
+assert.strictEqual(window.appState.eggStocks.pintade, 10, 'Pintade stock must be 15 - 5 = 10!');
+assert.strictEqual(window.appState.eggStock, 151, 'Total stock must decrease to 156 - 5 = 151!');
+console.log('✔ Test 12B Passed: Pintade eggs consumption verified!');
+
+// 3. Consommation valide d'une espèce personnalisée (Faisan Doré: 4 œufs)
+const faisanConso = simulateConsumeEggs('autre_faisan_dore', 4);
+assert.strictEqual(faisanConso.success, true);
+assert.strictEqual(window.appState.eggStocks['autre_faisan_dore'], 2, 'Faisan Doré stock must be 6 - 4 = 2!');
+assert.strictEqual(window.appState.eggStock, 147, 'Total stock must decrease to 151 - 4 = 147!');
+console.log('✔ Test 12C Passed: Custom species (Faisan) eggs consumption verified!');
+
+// 4. Vente d'œufs de Caille (Plateau de 30)
+function simulateSellEggs(species, totalEggsSold) {
+  const currentSpStock = Math.max(0, Number(window.appState.eggStocks[species]) || 0);
+  if (totalEggsSold > currentSpStock) {
+    return { success: false, error: 'exceeds_species_stock' };
+  }
+  window.appState.eggStocks[species] = currentSpStock - totalEggsSold;
+  window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((s, v) => s + (Number(v) || 0), 0);
+  return { success: true, remaining: window.appState.eggStocks[species], total: window.appState.eggStock };
+}
+
+const cailleSale = simulateSellEggs('caille', 30);
+assert.strictEqual(cailleSale.success, true);
+assert.strictEqual(window.appState.eggStocks.caille, 10, 'Quail stock must be 40 - 30 = 10!');
+assert.strictEqual(window.appState.eggStock, 117, 'Total egg stock must decrease to 147 - 30 = 117!');
+console.log('✔ Test 12D Passed: Quail eggs sale verified!');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

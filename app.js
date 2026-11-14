@@ -2948,7 +2948,11 @@ const app = {
   },
 
   setEggFilter(species) {
-    appState.eggFilter = species || 'all';
+    if (appState.eggFilter === species && species !== 'all') {
+      appState.eggFilter = 'all';
+    } else {
+      appState.eggFilter = species || 'all';
+    }
     document.querySelectorAll('.egg-species-filter-bar .btn-filter-pill').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-egg-filter') === appState.eggFilter);
     });
@@ -2988,6 +2992,7 @@ const app = {
     let displayStock = totalStock;
     if (filter === 'poule') displayStock = chickenStock;
     else if (filter === 'canard_barbarie') displayStock = duckStock;
+    else if (filter && filter !== 'all') displayStock = Number(appState.eggStocks[filter]) || 0;
 
     const mainCountEl = document.getElementById('eggStockMainCount');
     if (mainCountEl) mainCountEl.textContent = displayStock;
@@ -2997,7 +3002,7 @@ const app = {
       const haras = (displayStock / 4).toFixed(1);
       const plates = (displayStock / 30).toFixed(1);
       const lang = appState.lang || 'fr';
-      const typeLabel = filter === 'poule' ? ' (Poule)' : (filter === 'canard_barbarie' ? ' (Canard)' : '');
+      const typeLabel = (filter && filter !== 'all') ? ` (${this.getSpeciesDisplayName(filter)})` : '';
       if (lang === 'ar') {
         equivEl.textContent = `~${haras} حارة • ~${plates} طبق (30 بيضة)${typeLabel}`;
       } else if (lang === 'en') {
@@ -3014,18 +3019,11 @@ const app = {
         if (k !== 'poule' && k !== 'canard_barbarie') {
           const val = Number(appState.eggStocks[k]) || 0;
           if (val > 0) {
-            let label = k;
-            if (k === 'pintade') label = this.t('opt_egg_species_pintade') || 'Pintade';
-            else if (k === 'caille') label = this.t('opt_egg_species_caille') || 'Caille';
-            else if (k.startsWith('autre_')) {
-              label = k.replace(/^autre_/, '').replace(/_/g, ' ');
-              label = label.charAt(0).toUpperCase() + label.slice(1);
-            } else if (k === 'autre') {
-              label = this.t('opt_egg_species_autre') || 'Autre volaille';
-            }
+            const label = this.getSpeciesDisplayName(k);
+            const isActive = filter === k;
             customBadgesHtml += `
-              <span class="badge-pill" style="background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
-                🪶 ${label}: <strong>${val}</strong>
+              <span class="badge-pill ${isActive ? 'active-filter-badge' : ''}" style="cursor: pointer; background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1.5px solid ${isActive ? '#a855f7' : 'rgba(168, 85, 247, 0.3)'}; font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;" onclick="app.setEggFilter('${k}')" title="Filtrer par cette espèce">
+                ${label}: <strong>${val}</strong>
               </span>
             `;
           }
@@ -3033,10 +3031,10 @@ const app = {
       });
 
       breakdownStrip.innerHTML = `
-        <span class="badge-pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
+        <span class="badge-pill ${filter === 'poule' ? 'active-filter-badge' : ''}" style="cursor: pointer; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1.5px solid ${filter === 'poule' ? '#f59e0b' : 'rgba(245, 158, 11, 0.3)'}; font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;" onclick="app.setEggFilter('poule')" title="Filtrer par poule">
           ${this.t('opt_egg_species_poule') || '🥚 Poule'}: <strong>${chickenStock}</strong>
         </span>
-        <span class="badge-pill" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
+        <span class="badge-pill ${filter === 'canard_barbarie' ? 'active-filter-badge' : ''}" style="cursor: pointer; background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1.5px solid ${filter === 'canard_barbarie' ? '#0ea5e9' : 'rgba(14, 165, 233, 0.3)'}; font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;" onclick="app.setEggFilter('canard_barbarie')" title="Filtrer par canard">
           ${this.t('opt_egg_species_canard') || '🦆 Canard'}: <strong>${duckStock}</strong>
         </span>
         ${customBadgesHtml}
@@ -3830,15 +3828,123 @@ const app = {
     }
   },
 
+  getSpeciesDisplayName(key) {
+    if (!key) return this.t('opt_egg_species_poule') || 'Poule';
+    if (key === 'poule') return this.t('opt_egg_species_poule') || '🥚 Poule (Poulet)';
+    if (key === 'canard' || key === 'canard_barbarie') return this.t('opt_egg_species_canard') || '🦆 Canard de Barbarie';
+    if (key === 'pintade') return this.t('opt_egg_species_pintade') || '🪶 Pintade';
+    if (key === 'caille') return this.t('opt_egg_species_caille') || '🪺 Caille';
+    if (key === 'dinde') return this.t('opt_egg_species_dinde') || '🦃 Dinde';
+    if (key === 'oie') return this.t('opt_egg_species_oie') || '🪿 Oie';
+    
+    // Check in eggHarvests for customSpecies label
+    const h = (appState.eggHarvests || []).find(item => item.speciesKey === key || item.species === key);
+    if (h && h.customSpecies) return `🪶 ${h.customSpecies}`;
+    
+    // Check in incubatorBatches
+    const b = (appState.incubatorBatches || []).find(item => item.eggSpecies === key);
+    if (b && b.customSpecies) return `🪶 ${b.customSpecies}`;
+
+    // Clean up key (e.g. autre_faisan -> Faisan)
+    let name = key.replace(/^autre_/, '').replace(/_/g, ' ');
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    return `🪶 ${name}`;
+  },
+
+  getAvailableEggSpeciesList() {
+    if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
+      appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+    }
+    const standardKeys = [
+      { key: 'poule', icon: '🥚', defaultLabel: '🥚 Poule (Poulet)', i18nKey: 'opt_egg_species_poule' },
+      { key: 'canard_barbarie', icon: '🦆', defaultLabel: '🦆 Canard de Barbarie', i18nKey: 'opt_egg_species_canard' },
+      { key: 'pintade', icon: '🪶', defaultLabel: '🪶 Pintade', i18nKey: 'opt_egg_species_pintade' },
+      { key: 'caille', icon: '🪺', defaultLabel: '🪺 Caille', i18nKey: 'opt_egg_species_caille' },
+      { key: 'dinde', icon: '🦃', defaultLabel: '🦃 Dinde', i18nKey: 'opt_egg_species_dinde' },
+      { key: 'oie', icon: '🪿', defaultLabel: '🪿 Oie', i18nKey: 'opt_egg_species_oie' }
+    ];
+
+    const result = [];
+    const seen = new Set();
+
+    standardKeys.forEach(item => {
+      seen.add(item.key);
+      const stock = Math.max(0, Number(appState.eggStocks[item.key]) || 0);
+      result.push({
+        key: item.key,
+        icon: item.icon,
+        name: this.t(item.i18nKey) || item.defaultLabel,
+        stock: stock
+      });
+    });
+
+    // Custom species present in appState.eggStocks
+    Object.keys(appState.eggStocks).forEach(k => {
+      if (seen.has(k)) return;
+      seen.add(k);
+      const stock = Math.max(0, Number(appState.eggStocks[k]) || 0);
+      result.push({
+        key: k,
+        icon: '🪶',
+        name: this.getSpeciesDisplayName(k),
+        stock: stock,
+        isCustom: true
+      });
+    });
+
+    return result;
+  },
+
+  populateEggSpeciesDropdown(selectEl, selectedKey = null) {
+    if (!selectEl) return;
+    const speciesList = this.getAvailableEggSpeciesList();
+    const prevVal = selectedKey || selectEl.value;
+    selectEl.innerHTML = '';
+
+    const lang = appState.lang || this.currentLang || 'fr';
+    const isAr = lang === 'ar';
+    const isEn = lang === 'en';
+
+    let firstWithStock = null;
+    let matchKey = null;
+
+    speciesList.forEach(sp => {
+      const opt = document.createElement('option');
+      opt.value = sp.key;
+      const stockSuffix = isAr ? `(الرصيد: ${sp.stock})` : (isEn ? `(Stock: ${sp.stock})` : `(Stock : ${sp.stock})`);
+      opt.textContent = `${sp.name} ${stockSuffix}`;
+
+      if (sp.stock > 0 && !firstWithStock) {
+        firstWithStock = sp.key;
+      }
+      if (sp.key === prevVal) {
+        matchKey = sp.key;
+      }
+      selectEl.appendChild(opt);
+    });
+
+    if (matchKey) {
+      selectEl.value = matchKey;
+    } else if (firstWithStock) {
+      selectEl.value = firstWithStock;
+    } else if (speciesList.length > 0) {
+      selectEl.value = speciesList[0].key;
+    }
+  },
+
   handleSellEggSpeciesChange() {
     if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
       appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
     }
     const species = document.getElementById('sellEggSpecies')?.value || 'poule';
-    const available = Number(appState.eggStocks[species]) || 0;
+    const available = Math.max(0, Number(appState.eggStocks[species]) || 0);
     const availEl = document.getElementById('sellEggStockAvailable');
     if (availEl) {
-      availEl.textContent = `${available} œufs`;
+      availEl.textContent = `${available} ${this.t('unit_eggs') || 'œufs'}`;
+    }
+    const qtyInput = document.getElementById('sellEggQty');
+    if (qtyInput) {
+      qtyInput.max = available > 0 ? available : 1;
     }
     this.calcSellEggTotal();
   },
@@ -3848,28 +3954,36 @@ const app = {
       appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
     }
     const species = document.getElementById('consumeEggSpecies')?.value || 'poule';
-    const stock = Number(appState.eggStocks[species]) || 0;
+    const stock = Math.max(0, Number(appState.eggStocks[species]) || 0);
+    const availEl = document.getElementById('consumeEggStockAvailable');
+    if (availEl) {
+      availEl.textContent = `${stock} ${this.t('unit_eggs') || 'œufs'}`;
+    }
     const input = document.getElementById('consumeEggQty');
-    if (input) input.max = stock;
+    if (input) {
+      input.max = stock > 0 ? stock : 1;
+    }
   },
-  openSellEggsModal() {
-    setTimeout(() => { if (typeof this.handleSellEggSpeciesChange === 'function') this.handleSellEggSpeciesChange(); }, 50);
 
-    const stock = Number(appState.eggStock) || 0;
-    if (stock <= 0) {
+  openSellEggsModal() {
+    const totalStock = Object.values(appState.eggStocks || {}).reduce((s, v) => s + (Number(v) || 0), 0) || Number(appState.eggStock) || 0;
+    if (totalStock <= 0) {
       this.showToast(appState.lang === 'ar' ? '⚠️ رصيد البيض فارغ حالياً. سجل جمعاً جديداً أولاً.' : (appState.lang === 'en' ? '⚠️ Egg stock is empty. Record a harvest first.' : '⚠️ Votre stock d\'œufs est vide. Enregistrez une récolte d\'abord.'));
       return;
     }
     this.openModal('modalSellEggStock');
-    const availEl = document.getElementById('sellEggStockAvailable');
-    if (availEl) availEl.textContent = `${stock} ${this.t('unit_eggs')}`;
+
+    const selectEl = document.getElementById('sellEggSpecies');
+    const filter = appState.eggFilter;
+    const initialKey = (filter && filter !== 'all') ? filter : 'poule';
+    this.populateEggSpeciesDropdown(selectEl, initialKey);
+    this.handleSellEggSpeciesChange();
 
     const qtyInput = document.getElementById('sellEggQty');
     if (qtyInput) {
       qtyInput.value = '';
       qtyInput.placeholder = '';
       qtyInput.removeAttribute('placeholder');
-      qtyInput.max = stock;
     }
 
     this.setStockEggFormat('oeuf-unite');
@@ -3959,10 +4073,18 @@ const app = {
       this.showToast(isAr ? 'يرجى إدخال كمية صحيحة.' : (isEn ? 'Please enter a valid quantity.' : 'Veuillez saisir une quantité valide.'));
       return;
     }
-    if (totalEggs > stock) {
-      this.showToast(isAr 
-        ? `الكمية المراد بيعها (${totalEggs} بيضة) تتجاوز الرصيد المتوفر (${stock} بيضة)` 
-        : (isEn ? `The quantity to sell (${totalEggs} eggs) exceeds available stock (${stock} eggs).` : `La quantité à vendre (${totalEggs} œufs) dépasse votre stock disponible (${stock} œufs).`), 'warning');
+    const sellSpecies = document.getElementById('sellEggSpecies')?.value || 'poule';
+    if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
+      appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+    }
+    const currentSpeciesStock = Math.max(0, Number(appState.eggStocks[sellSpecies]) || 0);
+
+    if (totalEggs > currentSpeciesStock) {
+      const msg = this.t('err_qty_exceeds_species_stock', { qty: totalEggs, stock: currentSpeciesStock }) ||
+        (isAr 
+          ? `الكمية (${totalEggs} بيضة) تتجاوز المخزون المتاح لهذا الصنف (${currentSpeciesStock} بيضة).` 
+          : (isEn ? `The quantity (${totalEggs} eggs) exceeds available stock for this species (${currentSpeciesStock} eggs).` : `La quantité (${totalEggs} œufs) dépasse le stock disponible pour cette espèce (${currentSpeciesStock} œufs).`));
+      this.showToast(msg, 'warning');
       return;
     }
 
@@ -3982,16 +4104,12 @@ const app = {
       unitPrice: unitPrice,
       total: total,
       linkedLotId: 'none',
-      ageText: ''
+      ageText: '',
+      species: sellSpecies
     };
 
-    const sellSpecies = document.getElementById('sellEggSpecies')?.value || 'poule';
-    if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
-      appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
-    }
     appState.eggStocks[sellSpecies] = Math.max(0, (Number(appState.eggStocks[sellSpecies]) || 0) - totalEggs);
     appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
-    newSale.species = sellSpecies;
     appState.sales.unshift(newSale);
 
     this.saveState();
@@ -4028,41 +4146,62 @@ const app = {
   },
 
   openConsumeEggsModal() {
-    const stock = Number(appState.eggStock) || 0;
-    if (stock <= 0) {
+    const totalStock = Object.values(appState.eggStocks || {}).reduce((s, v) => s + (Number(v) || 0), 0) || Number(appState.eggStock) || 0;
+    if (totalStock <= 0) {
       const isAr = (appState.lang || this.currentLang) === 'ar';
       const isEn = (appState.lang || this.currentLang) === 'en';
       this.showToast(isAr ? '⚠️ لا يوجد بيض في المخزون.' : (isEn ? '⚠️ No eggs in stock.' : '⚠️ Aucun œuf en stock.'));
       return;
     }
     this.openModal('modalConsumeEggStock');
+
+    const selectEl = document.getElementById('consumeEggSpecies');
+    const filter = appState.eggFilter;
+    const initialKey = (filter && filter !== 'all') ? filter : 'poule';
+    this.populateEggSpeciesDropdown(selectEl, initialKey);
+    this.handleConsumeEggSpeciesChange();
+
     const input = document.getElementById('consumeEggQty');
     if (input) {
       input.value = '';
       input.placeholder = '';
       input.removeAttribute('placeholder');
-      input.max = stock;
+      setTimeout(() => input.focus(), 120);
     }
   },
 
   handleSaveConsumeEggStock(e) {
     if (e && e.preventDefault) e.preventDefault();
     const qty = parseInt(document.getElementById('consumeEggQty')?.value, 10) || 0;
-    const stock = Number(appState.eggStock) || 0;
-    if (qty <= 0) return;
-    if (qty > stock) {
-      const isAr = appState.lang === 'ar';
-      this.showToast(isAr ? `الكمية تتجاوز الرصيد الحالي (${stock})` : `La quantité dépasse le stock actuel (${stock}).`, 'warning');
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
+    if (qty <= 0) {
+      this.showToast(isAr ? 'يرجى إدخال كمية صحيحة.' : (isEn ? 'Please enter a valid quantity.' : 'Veuillez saisir une quantité valide.'), 'warning');
       return;
     }
+
     const consumeSpecies = document.getElementById('consumeEggSpecies')?.value || 'poule';
     if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
       appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
     }
-    appState.eggStocks[consumeSpecies] = Math.max(0, (Number(appState.eggStocks[consumeSpecies]) || 0) - qty);
+    const currentSpeciesStock = Math.max(0, Number(appState.eggStocks[consumeSpecies]) || 0);
+
+    if (qty > currentSpeciesStock) {
+      const msg = this.t('err_qty_exceeds_species_stock', { qty, stock: currentSpeciesStock }) ||
+        (isAr 
+          ? `الكمية (${qty}) تتجاوز المخزون المتاح لهذا الصنف (${currentSpeciesStock} بيضة).` 
+          : (isEn ? `The quantity (${qty}) exceeds available stock for this species (${currentSpeciesStock} eggs).` : `La quantité (${qty}) dépasse le stock disponible pour cette espèce (${currentSpeciesStock} œufs).`));
+      this.showToast(msg, 'warning');
+      return;
+    }
+
+    appState.eggStocks[consumeSpecies] = Math.max(0, currentSpeciesStock - qty);
     appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
+
     this.saveState();
     this.closeModal('modalConsumeEggStock');
+    this.renderAll();
     this.renderEggStock();
     this.showToast(this.t('consume_eggs_toast_success', { count: qty, remaining: appState.eggStock }));
   },

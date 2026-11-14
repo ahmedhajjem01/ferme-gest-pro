@@ -2478,6 +2478,11 @@ label {
   font-weight: 700;
   padding: 0.2rem 0.6rem;
   border-radius: var(--radius-pill);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.active-filter-badge {
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  transform: scale(1.04);
 }
 .badge-tag {
   background-color: var(--primary-light);

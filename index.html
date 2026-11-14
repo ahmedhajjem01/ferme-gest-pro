@@ -2358,8 +2358,10 @@
               <select id="dailyEggSpecies" class="input-field" onchange="app.handleDailyEggSpeciesChange()" style="font-weight: 700;">
                 <option value="poule" data-i18n="opt_egg_species_poule">🥚 Poule (Poulet)</option>
                 <option value="canard_barbarie" data-i18n="opt_egg_species_canard">🦆 Canard de Barbarie</option>
-                <option value="pintade" data-i18n="opt_egg_species_pintade">Pintade</option>
-                <option value="caille" data-i18n="opt_egg_species_caille">Caille</option>
+                <option value="pintade" data-i18n="opt_egg_species_pintade">🪶 Pintade</option>
+                <option value="caille" data-i18n="opt_egg_species_caille">🪺 Caille</option>
+                <option value="dinde" data-i18n="opt_egg_species_dinde">🦃 Dinde</option>
+                <option value="oie" data-i18n="opt_egg_species_oie">🪿 Oie</option>
                 <option value="autre" data-i18n="opt_egg_species_autre">✨ Autre volaille...</option>
               </select>
             </div>
@@ -2441,6 +2443,10 @@
             <select id="sellEggSpecies" class="input-field" onchange="app.handleSellEggSpeciesChange()" style="font-weight: 700;">
               <option value="poule" data-i18n="opt_egg_species_poule">🥚 Poule (Poulet)</option>
               <option value="canard_barbarie" data-i18n="opt_egg_species_canard">🦆 Canard de Barbarie</option>
+              <option value="pintade" data-i18n="opt_egg_species_pintade">🪶 Pintade</option>
+              <option value="caille" data-i18n="opt_egg_species_caille">🪺 Caille</option>
+              <option value="dinde" data-i18n="opt_egg_species_dinde">🦃 Dinde</option>
+              <option value="oie" data-i18n="opt_egg_species_oie">🪿 Oie</option>
             </select>
           </div>
 
@@ -2501,11 +2507,21 @@
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="consume_eggs_modal_sub">
             Déduire des œufs du stock pour la consommation de la ferme ou des œufs cassés.
           </p>
+
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" data-i18n="lbl_species_stock_avail">Stock disponible pour cette espèce :</span>
+            <strong id="consumeEggStockAvailable" style="color: var(--primary); font-size: 1.05rem;">0 œufs</strong>
+          </div>
+
           <div class="form-group" style="margin-bottom: 0.9rem;">
             <label for="consumeEggSpecies" class="form-label" data-i18n="lbl_egg_species" style="font-weight: 700;">Type d'œuf</label>
             <select id="consumeEggSpecies" class="input-field" onchange="app.handleConsumeEggSpeciesChange()" style="font-weight: 700;">
               <option value="poule" data-i18n="opt_egg_species_poule">🥚 Poule (Poulet)</option>
               <option value="canard_barbarie" data-i18n="opt_egg_species_canard">🦆 Canard de Barbarie</option>
+              <option value="pintade" data-i18n="opt_egg_species_pintade">🪶 Pintade</option>
+              <option value="caille" data-i18n="opt_egg_species_caille">🪺 Caille</option>
+              <option value="dinde" data-i18n="opt_egg_species_dinde">🦃 Dinde</option>
+              <option value="oie" data-i18n="opt_egg_species_oie">🪿 Oie</option>
             </select>
           </div>
 
