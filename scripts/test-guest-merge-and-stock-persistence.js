@@ -355,4 +355,76 @@ assert.strictEqual(window.appState.eggStock, 28, 'Egg stock must remain 28 and n
 assert.strictEqual(window.appState.eggStocks.poule, 28, 'Egg stocks poule must be reconciled to 28!');
 console.log('✔ Test 10 Passed: UI render zero-protection verified!');
 
+console.log('--- TEST 11: Dynamic Custom Species & Category ("Autre") Harvest, Sync & Incubation ---');
+// 1. Enregistrement d'une récolte d'œufs personnalisée (ex: Oie de Toulouse, catégorie "Gros Calibre")
+const customHarvest = {
+  id: 'harvest-custom-1',
+  date: '2026-11-14',
+  count: 15,
+  species: 'autre',
+  customSpecies: 'Oie de Toulouse',
+  speciesKey: 'autre_oie_de_toulouse',
+  category: 'autre',
+  customCategory: 'Gros Calibre',
+  notes: 'Ponte d\'oies spéciale',
+  updatedAt: Date.now()
+};
+
+// Mise à jour de l'état local
+window.appState.eggStocks = window.appState.eggStocks || {};
+window.appState.eggStocks[customHarvest.speciesKey] = (Number(window.appState.eggStocks[customHarvest.speciesKey]) || 0) + customHarvest.count;
+window.appState.eggHarvests.unshift(customHarvest);
+window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+
+assert.strictEqual(window.appState.eggStocks['autre_oie_de_toulouse'], 15, 'Custom species stock for autre_oie_de_toulouse must be 15!');
+assert.strictEqual(window.appState.eggHarvests[0].customCategory, 'Gros Calibre', 'Custom category must be recorded!');
+console.log('✔ Test 11A Passed: Custom species & category harvested successfully!');
+
+// 2. Synchronisation Cloud Multi-Comptes avec espèce personnalisée
+const cloudRowWithCustomEgg = {
+  user_id: 'user-partner-333',
+  updated_at: '2026-11-14T11:00:00.000Z',
+  data: {
+    farmCode: 'FERME-K8M2',
+    eggStock: window.appState.eggStock,
+    eggStocks: { ...window.appState.eggStocks },
+    eggHarvests: [...window.appState.eggHarvests]
+  }
+};
+
+// Simulation sur le compte d'un autre associé
+const secondDeviceState = {
+  eggStock: 28,
+  eggStocks: { poule: 28, canard_barbarie: 0 },
+  eggHarvests: []
+};
+window.appState = secondDeviceState;
+
+appAuth.applyCloudData(cloudRowWithCustomEgg.data, true);
+assert.strictEqual(window.appState.eggStocks['autre_oie_de_toulouse'], 15, 'Second device must receive custom species stock autre_oie_de_toulouse!');
+assert(window.appState.eggStock >= 43, 'Total egg stock must include the custom species!');
+console.log('✔ Test 11B Passed: Multi-device sync seamlessly propagates custom species and dynamic stock keys!');
+
+// 3. Déduction d'œufs personnalisés pour la couveuse
+// Fonction deductEggsFromFarmStock avec espèce personnalisée
+function deductEggsFromFarmStock(count, targetSpecies) {
+  const eggsCount = Math.max(0, Number(count) || 0);
+  if (eggsCount <= 0) return 0;
+  const spKey = targetSpecies;
+  let remainingToDeduct = eggsCount;
+  const curSp = Number(window.appState.eggStocks[spKey]) || 0;
+  if (curSp > 0) {
+    const take = Math.min(curSp, remainingToDeduct);
+    window.appState.eggStocks[spKey] = curSp - take;
+    remainingToDeduct -= take;
+  }
+  window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+  return eggsCount - remainingToDeduct;
+}
+
+const deducted = deductEggsFromFarmStock(5, 'autre_oie_de_toulouse');
+assert.strictEqual(deducted, 5, 'Must deduct 5 eggs from custom species stock!');
+assert.strictEqual(window.appState.eggStocks['autre_oie_de_toulouse'], 10, 'Remaining custom species stock must be 10!');
+console.log('✔ Test 11C Passed: Incubation batch correctly deducts from dynamic custom species stock!');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

@@ -2180,11 +2180,28 @@
                 <option value="canard" data-days="28" data-i18n="opt_egg_duck">Canard commun (28 Jours)</option>
                 <option value="dinde" data-days="28" data-i18n="opt_egg_turkey">Dinde (28 Jours)</option>
                 <option value="oie" data-days="30" data-i18n="opt_egg_goose">Oie (30 Jours)</option>
+                <option value="autre" data-days="21" data-i18n="opt_egg_species_autre">✨ Autre volaille...</option>
               </select>
             </div>
             <div class="form-group flex-1">
               <label for="batchBreed"><span data-i18n="lbl_breed">Race / Variété</span> <small style="color: var(--text-muted); font-size: 0.8rem;" data-i18n="lbl_optional">(Optionnel)</small></label>
               <input type="text" id="batchBreed" class="input-field">
+            </div>
+          </div>
+
+          <!-- Dynamic custom species group for incubation batch -->
+          <div id="batchCustomSpeciesGroup" class="form-row" style="margin-bottom: 0.85rem; display: none; gap: 0.75rem;">
+            <div class="form-group flex-1">
+              <label for="batchCustomSpecies" class="form-label" data-i18n="lbl_custom_species" style="font-weight: 700; color: var(--accent-amber);">
+                Préciser l'espèce / type de volaille
+              </label>
+              <input type="text" id="batchCustomSpecies" class="input-field" data-i18n-placeholder="ph_custom_species" placeholder="ex: Faisan, Paon, Autruche..." autocomplete="off" maxlength="50" style="border-color: var(--accent-amber);">
+            </div>
+            <div class="form-group" style="width: 140px;">
+              <label for="batchCustomDurationDays" class="form-label" data-i18n="lbl_custom_duration" style="font-weight: 700;">
+                Durée (Jours)
+              </label>
+              <input type="number" id="batchCustomDurationDays" class="input-field" min="1" max="100" value="21" oninput="app.calcHatchPreview()">
             </div>
           </div>
 
@@ -2335,23 +2352,40 @@
             </div>
           </div>
 
-          <div class="form-row" style="margin-bottom: 1.15rem;">
+          <div class="form-row" style="margin-bottom: 0.85rem;">
             <div class="form-group flex-1">
               <label for="dailyEggSpecies" class="form-label" data-i18n="lbl_egg_species" style="font-weight: 700;">Type d'œuf / Espèce</label>
-              <select id="dailyEggSpecies" class="input-field" onchange="app.updateDailyEggPreview()" style="font-weight: 700;">
+              <select id="dailyEggSpecies" class="input-field" onchange="app.handleDailyEggSpeciesChange()" style="font-weight: 700;">
                 <option value="poule" data-i18n="opt_egg_species_poule">🥚 Poule (Poulet)</option>
                 <option value="canard_barbarie" data-i18n="opt_egg_species_canard">🦆 Canard de Barbarie</option>
                 <option value="pintade" data-i18n="opt_egg_species_pintade">Pintade</option>
                 <option value="caille" data-i18n="opt_egg_species_caille">Caille</option>
-                <option value="autre" data-i18n="opt_egg_species_autre">Autre volaille</option>
+                <option value="autre" data-i18n="opt_egg_species_autre">✨ Autre volaille...</option>
               </select>
             </div>
             <div class="form-group flex-1">
               <label for="dailyEggCategory" class="form-label" data-i18n="lbl_egg_category" style="font-weight: 700;">Catégorie</label>
-              <select id="dailyEggCategory" class="input-field" style="font-weight: 700;">
+              <select id="dailyEggCategory" class="input-field" onchange="app.handleDailyEggCategoryChange()" style="font-weight: 700;">
                 <option value="consommation" data-i18n="opt_egg_cat_consumption">🍽️ Consommation</option>
                 <option value="a_couver" data-i18n="opt_egg_cat_hatching">🐣 Fécondé / À couver</option>
+                <option value="autre" data-i18n="opt_egg_cat_autre">✨ Autre catégorie...</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Dynamic custom fields row (shown when 'autre' is selected) -->
+          <div id="dailyEggCustomFieldsRow" class="form-row" style="margin-bottom: 0.85rem; display: none; gap: 0.75rem;">
+            <div id="dailyEggCustomSpeciesGroup" class="form-group flex-1" style="display: none;">
+              <label for="dailyEggCustomSpecies" class="form-label" data-i18n="lbl_custom_species" style="font-weight: 700; color: var(--primary);">
+                Préciser l'espèce / type d'œuf
+              </label>
+              <input type="text" id="dailyEggCustomSpecies" class="input-field" data-i18n-placeholder="ph_custom_species" placeholder="ex: Oie, Dinde, Faisan..." autocomplete="off" maxlength="50" style="border-color: var(--primary);" oninput="app.updateDailyEggPreview()">
+            </div>
+            <div id="dailyEggCustomCategoryGroup" class="form-group flex-1" style="display: none;">
+              <label for="dailyEggCustomCategory" class="form-label" data-i18n="lbl_custom_category" style="font-weight: 700; color: #ec4899;">
+                Préciser la catégorie
+              </label>
+              <input type="text" id="dailyEggCustomCategory" class="input-field" data-i18n-placeholder="ph_custom_category" placeholder="ex: Cassés, Gros calibre, Bio..." autocomplete="off" maxlength="50" style="border-color: #ec4899;">
             </div>
           </div>
 

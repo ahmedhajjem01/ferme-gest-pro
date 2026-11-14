@@ -859,6 +859,10 @@ const app = {
         if (breed) { breed.value = ''; breed.placeholder = ''; breed.removeAttribute('placeholder'); }
         const name = document.getElementById('batchName');
         if (name) { name.value = ''; name.placeholder = ''; name.removeAttribute('placeholder'); }
+        const customSpecies = document.getElementById('batchCustomSpecies');
+        if (customSpecies) { customSpecies.value = ''; customSpecies.required = false; }
+        const customGroup = document.getElementById('batchCustomSpeciesGroup');
+        if (customGroup) customGroup.style.display = 'none';
       }
 
       if (modalId === 'modalAdjustFeedStock') {
@@ -2961,7 +2965,12 @@ const app = {
     }
     let chickenStock = Number(appState.eggStocks.poule) || 0;
     let duckStock = Number(appState.eggStocks.canard_barbarie) || 0;
-    let otherStock = (Number(appState.eggStocks.pintade) || 0) + (Number(appState.eggStocks.caille) || 0) + (Number(appState.eggStocks.autre) || 0);
+    let otherStock = 0;
+    Object.keys(appState.eggStocks).forEach(k => {
+      if (k !== 'poule' && k !== 'canard_barbarie') {
+        otherStock += (Number(appState.eggStocks[k]) || 0);
+      }
+    });
     let totalStock = chickenStock + duckStock + otherStock;
 
     if (totalStock === 0 && Number(appState.eggStock) > 0) {
@@ -3000,8 +3009,29 @@ const app = {
 
     const breakdownStrip = document.getElementById('eggSpeciesBreakdownStrip');
     if (breakdownStrip) {
-      const isPouleActive = filter === 'poule' || filter === 'all';
-      const isDuckActive = filter === 'canard_barbarie' || filter === 'all';
+      let customBadgesHtml = '';
+      Object.keys(appState.eggStocks).forEach(k => {
+        if (k !== 'poule' && k !== 'canard_barbarie') {
+          const val = Number(appState.eggStocks[k]) || 0;
+          if (val > 0) {
+            let label = k;
+            if (k === 'pintade') label = this.t('opt_egg_species_pintade') || 'Pintade';
+            else if (k === 'caille') label = this.t('opt_egg_species_caille') || 'Caille';
+            else if (k.startsWith('autre_')) {
+              label = k.replace(/^autre_/, '').replace(/_/g, ' ');
+              label = label.charAt(0).toUpperCase() + label.slice(1);
+            } else if (k === 'autre') {
+              label = this.t('opt_egg_species_autre') || 'Autre volaille';
+            }
+            customBadgesHtml += `
+              <span class="badge-pill" style="background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
+                🪶 ${label}: <strong>${val}</strong>
+              </span>
+            `;
+          }
+        }
+      });
+
       breakdownStrip.innerHTML = `
         <span class="badge-pill" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
           ${this.t('opt_egg_species_poule') || '🥚 Poule'}: <strong>${chickenStock}</strong>
@@ -3009,10 +3039,7 @@ const app = {
         <span class="badge-pill" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
           ${this.t('opt_egg_species_canard') || '🦆 Canard'}: <strong>${duckStock}</strong>
         </span>
-        ${otherStock > 0 ? `
-        <span class="badge-pill" style="background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 0.76rem; padding: 0.2rem 0.5rem; font-weight: 700; white-space: normal; line-height: 1.2;">
-          🪶 ${this.t('opt_egg_species_autre') || 'Autre'}: <strong>${otherStock}</strong>
-        </span>` : ''}
+        ${customBadgesHtml}
       `;
     }
 
@@ -3027,8 +3054,30 @@ const app = {
     const input = document.getElementById('dailyEggCount');
     const dateInput = document.getElementById('dailyEggDate');
     const speciesSelect = document.getElementById('dailyEggSpecies');
-    if (speciesSelect && appState.eggFilter && appState.eggFilter !== 'all') {
-      speciesSelect.value = appState.eggFilter;
+    const catSelect = document.getElementById('dailyEggCategory');
+
+    // Reset dynamic custom fields
+    const customRow = document.getElementById('dailyEggCustomFieldsRow');
+    const customSpeciesGroup = document.getElementById('dailyEggCustomSpeciesGroup');
+    const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
+    const customCatGroup = document.getElementById('dailyEggCustomCategoryGroup');
+    const customCatInput = document.getElementById('dailyEggCustomCategory');
+
+    if (customRow) customRow.style.display = 'none';
+    if (customSpeciesGroup) customSpeciesGroup.style.display = 'none';
+    if (customCatGroup) customCatGroup.style.display = 'none';
+    if (customSpeciesInput) { customSpeciesInput.value = ''; customSpeciesInput.required = false; }
+    if (customCatInput) { customCatInput.value = ''; customCatInput.required = false; }
+
+    if (speciesSelect) {
+      if (appState.eggFilter && appState.eggFilter !== 'all') {
+        speciesSelect.value = appState.eggFilter;
+      } else {
+        speciesSelect.value = 'poule';
+      }
+    }
+    if (catSelect) {
+      catSelect.value = 'consommation';
     }
     if (dateInput) {
       dateInput.value = this.getTodayStr();
@@ -3041,6 +3090,62 @@ const app = {
         input.select();
       }, 150);
     }
+    this.updateDailyEggPreview();
+  },
+
+  handleDailyEggSpeciesChange() {
+    const speciesSelect = document.getElementById('dailyEggSpecies');
+    const isOther = (speciesSelect && speciesSelect.value === 'autre');
+    const customRow = document.getElementById('dailyEggCustomFieldsRow');
+    const customSpeciesGroup = document.getElementById('dailyEggCustomSpeciesGroup');
+    const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
+    const catSelect = document.getElementById('dailyEggCategory');
+    const isCatOther = (catSelect && catSelect.value === 'autre');
+
+    if (customSpeciesGroup && customSpeciesInput) {
+      if (isOther) {
+        customSpeciesGroup.style.display = 'block';
+        customSpeciesInput.required = true;
+        setTimeout(() => customSpeciesInput.focus(), 100);
+      } else {
+        customSpeciesGroup.style.display = 'none';
+        customSpeciesInput.required = false;
+        customSpeciesInput.value = '';
+      }
+    }
+
+    if (customRow) {
+      customRow.style.display = (isOther || isCatOther) ? 'flex' : 'none';
+    }
+
+    this.updateDailyEggPreview();
+  },
+
+  handleDailyEggCategoryChange() {
+    const catSelect = document.getElementById('dailyEggCategory');
+    const isCatOther = (catSelect && catSelect.value === 'autre');
+    const customRow = document.getElementById('dailyEggCustomFieldsRow');
+    const customCatGroup = document.getElementById('dailyEggCustomCategoryGroup');
+    const customCatInput = document.getElementById('dailyEggCustomCategory');
+    const speciesSelect = document.getElementById('dailyEggSpecies');
+    const isSpeciesOther = (speciesSelect && speciesSelect.value === 'autre');
+
+    if (customCatGroup && customCatInput) {
+      if (isCatOther) {
+        customCatGroup.style.display = 'block';
+        customCatInput.required = true;
+        setTimeout(() => customCatInput.focus(), 100);
+      } else {
+        customCatGroup.style.display = 'none';
+        customCatInput.required = false;
+        customCatInput.value = '';
+      }
+    }
+
+    if (customRow) {
+      customRow.style.display = (isSpeciesOther || isCatOther) ? 'flex' : 'none';
+    }
+
     this.updateDailyEggPreview();
   },
 
@@ -3159,8 +3264,28 @@ const app = {
       appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
     }
     const speciesSelect = document.getElementById('dailyEggSpecies');
-    const species = speciesSelect ? speciesSelect.value : 'poule';
-    const current = Number(appState.eggStocks[species]) || 0;
+    const rawSpecies = speciesSelect ? speciesSelect.value : 'poule';
+    const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
+    const customSpeciesVal = customSpeciesInput ? customSpeciesInput.value.trim() : '';
+
+    let speciesKey = rawSpecies;
+    let speciesDisplayName = 'Poule';
+
+    if (rawSpecies === 'canard_barbarie') {
+      speciesDisplayName = 'Canard';
+    } else if (rawSpecies === 'pintade') {
+      speciesDisplayName = 'Pintade';
+    } else if (rawSpecies === 'caille') {
+      speciesDisplayName = 'Caille';
+    } else if (rawSpecies === 'autre') {
+      speciesDisplayName = customSpeciesVal || (this.t('opt_egg_species_autre') || 'Autre');
+      if (customSpeciesVal) {
+        const safeSuffix = customSpeciesVal.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
+        speciesKey = safeSuffix ? ('autre_' + safeSuffix) : 'autre';
+      }
+    }
+
+    const current = Number(appState.eggStocks[speciesKey]) || 0;
     const input = document.getElementById('dailyEggCount');
     const count = parseInt(input?.value, 10) || 0;
 
@@ -3173,11 +3298,10 @@ const app = {
     const btnText = document.getElementById('dailyEggBtnText');
     if (btnText) {
       const lang = appState.lang || 'fr';
-      const speciesName = species === 'canard_barbarie' ? 'Canard' : 'Poule';
       if (count > 0) {
-        if (lang === 'ar') btnText.textContent = `إضافة +${count} بيضة (${speciesName}) إلى الرصيد`;
-        else if (lang === 'en') btnText.textContent = `Add +${count} ${speciesName} Eggs to Stock`;
-        else btnText.textContent = `Ajouter +${count} œufs (${speciesName}) au Stock`;
+        if (lang === 'ar') btnText.textContent = `إضافة +${count} بيضة (${speciesDisplayName}) إلى الرصيد`;
+        else if (lang === 'en') btnText.textContent = `Add +${count} ${speciesDisplayName} Eggs to Stock`;
+        else btnText.textContent = `Ajouter +${count} œufs (${speciesDisplayName}) au Stock`;
       } else {
         btnText.textContent = this.t('daily_eggs_btn_save') || 'Ajouter au Stock de la Ferme';
       }
@@ -3199,10 +3323,28 @@ const app = {
     }
 
     const speciesSelect = document.getElementById('dailyEggSpecies');
-    const species = (speciesSelect && speciesSelect.value) ? speciesSelect.value : 'poule';
+    const rawSpecies = (speciesSelect && speciesSelect.value) ? speciesSelect.value : 'poule';
+    const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
+    const customSpeciesVal = customSpeciesInput ? customSpeciesInput.value.trim() : '';
+
+    if (rawSpecies === 'autre' && !customSpeciesVal) {
+      this._isSavingDailyEggs = false;
+      this.showToast(this.t('err_enter_custom_species') || 'Veuillez préciser le nom du type d\'œuf / espèce.', 'warning');
+      if (customSpeciesInput) customSpeciesInput.focus();
+      return;
+    }
 
     const categorySelect = document.getElementById('dailyEggCategory');
-    const category = (categorySelect && categorySelect.value) ? categorySelect.value : 'consommation';
+    const rawCategory = (categorySelect && categorySelect.value) ? categorySelect.value : 'consommation';
+    const customCategoryInput = document.getElementById('dailyEggCustomCategory');
+    const customCategoryVal = customCategoryInput ? customCategoryInput.value.trim() : '';
+
+    if (rawCategory === 'autre' && !customCategoryVal) {
+      this._isSavingDailyEggs = false;
+      this.showToast(this.t('err_enter_custom_category') || 'Veuillez préciser le nom de la catégorie.', 'warning');
+      if (customCategoryInput) customCategoryInput.focus();
+      return;
+    }
 
     const dateInput = document.getElementById('dailyEggDate');
     const harvestDate = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
@@ -3210,7 +3352,30 @@ const app = {
     if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
       appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
     }
-    appState.eggStocks[species] = (Number(appState.eggStocks[species]) || 0) + count;
+
+    let speciesKey = rawSpecies;
+    let speciesLabel = 'Poule';
+
+    if (rawSpecies === 'canard_barbarie') {
+      speciesLabel = 'Canard de Barbarie';
+    } else if (rawSpecies === 'pintade') {
+      speciesLabel = 'Pintade';
+    } else if (rawSpecies === 'caille') {
+      speciesLabel = 'Caille';
+    } else if (rawSpecies === 'autre') {
+      speciesLabel = customSpeciesVal || 'Autre';
+      const safeSuffix = customSpeciesVal.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
+      speciesKey = safeSuffix ? ('autre_' + safeSuffix) : 'autre';
+    }
+
+    let categoryLabel = 'Consommation';
+    if (rawCategory === 'a_couver') {
+      categoryLabel = 'À couver';
+    } else if (rawCategory === 'autre') {
+      categoryLabel = customCategoryVal || 'Autre';
+    }
+
+    appState.eggStocks[speciesKey] = (Number(appState.eggStocks[speciesKey]) || 0) + count;
     appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
 
     appState.eggHarvests = appState.eggHarvests || [];
@@ -3218,8 +3383,13 @@ const app = {
       id: 'harvest-' + Date.now().toString(36),
       date: harvestDate,
       count: count,
-      species: species,
-      category: category,
+      species: rawSpecies,
+      speciesKey: speciesKey,
+      speciesLabel: speciesLabel,
+      customSpecies: customSpeciesVal || '',
+      category: rawCategory,
+      categoryLabel: categoryLabel,
+      customCategory: customCategoryVal || '',
       updatedAt: Date.now()
     });
 
@@ -3231,10 +3401,11 @@ const app = {
     this.renderEggStock();
     this.renderEggProductionChart();
 
-    const speciesLabel = species === 'canard_barbarie' ? 'Canard de Barbarie' : 'Poule';
     this.showToast(`🎉 +${count} œufs (${speciesLabel}) ajoutés ! Stock total : ${appState.eggStock} œufs`);
 
     if (countInput) countInput.value = '';
+    if (customSpeciesInput) customSpeciesInput.value = '';
+    if (customCategoryInput) customCategoryInput.value = '';
   },
 
   // ==========================================
@@ -12714,7 +12885,7 @@ const app = {
             <span class="icon">🥚</span>
             <div>
               <h3 class="batch-name">${batch.name || 'Couvée'}</h3>
-              <p class="batch-species">${(batch.breed && batch.breed !== '-') ? batch.breed + ' &bull; ' : ''}${batch.eggsCount} (${(batch.eggSpecies || 'poule').toUpperCase()})</p>
+              <p class="batch-species">${(batch.breed && batch.breed !== '-') ? batch.breed + ' &bull; ' : ''}${batch.eggsCount} (${(batch.customSpecies || batch.eggSpecies || 'poule').toUpperCase()})</p>
             </div>
           </div>
           <span class="badge-pill">${daysElapsed >= totalDays ? '🐣 ' + (this.t('stage_header_hatch') || 'Éclosion') : 'J ' + daysElapsed + '/' + totalDays}</span>
@@ -12803,7 +12974,24 @@ const app = {
 
   handleEggSpeciesChange() {
     const select = document.getElementById('batchEggType');
-    const opt = select.options[select.selectedIndex];
+    if (!select) return;
+    const isOther = select.value === 'autre';
+    const group = document.getElementById('batchCustomSpeciesGroup');
+    const input = document.getElementById('batchCustomSpecies');
+    const daysInput = document.getElementById('batchCustomDurationDays');
+
+    if (group) group.style.display = isOther ? 'flex' : 'none';
+    if (input) {
+      input.required = isOther;
+      if (isOther) {
+        setTimeout(() => input.focus(), 60);
+      } else {
+        input.value = '';
+      }
+    }
+    if (daysInput && isOther && (!daysInput.value || Number(daysInput.value) <= 0)) {
+      daysInput.value = '21';
+    }
     this.calcHatchPreview();
   },
 
@@ -12826,7 +13014,11 @@ const app = {
     if (!startDateVal || !speciesSelect || !previewEl) return;
 
     const selectedOpt = speciesSelect.options[speciesSelect.selectedIndex];
-    const durationDays = parseInt(selectedOpt.getAttribute('data-days'), 10) || 21;
+    let durationDays = parseInt(selectedOpt?.getAttribute('data-days'), 10) || 21;
+    if (speciesSelect.value === 'autre') {
+      const customDays = parseInt(document.getElementById('batchCustomDurationDays')?.value, 10);
+      if (customDays > 0) durationDays = customDays;
+    }
 
     const start = new Date(startDateVal);
     const hatch = new Date(start);
@@ -12925,8 +13117,25 @@ const app = {
     e.preventDefault();
     const method = document.getElementById('batchMethod')?.value || 'machine';
     const speciesSelect = document.getElementById('batchEggType');
-    const eggSpecies = speciesSelect.value;
-    const durationDays = parseInt(speciesSelect.options[speciesSelect.selectedIndex].getAttribute('data-days'), 10) || 21;
+    let eggSpecies = speciesSelect.value;
+    let durationDays = parseInt(speciesSelect.options[speciesSelect.selectedIndex].getAttribute('data-days'), 10) || 21;
+    let customSpeciesName = '';
+
+    if (eggSpecies === 'autre') {
+      const customInput = document.getElementById('batchCustomSpecies');
+      customSpeciesName = customInput?.value.trim() || '';
+      if (!customSpeciesName) {
+        const isAr = (appState.lang || this.currentLang) === 'ar';
+        this.showToast(isAr ? 'يرجى تحديد نوع الطائر أو البيض.' : 'Veuillez préciser l\'espèce ou le type d\'œuf.', 'warning');
+        customInput?.focus();
+        return;
+      }
+      const customDays = parseInt(document.getElementById('batchCustomDurationDays')?.value, 10);
+      if (customDays > 0) durationDays = customDays;
+      const safeKey = 'autre_' + customSpeciesName.toLowerCase().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').substring(0, 30);
+      eggSpecies = safeKey;
+    }
+
     const breedInput = document.getElementById('batchBreed')?.value.trim();
     const nameInput = document.getElementById('batchName')?.value.trim();
     const eggsCount = parseInt(document.getElementById('batchEggsCount')?.value, 10);
@@ -12956,6 +13165,7 @@ const app = {
       id: 'batch-' + Date.now().toString(36),
       method,
       eggSpecies,
+      customSpecies: customSpeciesName || undefined,
       speciesDurationDays: durationDays,
       breed,
       name,
@@ -13014,6 +13224,8 @@ const app = {
     this.renderAll();
     this.showToast(this.t('toast_batch_saved', { name, days: durationDays }));
     document.getElementById('formAddBatch').reset();
+    const batchCustomGroup = document.getElementById('batchCustomSpeciesGroup');
+    if (batchCustomGroup) batchCustomGroup.style.display = 'none';
   },
 
   // Ouvrir la notification interactive d'éclosion
