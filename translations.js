@@ -650,6 +650,9 @@ const TRANSLATIONS = {
     backup_vault_title: "Coffre-fort & Restauration Locale (Téléphone)",
     backup_vault_desc: "En cas de problème d'affichage ou pour récupérer vos données réelles enregistrées sur ce téléphone :",
     backup_btn_restore_phone: "Restaurer ma sauvegarde locale (Téléphone)",
+    backup_btn_recalc_all_stocks: "Recalibrer les stocks (Œufs & Aliments)",
+    btn_recalculate_egg_stock: "Recalculer le stock exact depuis l'historique",
+    desc_recalculate_egg_stock: "Déduit rigoureusement toutes les ventes, consommations et couvées de vos pontes passées.",
     backup_btn_export: "Exporter (JSON)",
     backup_btn_import: "Importer (JSON)",
 
@@ -1718,6 +1721,9 @@ const TRANSLATIONS = {
     backup_vault_title: "الخزنة الآمنة واستعادة النسخة المحلية (الهاتف)",
     backup_vault_desc: "في حالة حدوث مشكلة في العرض أو لاسترجاع بياناتك الحقيقية المحفوظة على هذا الهاتف:",
     backup_btn_restore_phone: "استعادة نسختي المحلية (الهاتف)",
+    backup_btn_recalc_all_stocks: "إعادة احتساب الأرصدة (البيض والأعلاف)",
+    btn_recalculate_egg_stock: "إعادة احتساب المخزون الدقيق من السجل",
+    desc_recalculate_egg_stock: "يخصم بدقة كامل المبيعات والاستهلاك والحاضنة من مجموع الإنتاج السابق.",
     backup_btn_export: "تصدير (JSON)",
     backup_btn_import: "استيراد (JSON)",
 
@@ -2786,6 +2792,9 @@ const TRANSLATIONS = {
     backup_vault_title: "Safety Vault & Local Recovery (Phone)",
     backup_vault_desc: "In case of display issues or to recover your real data stored on this phone:",
     backup_btn_restore_phone: "Restore local phone backup",
+    backup_btn_recalc_all_stocks: "Recalculate stocks (Eggs & Feed)",
+    btn_recalculate_egg_stock: "Recalculate exact egg stock from history",
+    desc_recalculate_egg_stock: "Rigorously deducts all sales, consumptions, and incubations from past harvests.",
     backup_btn_export: "Export (JSON)",
     backup_btn_import: "Import (JSON)",
 

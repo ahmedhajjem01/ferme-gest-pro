@@ -412,7 +412,7 @@ const app = {
           : { poule: Number(parsed.eggStock) || 0, canard_barbarie: 0 };
         appState.eggFilter = parsed.eggFilter || 'all';
         appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
-        if (appState.eggStock === 0 && Number(parsed.eggStock) > 0) {
+        if (!parsed.eggStocks && Number(parsed.eggStock) > 0) {
           appState.eggStocks.poule = Number(parsed.eggStock);
           appState.eggStock = Number(parsed.eggStock);
         }
@@ -3136,8 +3136,8 @@ const app = {
     });
     let totalStock = chickenStock + duckStock + otherStock;
 
-    if (totalStock === 0 && Number(appState.eggStock) > 0) {
-      appState.eggStocks.poule = Number(appState.eggStock);
+    if (totalStock === 0 && Number(appState.eggStock) > 0 && (!appState.eggStocks || Object.keys(appState.eggStocks).length === 0)) {
+      appState.eggStocks = { poule: Number(appState.eggStock), canard_barbarie: 0 };
       chickenStock = Number(appState.eggStock);
       totalStock = chickenStock;
     }
@@ -7447,6 +7447,94 @@ const app = {
       return true;
     }
     return false;
+  },
+
+  // Calcul exact en partie double du stock d'œufs depuis l'historique complet des récoltes, ventes, consommations et couvées
+  autoRepairEggStock(showToast = false) {
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
+    const stockBySpecies = { poule: 0, canard_barbarie: 0 };
+    if (appState.eggStocks && typeof appState.eggStocks === 'object') {
+      Object.keys(appState.eggStocks).forEach(k => {
+        stockBySpecies[k] = 0;
+      });
+    }
+
+    // 1. Entrées : Récoltes historiques
+    (appState.eggHarvests || []).forEach(h => {
+      if (!h) return;
+      const sp = (h.species === 'canard' || h.species === 'canard_barbarie') ? 'canard_barbarie' : (h.species || 'poule');
+      stockBySpecies[sp] = (stockBySpecies[sp] || 0) + (Number(h.count) || 0);
+    });
+
+    // 2. Sorties : Ventes d'œufs
+    (appState.sales || []).forEach(s => {
+      if (!s || s.productType !== 'oeufs') return;
+      const sp = s.eggSpecies || s.species || 'poule';
+      let qty = Number(s.quantity) || 0;
+      if (s.format === 'hara') qty *= 4;
+      else if (s.format === 'plateau') qty *= 30;
+      stockBySpecies[sp] = (stockBySpecies[sp] || 0) - qty;
+    });
+
+    // 3. Sorties : Consommations / pertes
+    (appState.eggConsumptions || []).forEach(c => {
+      if (!c) return;
+      const sp = c.species || 'poule';
+      stockBySpecies[sp] = (stockBySpecies[sp] || 0) - (Number(c.count) || 0);
+    });
+
+    // 4. Sorties : Couvées prélevées de la ferme
+    (appState.incubatorBatches || []).forEach(b => {
+      if (!b || b.eggSource !== 'farm') return;
+      const sp = (b.eggType === 'canard' || b.species === 'canard') ? 'canard_barbarie' : (b.eggType || b.species || 'poule');
+      stockBySpecies[sp] = (stockBySpecies[sp] || 0) - (Number(b.eggsCount) || 0);
+    });
+
+    // 5. Clamper à 0 minimum pour chaque espèce
+    Object.keys(stockBySpecies).forEach(sp => {
+      stockBySpecies[sp] = Math.max(0, stockBySpecies[sp] || 0);
+    });
+
+    appState.eggStocks = stockBySpecies;
+    appState.eggStock = Object.values(stockBySpecies).reduce((a, b) => a + (Number(b) || 0), 0);
+
+    this.saveState();
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData(false, true);
+    }
+    this.renderEggStock();
+    this.renderAll();
+
+    if (showToast) {
+      const msg = isAr 
+        ? `✅ تم تدقيق وإعادة احتساب رصيد البيض بدقة: ${appState.eggStock} بيضة.`
+        : (isEn 
+            ? `✅ Exact egg stock recalculated from history: ${appState.eggStock} eggs.`
+            : `✅ Stock d'œufs recalculé avec exactitude depuis l'historique : ${appState.eggStock} œufs.`);
+      this.showToast(msg, 'success');
+    }
+    return appState.eggStock;
+  },
+
+  // Recalibration complète des stocks (œufs et aliments) depuis l'historique comptable
+  autoRepairAllStocks(showToast = true) {
+    this.autoRepairEggStock(false);
+    this.autoRepairFeedStock();
+    this.saveState();
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData(false, true);
+    }
+    this.renderAll();
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const msg = isAr
+      ? `✅ تم تدقيق وإعادة احتساب رصيد البيض (${appState.eggStock}) والأعلاف (${appState.feedStockKg || 0} كغ) بنجاح !`
+      : (isEn
+          ? `✅ Egg stock (${appState.eggStock}) and feed stock (${appState.feedStockKg || 0}kg) successfully recalculated from history!`
+          : `✅ Stocks d'œufs (${appState.eggStock} œufs) et d'aliments (${appState.feedStockKg || 0} kg) recalculés avec succès depuis l'historique !`);
+    if (showToast) this.showToast(msg, 'success');
   },
 
   renderSmartFeedPresets() {
@@ -12552,7 +12640,12 @@ const app = {
             let eggsToAdd = Number(saleToDelete.quantity) || 0;
             if (saleToDelete.format === 'hara') eggsToAdd *= 4;
             else if (saleToDelete.format === 'plateau') eggsToAdd *= 30;
-            appState.eggStock = (Number(appState.eggStock) || 0) + eggsToAdd;
+            const sp = saleToDelete.eggSpecies || saleToDelete.species || 'poule';
+            if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
+              appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+            }
+            appState.eggStocks[sp] = (Number(appState.eggStocks[sp]) || 0) + eggsToAdd;
+            appState.eggStock = Object.values(appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
           }
         }
         if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
@@ -13877,8 +13970,8 @@ const app = {
 
     // Total available
     let totalAvail = Object.values(appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
-    if (totalAvail === 0 && Number(appState.eggStock) > 0) {
-      appState.eggStocks.poule = Number(appState.eggStock);
+    if (totalAvail === 0 && Number(appState.eggStock) > 0 && (!appState.eggStocks || Object.keys(appState.eggStocks).length === 0)) {
+      appState.eggStocks = { poule: Number(appState.eggStock), canard_barbarie: 0 };
       totalAvail = Number(appState.eggStock);
     }
 
