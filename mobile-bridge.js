@@ -756,15 +756,6 @@ const MobileBridge = {
         descEl.setAttribute('data-i18n', 'ad_reward_excel_desc');
         descEl.textContent = typeof app !== 'undefined' ? app.t('ad_reward_excel_desc') : 'Regardez une courte vidéo publicitaire pour débloquer et télécharger votre classeur Excel complet.';
       }
-    } else if (actionType === 'cloud_sync') {
-      if (titleEl) {
-        titleEl.setAttribute('data-i18n', 'ad_reward_sync_title');
-        titleEl.textContent = typeof app !== 'undefined' ? app.t('ad_reward_sync_title') : '☁️ Synchronisation Cloud de la Ferme';
-      }
-      if (descEl) {
-        descEl.setAttribute('data-i18n', 'ad_reward_sync_desc');
-        descEl.textContent = typeof app !== 'undefined' ? app.t('ad_reward_sync_desc') : 'Regardez une courte vidéo publicitaire pour synchroniser instantanément toutes vos données en ligne.';
-      }
     }
 
     if (modal) {
