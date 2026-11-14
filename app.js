@@ -3110,9 +3110,14 @@ const app = {
 
   handleSaveDailyEggs(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (this._isSavingDailyEggs) return;
+    this._isSavingDailyEggs = true;
+    setTimeout(() => { this._isSavingDailyEggs = false; }, 500);
+
     const countInput = document.getElementById('dailyEggCount');
     const count = parseInt(countInput?.value, 10);
     if (!count || count <= 0) {
+      this._isSavingDailyEggs = false;
       this.showToast(this.t('err_fill_required') || 'Veuillez saisir un nombre valide.');
       return;
     }
@@ -7188,6 +7193,25 @@ const app = {
 
   handleSaveFeedDistribution(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (this._isDistributingFeed) return;
+    this._isDistributingFeed = true;
+
+    const submitBtn = document.getElementById('feedDistribSubmitBtn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.6';
+    }
+
+    const resetBtnLock = () => {
+      setTimeout(() => {
+        this._isDistributingFeed = false;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+        }
+      }, 500);
+    };
+
     const dateInput = document.getElementById('distribDate');
     const date = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
     if (dateInput && !dateInput.value) dateInput.value = date;
@@ -7233,6 +7257,7 @@ const app = {
     });
 
     if (totalKg <= 0) {
+      resetBtnLock();
       const isAr = appState.lang === 'ar';
       const isEn = appState.lang === 'en';
       const msg = isAr 
@@ -7255,7 +7280,8 @@ const app = {
       totalKg: parseFloat(totalKg.toFixed(2)),
       totalCost: parseFloat(totalCost.toFixed(3)),
       cans: parseFloat(totalCans.toFixed(1)),
-      items
+      items,
+      updatedAt: Date.now()
     };
 
     if (!Array.isArray(appState.feedDistributions)) {
@@ -7278,6 +7304,7 @@ const app = {
     this.renderAll();
     this.renderFeedDistributionModal();
     this.renderFeedStockAdjustModal();
+    resetBtnLock();
 
     const isAr = (appState.lang || this.currentLang) === 'ar';
     const isEn = (appState.lang || this.currentLang) === 'en';
@@ -10397,6 +10424,9 @@ const app = {
 
   handleSaveExpense(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (this._isSavingExpense) return;
+    this._isSavingExpense = true;
+    setTimeout(() => { this._isSavingExpense = false; }, 500);
     try {
       const category = document.getElementById('expenseCategory')?.value || 'autre';
       const date = document.getElementById('expenseDate')?.value || this.getTodayStr();
@@ -11474,7 +11504,10 @@ const app = {
   },
 
   handleSaveSale(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (this._isSavingSale) return;
+    this._isSavingSale = true;
+    setTimeout(() => { this._isSavingSale = false; }, 500);
     const productType = document.getElementById('saleProductType').value;
     const date = document.getElementById('saleDate').value;
     const description = document.getElementById('saleDescription').value.trim();

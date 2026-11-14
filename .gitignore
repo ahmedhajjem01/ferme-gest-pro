@@ -28,3 +28,7 @@ ios/App/.symlinks/
 *.log
 
 .vercel
+.env
+.env.*
+.cache/
+multi_agent_dev.py
