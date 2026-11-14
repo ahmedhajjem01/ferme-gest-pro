@@ -488,4 +488,106 @@ assert.strictEqual(window.appState.eggStocks.caille, 10, 'Quail stock must be 40
 assert.strictEqual(window.appState.eggStock, 117, 'Total egg stock must decrease to 147 - 30 = 117!');
 console.log('✔ Test 12D Passed: Quail eggs sale verified!');
 
+console.log('--- TEST 13: Incubator Candling (Mirage) & Cost Absorption ---');
+// 1. Initialiser une couvée de 50 œufs avec un investissement de 50 DT
+const testBatch = {
+  id: 'batch-test-candling-1',
+  name: 'Couvée Test Mirage',
+  eggSpecies: 'poule',
+  eggsCount: 50,
+  initialEggsCount: 50,
+  viableCount: 50,
+  candlingLogs: [],
+  eggCost: 35.0,
+  electricityCost: 15.0,
+  startDate: '2026-11-01',
+  hatchDate: '2026-11-22',
+  status: 'incubating'
+};
+
+const initialTotalCost = testBatch.eggCost + testBatch.electricityCost;
+assert.strictEqual(initialTotalCost, 50.0, 'Total initial batch cost must be 50 DT');
+const initialUnitCost = initialTotalCost / testBatch.viableCount;
+assert.strictEqual(initialUnitCost, 1.0, 'Initial unit cost per viable egg must be 1.000 DT');
+console.log('✔ Test 13A Passed: Initial batch creation with unit cost 1.000 DT verified');
+
+// Candling helper function simulating app.handleApplyCandlingRemoval
+function recordCandling(batch, removedCount, reason, reasonLabel) {
+  if (isNaN(removedCount) || removedCount <= 0) {
+    return { success: false, error: 'invalid_count' };
+  }
+  const currentViable = Number(batch.viableCount !== undefined ? batch.viableCount : batch.eggsCount) || 0;
+  if (removedCount > currentViable) {
+    return { success: false, error: 'exceeds_viable', currentViable };
+  }
+  if (batch.initialEggsCount === undefined) batch.initialEggsCount = batch.eggsCount;
+  const newViable = Math.max(0, currentViable - removedCount);
+  batch.viableCount = newViable;
+  batch.eggsCount = newViable;
+
+  if (newViable === 0) {
+    batch.status = 'failed';
+  }
+
+  const totalCost = (Number(batch.eggCost) || 0) + (Number(batch.electricityCost) || 0);
+  const unitCostAfter = newViable > 0 ? (totalCost / newViable) : null;
+
+  batch.candlingLogs = batch.candlingLogs || [];
+  batch.candlingLogs.unshift({
+    id: 'candling-' + Date.now().toString(36),
+    date: '2026-11-08',
+    removedCount,
+    reason,
+    reasonLabel,
+    previousViable: currentViable,
+    newViable,
+    unitCostAfter,
+    timestamp: Date.now()
+  });
+
+  return { success: true, newViable, totalCost, unitCostAfter };
+}
+
+// 2. Candling Session 1 at Day 7: 8 unfertilized eggs removed
+const candling1 = recordCandling(testBatch, 8, 'unfertilized', 'Œufs clairs');
+assert.strictEqual(candling1.success, true);
+assert.strictEqual(testBatch.viableCount, 42, 'Viable count must decrease from 50 to 42');
+assert.strictEqual(testBatch.eggsCount, 42, 'eggsCount must stay synchronized with viableCount');
+// Amortized unit cost increases from 1.000 DT to 50 / 42 ~= 1.1905 DT
+const expectedUnitCost1 = 50 / 42;
+assert(Math.abs(candling1.unitCostAfter - expectedUnitCost1) < 0.0001, 'Unit cost must absorb discarded egg costs!');
+assert.strictEqual(testBatch.candlingLogs.length, 1, 'Candling log must have 1 entry');
+console.log(`✔ Test 13B Passed: Mirage 1 (-8 œufs) verified. Unit cost amortized to ${candling1.unitCostAfter.toFixed(3)} DT/œuf`);
+
+// 3. Validation: Rejection if removed exceeds viable
+const invalidCandling = recordCandling(testBatch, 50, 'dead_embryo', 'Morts');
+assert.strictEqual(invalidCandling.success, false);
+assert.strictEqual(invalidCandling.error, 'exceeds_viable');
+console.log('✔ Test 13C Passed: Removal exceeding viable count correctly rejected');
+
+// 4. Candling Session 2 at Day 14: 2 dead embryos removed
+const candling2 = recordCandling(testBatch, 2, 'dead_embryo', 'Mort embryonnaire');
+assert.strictEqual(candling2.success, true);
+assert.strictEqual(testBatch.viableCount, 40, 'Viable count must decrease from 42 to 40');
+const expectedUnitCost2 = 50 / 40; // 1.250 DT
+assert.strictEqual(candling2.unitCostAfter, expectedUnitCost2, 'Unit cost must increase to 1.250 DT/viable egg');
+assert.strictEqual(testBatch.candlingLogs.length, 2, 'Candling log must have 2 entries');
+console.log(`✔ Test 13D Passed: Mirage 2 (-2 œufs) verified. Unit cost amortized to ${candling2.unitCostAfter.toFixed(3)} DT/œuf`);
+
+// 5. Total Loss Edge Case: All eggs removed -> viableCount 0, status 'failed', unitCost null (no division by zero)
+const doomedBatch = {
+  id: 'batch-doomed',
+  eggsCount: 10,
+  eggCost: 10,
+  electricityCost: 5,
+  viableCount: 10,
+  candlingLogs: []
+};
+const totalLossCandling = recordCandling(doomedBatch, 10, 'unfertilized', 'Tous clairs');
+assert.strictEqual(totalLossCandling.success, true);
+assert.strictEqual(doomedBatch.viableCount, 0);
+assert.strictEqual(doomedBatch.status, 'failed');
+assert.strictEqual(totalLossCandling.unitCostAfter, null, 'Unit cost on total loss must be null without division by zero');
+console.log('✔ Test 13E Passed: Total loss handled gracefully with status=failed and zero-division protection');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

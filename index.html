@@ -2269,6 +2269,111 @@
     </div>
   </div>
 
+  <!-- Modal: Modification de Couvée & Mirage / Retrait d'Œufs Non Fécondés -->
+  <div id="modalEditIncubatorBatch" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="text-amber" style="display: flex; align-items: center; gap: 0.45rem;">
+          <span>🔍</span> <span data-i18n="modal_edit_batch_title">Mirage & Gestion de la Couvée</span>
+        </h3>
+        <button class="modal-close" onclick="app.closeModal('modalEditIncubatorBatch')">&times;</button>
+      </div>
+      <form id="formEditIncubatorBatch" onsubmit="app.handleSaveEditIncubatorBatch(event)">
+        <input type="hidden" id="editBatchId">
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+          <!-- 1. En-tête statut et résumé économique -->
+          <div style="background: var(--bg-surface); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <strong id="editBatchDisplayHeader" style="font-size: 1.05rem; color: var(--primary);">Couvée #1</strong>
+              <span id="editBatchDaysBadge" class="badge-pill" style="font-size: 0.76rem;">J 7 / 21</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.82rem; color: var(--text-secondary);">
+              <div><span data-i18n="lbl_initial_eggs">Œufs initiaux :</span> <strong id="editBatchInitialEggs" class="text-main">50</strong></div>
+              <div><span data-i18n="lbl_viable_eggs">Œufs viables :</span> <strong id="editBatchViableEggs" style="color: var(--accent-emerald);">50</strong></div>
+              <div><span data-i18n="lbl_total_batch_cost">Coût engagé :</span> <strong id="editBatchTotalCost" class="text-main">35.000 DT</strong></div>
+              <div><span data-i18n="lbl_unit_egg_cost">Coût / œuf viable :</span> <strong id="editBatchUnitCost" style="color: var(--accent-amber);">0.700 DT</strong></div>
+            </div>
+          </div>
+
+          <!-- 2. Section Mirage & Retrait -->
+          <div style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 0.9rem; margin-bottom: 1rem;">
+            <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--accent-amber); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.35rem;">
+              <span>🔦</span> <span data-i18n="sec_mirage_title">Mirage & Retrait d'œufs non fécondés</span>
+            </h4>
+            <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.75rem;" data-i18n="sec_mirage_desc">
+              Lors du mirage (J7-J14), retirez les œufs clairs ou morts. Le coût total sera automatiquement réparti sur les œufs viables restants.
+            </p>
+
+            <div class="form-row" style="margin-bottom: 0.75rem;">
+              <div class="form-group flex-1">
+                <label for="editBatchMirageRemoved" class="form-label" data-i18n="lbl_mirage_removed_count" style="font-weight: 700;">Nombre d'œufs retirés</label>
+                <input type="number" id="editBatchMirageRemoved" class="input-field" min="1" placeholder="ex: 6" style="font-weight: 800; font-size: 1.1rem; color: #f59e0b;">
+              </div>
+              <div class="form-group flex-1">
+                <label for="editBatchMirageReason" class="form-label" data-i18n="lbl_mirage_reason" style="font-weight: 700;">Motif du retrait</label>
+                <select id="editBatchMirageReason" class="input-field">
+                  <option value="unfertilized" data-i18n="opt_mirage_unfertilized">🥚 Œuf clair / non fécondé</option>
+                  <option value="dead_embryo" data-i18n="opt_mirage_dead">💀 Mort embryonnaire</option>
+                  <option value="rotten_cracked" data-i18n="opt_mirage_cracked">💥 Pourri / fêlé / cassé</option>
+                  <option value="other" data-i18n="opt_mirage_other">✨ Autre motif</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-sm btn-amber btn-full" style="font-weight: 700; padding: 0.55rem;" onclick="app.handleApplyCandlingRemoval()">
+              <span data-i18n="btn_record_mirage_action">✂️ Enregistrer le retrait au mirage</span>
+            </button>
+          </div>
+
+          <!-- 3. Journal des mirages réalisés -->
+          <div id="editBatchMirageHistoryContainer" style="margin-bottom: 1rem; display: none;">
+            <label class="form-label" style="font-weight: 700; font-size: 0.82rem;" data-i18n="lbl_mirage_history">Historique des mirages effectués :</label>
+            <div id="editBatchMirageHistoryList" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 120px; overflow-y: auto;">
+              <!-- Rempli dynamiquement -->
+            </div>
+          </div>
+
+          <!-- 4. Modifications générales du lot -->
+          <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem;">
+            <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.65rem;" data-i18n="sec_batch_info_title">
+              ⚙️ Modifier les informations du lot
+            </h4>
+            <div class="form-row" style="margin-bottom: 0.75rem;">
+              <div class="form-group flex-1">
+                <label for="editBatchName" data-i18n="lbl_clutch_name">Numéro / Nom de la Couvée</label>
+                <input type="text" id="editBatchName" class="input-field" required>
+              </div>
+              <div class="form-group flex-1">
+                <label for="editBatchBreed" data-i18n="lbl_breed">Race / Variété</label>
+                <input type="text" id="editBatchBreed" class="input-field">
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom: 0.75rem;">
+              <div class="form-group flex-1">
+                <label for="editBatchEggCost" data-i18n="lbl_egg_cost">Coût/Valeur des œufs (DT)</label>
+                <input type="number" id="editBatchEggCost" class="input-field" step="0.01" min="0" oninput="app.updateEditBatchCostPreview()">
+              </div>
+              <div class="form-group flex-1">
+                <label for="editBatchElectricityCost" data-i18n="lbl_electricity_cost">Coût Électricité (DT)</label>
+                <input type="number" id="editBatchElectricityCost" class="input-field" step="0.01" min="0" oninput="app.updateEditBatchCostPreview()">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0.5rem;">
+              <label for="editBatchNotes" data-i18n="lbl_batch_notes">Notes de suivi</label>
+              <textarea id="editBatchNotes" class="input-field" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="app.closeModal('modalEditIncubatorBatch')" data-i18n="btn_cancel">Fermer</button>
+          <button type="submit" class="btn btn-emerald" data-i18n="btn_save_changes">Enregistrer les modifications</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal: Notification & Validation d'Éclosion Interactive (+ Poussins -> Cheptel) -->
   <div id="modalHatchPrompt" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 520px;">

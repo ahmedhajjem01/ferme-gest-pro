@@ -13004,6 +13004,16 @@ const app = {
     const now = this.getTodayDate();
 
     appState.incubatorBatches.forEach(batch => {
+      if (batch.initialEggsCount === undefined) batch.initialEggsCount = batch.eggsCount;
+      if (batch.viableCount === undefined) batch.viableCount = batch.eggsCount;
+      if (!Array.isArray(batch.candlingLogs)) batch.candlingLogs = [];
+
+      const initialEggs = Number(batch.initialEggsCount) || Number(batch.eggsCount) || 0;
+      const viableEggs = Number(batch.viableCount !== undefined ? batch.viableCount : batch.eggsCount) || 0;
+      const totalRemoved = Math.max(0, initialEggs - viableEggs);
+      const totalCost = (Number(batch.eggCost) || 0) + (Number(batch.electricityCost) || 0);
+      const unitCost = viableEggs > 0 ? (totalCost / viableEggs) : null;
+
       const start = new Date(batch.startDate);
       const hatch = new Date(batch.hatchDate);
       const totalDays = batch.speciesDurationDays || 21;
@@ -13024,7 +13034,7 @@ const app = {
             <span class="icon">🥚</span>
             <div>
               <h3 class="batch-name">${batch.name || 'Couvée'}</h3>
-              <p class="batch-species">${(batch.breed && batch.breed !== '-') ? batch.breed + ' &bull; ' : ''}${batch.eggsCount} (${(batch.customSpecies || batch.eggSpecies || 'poule').toUpperCase()})</p>
+              <p class="batch-species">${(batch.breed && batch.breed !== '-') ? batch.breed + ' &bull; ' : ''}<strong>${viableEggs}</strong>/${initialEggs} œufs (${(batch.customSpecies || batch.eggSpecies || 'poule').toUpperCase()})</p>
             </div>
           </div>
           <span class="badge-pill">${daysElapsed >= totalDays ? '🐣 ' + (this.t('stage_header_hatch') || 'Éclosion') : 'J ' + daysElapsed + '/' + totalDays}</span>
@@ -13059,7 +13069,17 @@ const app = {
           <span>📅 <strong>${this.formatDateFR(batch.startDate)}</strong></span>
         </div>
 
-        <div style="margin: 0.65rem 0 0.45rem; padding-top: 0.45rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem;">
+        <div class="batch-cost-amortization" style="margin: 0.55rem 0 0.25rem; padding: 0.4rem 0.65rem; background: rgba(245, 158, 11, 0.08); border-radius: var(--radius-sm); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 0.78rem; display: flex; justify-content: space-between; align-items: center;">
+          <span>💰 Coût : <strong>${this.formatMoney(totalCost)}</strong></span>
+          <span>⚖️ <strong>${viableEggs > 0 ? this.formatMoney(unitCost) + ' / œuf' : '<span style="color:#ef4444;">' + (this.t('cost_total_loss') || 'Perte totale') + '</span>'}</strong></span>
+        </div>
+        ${totalRemoved > 0 ? `
+          <div style="font-size: 0.74rem; color: #f59e0b; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
+            <span>🔍</span> <span><strong>${totalRemoved}</strong> œuf(s) retiré(s) au mirage (${batch.candlingLogs.length} séance(s))</span>
+          </div>
+        ` : ''}
+
+        <div style="margin: 0.5rem 0 0.45rem; padding-top: 0.45rem; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem;">
           ${batch.stockDeducted ? `
             <span class="badge-pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; font-size: 0.75rem;">
               🏡 Œufs de la ferme (Déduit du stock)
@@ -13076,8 +13096,11 @@ const app = {
           `}
         </div>
 
-        <div class="batch-card-actions" style="display: flex; gap: 0.5rem; margin-top: auto;">
-          <button class="btn btn-sm btn-amber flex-1" onclick="app.convertBatchToFlock('${batch.id}')">
+        <div class="batch-card-actions" style="display: flex; gap: 0.45rem; margin-top: auto; flex-wrap: wrap;">
+          <button class="btn btn-sm btn-outline flex-1" style="min-width: 120px;" onclick="app.openEditIncubatorBatch('${batch.id}')">
+            ✏️ ${this.t('btn_edit_batch') || 'Mirage / Modifier'}
+          </button>
+          <button class="btn btn-sm btn-amber flex-1" style="min-width: 120px;" onclick="app.convertBatchToFlock('${batch.id}')">
             ${this.t('btn_declare_hatched_action')}
           </button>
           <button class="btn btn-sm btn-danger-outline" onclick="app.deleteIncubatorBatch('${batch.id}')">
@@ -13309,6 +13332,9 @@ const app = {
       breed,
       name,
       eggsCount,
+      initialEggsCount: eggsCount,
+      viableCount: eggsCount,
+      candlingLogs: [],
       eggSource,
       eggCost,
       electricityCost,
@@ -13739,6 +13765,211 @@ const app = {
         this.showToast(this.t('toast_batch_deleted'));
       }
     });
+  },
+
+  openEditIncubatorBatch(batchId) {
+    const batch = appState.incubatorBatches.find(b => b.id === batchId);
+    if (!batch) return;
+
+    if (batch.initialEggsCount === undefined) batch.initialEggsCount = batch.eggsCount;
+    if (batch.viableCount === undefined) batch.viableCount = batch.eggsCount;
+    if (!Array.isArray(batch.candlingLogs)) batch.candlingLogs = [];
+
+    const now = this.getTodayDate();
+    const start = new Date(batch.startDate);
+    const totalDays = batch.speciesDurationDays || 21;
+    const daysElapsed = Math.max(0, Math.floor((now - start) / (1000 * 60 * 60 * 24)));
+
+    const idInput = document.getElementById('editBatchId');
+    if (idInput) idInput.value = batch.id;
+
+    const titleEl = document.getElementById('editBatchDisplayHeader');
+    if (titleEl) titleEl.textContent = batch.name || 'Couvée';
+
+    const daysBadge = document.getElementById('editBatchDaysBadge');
+    if (daysBadge) daysBadge.textContent = `J ${daysElapsed} / ${totalDays}`;
+
+    const initEggsEl = document.getElementById('editBatchInitialEggs');
+    if (initEggsEl) initEggsEl.textContent = batch.initialEggsCount;
+
+    const viableEggsEl = document.getElementById('editBatchViableEggs');
+    if (viableEggsEl) viableEggsEl.textContent = batch.viableCount;
+
+    const nameInput = document.getElementById('editBatchName');
+    if (nameInput) nameInput.value = batch.name || '';
+
+    const breedInput = document.getElementById('editBatchBreed');
+    if (breedInput) breedInput.value = (batch.breed && batch.breed !== '-') ? batch.breed : '';
+
+    const eggCostInput = document.getElementById('editBatchEggCost');
+    if (eggCostInput) eggCostInput.value = (Number(batch.eggCost) || 0).toFixed(2);
+
+    const elecCostInput = document.getElementById('editBatchElectricityCost');
+    if (elecCostInput) elecCostInput.value = (Number(batch.electricityCost) || 0).toFixed(2);
+
+    const notesInput = document.getElementById('editBatchNotes');
+    if (notesInput) notesInput.value = batch.notes || '';
+
+    const mirageRemovedInput = document.getElementById('editBatchMirageRemoved');
+    if (mirageRemovedInput) mirageRemovedInput.value = '';
+
+    const mirageReasonSelect = document.getElementById('editBatchMirageReason');
+    if (mirageReasonSelect) mirageReasonSelect.selectedIndex = 0;
+
+    this.updateEditBatchCostPreview();
+    this.renderEditBatchCandlingHistory(batch);
+
+    this.openModal('modalEditIncubatorBatch');
+  },
+
+  renderEditBatchCandlingHistory(batch) {
+    const historyContainer = document.getElementById('editBatchMirageHistoryContainer');
+    const historyList = document.getElementById('editBatchMirageHistoryList');
+    if (!historyContainer || !historyList) return;
+
+    const logs = batch.candlingLogs || [];
+    if (logs.length > 0) {
+      historyContainer.style.display = 'block';
+      historyList.innerHTML = logs.map(l => `
+        <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; font-size: 0.78rem; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span style="font-weight: 700; color: #ef4444;">-${l.removedCount} œufs</span>
+            <span class="text-muted"> (${l.reasonLabel || l.reason})</span>
+          </div>
+          <div style="font-size: 0.74rem; color: var(--text-secondary);">
+            <span>${this.formatDateFR(l.date)}</span> &bull; <span>${l.newViable} restants</span>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      historyContainer.style.display = 'none';
+      historyList.innerHTML = '';
+    }
+  },
+
+  updateEditBatchCostPreview() {
+    const batchId = document.getElementById('editBatchId')?.value;
+    const batch = appState.incubatorBatches?.find(b => b.id === batchId);
+
+    const eggCost = Number(document.getElementById('editBatchEggCost')?.value) || (batch ? Number(batch.eggCost) || 0 : 0);
+    const elecCost = Number(document.getElementById('editBatchElectricityCost')?.value) || (batch ? Number(batch.electricityCost) || 0 : 0);
+    const totalCost = eggCost + elecCost;
+
+    const viableCount = batch ? Number(batch.viableCount !== undefined ? batch.viableCount : batch.eggsCount) : 0;
+    const unitCost = viableCount > 0 ? (totalCost / viableCount) : null;
+
+    const totalEl = document.getElementById('editBatchTotalCost');
+    if (totalEl) totalEl.textContent = this.formatMoney(totalCost);
+
+    const unitEl = document.getElementById('editBatchUnitCost');
+    if (unitEl) {
+      unitEl.textContent = unitCost !== null 
+        ? `${this.formatMoney(unitCost)} / œuf` 
+        : (this.t('cost_total_loss') || 'Perte totale');
+    }
+  },
+
+  handleApplyCandlingRemoval() {
+    const batchId = document.getElementById('editBatchId')?.value;
+    const batch = appState.incubatorBatches.find(b => b.id === batchId);
+    if (!batch) return;
+
+    const input = document.getElementById('editBatchMirageRemoved');
+    const removedCount = parseInt(input?.value, 10);
+
+    if (isNaN(removedCount) || removedCount <= 0) {
+      this.showToast(this.t('err_mirage_invalid_count') || 'Veuillez entrer un nombre valide d\'œufs retirés (minimum 1).', 'warning');
+      return;
+    }
+
+    const currentViable = Number(batch.viableCount !== undefined ? batch.viableCount : batch.eggsCount) || 0;
+    if (removedCount > currentViable) {
+      this.showToast(this.t('err_mirage_exceeds_viable') || 'Le nombre d\'œufs retirés ne peut pas dépasser le nombre d\'œufs viables restants.', 'danger');
+      return;
+    }
+
+    const reasonSelect = document.getElementById('editBatchMirageReason');
+    const reasonKey = reasonSelect?.value || 'unfertilized';
+    const reasonLabel = reasonSelect?.options[reasonSelect.selectedIndex]?.textContent || reasonKey;
+
+    if (batch.initialEggsCount === undefined) {
+      batch.initialEggsCount = batch.eggsCount;
+    }
+    const newViable = Math.max(0, currentViable - removedCount);
+    batch.viableCount = newViable;
+    batch.eggsCount = newViable; // Garder en synchro pour la cohérence globale
+
+    if (newViable === 0) {
+      batch.status = 'failed';
+    }
+
+    const totalCost = (Number(batch.eggCost) || 0) + (Number(batch.electricityCost) || 0);
+    const todayStr = this.getTodayStr();
+
+    if (!Array.isArray(batch.candlingLogs)) {
+      batch.candlingLogs = [];
+    }
+
+    batch.candlingLogs.unshift({
+      id: 'candling-' + Date.now().toString(36),
+      date: todayStr,
+      removedCount,
+      reason: reasonKey,
+      reasonLabel,
+      previousViable: currentViable,
+      newViable,
+      unitCostAfter: newViable > 0 ? (totalCost / newViable) : null,
+      timestamp: Date.now()
+    });
+
+    batch.updatedAt = Date.now();
+    this.saveState();
+    this.renderAll();
+
+    // Actualiser l'affichage dans la modale
+    const viableEl = document.getElementById('editBatchViableEggs');
+    if (viableEl) viableEl.textContent = newViable;
+    if (input) input.value = '';
+
+    this.updateEditBatchCostPreview();
+    this.renderEditBatchCandlingHistory(batch);
+
+    this.showToast(this.t('toast_mirage_recorded') || 'Retrait au mirage enregistré avec succès !', 'success');
+
+    if (newViable === 0) {
+      this.showToast('⚠️ Tous les œufs ont été retirés. Couvée marquée en perte totale.', 'warning');
+    }
+  },
+
+  handleSaveEditIncubatorBatch(e) {
+    if (e) e.preventDefault();
+    const batchId = document.getElementById('editBatchId')?.value;
+    const batch = appState.incubatorBatches.find(b => b.id === batchId);
+    if (!batch) return;
+
+    const name = document.getElementById('editBatchName')?.value.trim();
+    if (name) batch.name = name;
+
+    const breed = document.getElementById('editBatchBreed')?.value.trim();
+    batch.breed = breed || '-';
+
+    const eggCost = parseFloat(document.getElementById('editBatchEggCost')?.value);
+    if (!isNaN(eggCost) && eggCost >= 0) {
+      batch.eggCost = eggCost;
+    }
+
+    const elecCost = parseFloat(document.getElementById('editBatchElectricityCost')?.value);
+    if (!isNaN(elecCost) && elecCost >= 0) {
+      batch.electricityCost = elecCost;
+    }
+
+    batch.notes = document.getElementById('editBatchNotes')?.value.trim() || '';
+    batch.updatedAt = Date.now();
+
+    this.saveState();
+    this.closeModal('modalEditIncubatorBatch');
+    this.renderAll();
+    this.showToast(this.t('toast_batch_updated') || 'Modifications de la couvée enregistrées !', 'success');
   },
 
   // ==========================================
