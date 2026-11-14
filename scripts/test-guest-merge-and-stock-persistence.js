@@ -782,4 +782,32 @@ assert.strictEqual(farmRole, 'partner');
 assert.strictEqual(ownerEmail, 'owner@farm.com');
 console.log('✔ Test 15E Passed: syncNow farmRole is properly defined and never throws ReferenceError');
 
+console.log('--- TEST 16: Force Direct Cloud Pull (Bypassing Local Stale Zeros) ---');
+// Phone 1 has stale local zeros (0 eggs, 200kg feed)
+let testPhone1State = {
+  eggStock: 0,
+  eggStocks: { poule: 0, canard_barbarie: 0 },
+  feedStockKg: 200,
+  lastUpdated: 1731600000000
+};
+
+// Brother cloud state has freshest active farm data (28 eggs, 450kg feed)
+const testFreshestCloudState = {
+  eggStock: 28,
+  eggStocks: { poule: 28, canard_barbarie: 0 },
+  feedStockKg: 450,
+  lastUpdated: 1731607200000
+};
+
+// Simulated forcePullFromCloud applying doMerge = false
+window.appAuth.applyCloudData.call({
+  getAppState: () => testPhone1State,
+  getDeletedIds: () => new Set()
+}, testFreshestCloudState, false);
+
+assert.strictEqual(testPhone1State.eggStock, 28, 'Force pull must unconditionally set eggStock to 28');
+assert.strictEqual(testPhone1State.eggStocks.poule, 28, 'Force pull must set poule eggs to 28');
+assert.strictEqual(testPhone1State.feedStockKg, 450, 'Force pull must unconditionally set feedStockKg to 450');
+console.log('✔ Test 16 Passed: forcePullFromCloud cleanly overwrites stale local zeros with freshest Cloud data without needing app uninstall');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

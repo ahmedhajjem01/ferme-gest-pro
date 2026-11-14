@@ -711,11 +711,10 @@
 
     // 5b. Smart Manual Sync: pull + merge + save + push + broadcast
     async syncNow(showToast = true, adWatched = false) {
-      if (showToast && !adWatched && window.MobileBridge && typeof window.MobileBridge.promptRewardedAd === 'function' && this.currentUser) {
-        window.MobileBridge.promptRewardedAd('cloud_sync', () => {
-          this.syncNow(showToast, true);
-        });
-        return;
+      if (showToast && !adWatched && window.MobileBridge && typeof window.MobileBridge.promptRewardedAd === "function" && this.currentUser) {
+        try {
+          window.MobileBridge.promptRewardedAd("cloud_sync", () => {});
+        } catch (e) {}
       }
       if (!this.client || !this.currentUser) {
         if (showToast && window.app && app.showToast) {
