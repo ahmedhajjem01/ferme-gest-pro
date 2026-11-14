@@ -1099,6 +1099,18 @@
       if (!state.eggStocks || typeof state.eggStocks !== 'object') {
         state.eggStocks = { poule: Number(state.eggStock) || 0, canard_barbarie: 0 };
       }
+      // Ingestion et consolidation des tombstones des catégories d'œufs supprimées
+      const deletedEggCats = new Set([
+        ...(Array.isArray(state.deletedEggCategories) ? state.deletedEggCategories : []),
+        ...(Array.isArray(cloudData.deletedEggCategories) ? cloudData.deletedEggCategories : [])
+      ]);
+      const currentDeletedIds = this.getDeletedIds();
+      currentDeletedIds.forEach(id => {
+        if (typeof id === 'string' && id.startsWith('egg-cat-')) {
+          deletedEggCats.add(id.replace('egg-cat-', ''));
+        }
+      });
+      state.deletedEggCategories = Array.from(deletedEggCats);
 
       if (cloudData.eggStocks && typeof cloudData.eggStocks === 'object') {
         if (!doMerge) {
@@ -1124,6 +1136,12 @@
         }
       }
 
+      // Purger immédiatement toute catégorie supprimée
+      state.deletedEggCategories.forEach(delCat => {
+        if (delCat !== 'poule' && state.eggStocks && state.eggStocks[delCat] !== undefined) {
+          delete state.eggStocks[delCat];
+        }
+      });
       // Reconcilier le total eggStock agrégé
       state.eggStock = Object.values(state.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
 

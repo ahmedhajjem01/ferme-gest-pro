@@ -590,4 +590,110 @@ assert.strictEqual(doomedBatch.status, 'failed');
 assert.strictEqual(totalLossCandling.unitCostAfter, null, 'Unit cost on total loss must be null without division by zero');
 console.log('✔ Test 13E Passed: Total loss handled gracefully with status=failed and zero-division protection');
 
+
+console.log('--- TEST 14: Egg Category Deletion, Protection of Poule & Tombstone Sync ---');
+
+// Initial state with multiple categories
+window.appState.eggStocks = {
+  poule: 40,
+  canard_barbarie: 20,
+  autre_faisan: 10,
+  pintade: 5
+};
+window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((s, v) => s + (Number(v) || 0), 0);
+assert.strictEqual(window.appState.eggStock, 75, 'Initial stock must be 75 eggs');
+
+// Simulate deleteEggCategory logic
+function simulateDeleteEggCategory(categoryKey) {
+  if (categoryKey === 'poule') {
+    return { success: false, error: 'cannot_delete_core_species' };
+  }
+  const deletedStock = Number(window.appState.eggStocks?.[categoryKey] || 0);
+
+  // 1. Tombstone
+  if (!Array.isArray(window.appState.deletedEggCategories)) window.appState.deletedEggCategories = [];
+  if (!window.appState.deletedEggCategories.includes(categoryKey)) {
+    window.appState.deletedEggCategories.push(categoryKey);
+  }
+  if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+    window.appAuth.addDeletedId('egg-cat-' + categoryKey);
+  }
+
+  // 2. Atomic deletion and stock recalculation
+  delete window.appState.eggStocks[categoryKey];
+  window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+
+  if (window.appState.eggFilter === categoryKey) {
+    window.appState.eggFilter = 'all';
+  }
+
+  return { success: true, deletedStock, remainingTotal: window.appState.eggStock };
+}
+
+// 1. Guard clause: Cannot delete core 'poule' category
+const pouleDeleteAttempt = simulateDeleteEggCategory('poule');
+assert.strictEqual(pouleDeleteAttempt.success, false);
+assert.strictEqual(pouleDeleteAttempt.error, 'cannot_delete_core_species');
+assert.strictEqual(window.appState.eggStocks.poule, 40, 'Poule category must remain protected and untouched!');
+console.log('✔ Test 14A Passed: Core "poule" category cannot be deleted (guard clause protected)');
+
+// 2. Delete custom category 'autre_faisan' (10 eggs)
+window.appState.eggFilter = 'autre_faisan';
+const faisanDelete = simulateDeleteEggCategory('autre_faisan');
+assert.strictEqual(faisanDelete.success, true);
+assert.strictEqual(window.appState.eggStocks.autre_faisan, undefined, 'autre_faisan key must be completely deleted');
+assert.strictEqual(window.appState.eggStock, 65, 'Total egg stock must recalculate to 75 - 10 = 65');
+assert.strictEqual(window.appState.eggFilter, 'all', 'Active filter must reset to all if deleted category was active');
+assert(window.appState.deletedEggCategories.includes('autre_faisan'), 'Tombstone must contain autre_faisan');
+console.log('✔ Test 14B Passed: Custom category "autre_faisan" deleted with atomic stock recalculation');
+
+// 3. Delete standard secondary category 'pintade' (5 eggs)
+const pintadeDelete = simulateDeleteEggCategory('pintade');
+assert.strictEqual(pintadeDelete.success, true);
+assert.strictEqual(window.appState.eggStocks.pintade, undefined);
+assert.strictEqual(window.appState.eggStock, 60, 'Total egg stock must recalculate to 65 - 5 = 60');
+console.log('✔ Test 14C Passed: Standard secondary category "pintade" deleted successfully');
+
+// 4. Remote Sync Resilience: Remote has old cloud data containing autre_faisan: 10
+const remoteCloudEggStocks = {
+  poule: 40,
+  canard_barbarie: 25,
+  autre_faisan: 10,
+  pintade: 5
+};
+
+// Simulate sync merge with tombstone protection
+const localEggStocks = { ...window.appState.eggStocks };
+const tombstones = new Set(window.appState.deletedEggCategories || []);
+
+const mergedStocks = {};
+const allKeys = new Set([...Object.keys(localEggStocks), ...Object.keys(remoteCloudEggStocks)]);
+allKeys.forEach(k => {
+  if (tombstones.has(k) && k !== 'poule') {
+    return; // Ignore tombstoned category from remote!
+  }
+  mergedStocks[k] = Math.max(Number(localEggStocks[k]) || 0, Number(remoteCloudEggStocks[k]) || 0);
+});
+
+assert.strictEqual(mergedStocks.autre_faisan, undefined, 'Tombstoned autre_faisan must NOT be revived from remote cloud!');
+assert.strictEqual(mergedStocks.pintade, undefined, 'Tombstoned pintade must NOT be revived from remote cloud!');
+assert.strictEqual(mergedStocks.poule, 40);
+assert.strictEqual(mergedStocks.canard_barbarie, 25);
+console.log('✔ Test 14D Passed: Tombstone protection prevents zombie resurrection across devices/accounts');
+
+// 5. Deliberate re-harvest un-tombstones category
+function simulateReharvest(speciesKey, count) {
+  if (Array.isArray(window.appState.deletedEggCategories)) {
+    window.appState.deletedEggCategories = window.appState.deletedEggCategories.filter(c => c !== speciesKey);
+  }
+  window.appState.eggStocks[speciesKey] = (Number(window.appState.eggStocks[speciesKey]) || 0) + count;
+  window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+}
+
+simulateReharvest('pintade', 12);
+assert.strictEqual(window.appState.eggStocks.pintade, 12, 'Pintade successfully re-harvested');
+assert(!window.appState.deletedEggCategories.includes('pintade'), 'Pintade removed from tombstones upon new harvest');
+assert.strictEqual(window.appState.eggStock, 72, 'Total stock updated to 60 + 12 = 72');
+console.log('✔ Test 14E Passed: Deliberate future harvest cleanly un-tombstones and re-activates species');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

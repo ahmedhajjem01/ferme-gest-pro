@@ -17,6 +17,7 @@ const appState = {
   eggStock: 0,
   eggStocks: { poule: 0, canard_barbarie: 0 },
   eggFilter: 'all',
+  deletedEggCategories: [],
   eggHarvests: [],
   eggChartPeriod: '7d',
   milkStock: 0,
@@ -465,6 +466,13 @@ const app = {
         appState.deletedFeedFamilies = Array.isArray(parsed.deletedFeedFamilies) ? parsed.deletedFeedFamilies : [];
         appState.deletedFeedNames = Array.isArray(parsed.deletedFeedNames) ? parsed.deletedFeedNames : [];
         appState.deletedFeedIds = Array.isArray(parsed.deletedFeedIds) ? parsed.deletedFeedIds : [];
+        appState.deletedEggCategories = Array.isArray(parsed.deletedEggCategories) ? parsed.deletedEggCategories : [];
+        if (Array.isArray(appState.deletedEggCategories) && appState.eggStocks) {
+          appState.deletedEggCategories.forEach(delCat => {
+            if (delCat !== 'poule') delete appState.eggStocks[delCat];
+          });
+          appState.eggStock = Object.values(appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+        }
 
         // Filter out any tombstoned feeds from appState.feedTypes
         const activeTombstones = (window.appAuth && typeof window.appAuth.getDeletedIds === 'function')
@@ -3047,6 +3055,122 @@ const app = {
     }
   },
 
+  deleteEggCategory(categoryKey) {
+    if (categoryKey === 'poule') {
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      this.showToast(this.t('err_cannot_delete_core_species') || (isAr ? 'لا يمكن حذف فئة بيض الدجاج الأساسية.' : 'La catégorie de base Poule ne peut pas être supprimée.'), 'warning');
+      return;
+    }
+
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const catStock = Number(appState.eggStocks?.[categoryKey] || 0);
+    const displayName = this.getSpeciesDisplayName ? this.getSpeciesDisplayName(categoryKey) : categoryKey;
+
+    const title = this.t('modal_manage_egg_categories_title') || (isAr ? 'حذف فئة البيض' : (isEn ? 'Delete Egg Category' : 'Supprimer la catégorie d\'œufs'));
+    let msg = '';
+    if (catStock > 0) {
+      msg = this.t('msg_confirm_delete_egg_category_with_stock', { name: displayName, count: catStock }) 
+        || (isAr 
+          ? `تحتوي فئة "${displayName}" على ${catStock} بيضة في المخزون. سيؤدي حذف الفئة إلى إزالة هذا الرصيد نهائياً من المزرعة. هل أنت متأكد؟`
+          : (isEn 
+              ? `Category "${displayName}" has ${catStock} egg(s) in stock. Deleting it will permanently remove these eggs from the farm. Are you sure?`
+              : `La catégorie "${displayName}" contient ${catStock} œuf(s) en stock. La supprimer retirera définitivement ce stock de la ferme. Êtes-vous sûr ?`));
+    } else {
+      msg = this.t('msg_confirm_delete_egg_category_empty', { name: displayName })
+        || (isAr 
+          ? `هل تريد بالتأكيد حذف فئة البيض "${displayName}"؟`
+          : (isEn 
+              ? `Are you sure you want to delete egg category "${displayName}"?`
+              : `Voulez-vous vraiment supprimer la catégorie d'œufs "${displayName}" ?`));
+    }
+
+    this.confirmDialog({
+      title,
+      message: msg,
+      isDanger: true,
+      confirmText: this.t('btn_delete_category') || (isAr ? 'حذف' : (isEn ? 'Delete' : 'Supprimer')),
+      onConfirm: () => {
+        // 1. Tombstone pour la synchronisation multi-comptes
+        if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+          window.appAuth.addDeletedId('egg-cat-' + categoryKey);
+        }
+        if (!Array.isArray(appState.deletedEggCategories)) appState.deletedEggCategories = [];
+        if (!appState.deletedEggCategories.includes(categoryKey)) appState.deletedEggCategories.push(categoryKey);
+
+        // 2. Suppression de la catégorie et recalcul atomique du stock
+        if (appState.eggStocks && typeof appState.eggStocks === 'object') {
+          delete appState.eggStocks[categoryKey];
+          appState.eggStock = Object.values(appState.eggStocks).reduce((sum, v) => sum + (Number(v) || 0), 0);
+        }
+
+        // 3. Réinitialiser le filtre si actif
+        if (appState.eggFilter === categoryKey) {
+          appState.eggFilter = 'all';
+        }
+
+        // 4. Immuabilité historique : les récoltes existantes (eggHarvests) sont préservées intactes pour la traçabilité comptable
+
+        // 5. Sauvegarde & push cloud
+        this.saveState();
+        if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+          window.appAuth.pushData(false, true);
+        }
+
+        // 6. Rafraîchissement de l'interface
+        this.renderEggStock();
+        this.renderManageEggCategoriesList();
+        this.renderAll();
+
+        const successToast = this.t('toast_egg_category_deleted') || (isAr ? `تم حذف فئة "${displayName}".` : (isEn ? `Category "${displayName}" deleted.` : `Catégorie "${displayName}" supprimée avec succès.`));
+        this.showToast(successToast, 'success');
+      }
+    });
+  },
+
+  openManageEggCategoriesModal() {
+    this.renderManageEggCategoriesList();
+    this.openModal('modalManageEggCategories');
+  },
+
+  renderManageEggCategoriesList() {
+    const container = document.getElementById('manageEggCategoriesList');
+    if (!container) return;
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+
+    if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
+      appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+    }
+
+    const keys = Object.keys(appState.eggStocks);
+    if (keys.length === 0) {
+      container.innerHTML = `<p class="text-muted" style="text-align:center; padding: 1rem;">${isAr ? 'لا توجد فئات بيض.' : 'Aucune catégorie d\'œufs.'}</p>`;
+      return;
+    }
+
+    container.innerHTML = keys.map(k => {
+      const val = Number(appState.eggStocks[k]) || 0;
+      const name = this.getSpeciesDisplayName ? this.getSpeciesDisplayName(k) : k;
+      const isProtected = k === 'poule';
+
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.65rem 0.85rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 0.4rem;">
+          <div>
+            <strong style="font-size: 0.95rem; color: var(--text-main);">${name}</strong>
+            <span style="display:inline-block; margin-left: 0.4rem; font-size: 0.8rem; color: var(--text-secondary);">(${val} ${this.t('unit_eggs') || 'œufs'})</span>
+          </div>
+          <div>
+            ${isProtected 
+              ? `<span class="badge-pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; font-size: 0.75rem;">${this.t('badge_category_protected') || (isAr ? 'أساسية (محمية)' : (isEn ? 'Core (Protected)' : 'Base (Protégée)'))}</span>`
+              : `<button type="button" class="btn btn-xs btn-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); padding: 0.25rem 0.65rem; font-weight: 700; border-radius: 4px;" onclick="app.deleteEggCategory('${k}')">🗑️ ${this.t('btn_delete_category') || (isAr ? 'حذف' : (isEn ? 'Delete' : 'Supprimer'))}</button>`
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
   openDailyEggModal() {
     this.openModal('modalDailyEggs');
     const input = document.getElementById('dailyEggCount');
@@ -3373,6 +3497,12 @@ const app = {
       categoryLabel = customCategoryVal || 'Autre';
     }
 
+    if (Array.isArray(appState.deletedEggCategories)) {
+      appState.deletedEggCategories = appState.deletedEggCategories.filter(c => c !== speciesKey);
+    }
+    if (window.appAuth && typeof window.appAuth.removeDeletedId === 'function') {
+      window.appAuth.removeDeletedId('egg-cat-' + speciesKey);
+    }
     appState.eggStocks[speciesKey] = (Number(appState.eggStocks[speciesKey]) || 0) + count;
     appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
 

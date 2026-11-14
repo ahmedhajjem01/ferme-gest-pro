@@ -1054,7 +1054,16 @@ const TRANSLATIONS = {
     btn_watch_ad_unlock: "🎬 Regarder la vidéo & Continuer",
     ad_reward_loading: "Chargement de la vidéo en cours...",
     ad_reward_success_excel: "🎉 Merci pour votre soutien ! Téléchargement Excel en cours...",
-    ad_reward_success_sync: "🎉 Merci pour votre soutien ! Synchronisation en cours..."
+    ad_reward_success_sync: "🎉 Merci pour votre soutien ! Synchronisation en cours...",
+    // Egg Categories Management
+    modal_manage_egg_categories_title: "Gestion et Suppression des Catégories d'Œufs",
+    btn_manage_egg_categories: "⚙️ Gérer les catégories",
+    btn_delete_category: "Supprimer",
+    toast_egg_category_deleted: "Catégorie supprimée avec succès.",
+    err_cannot_delete_core_species: "La catégorie de base Poule ne peut pas être supprimée.",
+    badge_category_protected: "Base (Protégée)",
+    msg_confirm_delete_egg_category_with_stock: "La catégorie \"{name}\" contient {count} œuf(s) en stock. La supprimer retirera définitivement ce stock de la ferme. Êtes-vous sûr ?",
+    msg_confirm_delete_egg_category_empty: "Voulez-vous vraiment supprimer la catégorie d'œufs \"{name}\" ?"
   },
 
   ar: {
@@ -2107,7 +2116,16 @@ const TRANSLATIONS = {
     btn_watch_ad_unlock: "🎬 مشاهدة الفيديو والمتابعة",
     ad_reward_loading: "جاري تحميل الفيديو الإعلاني...",
     ad_reward_success_excel: "🎉 شكراً لدعمك ! جاري تحميل ملف الإكسيل...",
-    ad_reward_success_sync: "🎉 شكراً لدعمك ! جاري مزامنة بيانات المزرعة..."
+    ad_reward_success_sync: "🎉 شكراً لدعمك ! جاري مزامنة بيانات المزرعة...",
+    // Egg Categories Management
+    modal_manage_egg_categories_title: "إدارة وحذف فئات البيض",
+    btn_manage_egg_categories: "⚙️ إدارة الفئات",
+    btn_delete_category: "حذف",
+    toast_egg_category_deleted: "تم حذف فئة البيض بنجاح.",
+    err_cannot_delete_core_species: "لا يمكن حذف فئة بيض الدجاج الأساسية.",
+    badge_category_protected: "أساسية (محمية)",
+    msg_confirm_delete_egg_category_with_stock: "تحتوي فئة \"{name}\" على {count} بيضة في المخزون. سيؤدي حذف الفئة إلى إزالة هذا الرصيد نهائياً من المزرعة. هل أنت متأكد؟",
+    msg_confirm_delete_egg_category_empty: "هل تريد بالتأكيد حذف فئة البيض \"{name}\"؟"
   },
 
   en: {
@@ -3160,7 +3178,16 @@ const TRANSLATIONS = {
     btn_watch_ad_unlock: "🎬 Watch Video & Proceed",
     ad_reward_loading: "Loading video ad...",
     ad_reward_success_excel: "🎉 Thank you for supporting the app! Downloading Excel...",
-    ad_reward_success_sync: "🎉 Thank you for supporting the app! Synchronizing cloud data..."
+    ad_reward_success_sync: "🎉 Thank you for supporting the app! Synchronizing cloud data...",
+    // Egg Categories Management
+    modal_manage_egg_categories_title: "Manage and Delete Egg Categories",
+    btn_manage_egg_categories: "⚙️ Manage categories",
+    btn_delete_category: "Delete",
+    toast_egg_category_deleted: "Egg category deleted successfully.",
+    err_cannot_delete_core_species: "The core chicken egg category cannot be deleted.",
+    badge_category_protected: "Core (Protected)",
+    msg_confirm_delete_egg_category_with_stock: "Category \"{name}\" has {count} egg(s) in stock. Deleting it will permanently remove these eggs from the farm. Are you sure?",
+    msg_confirm_delete_egg_category_empty: "Are you sure you want to delete egg category \"{name}\"?"
   }
 };
 

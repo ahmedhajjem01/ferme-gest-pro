@@ -514,6 +514,9 @@
               <button type="button" class="btn-filter-pill active" data-egg-filter="all" onclick="app.setEggFilter('all')" data-i18n="egg_filter_all">🌐 Tous</button>
               <button type="button" class="btn-filter-pill" data-egg-filter="poule" onclick="app.setEggFilter('poule')" data-i18n="egg_filter_chicken">🥚 Poule</button>
               <button type="button" class="btn-filter-pill" data-egg-filter="canard_barbarie" onclick="app.setEggFilter('canard_barbarie')" data-i18n="egg_filter_duck">🦆 Canard</button>
+              <button type="button" class="btn-filter-pill" onclick="app.openManageEggCategoriesModal()" style="border-color: rgba(245, 158, 11, 0.4); color: #f59e0b; padding: 0.2rem 0.55rem; font-size: 0.74rem;" title="Gérer ou supprimer les catégories d'œufs">
+                ⚙️ <span data-i18n="btn_manage_egg_categories">Gérer</span>
+              </button>
             </div>
             <!-- Multi-Species Breakdown strip -->
             <div id="eggSpeciesBreakdownStrip">
@@ -2371,6 +2374,33 @@
           <button type="submit" class="btn btn-emerald" data-i18n="btn_save_changes">Enregistrer les modifications</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  
+
+  <!-- Modal: Gestion & Suppression des Catégories d'Œufs -->
+  <div id="modalManageEggCategories" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="text-amber" style="display: flex; align-items: center; gap: 0.45rem;">
+          <span>🥚</span> <span data-i18n="modal_manage_egg_categories_title">Gestion & Suppression des Catégories d'Œufs</span>
+        </h3>
+        <button class="modal-close" onclick="app.closeModal('modalManageEggCategories')">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.9rem;">
+          Supprimez les catégories d'œufs créées par erreur ou non désirées. La catégorie de base Poule est protégée.
+        </p>
+        <div id="manageEggCategoriesList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <!-- Rempli dynamiquement -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline btn-full" onclick="app.closeModal('modalManageEggCategories')" data-i18n="btn_cancel">
+          Fermer
+        </button>
+      </div>
     </div>
   </div>
 
