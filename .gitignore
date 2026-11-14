@@ -32,3 +32,4 @@ ios/App/.symlinks/
 .env.*
 .cache/
 multi_agent_dev.py
+run_couveuse_agents.py

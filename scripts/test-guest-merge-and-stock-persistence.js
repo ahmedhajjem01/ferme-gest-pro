@@ -111,4 +111,50 @@ console.log('Stock after Phone 2 distribution merged:', window.appState.feedStoc
 assert.strictEqual(window.appState.feedStockKg, 75, 'Differential sync must deduct Phone 2 distribution (90 - 15 = 75 kg)!');
 console.log('✔ Test 5 Passed: Multi-device distribution differential reconciliation works with mathematical precision!');
 
+console.log('--- TEST 6: Incubator Batch Sharing & Hatched Tombstone Sync across Accounts ---');
+// Simuler que le Propriétaire crée une couvée dans l'incubateur
+const ownerBatch = {
+  id: 'batch-fayoum-42',
+  name: 'Couvée Fayoumi #1',
+  eggsCount: 60,
+  eggSpecies: 'poule',
+  breed: 'Fayoumi',
+  status: 'incubating',
+  startDate: '2026-11-01',
+  hatchDate: '2026-11-22'
+};
+
+// L'associé reçoit la couvée du cloud
+window.appState.incubatorBatches = [];
+window.appState.animals = [];
+appAuth.applyCloudData({
+  incubatorBatches: [ownerBatch],
+  deletedIds: []
+}, true);
+
+assert.strictEqual(window.appState.incubatorBatches.length, 1, 'Partner must see the incubator batch created by Owner!');
+assert.strictEqual(window.appState.incubatorBatches[0].id, 'batch-fayoum-42', 'Batch ID matches!');
+console.log('✔ Couvée synchronisée avec succès chez l\'associé !');
+
+// Maintenant l'éleveur confirme l'éclosion : 52 poussins nés, couvée tombstonée
+appAuth.addDeletedId('batch-fayoum-42');
+const hatchedChicks = {
+  id: 'lot-chick-42',
+  species: 'poussin',
+  name: 'Génération Éclose (Fayoumi)',
+  currentQuantity: 52
+};
+
+// Synchronisation de la mise à jour (l'autre téléphone reçoit l'éclosion)
+appAuth.applyCloudData({
+  incubatorBatches: [],
+  animals: [hatchedChicks],
+  deletedIds: ['batch-fayoum-42']
+}, true);
+
+assert.strictEqual(window.appState.incubatorBatches.length, 0, 'Hatched batch must NOT resurrect in incubator!');
+assert.strictEqual(window.appState.animals.length, 1, 'Hatched chicks must be registered in livestock!');
+assert.strictEqual(window.appState.animals[0].currentQuantity, 52, '52 chicks present in flock!');
+console.log('✔ Test 6 Passed: Incubator shared couvée and hatch sync work without ghost resurrection!');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

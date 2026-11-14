@@ -13078,6 +13078,9 @@ const app = {
     }
 
     // Retirer ou archiver la couvée de l'incubateur
+    if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
+      window.appAuth.addDeletedId(batchId);
+    }
     appState.incubatorBatches = appState.incubatorBatches.filter(b => b.id !== batchId);
 
     this.saveState();

@@ -644,19 +644,35 @@
       this.isSyncing = true;
 
       try {
-        const { data, error } = await this.client
-          .from('user_farms')
-          .select('data, updated_at')
-          .eq('user_id', this.currentUser.id)
-          .maybeSingle();
+        const farmCode = this.getFarmCode();
+        const farmRole = this.getFarmRole();
 
+        let query;
+        if (farmRole === 'partner' && farmCode) {
+          query = this.client
+            .from('user_farms')
+            .select('data, updated_at')
+            .contains('data', { farmCode: farmCode })
+            .order('updated_at', { ascending: false })
+            .limit(1);
+        } else {
+          query = this.client
+            .from('user_farms')
+            .select('data, updated_at')
+            .eq('user_id', this.currentUser.id)
+            .maybeSingle();
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
 
-        if (data && data.data && Object.keys(data.data).length > 0) {
-          const cloudUpdatedAt = data.updated_at || (data.data && data.data.lastUpdated);
+        const row = Array.isArray(data) ? data[0] : data;
+
+        if (row && row.data && Object.keys(row.data).length > 0) {
+          const cloudUpdatedAt = row.updated_at || (row.data && row.data.lastUpdated);
           if (!isSilent || !this._lastCloudTimestamp || this._lastCloudTimestamp !== cloudUpdatedAt) {
             this._lastCloudTimestamp = cloudUpdatedAt;
-            this.applyCloudData(data.data, true);
+            this.applyCloudData(row.data, true);
             this.lastSyncedAt = new Date();
             this.updateUI();
             if (!isSilent && window.app && app.showToast) {
@@ -701,23 +717,37 @@
 
       try {
         // 1. Fetch latest data from user_farms
-        const { data, error } = await this.client
-          .from('user_farms')
-          .select('data, updated_at')
-          .eq('user_id', this.currentUser.id)
-          .maybeSingle();
+        const farmCode = this.getFarmCode();
+        const farmRole = this.getFarmRole();
 
+        let query;
+        if (farmRole === 'partner' && farmCode) {
+          query = this.client
+            .from('user_farms')
+            .select('data, updated_at')
+            .contains('data', { farmCode: farmCode })
+            .order('updated_at', { ascending: false })
+            .limit(1);
+        } else {
+          query = this.client
+            .from('user_farms')
+            .select('data, updated_at')
+            .eq('user_id', this.currentUser.id)
+            .maybeSingle();
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
 
-        if (data && data.data && Object.keys(data.data).length > 0) {
+        const row = Array.isArray(data) ? data[0] : data;
+
+        if (row && row.data && Object.keys(row.data).length > 0) {
           // Smart merge cloud data with local data
-          this.applyCloudData(data.data, true);
+          this.applyCloudData(row.data, true);
         }
 
         // 2. Push unified merged data back to user_farms
         const state = this.getAppState();
-        const farmCode = this.getFarmCode();
-        const farmRole = this.getFarmRole();
         const ownerEmail = farmRole === 'owner'
           ? (this.currentUser ? this.currentUser.email : '')
           : this.getFarmOwnerEmail();
