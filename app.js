@@ -6545,8 +6545,8 @@ const app = {
         ...ft,
         id: ft.id || 'feed-' + Math.random().toString(36).substr(2, 9),
         name: name,
-        stockKg: Math.max(0, Number(ft.stockKg) || 0),
-        pricePerKg: Math.max(0, Number(ft.pricePerKg) || 0),
+        stockKg: Math.max(0, Number.isFinite(Number(ft.stockKg)) ? parseFloat(Number(ft.stockKg).toFixed(2)) : 0),
+        pricePerKg: Math.max(0, Number.isFinite(Number(ft.pricePerKg)) ? parseFloat(Number(ft.pricePerKg).toFixed(3)) : 0),
         texture: texture,
         kgPerCan: kgPerCan,
         manuallyAdjusted: ft.manuallyAdjusted !== undefined ? ft.manuallyAdjusted : true,
@@ -7447,7 +7447,7 @@ const app = {
     (appState.feedTypes || []).forEach(ft => {
       const input = document.getElementById(`distribKg_${ft.id}`);
       const kg = parseFloat(input?.value) || 0;
-      if (kg > 0) {
+      if (kg > 0 && Number.isFinite(kg)) {
         const kgPerCan = this.getFeedKgPerCan(ft);
         const cans = parseFloat((kg / kgPerCan).toFixed(1));
         items.push({ feedTypeId: ft.id, name: ft.name, texture: ft.texture || 'grain', kgPerCan: kgPerCan, kg: parseFloat(kg.toFixed(2)), cans });
@@ -8199,8 +8199,8 @@ const app = {
       const parsedKg = parseFloat(rawKg);
       const parsedPrice = parseFloat(rawPrice);
 
-      const kg = (!isNaN(parsedKg) && parsedKg >= 0) ? parsedKg : (Number(ft.stockKg) || 0);
-      const price = (!isNaN(parsedPrice) && parsedPrice >= 0) ? parsedPrice : (Number(ft.pricePerKg) || 0);
+      const kg = (!isNaN(parsedKg) && parsedKg >= 0 && Number.isFinite(parsedKg)) ? parsedKg : (Number(ft.stockKg) || 0);
+      const price = (!isNaN(parsedPrice) && parsedPrice >= 0 && Number.isFinite(parsedPrice)) ? parsedPrice : (Number(ft.pricePerKg) || 0);
 
       ft.stockKg = Math.max(0, parseFloat(kg.toFixed(2)));
       ft.pricePerKg = Math.max(0, parseFloat(price.toFixed(3)));
