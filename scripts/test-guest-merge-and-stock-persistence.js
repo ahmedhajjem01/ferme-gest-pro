@@ -845,4 +845,29 @@ assert.strictEqual(user1OfflineState.eggStocks.poule, 6, 'Poule eggs must be 6')
 assert.strictEqual(user1OfflineState.eggHarvests.length, 2, 'Both harvest events must be preserved');
 console.log('✔ Test 17 Passed: 2 offline eggs + 4 online eggs converge automatically to 6 eggs with zero loss');
 
+console.log('--- TEST 18: Feed Stock Zero-Overwrite Bug Elimination ---');
+let localFeedState = {
+  feedStockKg: 500,
+  feedStockUpdatedAt: 1731600000000,
+  feedTypes: [], // Empty feedTypes
+  eggStocks: { poule: 10 },
+  deletedEggCategories: []
+};
+
+let cloudFeedPayload = {
+  feedStockKg: null,
+  feedTypes: [],
+  lastUpdated: 1731601000000
+};
+
+// Running applyCloudData must NOT zero out feedStockKg when feedTypes is empty!
+window.appAuth.applyCloudData.call({
+  getAppState: () => localFeedState,
+  getDeletedIds: () => new Set(),
+  mergeCollections: window.appAuth.mergeCollections
+}, cloudFeedPayload, true);
+
+assert.strictEqual(localFeedState.feedStockKg, 500, 'Feed stock must remain 500kg and NEVER drop to 0!');
+console.log('✔ Test 18 Passed: feedStockKg is safely preserved at 500kg and never wiped to 0 by empty feedTypes');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

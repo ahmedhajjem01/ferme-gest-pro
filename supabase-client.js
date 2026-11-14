@@ -1279,7 +1279,8 @@
 
         const shouldAcceptCloud = !doMerge || isCloudFresher || (cloudTs >= localTs && cloudStock !== null);
         if (shouldAcceptCloud) {
-          state.feedStockKg = Math.max(0, cloudStock - offlineFeedDeductedKg);
+          const finalCloudStock = (cloudStock !== null && cloudStock > 0) ? Math.max(0, cloudStock - offlineFeedDeductedKg) : (Number(state.feedStockKg) || 0);
+          state.feedStockKg = finalCloudStock;
           state.feedStockDate = cloudData.feedStockDate || null;
           state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
           state.feedStockUpdatedAt = cloudTs;
@@ -1339,7 +1340,16 @@
           !(ft.name || '').toLowerCase().includes('principal') &&
           !(ft.name || '').includes('علف رئيسي')
         );
-        state.feedStockKg = parseFloat(state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
+        const calculatedFeedStock = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
+        if (calculatedFeedStock > 0) {
+          state.feedStockKg = parseFloat(calculatedFeedStock.toFixed(2));
+        } else if (Number(cloudData.feedStockKg) > 0) {
+          state.feedStockKg = Number(cloudData.feedStockKg);
+        } else if (Number(state.feedStockKg) > 0) {
+          // PROTECTION CRITIQUE : Conserver impérativement le stock local (> 0), ne JAMAIS écraser par 0 si feedTypes est vide !
+        } else {
+          state.feedStockKg = 0;
+        }
       }
 
       // Preserve all animal species (bovins, ovins, volailles)
