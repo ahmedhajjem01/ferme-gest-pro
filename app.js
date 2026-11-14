@@ -295,6 +295,7 @@ const app = {
     try {
       appState.lastUpdated = Date.now();
       try {
+        localStorage.setItem('fermegest_pending_push', 'true');
         localStorage.setItem('fermegest_last_local_edit', String(appState.lastUpdated));
       } catch (e) {}
       const serializedState = JSON.stringify({
@@ -307,6 +308,7 @@ const app = {
         eggStocks: appState.eggStocks || { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 },
         eggFilter: appState.eggFilter || 'all',
         eggHarvests: appState.eggHarvests || [],
+        eggConsumptions: Array.isArray(appState.eggConsumptions) ? appState.eggConsumptions : [],
         eggChartPeriod: appState.eggChartPeriod || '7d',
         milkStock: Number(appState.milkStock) || 0,
         milkHarvests: Array.isArray(appState.milkHarvests) ? appState.milkHarvests : [],
@@ -363,12 +365,35 @@ const app = {
   loadState() {
     try {
       let saved = localStorage.getItem('fermegest_state');
-      if (!saved) {
-        const backup = localStorage.getItem('fermegest_state_backup');
-        if (backup) {
-          console.info('🛡️ Restoring farm data from local automatic safety backup...');
-          saved = backup;
+      const backup = localStorage.getItem('fermegest_state_backup') || localStorage.getItem('fermegest_state_pre_signout');
+
+      const calcRichness = (rawJson) => {
+        if (!rawJson) return -1;
+        try {
+          const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+          const a = Array.isArray(parsed.animals) ? parsed.animals.length : 0;
+          const e = Array.isArray(parsed.expenses) ? parsed.expenses.length : 0;
+          const s = Array.isArray(parsed.sales) ? parsed.sales.length : 0;
+          const b = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches.length : 0;
+          const d = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions.length : 0;
+          return (a * 10) + (e * 5) + (s * 5) + (b * 5) + (d * 2);
+        } catch(err) {
+          return -1;
         }
+      };
+
+      // Si le backup de sécurité locale contient plus d'éléments que saved (qui a pu être écrasé par le Web),
+      // auto-restaurer le backup du téléphone pour préserver l'élevage réel !
+      if (backup && (!saved || calcRichness(backup) > calcRichness(saved))) {
+        console.warn('🛡️ [AutoRecovery] Restauration automatique prioritaire du backup local riche pour protéger les données réelles de l’éleveur...');
+        saved = backup;
+        try {
+          localStorage.setItem('fermegest_state', backup);
+          localStorage.setItem('fermegest_pending_push', 'true');
+          localStorage.setItem('fermegest_last_local_edit', String(Date.now()));
+        } catch(e) {}
+      } else if (!saved && backup) {
+        saved = backup;
       }
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -392,6 +417,7 @@ const app = {
           appState.eggStock = Number(parsed.eggStock);
         }
         appState.eggHarvests = Array.isArray(parsed.eggHarvests) ? parsed.eggHarvests : [];
+        appState.eggConsumptions = Array.isArray(parsed.eggConsumptions) ? parsed.eggConsumptions : [];
         appState.eggChartPeriod = parsed.eggChartPeriod || '7d';
         appState.milkStock = Number(parsed.milkStock) || 0;
         appState.milkHarvests = Array.isArray(parsed.milkHarvests) ? parsed.milkHarvests : [];
@@ -543,6 +569,103 @@ const app = {
     if (langSelect) langSelect.value = appState.lang;
 
     this.updateThemeIcons();
+  },
+
+  // Restauration manuelle de la sauvegarde locale du téléphone (Coffre-fort Mobile)
+  restoreFromLocalBackup() {
+    try {
+      const backup = localStorage.getItem('fermegest_state_backup') || localStorage.getItem('fermegest_state_pre_signout');
+      if (!backup) {
+        this.showToast('⚠️ Aucune sauvegarde locale trouvée sur cet appareil.');
+        return;
+      }
+      const parsed = JSON.parse(backup);
+      const animCount = Array.isArray(parsed.animals) ? parsed.animals.length : 0;
+      const expCount = Array.isArray(parsed.expenses) ? parsed.expenses.length : 0;
+      const saleCount = Array.isArray(parsed.sales) ? parsed.sales.length : 0;
+      const batchCount = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches.length : 0;
+
+      const isAr = appState.lang === 'ar';
+      const msg = isAr
+        ? `هل تريد استعادة نسختك الاحتياطية المحلية من الهاتف؟\n- الحيوانات: ${animCount}\n- المصاريف: ${expCount}\n- المبيعات: ${saleCount}\n- الفقاسات: ${batchCount}\n\nسيتم استرجاع بياناتك الحقيقية وتحديث الخادم السحابي فوراً.`
+        : `Voulez-vous restaurer votre sauvegarde locale du téléphone ?\n- Animaux : ${animCount}\n- Dépenses : ${expCount}\n- Ventes : ${saleCount}\n- Incubations : ${batchCount}\n\nCette action va restaurer vos données réelles et les synchroniser immédiatement avec le Cloud.`;
+
+      if (window.confirm(msg)) {
+        localStorage.setItem('fermegest_state', backup);
+        localStorage.setItem('fermegest_pending_push', 'true');
+        localStorage.setItem('fermegest_last_local_edit', String(Date.now()));
+        this.loadState();
+        this.renderAll();
+        if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+          window.appAuth.pushData(false, true);
+        }
+        this.showToast('✅ Sauvegarde locale restaurée et synchronisée avec succès !');
+      }
+    } catch(e) {
+      console.error('Failed to restore backup:', e);
+      this.showToast('❌ Erreur lors de la restauration du backup.');
+    }
+  },
+
+  // Export JSON d'une sauvegarde complète pour l'éleveur
+  exportBackupJSON() {
+    try {
+      const stateToExport = JSON.stringify(appState, null, 2);
+      const blob = new Blob([stateToExport], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `fermegest-sauvegarde-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.showToast('📥 Sauvegarde exportée avec succès !');
+    } catch(e) {
+      console.error('Export error:', e);
+      this.showToast('❌ Impossible d’exporter la sauvegarde.');
+    }
+  },
+
+  // Import JSON d'une sauvegarde
+  importBackupJSON(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target.result;
+        const parsed = JSON.parse(content);
+        if (!parsed || (typeof parsed !== 'object')) {
+          throw new Error('Fichier JSON invalide');
+        }
+        const animCount = Array.isArray(parsed.animals) ? parsed.animals.length : 0;
+        const expCount = Array.isArray(parsed.expenses) ? parsed.expenses.length : 0;
+        const isAr = appState.lang === 'ar';
+        const msg = isAr
+          ? `هل أنت متأكد من استيراد هذا الملف؟\n- الحيوانات: ${animCount}\n- المصاريف: ${expCount}\n\nسيتم تحميل هذه البيانات إلى حسابك السحابي.`
+          : `Confirmez-vous l'importation de cette sauvegarde ?\n- Animaux : ${animCount}\n- Dépenses : ${expCount}\n\nVos données seront importées et synchronisées.`;
+        if (window.confirm(msg)) {
+          localStorage.setItem('fermegest_state', content);
+          localStorage.setItem('fermegest_state_backup', content);
+          localStorage.setItem('fermegest_pending_push', 'true');
+          localStorage.setItem('fermegest_last_local_edit', String(Date.now()));
+          this.loadState();
+          this.renderAll();
+          if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+            window.appAuth.pushData(false, true);
+          }
+          this.showToast('✅ Sauvegarde importée et synchronisée avec succès !');
+        }
+      } catch (err) {
+        console.error('Import error:', err);
+        this.showToast('❌ Erreur de lecture du fichier JSON.');
+      } finally {
+        event.target.value = '';
+      }
+    };
+    reader.readAsText(file);
   },
 
   forceHardReload() {
@@ -4289,7 +4412,8 @@ const app = {
       total: total,
       linkedLotId: 'none',
       ageText: '',
-      species: sellSpecies
+      species: sellSpecies,
+      eggSpecies: sellSpecies
     };
 
     appState.eggStocks[sellSpecies] = Math.max(0, (Number(appState.eggStocks[sellSpecies]) || 0) - totalEggs);
@@ -4382,6 +4506,18 @@ const app = {
 
     appState.eggStocks[consumeSpecies] = Math.max(0, currentSpeciesStock - qty);
     appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
+
+    const consumptionEvent = {
+      id: 'cons-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
+      date: this.getTodayStr(),
+      species: consumeSpecies,
+      count: qty,
+      timestamp: Date.now()
+    };
+    if (!Array.isArray(appState.eggConsumptions)) {
+      appState.eggConsumptions = [];
+    }
+    appState.eggConsumptions.unshift(consumptionEvent);
 
     this.saveState();
     this.closeModal('modalConsumeEggStock');
@@ -7170,7 +7306,16 @@ const app = {
         if (group.feedTypeId && deletedIds.has(String(group.feedTypeId))) return;
         if (group.family && (deletedFamilies.has(group.family) || deletedIds.has('feed-' + group.family))) return;
 
-        let initialStock = Math.max(0, parseFloat(group.totalAddedKg.toFixed(2)));
+        const existingDistKg = (appState.feedDistributions || []).reduce((sum, dist) => {
+          if (!Array.isArray(dist.items)) return sum;
+          const matchingItems = dist.items.filter(it => 
+            (group.feedTypeId && it.feedTypeId === group.feedTypeId) ||
+            (group.cleanTitle && it.name && it.name.toLowerCase().includes(group.cleanTitle.toLowerCase())) ||
+            (group.family && this.detectFeedTypeFromText(it.name) === group.family)
+          );
+          return sum + matchingItems.reduce((s, it) => s + (Number(it.kg) || 0), 0);
+        }, 0);
+        let initialStock = Math.max(0, parseFloat((group.totalAddedKg - existingDistKg).toFixed(2)));
 
         if (group.family) {
           ft = this.createDefaultFeedForFamily(group.family, unitPrice);
@@ -12322,12 +12467,20 @@ const app = {
 
       appState.sales.unshift(newSale);
 
-      // Déduction automatique du stock d'œufs si c'est une vente d'œufs
-      if (productType === 'oeufs' && appState.eggStock > 0) {
+      // Déduction automatique du stock d'œufs par espèce si c'est une vente d'œufs
+      if (productType === 'oeufs') {
         let soldEggs = quantity;
         if (format === 'hara') soldEggs = quantity * 4;
         else if (format === 'plateau') soldEggs = quantity * 30;
-        appState.eggStock = Math.max(0, appState.eggStock - soldEggs);
+
+        const sp = newSale.eggSpecies || newSale.species || 'poule';
+        newSale.eggSpecies = sp;
+        if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
+          appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+        }
+        const prevSpeciesStock = Number(appState.eggStocks[sp]) || 0;
+        appState.eggStocks[sp] = Math.max(0, prevSpeciesStock - soldEggs);
+        appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
       }
 
       this.saveState();

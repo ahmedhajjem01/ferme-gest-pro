@@ -647,6 +647,11 @@ const TRANSLATIONS = {
     mobile_btn_download_apk: "📥 Télécharger l'APK Direct",
     mobile_btn_share_apk: "📲 Partager le lien APK (WhatsApp / Famille)",
     mobile_share_toast_copied: "Lien de téléchargement APK copié dans le presse-papiers !",
+    backup_vault_title: "Coffre-fort & Restauration Locale (Téléphone)",
+    backup_vault_desc: "En cas de problème d'affichage ou pour récupérer vos données réelles enregistrées sur ce téléphone :",
+    backup_btn_restore_phone: "Restaurer ma sauvegarde locale (Téléphone)",
+    backup_btn_export: "Exporter (JSON)",
+    backup_btn_import: "Importer (JSON)",
 
     // Daily 16h Feed Notification
     notif_daily_feed_title: "🌾 Les animaux ont faim !",
@@ -1710,6 +1715,11 @@ const TRANSLATIONS = {
     mobile_btn_download_apk: "📥 تحميل تطبيق الأندرويد (APK)",
     mobile_btn_share_apk: "📲 مشاركة رابط التحميل (واتساب / العائلة)",
     mobile_share_toast_copied: "تم نسخ رابط تحميل التطبيق في الحافظة!",
+    backup_vault_title: "الخزنة الآمنة واستعادة النسخة المحلية (الهاتف)",
+    backup_vault_desc: "في حالة حدوث مشكلة في العرض أو لاسترجاع بياناتك الحقيقية المحفوظة على هذا الهاتف:",
+    backup_btn_restore_phone: "استعادة نسختي المحلية (الهاتف)",
+    backup_btn_export: "تصدير (JSON)",
+    backup_btn_import: "استيراد (JSON)",
 
     // Daily 16h Feed Notification
     notif_daily_feed_title: "🌾 الحيوانات جائعة !",
@@ -2773,6 +2783,11 @@ const TRANSLATIONS = {
     mobile_btn_download_apk: "📥 Download Direct APK",
     mobile_btn_share_apk: "📲 Share APK Link (WhatsApp / Family)",
     mobile_share_toast_copied: "APK download link copied to clipboard!",
+    backup_vault_title: "Safety Vault & Local Recovery (Phone)",
+    backup_vault_desc: "In case of display issues or to recover your real data stored on this phone:",
+    backup_btn_restore_phone: "Restore local phone backup",
+    backup_btn_export: "Export (JSON)",
+    backup_btn_import: "Import (JSON)",
 
     // Daily 16h Feed Notification
     notif_daily_feed_title: "🌾 The animals are hungry!",

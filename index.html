@@ -3259,6 +3259,32 @@
           </div>
         </div>
 
+        <!-- Section Sécurité & Restauration de Sauvegarde (Coffre-fort Téléphone) -->
+        <div class="team-card" style="margin-top: 1rem; border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-md); padding: 0.9rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+            <span style="font-size: 1.25rem;">🛡️</span>
+            <strong style="color: #3b82f6;" data-i18n="backup_vault_title">Coffre-fort & Restauration Locale (Téléphone)</strong>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4;" data-i18n="backup_vault_desc">
+            En cas de problème d'affichage ou pour récupérer vos données réelles enregistrées sur ce téléphone :
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline btn-full" onclick="app.restoreFromLocalBackup()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; padding: 0.65rem; border-color: #3b82f6; color: #3b82f6;">
+              <span>🔄</span>
+              <span data-i18n="backup_btn_restore_phone">Restaurer ma sauvegarde locale (Téléphone)</span>
+            </button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.exportBackupJSON()" style="flex: 1; justify-content: center; display: flex; align-items: center; gap: 0.35rem;">
+                <span>📥</span> <span data-i18n="backup_btn_export">Exporter (JSON)</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('importBackupFileInput').click()" style="flex: 1; justify-content: center; display: flex; align-items: center; gap: 0.35rem;">
+                <span>📤</span> <span data-i18n="backup_btn_import">Importer (JSON)</span>
+              </button>
+            </div>
+            <input type="file" id="importBackupFileInput" accept=".json" style="display:none;" onchange="app.importBackupJSON(event)">
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="profile-action-btns">
           <div class="profile-sync-auto-status" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); margin-bottom: 0.75rem; color: #10b981; font-weight: 700; font-size: 0.88rem;">

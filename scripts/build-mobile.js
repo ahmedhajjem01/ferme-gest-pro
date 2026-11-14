@@ -9,6 +9,7 @@ const ASSETS = [
   'index.html',
   'avatars.js',
   'app.js',
+  'supabase.js',
   'supabase-client.js',
   'mobile-bridge.js',
   'translations.js',

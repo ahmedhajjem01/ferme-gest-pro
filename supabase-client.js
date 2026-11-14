@@ -149,7 +149,7 @@
             } else if (localStock > 0 && cloudStock === 0 && (!cloudItem.updatedAt || cloudTs <= 0)) {
               merged.push({ ...cloudItem, ...localItem });
             } else if (localTs && cloudTs) {
-              if (localTs > cloudTs) {
+              if (localTs >= cloudTs) {
                 merged.push({ ...cloudItem, ...localItem });
               } else {
                 merged.push({ ...localItem, ...cloudItem });
@@ -159,11 +159,8 @@
             } else if (cloudTs > 0 && !localTs) {
               merged.push({ ...localItem, ...cloudItem });
             } else {
-              if (cloudStock > localStock) {
-                merged.push({ ...localItem, ...cloudItem });
-              } else {
-                merged.push({ ...cloudItem, ...localItem });
-              }
+              // En cas d'égalité ou d'absence de timestamp distinct : conserver l'aliment local pour respecter les distributions effectuées sur cet appareil
+              merged.push({ ...cloudItem, ...localItem });
             }
           } else if (localItem.manuallyAdjusted && localTs >= cloudTs) {
             merged.push({ ...cloudItem, ...localItem });
@@ -591,8 +588,11 @@
       }
 
       try {
+        // Préserver le backup de sécurité de l'appareil en cas de reconnexion
+        const b = localStorage.getItem('fermegest_state_backup') || localStorage.getItem('fermegest_state');
+        if (b) localStorage.setItem('fermegest_state_pre_signout', b);
         localStorage.removeItem('fermegest_state');
-        localStorage.removeItem('fermegest_state_backup');
+        // Ne pas détruire fermegest_state_backup pour permettre la restauration d'urgence
         localStorage.removeItem('fermegest_user_profile');
         localStorage.removeItem('fermegest_farm_code');
         localStorage.removeItem('fermegest_farm_role');
@@ -743,6 +743,14 @@
       this.updateSyncBadge('syncing');
 
       try {
+        // 0. Si le terminal local possède des saisies en attente de push, POUSSER D'ABORD !
+        // Interdiction absolue de faire un pull qui écraserait les modifications locales fraîches.
+        const hasPendingPush = localStorage.getItem('fermegest_pending_push') === 'true';
+        if (hasPendingPush) {
+          console.log('[Sync] 🚀 Envoi prioritaire des saisies locales avant synchronisation...');
+          await this.pushData(false, true);
+        }
+
         // 1. Priorité absolue : interroger la ligne canonique du compte connecté (user_id)
         let ownRow = null;
         const { data: userRow, error: userRowErr } = await this.client
@@ -799,9 +807,9 @@
           }
 
           // Si le compte courant est un associé (ex: le frère), et que le propriétaire a des données plus fraîches ou complètes,
-          // adopter directement la vérité canonique du propriétaire de façon 100% automatique
+          // fusionner intelligemment avec la vérité canonique du propriétaire sans jamais écraser les données locales
           if (isPartner && ownerRow && ownerRow.data) {
-            this.applyCloudData(ownerRow.data, false);
+            this.applyCloudData(ownerRow.data, !localHasData ? false : true);
           }
 
           if (window.app && typeof app.renderAll === 'function') {
@@ -833,6 +841,7 @@
           milkStock: Number(state.milkStock) || 0,
           milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
           eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+          eggConsumptions: Array.isArray(state.eggConsumptions) ? state.eggConsumptions : [],
           feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
           feedStockDate: state.feedStockDate || null,
           feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
@@ -927,6 +936,7 @@
       const state = this.getAppState();
       const payload = {
         version: '2.5.0-pro',
+        _senderSessionId: this.sessionId,
         farmCode: farmCode,
         farmRole: farmRole,
         ownerEmail: ownerEmail,
@@ -941,6 +951,7 @@
           milkStock: Number(state.milkStock) || 0,
           milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+        eggConsumptions: Array.isArray(state.eggConsumptions) ? state.eggConsumptions : [],
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
         feedStockDate: state.feedStockDate || null,
         feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
@@ -970,6 +981,9 @@
         if (error) throw error;
 
         localStorage.removeItem('fermegest_pending_push');
+        try {
+          localStorage.setItem('fermegest_last_pushed_edit', String(payload.lastUpdated));
+        } catch(e) {}
         this.lastSyncedAt = new Date();
         this.updateSyncBadge('connected');
 
@@ -992,13 +1006,17 @@
       }
     },
 
-    // Auto-save debouncer triggered whenever app.saveState() runs
+    // Auto-save debouncer triggered whenever app.saveState() runs:
+    // PUSH-FIRST STRICT : Envoie directement les modifications locales vers Supabase sans jamais faire de pull préalable
     schedulePush() {
       if (!this.currentUser) return;
+      try {
+        localStorage.setItem('fermegest_pending_push', 'true');
+      } catch (e) {}
       clearTimeout(this._pushTimer);
       this._pushTimer = setTimeout(() => {
-        this.syncNow(false);
-      }, 1000);
+        this.pushData(false, true);
+      }, 250);
     },
 
     // 7. Subscribe to Postgres Realtime changes across devices and shared farm members
@@ -1105,6 +1123,20 @@
       if (!cloudData) return;
       const state = this.getAppState();
 
+      const hasPendingLocalPush = (typeof localStorage !== 'undefined') && localStorage.getItem('fermegest_pending_push') === 'true';
+      const localLastEdit = Number((typeof localStorage !== 'undefined' ? localStorage.getItem('fermegest_last_local_edit') : 0)) || Number(state.lastUpdated) || 0;
+      const cloudLastUpdated = Number(cloudData.lastUpdated) || 0;
+
+      // Protection souveraine : si le terminal local a des modifications en attente de push,
+      // ou si l'horodatage local est strictement plus récent qu'un cloud valide, le cloud n'est PAS plus frais
+      const isCloudFresher = (cloudLastUpdated > localLastEdit) && !hasPendingLocalPush;
+
+      // Protection anti-écrasement destructive :
+      // Interdire le mode destructif (doMerge = false) si le terminal local possède déjà des animaux/dépenses réelles
+      const localCount = (state.animals || []).length + (state.expenses || []).length;
+      const cloudCount = (cloudData.animals || []).length + (cloudData.expenses || []).length;
+      const effectiveDoMerge = doMerge || (localCount > 0 && cloudCount < localCount) || hasPendingLocalPush;
+
       // Ingest deletedIds if provided by cloud
       if (Array.isArray(cloudData.deletedIds)) {
         cloudData.deletedIds.forEach(id => this.addDeletedId(id));
@@ -1173,11 +1205,7 @@
       });
       state.deletedEggCategories = Array.from(deletedEggCats);
 
-      const cloudLastUpdated = Number(cloudData.lastUpdated) || 0;
-      const localLastUpdated = Number(state.lastUpdated) || Number(localStorage.getItem('fermegest_last_local_edit')) || 0;
-      const isCloudFresher = cloudLastUpdated > localLastUpdated;
-
-      if (cloudLastUpdated > 0) {
+      if (cloudLastUpdated > 0 && !hasPendingLocalPush) {
         state.lastUpdated = Math.max(Number(state.lastUpdated) || 0, cloudLastUpdated);
         try {
           localStorage.setItem('fermegest_last_local_edit', String(state.lastUpdated));
@@ -1198,12 +1226,28 @@
       const offlineEggSalesBySpecies = {};
       localOfflineSales.forEach(s => {
         if (s && s.productType === 'oeufs') {
-          const sp = s.eggSpecies || 'poule';
+          const sp = s.eggSpecies || s.species || 'poule';
           let qty = Number(s.quantity) || 0;
           if (s.format === 'hara') qty *= 4;
           else if (s.format === 'plateau') qty *= 30;
           offlineEggSalesBySpecies[sp] = (offlineEggSalesBySpecies[sp] || 0) + qty;
         }
+      });
+
+      // Inclure les consommations locales non encore envoyées au Cloud
+      const cloudConsIds = new Set((cloudData.eggConsumptions || []).map(c => c && c.id).filter(Boolean));
+      const localOfflineCons = (state.eggConsumptions || []).filter(c => c && c.id && !cloudConsIds.has(c.id));
+      localOfflineCons.forEach(c => {
+        const sp = c.species || 'poule';
+        offlineEggSalesBySpecies[sp] = (offlineEggSalesBySpecies[sp] || 0) + (Number(c.count) || 0);
+      });
+
+      // Inclure les œufs locaux mis en couveuse non encore synchronisés
+      const cloudBatchIds = new Set((cloudData.incubatorBatches || []).map(b => b && b.id).filter(Boolean));
+      const localOfflineBatches = (state.incubatorBatches || []).filter(b => b && b.id && b.eggSource === 'farm' && !cloudBatchIds.has(b.id));
+      localOfflineBatches.forEach(b => {
+        const sp = (b.eggType === 'canard' || b.species === 'canard') ? 'canard_barbarie' : (b.eggType || b.species || 'poule');
+        offlineEggSalesBySpecies[sp] = (offlineEggSalesBySpecies[sp] || 0) + (Number(b.eggsCount) || 0);
       });
 
       // Récoltes & Ventes distantes reçues du Cloud (ex: saisies par le frère) non encore intégrées localement
@@ -1220,7 +1264,7 @@
       const incomingEggSalesBySpecies = {};
       incomingCloudSales.forEach(s => {
         if (s && s.productType === 'oeufs') {
-          const sp = s.eggSpecies || 'poule';
+          const sp = s.eggSpecies || s.species || 'poule';
           let qty = Number(s.quantity) || 0;
           if (s.format === 'hara') qty *= 4;
           else if (s.format === 'plateau') qty *= 30;
@@ -1228,8 +1272,24 @@
         }
       });
 
+      // Inclure les consommations distantes arrivées du Cloud
+      const localConsIds = new Set((state.eggConsumptions || []).map(c => c && c.id).filter(Boolean));
+      const incomingCloudCons = (cloudData.eggConsumptions || []).filter(c => c && c.id && !localConsIds.has(c.id));
+      incomingCloudCons.forEach(c => {
+        const sp = c.species || 'poule';
+        incomingEggSalesBySpecies[sp] = (incomingEggSalesBySpecies[sp] || 0) + (Number(c.count) || 0);
+      });
+
+      // Inclure les couvées distantes déduisant les œufs de la ferme
+      const localBatchIds = new Set((state.incubatorBatches || []).map(b => b && b.id).filter(Boolean));
+      const incomingCloudBatches = (cloudData.incubatorBatches || []).filter(b => b && b.id && b.eggSource === 'farm' && !localBatchIds.has(b.id));
+      incomingCloudBatches.forEach(b => {
+        const sp = (b.eggType === 'canard' || b.species === 'canard') ? 'canard_barbarie' : (b.eggType || b.species || 'poule');
+        incomingEggSalesBySpecies[sp] = (incomingEggSalesBySpecies[sp] || 0) + (Number(b.eggsCount) || 0);
+      });
+
       if (cloudData.eggStocks && typeof cloudData.eggStocks === 'object') {
-        if (!doMerge) {
+        if (!effectiveDoMerge) {
           state.eggStocks = { ...cloudData.eggStocks };
         } else {
           // Fusion additive par événement : Base Cloud + Récoltes Offline - Ventes Offline
@@ -1258,8 +1318,9 @@
             } else if (isCloudFresher) {
               state.eggStocks[sp] = cloudVal;
             } else {
-              const baseStock = Math.max(localVal, cloudVal);
-              state.eggStocks[sp] = baseStock;
+              // Si localLastEdit >= cloudLastUpdated : la décrémentation locale (vente/consommation/incubation) fait foi !
+              // Ne JAMAIS faire Math.max(localVal, cloudVal) qui empêche tout chiffre de diminuer !
+              state.eggStocks[sp] = (localLastEdit >= cloudLastUpdated && localLastEdit > 0) ? localVal : cloudVal;
             }
           });
         }
@@ -1267,7 +1328,7 @@
         const cloudEggs = Number(cloudData.eggStock) || 0;
         const offlineAdded = Number(offlineHarvestBySpecies['poule']) || 0;
         const offlineSold = Number(offlineEggSalesBySpecies['poule']) || 0;
-        if (!doMerge) {
+        if (!effectiveDoMerge) {
           state.eggStocks.poule = cloudEggs;
         } else if (offlineAdded > 0 || offlineSold > 0) {
           state.eggStocks.poule = Math.max(0, cloudEggs + offlineAdded - offlineSold);
@@ -1275,7 +1336,7 @@
           state.eggStocks.poule = cloudEggs;
         } else {
           const localEggs = Number(state.eggStocks.poule) || Number(state.eggStock) || 0;
-          state.eggStocks.poule = Math.max(localEggs, cloudEggs);
+          state.eggStocks.poule = (localLastEdit >= cloudLastUpdated && localLastEdit > 0) ? localEggs : cloudEggs;
         }
       }
 
@@ -1303,7 +1364,7 @@
       if (cloudData.milkStock !== undefined) {
         const cloudMilk = Number(cloudData.milkStock) || 0;
         const localMilk = Number(state.milkStock) || 0;
-        state.milkStock = doMerge ? Math.max(localMilk, cloudMilk) : cloudMilk;
+        state.milkStock = isCloudFresher ? cloudMilk : ((localLastEdit >= cloudLastUpdated && localLastEdit > 0) ? localMilk : cloudMilk);
       }
       const now = Date.now();
       const cloudBaseTs = Number(cloudData.lastUpdated) || (now - 10000);
@@ -1333,9 +1394,9 @@
         const cloudStock = cloudData.feedStockKg !== null ? Number(cloudData.feedStockKg) : null;
         const cloudDistIds = new Set((cloudData.feedDistributions || []).map(d => d && d.id).filter(Boolean));
         const localOfflineDists = (state.feedDistributions || []).filter(d => d && d.id && !cloudDistIds.has(d.id));
-        const offlineFeedDeductedKg = localOfflineDists.reduce((s, d) => s + (Number(d.kg) || 0), 0);
+        const offlineFeedDeductedKg = localOfflineDists.reduce((s, d) => s + (Number(d.totalKg) || Number(d.kg) || 0), 0);
 
-        const shouldAcceptCloud = !doMerge || isCloudFresher || (cloudTs >= localTs && cloudStock !== null);
+        const shouldAcceptCloud = !effectiveDoMerge || isCloudFresher || (cloudTs > localTs && cloudStock !== null);
         if (shouldAcceptCloud) {
           const finalCloudStock = (cloudStock !== null && cloudStock > 0) ? Math.max(0, cloudStock - offlineFeedDeductedKg) : (Number(state.feedStockKg) || 0);
           state.feedStockKg = finalCloudStock;
@@ -1374,6 +1435,7 @@
         state.sales = this.mergeCollections(state.sales, cloudData.sales || []);
         state.incubatorBatches = this.mergeCollections(state.incubatorBatches, cloudData.incubatorBatches || []);
         state.eggHarvests = this.mergeCollections(state.eggHarvests, cloudData.eggHarvests || []);
+        state.eggConsumptions = this.mergeCollections(state.eggConsumptions || [], cloudData.eggConsumptions || []);
         state.milkHarvests = this.mergeCollections(state.milkHarvests, cloudData.milkHarvests || []);
         state.calendarEvents = this.mergeCollections(state.calendarEvents, cloudData.calendarEvents || []);
         state.feedDistributions = this.mergeCollections(state.feedDistributions, cloudData.feedDistributions || []);
@@ -1384,6 +1446,7 @@
         if (Array.isArray(cloudData.sales)) state.sales = cloudData.sales;
         if (Array.isArray(cloudData.incubatorBatches)) state.incubatorBatches = cloudData.incubatorBatches;
         if (Array.isArray(cloudData.eggHarvests)) state.eggHarvests = cloudData.eggHarvests;
+        if (Array.isArray(cloudData.eggConsumptions)) state.eggConsumptions = cloudData.eggConsumptions;
         if (Array.isArray(cloudData.milkHarvests)) state.milkHarvests = cloudData.milkHarvests;
         if (Array.isArray(cloudData.feedDistributions)) state.feedDistributions = cloudData.feedDistributions;
         if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
@@ -1494,9 +1557,9 @@
           calendarEvents: state.calendarEvents
         });
         localStorage.setItem('fermegest_state', serialized);
-        if ((state.animals && state.animals.length > 0) || (state.sales && state.sales.length > 0) || (state.expenses && state.expenses.length > 0)) {
-          localStorage.setItem('fermegest_state_backup', serialized);
-        }
+        // PROTECTION CRITIQUE : NE JAMAIS ÉCRASER fermegest_state_backup lors d'une synchro Cloud !
+        // fermegest_state_backup est strictement réservé aux saisies manuelles directes de l'utilisateur sur son appareil.
+        localStorage.setItem('fermegest_cloud_snapshot', serialized);
       } catch (e) {}
 
       if (window.app) {
@@ -1997,6 +2060,7 @@
           milkStock: Number(state.milkStock) || 0,
           milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
+        eggConsumptions: Array.isArray(state.eggConsumptions) ? state.eggConsumptions : [],
         feedStockKg: state.feedStockKg !== undefined ? state.feedStockKg : null,
         feedStockDate: state.feedStockDate || null,
         feedStockCostPerKg: state.feedStockCostPerKg || 1.0,
