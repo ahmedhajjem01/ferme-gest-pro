@@ -7138,16 +7138,91 @@ const app = {
       });
     });
 
-    // Mettre à jour appState.feedStockKg pour qu'il soit TOUJOURS la somme exacte des stocks vivants
+    // Mettre à jour appState.feedStockKg sans jamais l'écraser par 0
     if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
-      appState.feedStockKg = parseFloat(appState.feedTypes.reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0).toFixed(2));
-    } else {
-      appState.feedStockKg = 0;
+      const calculatedTotal = parseFloat(appState.feedTypes.reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0).toFixed(2));
+      if (calculatedTotal > 0) {
+        appState.feedStockKg = calculatedTotal;
+      }
     }
 
     if (changed) {
       this.saveState();
     }
+  },
+
+
+  autoRepairFeedStock() {
+    let recovered = 0;
+
+    // 1. Vérifier la sauvegarde automatique locale fermegest_state_backup
+    try {
+      const backupRaw = localStorage.getItem('fermegest_state_backup');
+      if (backupRaw) {
+        const parsed = JSON.parse(backupRaw);
+        if (Number(parsed.feedStockKg) > 0) {
+          recovered = Number(parsed.feedStockKg);
+        }
+      }
+    } catch (e) {}
+
+    // 2. Si 0 ou non trouvé, recalculer depuis l'historique complet des achats et distributions
+    if (recovered <= 0) {
+      const totalBoughtKg = (appState.expenses || [])
+        .filter(e => e && e.category === 'nourriture')
+        .reduce((sum, e) => {
+          let kg = Number(e.feedStockAddedKg) || 0;
+          if (kg <= 0) {
+            const titleLower = (e.title || '').toLowerCase();
+            let q = Number(e.quantity) || 1;
+            if (titleLower.includes('50kg') || (titleLower.includes('sac') && !titleLower.includes('25kg'))) kg = q * 50;
+            else if (titleLower.includes('25kg')) kg = q * 25;
+            else if (titleLower.includes('10kg')) kg = q * 10;
+            else if (Number(e.unitPrice) >= 15 && q > 0) kg = q * 50;
+            else if (q > 0) kg = q;
+            if (kg <= 0 && Number(e.total) > 0) kg = Math.round(Number(e.total));
+          }
+          return sum + kg;
+        }, 0);
+
+      const totalDistributedKg = (appState.feedDistributions || [])
+        .reduce((sum, d) => sum + (Number(d.kg) || 0), 0);
+
+      const netHistoryKg = totalBoughtKg - totalDistributedKg;
+      if (netHistoryKg > 0) {
+        recovered = netHistoryKg;
+      }
+    }
+
+    if (recovered > 0 && (Number(appState.feedStockKg) || 0) <= 0) {
+      appState.feedStockKg = parseFloat(recovered.toFixed(2));
+      appState.feedStockUpdatedAt = Date.now();
+
+      if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+        appState.feedTypes = [{
+          id: 'feed-ponte-' + Date.now().toString(36),
+          name: 'Aliment ponte',
+          stockKg: appState.feedStockKg,
+          pricePerKg: 1.0,
+          updatedAt: Date.now()
+        }];
+      } else {
+        const ft = appState.feedTypes[0];
+        if (ft && Number(ft.stockKg) <= 0) {
+          ft.stockKg = appState.feedStockKg;
+          ft.updatedAt = Date.now();
+        }
+      }
+
+      this.saveState();
+      this.renderAll();
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      this.showToast(isAr 
+        ? ('🌾 تم استرجاع مخزون العلف تلقائياً : ' + appState.feedStockKg + ' كغ !')
+        : ('🌾 Stock d aliment restauré automatiquement : ' + appState.feedStockKg + ' kg !'));
+      return true;
+    }
+    return false;
   },
 
   renderSmartFeedPresets() {
