@@ -7022,11 +7022,24 @@ const app = {
     // 2. Détecter l'identité de chaque dépense et délier celles qui avaient été rattachées par erreur au mauvais aliment
     foodExpenses.forEach(exp => {
       const family = this.detectFeedTypeFromText(exp.title);
+      const cleanTitle = (exp.title || '')
+        .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
+        .replace(/[\/\s]*بليه[\/\s]*/g, ' ')
+        .replace(/[\/\s]*\b(bouchon)\b[\/\s]*/gi, ' ')
+        .replace(/[\/\s]*بوشون[\/\s]*/g, ' ')
+        .replace(/\(\d+.*?\)/g, '')
+        .trim();
+
       if (exp.feedTypeId) {
         const linkedFt = (appState.feedTypes || []).find(f => f.id === exp.feedTypeId);
         if (linkedFt) {
           const linkedFamily = this.detectFeedTypeFromText(linkedFt.name) || this.detectFeedTypeFromText(linkedFt.id);
-          if (family && linkedFamily && family !== linkedFamily) {
+          const ftClean = (linkedFt.name || '').replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '').trim().toLowerCase();
+          const expClean = cleanTitle.toLowerCase();
+          // Délier si la famille détectée diffère
+          // OU si les noms propres nettoyés sont distincts (ex: deux achats d'aliments différents rattachés par mégarde au même feedTypeId)
+          const isNameClash = ftClean && expClean && ftClean !== expClean && !ftClean.includes(expClean) && !expClean.includes(ftClean);
+          if ((family && linkedFamily && family !== linkedFamily) || isNameClash) {
             delete exp.feedTypeId;
             changed = true;
           }
@@ -7198,6 +7211,9 @@ const app = {
       appState.feedStockKg = parseFloat(recovered.toFixed(2));
       appState.feedStockUpdatedAt = Date.now();
 
+      // Reconcilier tous les aliments achetés depuis l'historique réel
+      this.reconcileFeedTypesFromExpenses();
+
       if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
         appState.feedTypes = [{
           id: 'feed-ponte-' + Date.now().toString(36),
@@ -7207,10 +7223,19 @@ const app = {
           updatedAt: Date.now()
         }];
       } else {
-        const ft = appState.feedTypes[0];
-        if (ft && Number(ft.stockKg) <= 0) {
-          ft.stockKg = appState.feedStockKg;
-          ft.updatedAt = Date.now();
+        const calculatedTotal = appState.feedTypes.reduce((s, ft) => s + (Number(ft.stockKg) || 0), 0);
+        if (calculatedTotal <= 0 && appState.feedStockKg > 0) {
+          const perFeed = Math.round((appState.feedStockKg / appState.feedTypes.length) * 10) / 10;
+          let runningTotal = 0;
+          appState.feedTypes.forEach((f, idx) => {
+            if (idx === appState.feedTypes.length - 1) {
+              f.stockKg = Math.max(0, Math.round((appState.feedStockKg - runningTotal) * 10) / 10);
+            } else {
+              f.stockKg = perFeed;
+              runningTotal += perFeed;
+            }
+            f.updatedAt = Date.now();
+          });
         }
       }
 
@@ -11009,19 +11034,19 @@ const app = {
     const unitKg = isAr ? 'كغ' : 'kg';
     const stockLabel = isAr ? 'المخزون' : 'Stock';
 
-    let html = '';
+    const newLabel = isAr
+      ? '➕ إنشاء نوع علف جديد حسب اسم المصروف'
+      : (isEn ? '➕ Create new feed type from title' : '➕ Créer un nouvel aliment selon l\'intitulé');
+
+    let html = `<option value="__new__" selected>${newLabel}</option>`;
     (appState.feedTypes || []).forEach(ft => {
       const stock = Number(ft.stockKg) || 0;
       const name = this.getFeedDisplayName(ft);
       html += `<option value="${ft.id}">🌾 ${name} (${stockLabel}: ${stock.toFixed(1)} ${unitKg})</option>`;
     });
 
-    const newLabel = isAr
-      ? '➕ إنشاء علف جديد حسب اسم المصروف'
-      : (isEn ? '➕ Create new feed type from title' : '➕ Créer un nouvel aliment selon l\'intitulé');
-    html += `<option value="__new__">${newLabel}</option>`;
-
     select.innerHTML = html;
+    select.value = '__new__';
   },
 
   toggleExpenseFeedOptions() {
@@ -11226,38 +11251,61 @@ const app = {
           const selectedFeedId = document.getElementById('expenseFeedTypeSelect')?.value;
           const detectedFamily = this.detectFeedTypeFromText(title);
 
+          const rawTitle = (title || '').trim();
+          let feedCleanName = rawTitle
+            .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
+            .replace(/[\/\s]*بليه[\/\s]*/g, ' ')
+            .replace(/[\/\s]*\b(bouchon)\b[\/\s]*/gi, ' ')
+            .replace(/[\/\s]*بوشون[\/\s]*/g, ' ')
+            .replace(/\(\d+.*?\)/g, '')
+            .trim();
+          if (!feedCleanName) feedCleanName = rawTitle || (isAr ? 'علف جديد' : (isEn ? 'New Feed' : 'Nouvel aliment'));
+
           let targetFeed = null;
-          // Priorité absolue à la famille détectée dans l'intitulé (ex: Bouchon ne va JAMAIS dans Blé !)
+
+          // 1. Priorité absolue à la famille détectée dans l'intitulé (ex: Bouchon ne va JAMAIS dans Blé !)
           if (detectedFamily) {
             targetFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, detectedFamily));
             if (!targetFeed) {
               targetFeed = this.createDefaultFeedForFamily(detectedFamily, total / (addedKg || 1));
               appState.feedTypes.push(targetFeed);
             }
-          } else if (selectedFeedId && selectedFeedId !== '__new__') {
-            targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
           }
 
-          if (!targetFeed) {
-            const rawTitle = (title || '').trim();
-            let feedCleanName = rawTitle.replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '').replace(/\(\d+.*?\)/g, '').trim();
-            if (!feedCleanName) feedCleanName = rawTitle || (isAr ? 'علف جديد' : (isEn ? 'New Feed' : 'Nouvel aliment'));
+          // 2. Si un aliment a été explicitement choisi dans le select, vérifier qu'il n'y a pas conflit flagrant avec le titre saisi
+          if (!targetFeed && selectedFeedId && selectedFeedId !== '__new__') {
+            const candidateFt = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
+            if (candidateFt) {
+              const candClean = (candidateFt.name || '').replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '').trim().toLowerCase();
+              const inputClean = feedCleanName.toLowerCase();
+              const isNameClash = candClean && inputClean && candClean !== inputClean && !candClean.includes(inputClean) && !inputClean.includes(candClean);
+              if (!isNameClash) {
+                targetFeed = candidateFt;
+              }
+            }
+          }
 
+          // 3. Chercher par correspondance exacte de nom propre
+          if (!targetFeed) {
             targetFeed = (appState.feedTypes || []).find(f => 
               f.name.toLowerCase().trim() === feedCleanName.toLowerCase().trim() ||
               (this.getFeedDisplayName(f) || '').toLowerCase().trim() === feedCleanName.toLowerCase().trim()
             );
-            if (!targetFeed) {
-              targetFeed = {
-                id: 'feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
-                name: feedCleanName,
-                stockKg: 0,
-                pricePerKg: (addedKg > 0) ? parseFloat((total / addedKg).toFixed(3)) : 0,
-                texture: 'grain',
-                kgPerCan: 0.70
-              };
-              appState.feedTypes.push(targetFeed);
-            }
+          }
+
+          // 4. Si toujours introuvable, créer un nouvel aliment dédié
+          if (!targetFeed) {
+            targetFeed = {
+              id: 'feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
+              name: feedCleanName,
+              stockKg: 0,
+              pricePerKg: (addedKg > 0) ? parseFloat((total / addedKg).toFixed(3)) : 0,
+              texture: 'grain',
+              kgPerCan: 0.70,
+              manuallyAdjusted: true,
+              updatedAt: Date.now()
+            };
+            appState.feedTypes.push(targetFeed);
           }
 
           targetFeed.stockKg = Math.max(0, parseFloat(((Number(targetFeed.stockKg) || 0) + addedKg).toFixed(2)));

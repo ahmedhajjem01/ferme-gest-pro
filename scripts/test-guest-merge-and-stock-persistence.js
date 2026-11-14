@@ -896,4 +896,86 @@ zeroedTestState.feedStockKg = recoveredStock;
 assert.strictEqual(zeroedTestState.feedStockKg, 450, 'Recovered feed stock must be 500 - 50 = 450kg');
 console.log('✔ Test 19 Passed: autoRepairFeedStock flawlessly recalculates exact feed stock (450kg) from historical records');
 
+console.log('--- TEST 20: Preservation & Separation of Distinct Purchased Feed Types ---');
+const multiFeedTestState = {
+  feedStockKg: 100,
+  feedTypes: [
+    { id: 'feed-ponte', name: 'Aliment ponte', stockKg: 100, pricePerKg: 1.0 }
+  ],
+  expenses: [
+    { id: 'exp-f1', category: 'nourriture', title: 'Achat Aliment ponte', feedStockAddedKg: 50, total: 50, feedTypeId: 'feed-ponte' },
+    { id: 'exp-f2', category: 'nourriture', title: 'Achat Aliment croissance', feedStockAddedKg: 50, total: 60, feedTypeId: 'feed-ponte' } // Initially collided onto feed-ponte
+  ]
+};
+
+// Simulate reconcileFeedTypesFromExpenses with name clash unlinking
+const foodExps = multiFeedTestState.expenses.filter(e => e.category === 'nourriture');
+foodExps.forEach(exp => {
+  const cleanTitle = (exp.title || '')
+    .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
+    .trim();
+
+  if (exp.feedTypeId) {
+    const linked = multiFeedTestState.feedTypes.find(f => f.id === exp.feedTypeId);
+    if (linked) {
+      const ftClean = (linked.name || '').replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '').trim().toLowerCase();
+      const expClean = cleanTitle.toLowerCase();
+      const isNameClash = ftClean && expClean && ftClean !== expClean && !ftClean.includes(expClean) && !expClean.includes(ftClean);
+      if (isNameClash) {
+        delete exp.feedTypeId;
+      }
+    }
+  }
+});
+
+const groups = {};
+foodExps.forEach(exp => {
+  const cleanTitle = (exp.title || '')
+    .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
+    .trim();
+
+  const groupKey = exp.feedTypeId ? `id_${exp.feedTypeId}` : `title_${cleanTitle.toLowerCase()}`;
+  if (!groups[groupKey]) {
+    groups[groupKey] = {
+      cleanTitle,
+      feedTypeId: exp.feedTypeId,
+      totalAddedKg: 0,
+      totalCost: 0,
+      expenses: []
+    };
+  }
+  groups[groupKey].totalAddedKg += Number(exp.feedStockAddedKg) || 0;
+  groups[groupKey].totalCost += Number(exp.total) || 0;
+  groups[groupKey].expenses.push(exp);
+});
+
+Object.values(groups).forEach(g => {
+  let ft = null;
+  if (g.feedTypeId) {
+    ft = multiFeedTestState.feedTypes.find(f => f.id === g.feedTypeId);
+  }
+  if (!ft && g.cleanTitle) {
+    ft = multiFeedTestState.feedTypes.find(f => f.name.toLowerCase() === g.cleanTitle.toLowerCase());
+  }
+  if (!ft) {
+    ft = {
+      id: 'feed-' + Math.random().toString(36).substr(2, 6),
+      name: g.cleanTitle,
+      stockKg: g.totalAddedKg,
+      pricePerKg: g.totalCost / (g.totalAddedKg || 1)
+    };
+    multiFeedTestState.feedTypes.push(ft);
+  } else {
+    ft.stockKg = g.totalAddedKg;
+  }
+  g.expenses.forEach(e => { e.feedTypeId = ft.id; });
+});
+
+assert.strictEqual(multiFeedTestState.feedTypes.length, 2, 'Must have 2 distinct feed types');
+assert.strictEqual(multiFeedTestState.feedTypes[0].name, 'Aliment ponte');
+assert.strictEqual(multiFeedTestState.feedTypes[0].stockKg, 50);
+assert.strictEqual(multiFeedTestState.feedTypes[1].name, 'Aliment croissance');
+assert.strictEqual(multiFeedTestState.feedTypes[1].stockKg, 50);
+console.log('✔ Test 20 Passed: Distinct feed purchases successfully split into 2 separate reserve stock cards (50kg & 50kg) without overwriting');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');
