@@ -195,9 +195,15 @@
 
     init() {
       if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
-        console.warn('[SupabaseAuth] Supabase SDK not found on window.');
+        console.warn('[SupabaseAuth] Supabase SDK not found yet, retrying in 200ms...');
+        if (!this._initRetries) this._initRetries = 0;
+        if (this._initRetries < 25) {
+          this._initRetries++;
+          setTimeout(() => this.init(), 200);
+        }
         return;
       }
+      this._initRetries = 0;
 
       try {
         this.client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey, {
@@ -737,41 +743,58 @@
       this.updateSyncBadge('syncing');
 
       try {
-        // 1. Fetch all cloud records for this farmCode across all accounts (owner + partners)
-        const farmCode = this.getFarmCode();
+        // 1. Priorité absolue : interroger la ligne canonique du compte connecté (user_id)
+        let ownRow = null;
+        const { data: userRow, error: userRowErr } = await this.client
+          .from('user_farms')
+          .select('data, updated_at, user_id')
+          .eq('user_id', this.currentUser.id)
+          .maybeSingle();
 
-        let rows = [];
+        if (!userRowErr && userRow && userRow.data) {
+          ownRow = userRow;
+        }
+
+        // 2. Déterminer et verrouiller le code de ferme canonique du compte
+        let farmCode = (ownRow && ownRow.data && ownRow.data.farmCode) || this.getFarmCode();
+        if (ownRow && ownRow.data && ownRow.data.farmCode) {
+          farmCode = ownRow.data.farmCode;
+          try {
+            localStorage.setItem('fermegest_farm_code', farmCode);
+            if (ownRow.data.farmRole) localStorage.setItem('fermegest_farm_role', ownRow.data.farmRole);
+            if (ownRow.data.ownerEmail) localStorage.setItem('fermegest_farm_owner_email', ownRow.data.ownerEmail);
+          } catch(e) {}
+        }
+
+        // 3. Récupérer toutes les lignes associées à ce farmCode (partenaire / multi-comptes)
+        let rows = ownRow ? [ownRow] : [];
         if (farmCode) {
-          const { data, error } = await this.client
+          const { data: sharedRows, error: sharedErr } = await this.client
             .from('user_farms')
             .select('data, updated_at, user_id')
             .contains('data', { farmCode: farmCode })
             .order('updated_at', { ascending: true });
 
-          if (!error && Array.isArray(data) && data.length > 0) {
-            rows = data;
-          }
-        }
-
-        if (rows.length === 0) {
-          const { data, error } = await this.client
-            .from('user_farms')
-            .select('data, updated_at, user_id')
-            .eq('user_id', this.currentUser.id)
-            .maybeSingle();
-
-          if (!error && data) {
-            rows = [data];
+          if (!sharedErr && Array.isArray(sharedRows) && sharedRows.length > 0) {
+            rows = sharedRows;
           }
         }
 
         if (rows.length > 0) {
           const ownerRow = rows.find(r => r.data && r.data.farmRole === 'owner' && r.user_id !== this.currentUser.id);
           const isPartner = this.getFarmRole() === 'partner';
+          const localState = this.getAppState();
+          const localHasData = (localState.animals && localState.animals.length > 0) || (localState.expenses && localState.expenses.length > 0);
 
           for (const row of rows) {
             if (row && row.data && Object.keys(row.data).length > 0) {
-              this.applyCloudData(row.data, true);
+              const isDirectOwnerSelf = (row.user_id === this.currentUser.id);
+              const cloudHasData = (row.data.animals && row.data.animals.length > 0) || (row.data.expenses && row.data.expenses.length > 0);
+              // Si le terminal local est vierge (ex: nouvelle install APK sur mobile) et que le Cloud détient la ferme du compte,
+              // forcer l'adoption intégrale (doMerge = false) pour une parité immédiate à 100% avec le Web !
+              const shouldDirectHydrate = isDirectOwnerSelf && !localHasData && cloudHasData;
+
+              this.applyCloudData(row.data, !shouldDirectHydrate);
             }
           }
 
@@ -795,6 +818,7 @@
 
         const payload = {
           version: '2.5.0-pro',
+          _senderSessionId: this.sessionId,
           farmCode: farmCode,
           farmRole: farmRole,
           ownerEmail: ownerEmail,
@@ -1004,8 +1028,10 @@
                 const isOwnRow = payload.new.user_id === this.currentUser.id;
 
                 if (isSameFarm || isOwnRow) {
-                  if (payload.new.user_id !== this.currentUser.id) {
-                    console.log('[Realtime] 🔄 Multi-account update received from partner/owner:', payload.new.user_id);
+                  const incomingSession = incomingData._senderSessionId || incomingData.senderSessionId;
+                  const isFromThisSession = incomingSession && incomingSession === this.sessionId;
+                  if (!isFromThisSession) {
+                    console.log('[Realtime] 🔄 Mise à jour Cloud reçue d\'un autre appareil / session :', payload.new.user_id);
                     this.applyCloudData(incomingData, true);
                     this.lastSyncedAt = new Date();
                     this.updateUI();
@@ -1403,14 +1429,14 @@
         } catch (e) {}
       }
 
-      // Keep farm code in sync (without overriding local device owner/partner role)
-      if (cloudData.farmCode && !localStorage.getItem('fermegest_farm_code')) {
+      // Synchroniser impérativement le code de ferme avec la valeur canonique du Cloud
+      if (cloudData.farmCode) {
         localStorage.setItem('fermegest_farm_code', cloudData.farmCode);
       }
-      if (cloudData.farmRole && !localStorage.getItem('fermegest_farm_role')) {
+      if (cloudData.farmRole) {
         localStorage.setItem('fermegest_farm_role', cloudData.farmRole);
       }
-      if (cloudData.ownerEmail && !localStorage.getItem('fermegest_farm_owner_email')) {
+      if (cloudData.ownerEmail) {
         localStorage.setItem('fermegest_farm_owner_email', cloudData.ownerEmail);
       }
 
@@ -1505,17 +1531,23 @@
       this.updateSyncBadge('syncing');
 
       try {
-        // 1. Assurer que notre propre ligne en base a bien le farmCode pour satisfaire la RLS
-        const state = this.getAppState();
-        await this.client.from('user_farms').upsert({
-          user_id: this.currentUser.id,
-          data: {
-            ...state,
-            farmCode: farmCode,
-            farmRole: this.getFarmRole()
-          },
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+        // 1. Vérifier si notre propre ligne en base existe sans écraser les données distantes
+        const { data: existingOwn } = await this.client
+          .from('user_farms')
+          .select('data, updated_at, user_id')
+          .eq('user_id', this.currentUser.id)
+          .maybeSingle();
+
+        if (!existingOwn) {
+          await this.client.from('user_farms').upsert({
+            user_id: this.currentUser.id,
+            data: {
+              farmCode: farmCode,
+              farmRole: this.getFarmRole()
+            },
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+        }
 
         // 2. Récupérer toutes les lignes associées à ce code de ferme
         const { data, error } = await this.client
