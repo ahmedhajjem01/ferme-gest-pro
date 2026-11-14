@@ -331,9 +331,21 @@ const app = {
         farmRole: localStorage.getItem('fermegest_farm_role') || 'owner',
         _zeroInitialized: true
       });
-      localStorage.setItem('fermegest_state', serializedState);
-      if ((appState.animals && appState.animals.length > 0) || (appState.sales && appState.sales.length > 0) || (appState.expenses && appState.expenses.length > 0)) {
-        localStorage.setItem('fermegest_state_backup', serializedState);
+      try {
+        localStorage.setItem('fermegest_state', serializedState);
+        if ((appState.animals && appState.animals.length > 0) || (appState.sales && appState.sales.length > 0) || (appState.expenses && appState.expenses.length > 0)) {
+          localStorage.setItem('fermegest_state_backup', serializedState);
+        }
+      } catch (quotaErr) {
+        console.warn('LocalStorage quota warning, auto-compacting caches:', quotaErr);
+        try {
+          localStorage.removeItem('fermegest_debug_log');
+          localStorage.removeItem('fermegest_state_backup');
+          localStorage.setItem('fermegest_state', serializedState);
+        } catch (e2) {
+          console.error('LocalStorage critical storage full:', e2);
+          try { sessionStorage.setItem('fermegest_state_emergency', serializedState); } catch(e3) {}
+        }
       }
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
@@ -757,6 +769,13 @@ const app = {
         modalBody.scrollTop = 0;
         modalBody.scrollLeft = 0;
       }
+      // Ergonomie terrain : Pré-remplir automatiquement les dates vides du formulaire à la date du jour
+      try {
+        const todayStr = this.getTodayStr();
+        modal.querySelectorAll('input[type="date"]').forEach(input => {
+          if (!input.value) input.value = todayStr;
+        });
+      } catch (e) {}
       this.populateLotDropdowns();
 
       if (modalId === 'modalAddAnimal') {
@@ -4552,6 +4571,12 @@ const app = {
       if (type === 'success') window.MobileBridge.hapticSuccess();
       else if (type === 'danger' || type === 'error') window.MobileBridge.hapticWarning();
       else window.MobileBridge.hapticImpact('LIGHT');
+    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        if (type === 'success') navigator.vibrate(35);
+        else if (type === 'danger' || type === 'error') navigator.vibrate([40, 60, 40]);
+        else navigator.vibrate(20);
+      } catch (e) {}
     }
 
     const toast = document.createElement('div');

@@ -278,7 +278,13 @@
         };
 
         // Multi-device wake-up listeners (Mobile screen unlock, returning to tab, reconnecting)
-        window.addEventListener('online', handleWakeup);
+        window.addEventListener('online', () => {
+          this.updateSyncBadge('online');
+          handleWakeup();
+        });
+        window.addEventListener('offline', () => {
+          this.updateSyncBadge('offline');
+        });
         window.addEventListener('focus', handleWakeup);
         window.addEventListener('pageshow', handleWakeup);
         document.addEventListener('visibilitychange', () => {

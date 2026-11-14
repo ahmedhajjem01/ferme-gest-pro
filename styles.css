@@ -303,7 +303,8 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   animation: pulse 1.2s infinite;
 }
 .mobile-sync-dot.offline {
-  background: #94a3b8;
+  background: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
 }
 
 @media (max-width: 991px) {
@@ -668,6 +669,8 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   border: none;
   transition: var(--transition);
   outline: none;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 .btn-icon {
   width: 18px;
@@ -2348,6 +2351,7 @@ label {
   max-width: 100%;
   box-sizing: border-box;
   min-width: 0;
+  min-height: 44px;
 }
 .input-field:focus {
   border-color: var(--primary);
@@ -3283,7 +3287,8 @@ label {
 }
 
 .user-status-dot.offline {
-  background: #9ca3af;
+  background: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
 }
 
 .user-pill-name {
