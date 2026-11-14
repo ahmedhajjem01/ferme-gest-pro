@@ -965,7 +965,7 @@
       }, 1000);
     },
 
-    // 7. Subscribe to Postgres Realtime changes across devices
+    // 7. Subscribe to Postgres Realtime changes across devices and shared farm members
     subscribeRealtime() {
       if (!this.client || !this.currentUser) return;
       if (this.realtimeChannel) {
@@ -973,25 +973,39 @@
       }
 
       try {
+        const farmCode = this.getFarmCode();
+        const chanName = farmCode ? `shared_farm_realtime_${farmCode}` : `user_farm_realtime_${this.currentUser.id}`;
         this.realtimeChannel = this.client
-          .channel(`user_farm_realtime_${this.currentUser.id}`)
+          .channel(chanName)
           .on(
             'postgres_changes',
             {
               event: '*',
               schema: 'public',
-              table: 'user_farms',
-              filter: `user_id=eq.${this.currentUser.id}`
+              table: 'user_farms'
             },
             (payload) => {
               if (payload.new && payload.new.data) {
-                this.applyCloudData(payload.new.data, true);
-                this.lastSyncedAt = new Date();
-                this.updateUI();
+                const incomingData = payload.new.data;
+                const currentCode = this.getFarmCode();
+                const isSameFarm = currentCode && incomingData.farmCode === currentCode;
+                const isOwnRow = payload.new.user_id === this.currentUser.id;
+
+                if (isSameFarm || isOwnRow) {
+                  if (payload.new.user_id !== this.currentUser.id) {
+                    console.log('[Realtime] 🔄 Multi-account update received from partner/owner:', payload.new.user_id);
+                    this.applyCloudData(incomingData, true);
+                    this.lastSyncedAt = new Date();
+                    this.updateUI();
+                    if (window.app && typeof app.renderAll === 'function') app.renderAll();
+                  }
+                }
               }
             }
           )
-          .subscribe();
+          .subscribe((status) => {
+            console.log(`[Realtime] Subscription status for ${chanName}:`, status);
+          });
       } catch (e) {
         console.warn('[SupabaseAuth] Realtime subscribe error:', e);
       }
@@ -1464,6 +1478,77 @@
       }
     },
 
+    // 8b. Force Fresh Pull from Cloud (Directly adopt owner's state on partner's phone)
+    async forcePullFromCloud(showToast = true) {
+      if (!this.client || !this.currentUser) {
+        if (showToast && window.app && app.showToast) app.showToast('Veuillez vous connecter.');
+        return;
+      }
+      const farmCode = this.getFarmCode();
+      if (!farmCode) {
+        if (showToast && window.app && app.showToast) app.showToast('Aucun code de ferme configuré.');
+        return;
+      }
+      this.isSyncing = true;
+      this.updateSyncBadge('syncing');
+
+      try {
+        // 1. Assurer que notre propre ligne en base a bien le farmCode pour satisfaire la RLS
+        const state = this.getAppState();
+        await this.client.from('user_farms').upsert({
+          user_id: this.currentUser.id,
+          data: {
+            ...state,
+            farmCode: farmCode,
+            farmRole: this.getFarmRole()
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+        // 2. Récupérer toutes les lignes associées à ce code de ferme
+        const { data, error } = await this.client
+          .from('user_farms')
+          .select('data, updated_at, user_id')
+          .contains('data', { farmCode: farmCode })
+          .order('updated_at', { ascending: true });
+
+        if (error) throw error;
+
+        if (Array.isArray(data) && data.length > 0) {
+          // Trouver la ligne de l'autre compte (ex: le propriétaire de la ferme)
+          const otherRows = data.filter(r => r.user_id !== this.currentUser.id && r.data);
+          const targetRow = otherRows.find(r => r.data && r.data.farmRole === 'owner') || otherRows[otherRows.length - 1] || data[0];
+
+          if (targetRow && targetRow.data) {
+            console.log('[ForcePull] Application directe des données du compte :', targetRow.user_id);
+            this.applyCloudData(targetRow.data, false);
+            this.lastSyncedAt = new Date();
+            this.updateUI();
+            if (window.app && typeof app.renderAll === 'function') app.renderAll();
+            if (showToast && window.app && app.showToast) {
+              const lang = (window.appState && appState.lang) || 'fr';
+              const msg = lang === 'ar'
+                ? '✅ تم تحديث بيانات المزرعة بنجاح من الحساب المرتبط !'
+                : '✅ Ferme synchronisée avec succès depuis le compte associé !';
+              app.showToast(msg);
+            }
+          }
+        } else {
+          if (showToast && window.app && app.showToast) {
+            app.showToast('ℹ️ Aucune donnée trouvée sur le Cloud pour ce code.');
+          }
+        }
+      } catch (err) {
+        console.error('[ForcePull] Erreur :', err);
+        if (showToast && window.app && app.showToast) {
+          app.showToast('Erreur de synchronisation : ' + (err.message || err), 'danger');
+        }
+      } finally {
+        this.isSyncing = false;
+        this.updateSyncBadge('online');
+      }
+    },
+
     // 9. UI Updates (Header, Drawer, Modals)
     updateUI() {
       const headerAuthBtn = document.getElementById('headerAuthBtn');
@@ -1736,11 +1821,20 @@
         } catch (e) {}
       }
 
-      // Tenter de charger les données cloud si présentes
-      await this.pullSharedData(code);
+      // 1. Enregistrer immédiatement le farmCode dans la base pour activer les droits RLS
+      const state = this.getAppState();
+      await this.client.from('user_farms').upsert({
+        user_id: this.currentUser.id,
+        data: {
+          ...state,
+          farmCode: code,
+          farmRole: 'partner'
+        },
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
 
-      // Sauvegarder sur son propre compte cloud
-      await this.pushData(false);
+      // 2. Forcer le chargement de la ferme du propriétaire
+      await this.forcePullFromCloud(false);
 
       this.updateProfileModalUI();
       input.value = '';
