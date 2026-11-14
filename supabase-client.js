@@ -764,6 +764,7 @@
             try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
           })(),
           eggStock: Number(state.eggStock) || 0,
+        eggStocks: state.eggStocks || { poule: Number(state.eggStock) || 0, canard_barbarie: 0 },
           milkStock: Number(state.milkStock) || 0,
           milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
           eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
@@ -871,6 +872,7 @@
           try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
         })(),
         eggStock: Number(state.eggStock) || 0,
+        eggStocks: state.eggStocks || { poule: Number(state.eggStock) || 0, canard_barbarie: 0 },
           milkStock: Number(state.milkStock) || 0,
           milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],
@@ -1671,6 +1673,7 @@
           try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
         })(),
         eggStock: Number(state.eggStock) || 0,
+        eggStocks: state.eggStocks || { poule: Number(state.eggStock) || 0, canard_barbarie: 0 },
           milkStock: Number(state.milkStock) || 0,
           milkHarvests: Array.isArray(state.milkHarvests) ? state.milkHarvests : [],
         eggHarvests: Array.isArray(state.eggHarvests) ? state.eggHarvests : [],

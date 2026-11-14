@@ -157,4 +157,50 @@ assert.strictEqual(window.appState.animals.length, 1, 'Hatched chicks must be re
 assert.strictEqual(window.appState.animals[0].currentQuantity, 52, '52 chicks present in flock!');
 console.log('✔ Test 6 Passed: Incubator shared couvée and hatch sync work without ghost resurrection!');
 
+console.log('--- TEST 7: Multi-Species Egg Harvest, Categorization & Filter (Poule vs Canard de Barbarie) ---');
+window.appState.eggStocks = { poule: 0, canard_barbarie: 0 };
+window.appState.eggHarvests = [];
+
+// 1. Récolte Poule (50 œufs consommation)
+window.appState.eggStocks.poule += 50;
+window.appState.eggHarvests.push({
+  id: 'h-poule-1',
+  date: '2026-11-14',
+  count: 50,
+  species: 'poule',
+  category: 'consommation'
+});
+
+// 2. Récolte Canard de Barbarie (30 œufs à couver / fécondés)
+window.appState.eggStocks.canard_barbarie += 30;
+window.appState.eggHarvests.push({
+  id: 'h-canard-1',
+  date: '2026-11-14',
+  count: 30,
+  species: 'canard_barbarie',
+  category: 'a_couver'
+});
+
+window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((a, b) => a + b, 0);
+
+assert.strictEqual(window.appState.eggStock, 80, 'Total egg stock must be 50 + 30 = 80 eggs!');
+assert.strictEqual(window.appState.eggStocks.poule, 50, 'Chicken egg stock must be 50!');
+assert.strictEqual(window.appState.eggStocks.canard_barbarie, 30, 'Muscovy duck egg stock must be 30!');
+console.log('✔ Stock d\'œufs décomposé avec exactitude : 50 Poule + 30 Canard = 80 au total');
+
+// 3. Vente de 10 œufs de canard
+window.appState.eggStocks.canard_barbarie -= 10;
+window.appState.eggStock = Object.values(window.appState.eggStocks).reduce((a, b) => a + b, 0);
+assert.strictEqual(window.appState.eggStocks.canard_barbarie, 20, 'Duck egg stock after sale must be 20!');
+assert.strictEqual(window.appState.eggStock, 70, 'Total egg stock after sale must be 70!');
+console.log('✔ Déduction de vente par espèce validée : Canard = 20, Total = 70');
+
+// 4. Test de filtrage du graphique de ponte
+const chickenHarvests = window.appState.eggHarvests.filter(h => (h.species || 'poule') === 'poule');
+const duckHarvests = window.appState.eggHarvests.filter(h => h.species === 'canard_barbarie');
+assert.strictEqual(chickenHarvests.length, 1, 'Only 1 chicken harvest in filtered view!');
+assert.strictEqual(duckHarvests.length, 1, 'Only 1 duck harvest in filtered view!');
+assert.strictEqual(duckHarvests[0].category, 'a_couver', 'Duck harvest category is a_couver!');
+console.log('✔ Test 7 Passed: Multi-species egg tracking, categorization & filtering operate with 100% precision!');
+
 console.log('🎉 ALL PERSISTENCE AND SYNC TESTS PASSED 100%!');

@@ -969,6 +969,31 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
   font-weight: 800;
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
 }
+
+.btn-filter-pill {
+  padding: 0.28rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-filter-pill:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+.btn-filter-pill.active {
+  background: var(--accent-emerald);
+  border-color: var(--accent-emerald);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
 .egg-chart-svg {
   width: 100%;
   height: auto;
