@@ -224,8 +224,14 @@
           }
         });
 
-        // Listen for authentication changes
+        // Listen for authentication changes (ignorer les rafraîchissements mineurs pour éliminer les boucles 429 et le flapping des WebSockets)
         this.client.auth.onAuthStateChange((event, session) => {
+          if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session && session.user) {
+              this.currentUser = session.user;
+            }
+            return;
+          }
           this.handleAuthStateChange(event, session);
         });
 
@@ -364,22 +370,10 @@
           }));
         } catch (e) {}
 
-        // Connect userProfile (Name, Age, Avatar) to Supabase user metadata
+        // Cache user profile locally (sans appeler updateUser pour protéger les quotas d'authentification)
         const profile = (window.appState && window.appState.userProfile) || (function() {
           try { return JSON.parse(localStorage.getItem('fermegest_user_profile') || 'null'); } catch(e) { return null; }
         })();
-        if (profile && this.client && this.client.auth) {
-          try {
-            this.client.auth.updateUser({
-              data: {
-                full_name: profile.name,
-                age: profile.age,
-                avatar: profile.avatar,
-                farmer_name: profile.name
-              }
-            }).catch(() => {});
-          } catch (e) {}
-        }
 
         // Close all onboarding and auth prompt modals
         if (window.app && typeof app.closeModal === 'function') {
@@ -772,7 +766,12 @@
           .eq('user_id', this.currentUser.id)
           .maybeSingle();
 
-        if (!userRowErr && userRow && userRow.data) {
+        if (userRowErr) {
+          console.warn('[Sync] ⚠️ Échec de lecture Cloud (réseau ou quota), arrêt immédiat pour interdire tout écrasement destructif :', userRowErr);
+          throw userRowErr;
+        }
+
+        if (userRow && userRow.data) {
           ownRow = userRow;
         }
 
@@ -831,6 +830,14 @@
         }
 
         // 2. Push unified merged data back to user_farms
+        // Uniquement si des données locales fraîches existent (hasPendingPush) ou si l'utilisateur synchronise manuellement
+        const mustPushBack = showToast || hasPendingPush || !ownRow;
+        if (!mustPushBack) {
+          this.lastSyncedAt = new Date();
+          this.updateSyncBadge('connected');
+          return;
+        }
+
         const state = this.getAppState();
         const farmRole = this.getFarmRole();
         const ownerEmail = farmRole === 'owner'
@@ -887,21 +894,6 @@
         this.lastSyncedAt = new Date();
         this.updateSyncBadge('connected');
         this.updateProfileModalUI();
-
-        if (state.userProfile && this.client && this.client.auth) {
-          try {
-            this.client.auth.updateUser({
-              data: {
-                full_name: state.userProfile.name,
-                farmer_name: state.userProfile.name,
-                birth_date: state.userProfile.birthDate,
-                age: state.userProfile.age,
-                avatar: state.userProfile.avatar,
-                gender: state.userProfile.gender
-              }
-            }).catch(() => {});
-          } catch (e) {}
-        }
 
         // Broadcast to other sessions/devices
         this.broadcastCurrentState();
@@ -1035,6 +1027,9 @@
     // 7. Subscribe to Postgres Realtime changes across devices and shared farm members
     subscribeRealtime() {
       if (!this.client || !this.currentUser) return;
+      const isChannelActive = (ch) => ch && (ch.state === 'joined' || ch.state === 'joining' || ch.state === 'subscribed');
+      if (isChannelActive(this.realtimeChannel)) return;
+
       if (this.realtimeChannel) {
         try { this.client.removeChannel(this.realtimeChannel); } catch (e) {}
       }
@@ -1083,6 +1078,9 @@
     // 7b. Dedicated Realtime Channel between devices of the SAME user account
     subscribeUserSync() {
       if (!this.client || !this.currentUser) return;
+      const isChannelActive = (ch) => ch && (ch.state === 'joined' || ch.state === 'joining' || ch.state === 'subscribed');
+      if (isChannelActive(this.userSyncChannel)) return;
+
       if (this.userSyncChannel) {
         try { this.client.removeChannel(this.userSyncChannel); } catch (e) {}
         this.userSyncChannel = null;
@@ -1496,8 +1494,8 @@
         });
         Object.keys(stockBySp).forEach(sp => {
           stockBySp[sp] = Math.max(0, stockBySp[sp] || 0);
-          if (stockBySp[sp] > 0 && (Number(state.eggStocks?.[sp]) || 0) === 0) {
-            if (!state.eggStocks) state.eggStocks = {};
+          if (!state.eggStocks) state.eggStocks = {};
+          if (stockBySp[sp] > 0 && ((Number(state.eggStocks[sp]) || 0) === 0 || (Number(state.eggStocks[sp]) || 0) < stockBySp[sp])) {
             state.eggStocks[sp] = stockBySp[sp];
           }
         });
@@ -1640,15 +1638,18 @@
 
       // Sync window.appState
       if (window.appState) {
+        window.appState.lastUpdated = state.lastUpdated;
         window.appState.userProfile = state.userProfile;
         window.appState.currency = state.currency;
         window.appState.lang = state.lang;
         window.appState.theme = state.theme;
         window.appState.eggStock = state.eggStock;
         window.appState.eggStocks = state.eggStocks ? { ...state.eggStocks } : { poule: state.eggStock, canard_barbarie: 0 };
+        window.appState.deletedEggCategories = state.deletedEggCategories;
         window.appState.milkStock = state.milkStock;
         window.appState.milkHarvests = state.milkHarvests;
         window.appState.eggHarvests = state.eggHarvests;
+        window.appState.eggConsumptions = state.eggConsumptions;
         window.appState.feedStockKg = state.feedStockKg;
         window.appState.feedStockDate = state.feedStockDate;
         window.appState.feedStockCostPerKg = state.feedStockCostPerKg;
@@ -1668,15 +1669,18 @@
       try {
         const serialized = JSON.stringify({
           version: '2.5.0-pro',
+          lastUpdated: state.lastUpdated,
           currency: state.currency,
           lang: state.lang,
           theme: state.theme,
           userProfile: state.userProfile,
           eggStock: state.eggStock,
           eggStocks: state.eggStocks,
+          deletedEggCategories: state.deletedEggCategories,
           milkStock: state.milkStock,
           milkHarvests: state.milkHarvests,
           eggHarvests: state.eggHarvests,
+          eggConsumptions: state.eggConsumptions,
           feedStockKg: state.feedStockKg,
           feedStockDate: state.feedStockDate,
           feedStockCostPerKg: state.feedStockCostPerKg,
@@ -2123,6 +2127,9 @@
     // Canal Realtime Collaboratif (Pièce partagée entre deux comptes associés)
     subscribeCollaborativeRealtime() {
       if (!this.client) return;
+      const isChannelActive = (ch) => ch && (ch.state === 'joined' || ch.state === 'joining' || ch.state === 'subscribed');
+      if (isChannelActive(this.collabChannel)) return;
+
       const farmCode = this.getFarmCode();
 
       if (this.collabChannel) {

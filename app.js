@@ -338,7 +338,11 @@ const app = {
       });
       try {
         localStorage.setItem('fermegest_state', serializedState);
-        if ((appState.animals && appState.animals.length > 0) || (appState.sales && appState.sales.length > 0) || (appState.expenses && appState.expenses.length > 0)) {
+        if ((appState.animals && appState.animals.length > 0) || 
+            (appState.sales && appState.sales.length > 0) || 
+            (appState.expenses && appState.expenses.length > 0) ||
+            (Array.isArray(appState.eggHarvests) && appState.eggHarvests.length > 0) ||
+            (Number(appState.eggStock) > 0)) {
           localStorage.setItem('fermegest_state_backup', serializedState);
         }
       } catch (quotaErr) {
@@ -376,7 +380,9 @@ const app = {
           const s = Array.isArray(parsed.sales) ? parsed.sales.length : 0;
           const b = Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches.length : 0;
           const d = Array.isArray(parsed.feedDistributions) ? parsed.feedDistributions.length : 0;
-          return (a * 10) + (e * 5) + (s * 5) + (b * 5) + (d * 2);
+          const h = Array.isArray(parsed.eggHarvests) ? parsed.eggHarvests.length : 0;
+          const es = Number(parsed.eggStock) > 0 ? 10 : 0;
+          return (a * 10) + (e * 5) + (s * 5) + (b * 5) + (d * 2) + (h * 5) + es;
         } catch(err) {
           return -1;
         }
