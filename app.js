@@ -1061,8 +1061,7 @@ const app = {
       }
 
       if (modalId === 'modalAddFeedType') {
-        this.openFeedPurchaseModal();
-        return;
+        this.renderFeedSuggestions();
       }
 
       if (modalId === 'modalAddSale') {
@@ -2344,24 +2343,10 @@ const app = {
 
     const select = document.getElementById('expenseFeedTypeSelect');
     if (select) {
-      const family = this.detectFeedTypeFromText(feedName);
-      let matchedIndex = -1;
-      for (let i = 0; i < select.options.length; i++) {
-        const opt = select.options[i];
-        if (opt.value !== '__new__') {
-          const ft = (appState.feedTypes || []).find(f => f.id === opt.value);
-          if (ft && family && this.isFeedInFamily(ft, family)) {
-            matchedIndex = i;
-            break;
-          }
-          if (feedName && opt.textContent.toLowerCase().includes(feedName.toLowerCase())) {
-            matchedIndex = i;
-            break;
-          }
-        }
-      }
-      if (matchedIndex >= 0) {
-        select.selectedIndex = matchedIndex;
+      // Priorité à __new__ : Ne basculer la sélection QUE si le nom correspond exactement à un aliment existant
+      const exactMatch = (appState.feedTypes || []).find(f => (f.name || '').toLowerCase().trim() === String(feedName || '').toLowerCase().trim());
+      if (exactMatch) {
+        select.value = exactMatch.id;
       } else {
         select.value = '__new__';
       }
@@ -6545,167 +6530,158 @@ const app = {
   getFeedDisplayName(ft) {
     if (!ft) return '';
     const lang = appState.lang || 'fr';
-    const name = String(ft.name || '');
+    const name = String(ft.name || '').trim();
     const id = String(ft.id || ft.feedTypeId || '');
     const lower = name.toLowerCase();
     const isMoulu = ft.texture === 'moulu';
 
-    // Blé / قمح (Notice: "بليه" is permanently excluded from display and replaced by Blé / قمح)
-    if (id === 'feed-ble' || lower.includes('blé') || lower.includes('ble') || name.includes('قمح') || name.includes('بليه')) {
+    // Respect custom specific or numbered names unconditionally (e.g. "Aliment 1", "Aliment 2", "علف 1", "علف 2", "Aliment ponte 1", "Aliment bio", etc.)
+    const hasDistinguishingToken = /\d+/.test(name) || /(bio|phase|premier|deuxieme|1er|2eme|finition|engraiss)/i.test(name);
+    if (hasDistinguishingToken) {
+      return isMoulu && !name.includes('مرحي') && !lower.includes('moulu') && !lower.includes('farine') ? `${name} (مرحي)` : name;
+    }
+
+    // Standard preset keywords (only match when name is strictly generic or matches preset ID)
+    if (id === 'feed-ble' || lower === 'blé' || lower === 'ble' || name === 'قمح' || lower === 'blé (grain)' || lower === 'blé (moulu)' || name.includes('بليه')) {
       if (lang === 'ar') return isMoulu ? 'قمح مرحي' : 'قمح كعب';
       if (lang === 'en') return isMoulu ? 'Wheat (ground)' : 'Wheat (grain)';
       return isMoulu ? 'Blé (moulu)' : 'Blé (grain)';
     }
-    // Aliment ponte / علف بياضة
-    if (id === 'feed-bouchon' || name.includes('بوشون') || lower.includes('ponte') || lower.includes('bouchon')) {
+    if (id === 'feed-bouchon' || lower === 'aliment ponte' || lower === 'bouchon' || name === 'علف بياضة' || name === 'بوشون') {
       if (lang === 'ar') return isMoulu ? 'علف بياضة (مرحي)' : 'علف بياضة';
       if (lang === 'en') return isMoulu ? 'Layer Feed (Mash)' : 'Layer Feed';
       return isMoulu ? 'Aliment ponte (farine)' : 'Aliment ponte';
     }
-    // Maïs
-    if (lower.includes('maïs') || lower.includes('mais') || name.includes('ذرَة') || name.includes('ذرة')) {
+    if (id === 'feed-mais' || lower === 'maïs' || lower === 'mais' || name === 'ذرة' || name === 'ذرَة') {
       if (lang === 'ar') return isMoulu ? 'ذرة مرحية' : 'ذرة كعب';
       if (lang === 'en') return isMoulu ? 'Cracked Corn' : 'Whole Corn';
       return isMoulu ? 'Maïs concassé' : 'Maïs grains';
     }
-    // Son
-    if (lower.includes('son') || name.includes('نخالة')) {
+    if (id === 'feed-son' || lower === 'son' || lower === 'son de blé' || name === 'نخالة' || name === 'نخالة القمح') {
       if (lang === 'ar') return 'نخالة القمح';
       if (lang === 'en') return 'Wheat Bran';
       return 'Son de blé';
     }
-    // Démarrage
-    if (lower.includes('démarrage') || lower.includes('demarrage') || name.includes('بداية')) {
+    if (id === 'feed-demarrage' || lower === 'aliment démarrage' || lower === 'demarrage' || lower === 'démarrage' || name === 'علف بداية' || name === 'بداية') {
       if (lang === 'ar') return isMoulu ? 'علف بداية (مرحي)' : 'علف بداية (حبيبات)';
       if (lang === 'en') return isMoulu ? 'Starter Feed (Mash)' : 'Starter Feed (Crumbles)';
       return isMoulu ? 'Aliment démarrage (farine)' : 'Aliment démarrage (miettes)';
     }
-    // Féverole
-    if (lower.includes('feverole') || lower.includes('féverole') || name.includes('فول')) {
+    if (id === 'feed-feverole' || lower === 'féverole' || lower === 'feverole' || name === 'فول') {
       if (lang === 'ar') return isMoulu ? 'فول مدشش (مرحي)' : 'فول كعب';
       if (lang === 'en') return isMoulu ? 'Cracked Faba Beans' : 'Whole Faba Beans';
       return isMoulu ? 'Féverole concassée' : 'Féverole entière';
     }
-    // Orge
-    if (id === 'feed-orge' || lower.includes('orge') || name.includes('شعير')) {
+    if (id === 'feed-orge' || lower === 'orge' || name === 'شعير') {
       if (lang === 'ar') return isMoulu ? 'شعير مرحي' : 'شعير كعب';
       if (lang === 'en') return isMoulu ? 'Ground Barley' : 'Whole Barley';
       return isMoulu ? 'Orge (moulu)' : 'Orge (grain)';
     }
-    // Tournesol
-    if (id === 'feed-tournesol' || lower.includes('tournesol') || name.includes('عباد') || name.includes('قلوب')) {
+    if (id === 'feed-tournesol' || lower === 'tournesol' || name === 'قلوب' || name === 'عباد الشمس') {
       if (lang === 'ar') return 'قلوب عباد الشمس';
       if (lang === 'en') return 'Sunflower Seeds';
       return 'Tournesol';
     }
-    // Mélange
-    if (id === 'feed-melange' || lower.includes('mélange') || lower.includes('melange') || name.includes('خلطة')) {
+    if (id === 'feed-melange' || lower === 'mélange' || lower === 'melange' || lower === 'mélange graines' || name === 'خلطة' || name === 'خلطة حبوب') {
       if (lang === 'ar') return 'خلطة حبوب';
       if (lang === 'en') return 'Grain Mixture';
       return 'Mélange graines';
     }
-    // Soja
-    if (id === 'feed-soja' || lower.includes('soja') || name.includes('صويا')) {
+    if (id === 'feed-soja' || lower === 'soja' || lower === 'tourteau de soja' || name === 'صويا') {
       if (lang === 'ar') return 'صويا مرحية';
       if (lang === 'en') return 'Soybean Meal';
       return 'Tourteau de soja';
     }
-    // Concentré / CMV
-    if (id === 'feed-concentre' || lower.includes('concentré') || lower.includes('concentre') || name.includes('مركز') || name.includes('cmv')) {
+    if (id === 'feed-concentre' || lower === 'concentré' || lower === 'concentre' || lower === 'cmv' || name === 'مركز') {
       if (lang === 'ar') return 'علف مركز (CMV)';
       if (lang === 'en') return 'Feed Concentrate';
       return 'Concentré (CMV)';
     }
-    // Croissance / Engraissement
-    if (id === 'feed-croissance' || lower.includes('croissance') || lower.includes('engraissement') || name.includes('تسمين') || name.includes('نمو')) {
+    if (id === 'feed-croissance' || lower === 'aliment croissance' || lower === 'croissance' || lower === 'engraissement' || name === 'علف نمو' || name === 'تسمين') {
       if (lang === 'ar') return 'علف نمو وتسمين';
       if (lang === 'en') return 'Grower / Finisher Feed';
       return 'Aliment croissance';
     }
-    return isMoulu ? `${name} (مرحي)` : name;
+
+    return isMoulu && !name.includes('مرحي') && !lower.includes('moulu') && !lower.includes('farine') ? `${name} (مرحي)` : name;
   },
 
   getFeedShortName(ft) {
     if (!ft) return '';
     const lang = appState.lang || 'fr';
-    const name = String(ft.name || '');
+    const name = String(ft.name || '').trim();
     const id = String(ft.id || ft.feedTypeId || '');
     const lower = name.toLowerCase();
     const isMoulu = ft.texture === 'moulu';
 
-    // Blé / قمح
-    if (id === 'feed-ble' || lower.includes('blé') || lower.includes('ble') || name.includes('قمح') || name.includes('بليه')) {
+    // Respect custom specific or numbered names unconditionally
+    const hasDistinguishingToken = /\d+/.test(name) || /(bio|phase|premier|deuxieme|1er|2eme|finition|engraiss)/i.test(name);
+    if (hasDistinguishingToken) {
+      return name;
+    }
+
+    if (id === 'feed-ble' || lower === 'blé' || lower === 'ble' || name === 'قمح' || lower === 'blé (grain)' || lower === 'blé (moulu)' || name.includes('بليه')) {
       if (lang === 'ar') return isMoulu ? 'قمح مرحي' : 'قمح كعب';
       if (lang === 'en') return isMoulu ? 'Wheat (gr)' : 'Wheat';
       return isMoulu ? 'Blé moulu' : 'Blé';
     }
-    // Aliment ponte / علف بياضة
-    if (id === 'feed-bouchon' || name.includes('بوشون') || lower.includes('ponte') || lower.includes('bouchon')) {
+    if (id === 'feed-bouchon' || lower === 'aliment ponte' || lower === 'bouchon' || name === 'علف بياضة' || name === 'بوشون') {
       if (lang === 'ar') return isMoulu ? 'علف بياضة مرحي' : 'علف بياضة';
       if (lang === 'en') return isMoulu ? 'Layer Mash' : 'Layer Feed';
       return isMoulu ? 'Farine ponte' : 'Aliment ponte';
     }
-    // Maïs
-    if (lower.includes('maïs') || lower.includes('mais') || name.includes('ذرَة') || name.includes('ذرة')) {
+    if (id === 'feed-mais' || lower === 'maïs' || lower === 'mais' || name === 'ذرة' || name === 'ذرَة') {
       if (lang === 'ar') return isMoulu ? 'ذرة مرحية' : 'ذرة كعب';
       if (lang === 'en') return isMoulu ? 'Cracked Corn' : 'Corn';
       return isMoulu ? 'Maïs concassé' : 'Maïs grains';
     }
-    // Son
-    if (lower.includes('son') || name.includes('نخالة')) {
+    if (id === 'feed-son' || lower === 'son' || lower === 'son de blé' || name === 'نخالة' || name === 'نخالة القمح') {
       if (lang === 'ar') return 'نخالة';
       if (lang === 'en') return 'Bran';
       return 'Son';
     }
-    // Démarrage
-    if (lower.includes('démarrage') || lower.includes('demarrage') || name.includes('بداية')) {
+    if (id === 'feed-demarrage' || lower === 'aliment démarrage' || lower === 'demarrage' || lower === 'démarrage' || name === 'علف بداية' || name === 'بداية') {
       if (lang === 'ar') return isMoulu ? 'بداية مرحي' : 'بداية';
       if (lang === 'en') return 'Starter';
       return isMoulu ? 'Démarrage farine' : 'Démarrage';
     }
-    // Féverole
-    if (lower.includes('feverole') || lower.includes('féverole') || name.includes('فول')) {
+    if (id === 'feed-feverole' || lower === 'féverole' || lower === 'feverole' || name === 'فول') {
       if (lang === 'ar') return isMoulu ? 'فول مدشش' : 'فول كعب';
       if (lang === 'en') return 'Beans';
       return isMoulu ? 'Féverole conc.' : 'Féverole';
     }
-    // Orge
-    if (id === 'feed-orge' || lower.includes('orge') || name.includes('شعير')) {
+    if (id === 'feed-orge' || lower === 'orge' || name === 'شعير') {
       if (lang === 'ar') return isMoulu ? 'شعير مرحي' : 'شعير';
       if (lang === 'en') return 'Barley';
       return isMoulu ? 'Orge moulu' : 'Orge';
     }
-    // Tournesol
-    if (id === 'feed-tournesol' || lower.includes('tournesol') || name.includes('عباد') || name.includes('قلوب')) {
+    if (id === 'feed-tournesol' || lower === 'tournesol' || name === 'قلوب' || name === 'عباد الشمس') {
       if (lang === 'ar') return 'قلوب';
       if (lang === 'en') return 'Sunflower';
       return 'Tournesol';
     }
-    // Mélange
-    if (id === 'feed-melange' || lower.includes('mélange') || lower.includes('melange') || name.includes('خلطة')) {
+    if (id === 'feed-melange' || lower === 'mélange' || lower === 'melange' || lower === 'mélange graines' || name === 'خلطة' || name === 'خلطة حبوب') {
       if (lang === 'ar') return 'خلطة';
       if (lang === 'en') return 'Mix';
       return 'Mélange';
     }
-    // Soja
-    if (id === 'feed-soja' || lower.includes('soja') || name.includes('صويا')) {
+    if (id === 'feed-soja' || lower === 'soja' || lower === 'tourteau de soja' || name === 'صويا') {
       if (lang === 'ar') return 'صويا';
       if (lang === 'en') return 'Soy';
       return 'Soja';
     }
-    // Concentré
-    if (id === 'feed-concentre' || lower.includes('concentré') || lower.includes('concentre') || name.includes('مركز')) {
+    if (id === 'feed-concentre' || lower === 'concentré' || lower === 'concentre' || lower === 'cmv' || name === 'مركز') {
       if (lang === 'ar') return 'مركز';
       if (lang === 'en') return 'Conc.';
       return 'Concentré';
     }
-    // Croissance
-    if (id === 'feed-croissance' || lower.includes('croissance') || lower.includes('engraissement') || name.includes('تسمين')) {
+    if (id === 'feed-croissance' || lower === 'aliment croissance' || lower === 'croissance' || lower === 'engraissement' || name === 'علف نمو' || name === 'تسمين') {
       if (lang === 'ar') return 'تسمين';
       if (lang === 'en') return 'Grower';
       return 'Croissance';
     }
-    return name.split(' ')[0] || name;
+
+    return name;
   },
 
   sanitizeFeedTypes(feedTypes) {
@@ -7388,11 +7364,11 @@ const app = {
         if (boughtKg > 0) {
           ft.stockKg = Math.max(0, parseFloat((boughtKg - distributedKg).toFixed(2)));
           ft.updatedAt = Date.now();
-          if (ft.stockKg <= 0) {
-            ft.isClosed = true;
-          } else {
-            ft.isClosed = false;
-          }
+          ft.isClosed = ft.stockKg <= 0;
+        } else if (distributedKg > 0 && Number(ft.stockKg) > 0) {
+          ft.stockKg = Math.max(0, parseFloat(((Number(ft.stockKg) || 0) - distributedKg).toFixed(2)));
+          ft.updatedAt = Date.now();
+          ft.isClosed = ft.stockKg <= 0;
         }
       });
 
@@ -8609,33 +8585,26 @@ const app = {
       onConfirm: () => {
         const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id);
 
-        // 1. Enregistrer dans le système de tombstones (cloud + peer)
+        // 1. Enregistrer dans le système de tombstones (cloud + peer) UNIQUEMENT l'id spécifique
         if (window.appAuth && typeof window.appAuth.addDeletedId === 'function') {
           window.appAuth.addDeletedId(id);
-          if (family) {
-            window.appAuth.addDeletedId('feed-' + family);
-          }
         }
 
-        // 2. Mémoriser localement pour empêcher toute réconciliation automatique
+        // 2. Mémoriser localement pour empêcher toute réconciliation automatique de ce feed spécifique
         if (!Array.isArray(appState.deletedFeedIds)) appState.deletedFeedIds = [];
         if (!appState.deletedFeedIds.includes(id)) appState.deletedFeedIds.push(id);
-        if (family) {
-          if (!Array.isArray(appState.deletedFeedFamilies)) appState.deletedFeedFamilies = [];
-          if (!appState.deletedFeedFamilies.includes(family)) appState.deletedFeedFamilies.push(family);
-        }
 
-        // 3. Détacher les dépenses liées à cet aliment pour qu'elles n'apparaissent plus comme actives dans ce stock
+        // 3. Détacher les dépenses liées UNIQUEMENT à cet aliment spécifique
         (appState.expenses || []).forEach(e => {
-          if (e.feedTypeId === id || (family && this.detectFeedTypeFromText(e.title) === family)) {
+          if (e.feedTypeId === id) {
             e.feedStockDetached = true;
             e.feedStockAddedKg = 0;
             delete e.feedTypeId;
           }
         });
 
-        // 4. Supprimer définitivement de feedTypes
-        appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id && (!family || !this.isFeedInFamily(f, family)));
+        // 4. Supprimer uniquement cet aliment spécifique de feedTypes
+        appState.feedTypes = (appState.feedTypes || []).filter(f => f.id !== id);
         appState.feedStockKg = parseFloat((appState.feedTypes || []).reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0).toFixed(2));
         appState.feedStockCostPerKg = this.getAverageFeedPricePerKg();
 

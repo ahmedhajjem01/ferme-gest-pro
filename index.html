@@ -2695,9 +2695,12 @@
             <!-- Rendu dynamique par renderFeedStockAdjustModal() -->
           </div>
 
-          <div style="text-align: center; margin-bottom: 1rem;">
-            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openFeedPurchaseModal()" data-i18n="btn_buy_add_feed">
-              ➕ Acheter / Ajouter un nouveau type d'aliment
+          <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-style: dashed;" onclick="app.openModal('modalAddFeedType')">
+              ➕ <span data-i18n="btn_declare_new_feed">Déclarer un nouvel aliment</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-color: var(--accent-emerald); color: var(--accent-emerald);" onclick="app.openFeedPurchaseModal()">
+              🛍️ <span data-i18n="btn_buy_feed_shortcut">Acheter / Approvisionner</span>
             </button>
           </div>
 

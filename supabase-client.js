@@ -130,16 +130,29 @@
         const key = String(cloudItem[idKey]);
         if (deletedIds.has(key)) return; // Do not revive deleted items
 
+        // Vérifier si un aliment local correspond par nom exact même si les IDs diffèrent entre terminaux
+        let localKeyToUse = localMap.has(key) ? key : null;
+        const isFeedType = key.startsWith('feed-') || cloudItem.stockKg !== undefined;
+        if (!localKeyToUse && isFeedType && cloudItem.name) {
+          const cName = String(cloudItem.name).trim().toLowerCase();
+          for (const [lKey, lItem] of localMap.entries()) {
+            if (lItem && lItem.name && String(lItem.name).trim().toLowerCase() === cName) {
+              localKeyToUse = lKey;
+              break;
+            }
+          }
+        }
+
         seenIds.add(key);
-        if (localMap.has(key)) {
-          const localItem = localMap.get(key);
+        if (localKeyToUse) {
+          seenIds.add(localKeyToUse);
+          const localItem = localMap.get(localKeyToUse);
           const now = Date.now();
           const cloudTs = Math.min(getTs(cloudItem), now);
           const localTs = Math.min(getTs(localItem), now);
 
           // Protection absolue des stocks d'aliments et synchronisation intelligente :
           // Ne JAMAIS écraser un stock existant (> 0) par 0 kg d'un feed par défaut non initialisé !
-          const isFeedType = key.startsWith('feed-') || localItem.stockKg !== undefined;
           if (isFeedType) {
             const localStock = Number(localItem.stockKg) || 0;
             const cloudStock = Number(cloudItem.stockKg) || 0;
@@ -1132,10 +1145,14 @@
       const isCloudFresher = (cloudLastUpdated > localLastEdit) && !hasPendingLocalPush;
 
       // Protection anti-écrasement destructive :
-      // Interdire le mode destructif (doMerge = false) si le terminal local possède déjà des animaux/dépenses réelles
-      const localCount = (state.animals || []).length + (state.expenses || []).length;
-      const cloudCount = (cloudData.animals || []).length + (cloudData.expenses || []).length;
-      const effectiveDoMerge = doMerge || (localCount > 0 && cloudCount < localCount) || hasPendingLocalPush;
+      // Interdire le mode destructif (doMerge = false) si le terminal local possède déjà des données réelles
+      const localDataCount = (state.animals || []).length + 
+                             (state.expenses || []).length + 
+                             (state.feedTypes || []).length + 
+                             (state.sales || []).length + 
+                             (state.eggHarvests || []).length + 
+                             (state.feedDistributions || []).length;
+      const effectiveDoMerge = doMerge || (localDataCount > 0) || hasPendingLocalPush;
 
       // Ingest deletedIds if provided by cloud
       if (Array.isArray(cloudData.deletedIds)) {
@@ -1406,7 +1423,7 @@
       state.customDailyFeedKg = null;
       state.sicamCansCount = null;
 
-      if (doMerge) {
+      if (effectiveDoMerge) {
         // Réconciliation différentielle des distributions multi-appareils (Event Sourcing)
         if (Array.isArray(cloudData.feedDistributions) && Array.isArray(state.feedDistributions)) {
           const localDistribIds = new Set(state.feedDistributions.map(d => String(d.id)));
@@ -1416,7 +1433,7 @@
             incomingNewDistribs.forEach(dist => {
               if (Array.isArray(dist.items)) {
                 dist.items.forEach(it => {
-                  const targetFt = state.feedTypes.find(f => f && (f.id === it.feedTypeId || f.name === it.name));
+                  const targetFt = state.feedTypes.find(f => f && (f.id === it.feedTypeId || (f.name && it.name && f.name.trim().toLowerCase() === it.name.trim().toLowerCase())));
                   if (targetFt && Number(targetFt.stockKg) > 0) {
                     const deductKg = Number(it.kg) || 0;
                     targetFt.stockKg = Math.max(0, parseFloat((Number(targetFt.stockKg) - deductKg).toFixed(2)));
@@ -1562,6 +1579,7 @@
       } catch (e) {}
 
       if (window.app) {
+        if (typeof window.app.reconcileFeedTypesFromExpenses === 'function') window.app.reconcileFeedTypesFromExpenses();
         if (typeof window.app.renderEggStock === 'function') window.app.renderEggStock();
         if (typeof window.app.renderEggProductionChart === 'function') window.app.renderEggProductionChart();
         if (typeof window.app.renderFarmFeedSummary === 'function') window.app.renderFarmFeedSummary();
