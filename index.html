@@ -34,7 +34,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=84">
+  <link rel="stylesheet" href="styles.css?v=85">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -103,7 +103,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=153').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=154').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -2487,7 +2487,7 @@
         <h3 data-i18n="daily_eggs_modal_title">🥚 Récolte Quotidienne des Œufs</h3>
         <button class="modal-close" onclick="app.closeModal('modalDailyEggs')">&times;</button>
       </div>
-      <form id="formDailyEggs" onsubmit="app.handleSaveDailyEggs(event)">
+      <form id="formDailyEggs" novalidate onsubmit="app.handleSaveDailyEggs(event)">
         <div class="modal-body">
           <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.9rem; margin-bottom: 1.15rem; display: flex; align-items: center; gap: 0.75rem;">
             <div style="font-size: 1.8rem;">🥚</div>
@@ -2542,7 +2542,7 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem; box-shadow: 0 4px 14px var(--primary-glow);">
+          <button type="submit" id="btnSubmitDailyEggs" class="btn btn-emerald btn-full" style="font-weight: 800; padding: 0.8rem; font-size: 1rem; box-shadow: 0 4px 14px var(--primary-glow);">
             <span id="dailyEggBtnText" data-i18n="daily_eggs_btn_save">Ajouter au Stock de la Ferme</span>
           </button>
         </div>
@@ -3889,8 +3889,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
     }
   </script>
-  <script src="supabase-client.js?v=122"></script>
-  <script src="translations.js?v=122"></script>
-  <script src="app.js?v=122"></script>
+  <script src="supabase-client.js?v=123"></script>
+  <script src="translations.js?v=123"></script>
+  <script src="app.js?v=123"></script>
 </body>
 </html>

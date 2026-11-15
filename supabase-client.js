@@ -870,7 +870,7 @@
           incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
           calendarEvents: Array.isArray(state.calendarEvents) ? state.calendarEvents : [],
           deletedIds: Array.from(this.getDeletedIds()),
-          lastUpdated: Date.now()
+          lastUpdated: Number(state.lastUpdated) || Date.now()
         };
 
         const { error: upsertErr } = await this.client
@@ -979,7 +979,7 @@
         sales: Array.isArray(state.sales) ? state.sales : [],
         incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
         deletedIds: Array.from(this.getDeletedIds()),
-        lastUpdated: Date.now()
+        lastUpdated: Number(state.lastUpdated) || Date.now()
       };
 
       try {
@@ -1339,11 +1339,11 @@
                 state.eggStocks[sp] = Math.max(0, localVal + incomingAdded - incomingSold);
               }
             } else if (isCloudFresher) {
-              state.eggStocks[sp] = cloudVal;
+              // Si le Cloud a 0 mais que le local a du stock valide et aucune déduction, préserver le stock légitime
+              state.eggStocks[sp] = (cloudVal === 0 && localVal > 0 && offlineSold === 0) ? localVal : cloudVal;
             } else {
-              // Si localLastEdit >= cloudLastUpdated : la décrémentation locale (vente/consommation/incubation) fait foi !
-              // Ne JAMAIS faire Math.max(localVal, cloudVal) qui empêche tout chiffre de diminuer !
-              state.eggStocks[sp] = (localLastEdit >= cloudLastUpdated && localLastEdit > 0) ? localVal : cloudVal;
+              // Si localLastEdit >= cloudLastUpdated mais localVal est 0 et cloudVal > 0 sans vente locale : préserver cloudVal !
+              state.eggStocks[sp] = (localVal === 0 && cloudVal > 0 && offlineSold === 0) ? cloudVal : ((localLastEdit >= cloudLastUpdated && localLastEdit > 0) ? localVal : cloudVal);
             }
           });
         }
@@ -1360,10 +1360,10 @@
             state.eggStocks.poule = Math.max(0, cloudEggs + offlineAdded - offlineSold);
           }
         } else if (isCloudFresher) {
-          state.eggStocks.poule = cloudEggs;
+          state.eggStocks.poule = (cloudEggs === 0 && (Number(state.eggStocks.poule) || 0) > 0 && offlineSold === 0) ? (Number(state.eggStocks.poule) || 0) : cloudEggs;
         } else {
           const localEggs = Number(state.eggStocks.poule) || Number(state.eggStock) || 0;
-          state.eggStocks.poule = (localLastEdit >= cloudLastUpdated && localLastEdit > 0) ? localEggs : cloudEggs;
+          state.eggStocks.poule = (localEggs === 0 && cloudEggs > 0 && offlineSold === 0) ? cloudEggs : ((localLastEdit >= cloudLastUpdated && localLastEdit > 0) ? localEggs : cloudEggs);
         }
       }
 
@@ -1465,6 +1465,48 @@
         if (Array.isArray(cloudData.milkHarvests)) state.milkHarvests = cloudData.milkHarvests;
         if (Array.isArray(cloudData.feedDistributions)) state.feedDistributions = cloudData.feedDistributions;
         if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
+      }
+
+      // Double-entry accounting reconciliation safety net for eggs:
+      // If harvests exist, ensure eggStocks accurately reflects the true balance (Harvests - Deductions)
+      if (Array.isArray(state.eggHarvests) && state.eggHarvests.length > 0) {
+        const stockBySp = { poule: 0, canard_barbarie: 0 };
+        state.eggHarvests.forEach(h => {
+          if (!h) return;
+          const sp = (h.species === 'canard' || h.species === 'canard_barbarie') ? 'canard_barbarie' : (h.species || 'poule');
+          stockBySp[sp] = (stockBySp[sp] || 0) + (Number(h.count) || 0);
+        });
+        (state.sales || []).forEach(s => {
+          if (!s || s.productType !== 'oeufs') return;
+          const sp = s.eggSpecies || s.species || 'poule';
+          let qty = Number(s.quantity) || 0;
+          if (s.format === 'hara') qty *= 4;
+          else if (s.format === 'plateau') qty *= 30;
+          stockBySp[sp] = (stockBySp[sp] || 0) - qty;
+        });
+        (state.eggConsumptions || []).forEach(c => {
+          if (!c) return;
+          const sp = c.species || 'poule';
+          stockBySp[sp] = (stockBySp[sp] || 0) - (Number(c.count) || 0);
+        });
+        (state.incubatorBatches || []).forEach(b => {
+          if (!b || b.eggSource !== 'farm') return;
+          const sp = (b.eggType === 'canard' || b.species === 'canard') ? 'canard_barbarie' : (b.eggType || b.species || 'poule');
+          stockBySp[sp] = (stockBySp[sp] || 0) - (Number(b.eggsCount) || 0);
+        });
+        Object.keys(stockBySp).forEach(sp => {
+          stockBySp[sp] = Math.max(0, stockBySp[sp] || 0);
+          if (stockBySp[sp] > 0 && (Number(state.eggStocks?.[sp]) || 0) === 0) {
+            if (!state.eggStocks) state.eggStocks = {};
+            state.eggStocks[sp] = stockBySp[sp];
+          }
+        });
+        (state.deletedEggCategories || []).forEach(delCat => {
+          if (delCat !== 'poule' && state.eggStocks && state.eggStocks[delCat] !== undefined) {
+            delete state.eggStocks[delCat];
+          }
+        });
+        state.eggStock = Object.values(state.eggStocks || {}).reduce((sum, v) => sum + (Number(v) || 0), 0);
       }
 
       // Keep feedTypes clean, modernized, and in strict parity with total warehouse stock
@@ -2168,7 +2210,7 @@
         sales: Array.isArray(state.sales) ? state.sales : [],
         incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
         deletedIds: Array.from(this.getDeletedIds()),
-        lastUpdated: Date.now()
+        lastUpdated: Number(state.lastUpdated) || Date.now()
       };
 
       const broadcastMsg = {

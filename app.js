@@ -418,6 +418,15 @@ const app = {
         }
         appState.eggHarvests = Array.isArray(parsed.eggHarvests) ? parsed.eggHarvests : [];
         appState.eggConsumptions = Array.isArray(parsed.eggConsumptions) ? parsed.eggConsumptions : [];
+        if (Array.isArray(appState.eggHarvests) && appState.eggHarvests.length > 0 && (Number(appState.eggStock) || 0) === 0) {
+          const totalHarvest = appState.eggHarvests.reduce((s, h) => s + (Number(h.count) || 0), 0);
+          const totalDeduct = (Array.isArray(parsed.sales) ? parsed.sales : []).filter(s => s && s.productType === 'oeufs').reduce((s, x) => s + ((x.format === 'plateau' ? 30 : (x.format === 'hara' ? 4 : 1)) * (Number(x.quantity) || 0)), 0)
+            + (appState.eggConsumptions || []).reduce((s, c) => s + (Number(c.count) || 0), 0)
+            + (Array.isArray(parsed.incubatorBatches) ? parsed.incubatorBatches : []).filter(b => b && b.eggSource === 'farm').reduce((s, b) => s + (Number(b.eggsCount) || 0), 0);
+          if (totalHarvest > totalDeduct) {
+            this.autoRepairEggStock(false);
+          }
+        }
         appState.eggChartPeriod = parsed.eggChartPeriod || '7d';
         appState.milkStock = Number(parsed.milkStock) || 0;
         appState.milkHarvests = Array.isArray(parsed.milkHarvests) ? parsed.milkHarvests : [];
@@ -3297,6 +3306,12 @@ const app = {
   },
 
   openDailyEggModal() {
+    this._isSavingDailyEggs = false;
+    const btn = document.getElementById('btnSubmitDailyEggs');
+    if (btn) btn.disabled = false;
+    const btnText = document.getElementById('dailyEggBtnText');
+    if (btnText) btnText.textContent = this.t('daily_eggs_btn_save') || 'Ajouter au Stock de la Ferme';
+
     this.openModal('modalDailyEggs');
     const input = document.getElementById('dailyEggCount');
     const dateInput = document.getElementById('dailyEggDate');
@@ -3538,93 +3553,106 @@ const app = {
 
   handleSaveDailyEggs(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (this._isSavingDailyEggs) return;
+    if (this._isSavingDailyEggs) {
+      console.warn('⚠️ handleSaveDailyEggs déjà en cours, clic ignoré.');
+      return;
+    }
     this._isSavingDailyEggs = true;
-    setTimeout(() => { this._isSavingDailyEggs = false; }, 500);
 
-    const countInput = document.getElementById('dailyEggCount');
-    const count = parseInt(countInput?.value, 10);
-    if (!count || count <= 0) {
+    const btn = document.getElementById('btnSubmitDailyEggs');
+    const btnText = document.getElementById('dailyEggBtnText');
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.textContent = '⏳ ' + (this.t('lbl_saving') || 'Ajout en cours...');
+
+    try {
+      const countInput = document.getElementById('dailyEggCount');
+      const count = parseInt(countInput?.value, 10);
+      if (!count || count <= 0 || isNaN(count)) {
+        this.showToast(this.t('err_fill_required') || 'Veuillez saisir un nombre valide d\'œufs supérieur à 0.', 'warning');
+        if (countInput) countInput.focus();
+        return;
+      }
+
+      const speciesSelect = document.getElementById('dailyEggSpecies');
+      const rawSpecies = (speciesSelect && speciesSelect.value) ? speciesSelect.value : 'poule';
+      const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
+      const customSpeciesVal = customSpeciesInput ? customSpeciesInput.value.trim() : '';
+
+      if (rawSpecies === 'autre' && !customSpeciesVal) {
+        this.showToast(this.t('err_enter_custom_species') || 'Veuillez préciser le nom du type d\'œuf / espèce.', 'warning');
+        if (customSpeciesInput) customSpeciesInput.focus();
+        return;
+      }
+
+      const rawCategory = 'consommation';
+      const categoryLabel = 'Consommation';
+
+      const dateInput = document.getElementById('dailyEggDate');
+      const harvestDate = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
+
+      if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
+        appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
+      }
+
+      let speciesKey = rawSpecies;
+      let speciesLabel = 'Poule';
+
+      if (rawSpecies === 'canard_barbarie') {
+        speciesLabel = 'Canard de Barbarie';
+      } else if (rawSpecies === 'pintade') {
+        speciesLabel = 'Pintade';
+      } else if (rawSpecies === 'caille') {
+        speciesLabel = 'Caille';
+      } else if (rawSpecies === 'autre') {
+        speciesLabel = customSpeciesVal || 'Autre';
+        const safeSuffix = customSpeciesVal.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
+        speciesKey = safeSuffix ? ('autre_' + safeSuffix) : 'autre';
+      }
+
+      if (Array.isArray(appState.deletedEggCategories)) {
+        appState.deletedEggCategories = appState.deletedEggCategories.filter(c => c !== speciesKey);
+      }
+      if (window.appAuth && typeof window.appAuth.removeDeletedId === 'function') {
+        window.appAuth.removeDeletedId('egg-cat-' + speciesKey);
+      }
+      appState.eggStocks[speciesKey] = (Number(appState.eggStocks[speciesKey]) || 0) + count;
+      appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
+
+      appState.eggHarvests = appState.eggHarvests || [];
+      appState.eggHarvests.unshift({
+        id: 'harvest-' + Date.now().toString(36),
+        date: harvestDate,
+        count: count,
+        species: rawSpecies,
+        speciesKey: speciesKey,
+        speciesLabel: speciesLabel,
+        customSpecies: customSpeciesVal || '',
+        category: rawCategory,
+        categoryLabel: categoryLabel,
+        customCategory: '',
+        updatedAt: Date.now()
+      });
+
+      localStorage.setItem('fermegest_last_egg_notif_date', harvestDate);
+
+      this.saveState();
+      this.closeModal('modalDailyEggs');
+      this.dismissDailyEggAlert();
+      this.renderEggStock();
+      this.renderEggProductionChart();
+
+      this.showToast(`🎉 +${count} œufs (${speciesLabel}) ajoutés ! Stock total : ${appState.eggStock} œufs`);
+
+      if (countInput) countInput.value = '';
+      if (customSpeciesInput) customSpeciesInput.value = '';
+    } catch (err) {
+      console.error('❌ Erreur lors de l\'enregistrement des œufs :', err);
+      this.showToast('Erreur lors de l\'enregistrement des œufs.', 'error');
+    } finally {
       this._isSavingDailyEggs = false;
-      this.showToast(this.t('err_fill_required') || 'Veuillez saisir un nombre valide.');
-      return;
+      if (btn) btn.disabled = false;
+      this.updateDailyEggPreview();
     }
-
-    const speciesSelect = document.getElementById('dailyEggSpecies');
-    const rawSpecies = (speciesSelect && speciesSelect.value) ? speciesSelect.value : 'poule';
-    const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
-    const customSpeciesVal = customSpeciesInput ? customSpeciesInput.value.trim() : '';
-
-    if (rawSpecies === 'autre' && !customSpeciesVal) {
-      this._isSavingDailyEggs = false;
-      this.showToast(this.t('err_enter_custom_species') || 'Veuillez préciser le nom du type d\'œuf / espèce.', 'warning');
-      if (customSpeciesInput) customSpeciesInput.focus();
-      return;
-    }
-
-    const rawCategory = 'consommation';
-    const categoryLabel = 'Consommation';
-
-    const dateInput = document.getElementById('dailyEggDate');
-    const harvestDate = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
-
-    if (!appState.eggStocks || typeof appState.eggStocks !== 'object') {
-      appState.eggStocks = { poule: Number(appState.eggStock) || 0, canard_barbarie: 0 };
-    }
-
-    let speciesKey = rawSpecies;
-    let speciesLabel = 'Poule';
-
-    if (rawSpecies === 'canard_barbarie') {
-      speciesLabel = 'Canard de Barbarie';
-    } else if (rawSpecies === 'pintade') {
-      speciesLabel = 'Pintade';
-    } else if (rawSpecies === 'caille') {
-      speciesLabel = 'Caille';
-    } else if (rawSpecies === 'autre') {
-      speciesLabel = customSpeciesVal || 'Autre';
-      const safeSuffix = customSpeciesVal.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 20);
-      speciesKey = safeSuffix ? ('autre_' + safeSuffix) : 'autre';
-    }
-
-
-    if (Array.isArray(appState.deletedEggCategories)) {
-      appState.deletedEggCategories = appState.deletedEggCategories.filter(c => c !== speciesKey);
-    }
-    if (window.appAuth && typeof window.appAuth.removeDeletedId === 'function') {
-      window.appAuth.removeDeletedId('egg-cat-' + speciesKey);
-    }
-    appState.eggStocks[speciesKey] = (Number(appState.eggStocks[speciesKey]) || 0) + count;
-    appState.eggStock = Object.values(appState.eggStocks).reduce((a, b) => a + (Number(b) || 0), 0);
-
-    appState.eggHarvests = appState.eggHarvests || [];
-    appState.eggHarvests.unshift({
-      id: 'harvest-' + Date.now().toString(36),
-      date: harvestDate,
-      count: count,
-      species: rawSpecies,
-      speciesKey: speciesKey,
-      speciesLabel: speciesLabel,
-      customSpecies: customSpeciesVal || '',
-      category: rawCategory,
-      categoryLabel: categoryLabel,
-      customCategory: customCategoryVal || '',
-      updatedAt: Date.now()
-    });
-
-    localStorage.setItem('fermegest_last_egg_notif_date', harvestDate);
-
-    this.saveState();
-    this.closeModal('modalDailyEggs');
-    this.dismissDailyEggAlert();
-    this.renderEggStock();
-    this.renderEggProductionChart();
-
-    this.showToast(`🎉 +${count} œufs (${speciesLabel}) ajoutés ! Stock total : ${appState.eggStock} œufs`);
-
-    if (countInput) countInput.value = '';
-    if (customSpeciesInput) customSpeciesInput.value = '';
-    if (customCategoryInput) customCategoryInput.value = '';
   },
 
   // ==========================================
