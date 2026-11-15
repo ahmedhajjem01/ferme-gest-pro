@@ -1396,7 +1396,7 @@
 
         const shouldAcceptCloud = !effectiveDoMerge || isCloudFresher || (cloudTs > localTs && cloudStock !== null);
         if (shouldAcceptCloud) {
-          const finalCloudStock = (cloudStock !== null && cloudStock > 0) ? Math.max(0, cloudStock - offlineFeedDeductedKg) : (Number(state.feedStockKg) || 0);
+          const finalCloudStock = (cloudStock !== null && cloudStock >= 0) ? Math.max(0, cloudStock - offlineFeedDeductedKg) : (Number(state.feedStockKg) || 0);
           state.feedStockKg = finalCloudStock;
           state.feedStockDate = cloudData.feedStockDate || null;
           state.feedStockCostPerKg = cloudData.feedStockCostPerKg ? Number(cloudData.feedStockCostPerKg) : 1.0;
@@ -1460,12 +1460,13 @@
           !(ft.name || '').includes('علف رئيسي')
         );
         const calculatedFeedStock = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
-        if (calculatedFeedStock > 0) {
+        if (state.feedTypes.length > 0) {
+          // Si des aliments sont déclarés, le stock global est exactement égal à la somme des aliments (même si 0 kg)
           state.feedStockKg = parseFloat(calculatedFeedStock.toFixed(2));
-        } else if (Number(cloudData.feedStockKg) > 0) {
+        } else if (Number(cloudData.feedStockKg) >= 0 && cloudData.feedStockKg !== null) {
           state.feedStockKg = Number(cloudData.feedStockKg);
         } else if (Number(state.feedStockKg) > 0) {
-          // PROTECTION CRITIQUE : Conserver impérativement le stock local (> 0), ne JAMAIS écraser par 0 si feedTypes est vide !
+          // Conserver le stock local uniquement si feedTypes est complètement vide
         } else {
           state.feedStockKg = 0;
         }

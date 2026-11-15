@@ -6756,10 +6756,12 @@ const app = {
       !(ft.name || '').includes('علف رئيسي')
     );
 
-    // Auto-reconcile stock if global feedStockKg exists but feedTypes have 0 kg
+    // Auto-reconcile stock uniquement lors d'une migration initiale d'un ancien stock global non typé
     const globalStock = Number(appState.feedStockKg) || 0;
     const currentTotalStock = list.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
-    if (globalStock > 0 && currentTotalStock === 0 && list.length > 0) {
+    const isLegacyMigration = globalStock > 0 && currentTotalStock === 0 && list.length > 0 &&
+      list.every(f => !f.updatedAt && !f.manuallyAdjusted && !f.isClosed);
+    if (isLegacyMigration) {
       const perFeed = Math.round((globalStock / list.length) * 10) / 10;
       let runningTotal = 0;
       list.forEach((f, idx) => {
@@ -7350,12 +7352,10 @@ const app = {
       });
     });
 
-    // Mettre à jour appState.feedStockKg sans jamais l'écraser par 0
+    // Mettre à jour appState.feedStockKg en cohérence stricte avec la somme des aliments
     if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
       const calculatedTotal = parseFloat(appState.feedTypes.reduce((sum, f) => sum + (Number(f.stockKg) || 0), 0).toFixed(2));
-      if (calculatedTotal > 0) {
-        appState.feedStockKg = calculatedTotal;
-      }
+      appState.feedStockKg = calculatedTotal;
     }
 
     if (changed) {
@@ -7367,86 +7367,83 @@ const app = {
   autoRepairFeedStock() {
     let recovered = 0;
 
-    // 1. Vérifier la sauvegarde automatique locale fermegest_state_backup
-    try {
-      const backupRaw = localStorage.getItem('fermegest_state_backup');
-      if (backupRaw) {
-        const parsed = JSON.parse(backupRaw);
-        if (Number(parsed.feedStockKg) > 0) {
-          recovered = Number(parsed.feedStockKg);
-        }
-      }
-    } catch (e) {}
+    // 1. Reconcilier les types d'aliments depuis les dépenses si feedTypes est vide
+    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
+      this.reconcileFeedTypesFromExpenses();
+    }
 
-    // 2. Si 0 ou non trouvé, recalculer depuis l'historique complet des achats et distributions
-    if (recovered <= 0) {
-      const totalBoughtKg = (appState.expenses || [])
-        .filter(e => e && e.category === 'nourriture')
-        .reduce((sum, e) => {
-          let kg = Number(e.feedStockAddedKg) || 0;
-          if (kg <= 0) {
-            const titleLower = (e.title || '').toLowerCase();
-            let q = Number(e.quantity) || 1;
-            if (titleLower.includes('50kg') || (titleLower.includes('sac') && !titleLower.includes('25kg'))) kg = q * 50;
-            else if (titleLower.includes('25kg')) kg = q * 25;
-            else if (titleLower.includes('10kg')) kg = q * 10;
-            else if (Number(e.unitPrice) >= 15 && q > 0) kg = q * 50;
-            else if (q > 0) kg = q;
-            if (kg <= 0 && Number(e.total) > 0) kg = Math.round(Number(e.total));
-          }
-          return sum + kg;
+    // 2. Calcul en partie double pour chaque aliment : Achats - Distributions
+    if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
+      appState.feedTypes.forEach(ft => {
+        const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id);
+        const cleanName = (ft.name || '')
+          .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
+          .replace(/[\/\s]*بليه[\/\s]*/g, ' ')
+          .replace(/[\/\s]*\b(bouchon)\b[\/\s]*/gi, ' ')
+          .replace(/[\/\s]*بوشون[\/\s]*/g, ' ')
+          .trim().toLowerCase();
+
+        // Total acheté pour cet aliment
+        const boughtKg = (appState.expenses || [])
+          .filter(e => e && e.category === 'nourriture' && !e.feedStockDetached)
+          .reduce((sum, exp) => {
+            const expFamily = this.detectFeedTypeFromText(exp.title);
+            const expTitle = (exp.title || '').toLowerCase();
+            const isMatch = (exp.feedTypeId && exp.feedTypeId === ft.id) ||
+              (family && expFamily === family) ||
+              (cleanName && expTitle.includes(cleanName));
+            if (!isMatch) return sum;
+            return sum + (Number(exp.feedStockAddedKg) || 0);
+          }, 0);
+
+        // Total distribué pour cet aliment (vérifie d.totalKg, d.kg et items)
+        const distributedKg = (appState.feedDistributions || []).reduce((sum, dist) => {
+          if (!Array.isArray(dist.items)) return sum;
+          const matchingItems = dist.items.filter(it => 
+            (it.feedTypeId && it.feedTypeId === ft.id) ||
+            (family && this.detectFeedTypeFromText(it.name) === family) ||
+            (cleanName && it.name && it.name.toLowerCase().includes(cleanName))
+          );
+          return sum + matchingItems.reduce((s, it) => s + (Number(it.kg) || 0), 0);
         }, 0);
 
-      const totalDistributedKg = (appState.feedDistributions || [])
-        .reduce((sum, d) => sum + (Number(d.kg) || 0), 0);
-
-      const netHistoryKg = totalBoughtKg - totalDistributedKg;
-      if (netHistoryKg > 0) {
-        recovered = netHistoryKg;
-      }
-    }
-
-    if (recovered > 0 && (Number(appState.feedStockKg) || 0) <= 0) {
-      appState.feedStockKg = parseFloat(recovered.toFixed(2));
-      appState.feedStockUpdatedAt = Date.now();
-
-      // Reconcilier tous les aliments achetés depuis l'historique réel
-      this.reconcileFeedTypesFromExpenses();
-
-      if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
-        appState.feedTypes = [{
-          id: 'feed-ponte-' + Date.now().toString(36),
-          name: 'Aliment ponte',
-          stockKg: appState.feedStockKg,
-          pricePerKg: 1.0,
-          updatedAt: Date.now()
-        }];
-      } else {
-        const calculatedTotal = appState.feedTypes.reduce((s, ft) => s + (Number(ft.stockKg) || 0), 0);
-        if (calculatedTotal <= 0 && appState.feedStockKg > 0) {
-          const perFeed = Math.round((appState.feedStockKg / appState.feedTypes.length) * 10) / 10;
-          let runningTotal = 0;
-          appState.feedTypes.forEach((f, idx) => {
-            if (idx === appState.feedTypes.length - 1) {
-              f.stockKg = Math.max(0, Math.round((appState.feedStockKg - runningTotal) * 10) / 10);
-            } else {
-              f.stockKg = perFeed;
-              runningTotal += perFeed;
-            }
-            f.updatedAt = Date.now();
-          });
+        if (boughtKg > 0) {
+          ft.stockKg = Math.max(0, parseFloat((boughtKg - distributedKg).toFixed(2)));
+          ft.updatedAt = Date.now();
+          if (ft.stockKg <= 0) {
+            ft.isClosed = true;
+          } else {
+            ft.isClosed = false;
+          }
         }
-      }
+      });
 
-      this.saveState();
-      this.renderAll();
-      const isAr = (appState.lang || this.currentLang) === 'ar';
-      this.showToast(isAr 
-        ? ('🌾 تم استرجاع مخزون العلف تلقائياً : ' + appState.feedStockKg + ' كغ !')
-        : ('🌾 Stock d aliment restauré automatiquement : ' + appState.feedStockKg + ' kg !'));
-      return true;
+      const calculatedTotal = parseFloat(appState.feedTypes.reduce((s, ft) => s + (Number(ft.stockKg) || 0), 0).toFixed(2));
+      appState.feedStockKg = calculatedTotal;
+      appState.feedStockUpdatedAt = Date.now();
+      recovered = calculatedTotal;
+    } else {
+      // Si aucun type d'aliment déclaré, calculer le stock global brut
+      const totalBoughtKg = (appState.expenses || [])
+        .filter(e => e && e.category === 'nourriture')
+        .reduce((sum, e) => sum + (Number(e.feedStockAddedKg) || 0), 0);
+      const totalDistributedKg = (appState.feedDistributions || [])
+        .reduce((sum, d) => sum + (Number(d.totalKg) || Number(d.kg) || 0), 0);
+      recovered = Math.max(0, parseFloat((totalBoughtKg - totalDistributedKg).toFixed(2)));
+      appState.feedStockKg = recovered;
+      appState.feedStockUpdatedAt = Date.now();
     }
-    return false;
+
+    this.saveState();
+    if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+      window.appAuth.pushData(false, true);
+    }
+    this.renderAll();
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    this.showToast(isAr 
+      ? ('🌾 تم احتساب مخزون العلف الدقيق : ' + appState.feedStockKg + ' كغ !')
+      : ('🌾 Stock d aliment calculé avec exactitude : ' + appState.feedStockKg + ' kg !'));
+    return recovered;
   },
 
   // Calcul exact en partie double du stock d'œufs depuis l'historique complet des récoltes, ventes, consommations et couvées
@@ -7900,7 +7897,9 @@ const app = {
     } else {
       const globalStock = Number(appState.feedStockKg) || 0;
       const currentTotal = appState.feedTypes.reduce((s, f) => s + (Number(f.stockKg) || 0), 0);
-      if (globalStock > 0 && currentTotal === 0 && appState.feedTypes.length > 0) {
+      const isLegacyMigration = globalStock > 0 && currentTotal === 0 && appState.feedTypes.length > 0 &&
+        appState.feedTypes.every(f => !f.updatedAt && !f.manuallyAdjusted && !f.isClosed);
+      if (isLegacyMigration) {
         const perFeed = Math.round((globalStock / appState.feedTypes.length) * 10) / 10;
         let runningTotal = 0;
         appState.feedTypes.forEach((f, idx) => {
@@ -8365,7 +8364,9 @@ const app = {
     } else {
       const globalStock = Number(appState.feedStockKg) || 0;
       const currentTotal = appState.feedTypes.reduce((s, f) => s + (Number(f.stockKg) || 0), 0);
-      if (globalStock > 0 && currentTotal === 0 && appState.feedTypes.length > 0) {
+      const isLegacyMigration = globalStock > 0 && currentTotal === 0 && appState.feedTypes.length > 0 &&
+        appState.feedTypes.every(f => !f.updatedAt && !f.manuallyAdjusted && !f.isClosed);
+      if (isLegacyMigration) {
         const perFeed = Math.round((globalStock / appState.feedTypes.length) * 10) / 10;
         let runningTotal = 0;
         appState.feedTypes.forEach((f, idx) => {
