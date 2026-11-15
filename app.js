@@ -7215,23 +7215,18 @@ const app = {
     foodExpenses.forEach(exp => {
       const family = this.detectFeedTypeFromText(exp.title);
       const cleanTitle = (exp.title || '')
-        .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
-        .replace(/[\/\s]*بليه[\/\s]*/g, ' ')
-        .replace(/[\/\s]*\b(bouchon)\b[\/\s]*/gi, ' ')
-        .replace(/[\/\s]*بوشون[\/\s]*/g, ' ')
+        .replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '')
         .replace(/\(\d+.*?\)/g, '')
         .trim();
 
       if (exp.feedTypeId) {
         const linkedFt = (appState.feedTypes || []).find(f => f.id === exp.feedTypeId);
         if (linkedFt) {
-          const linkedFamily = this.detectFeedTypeFromText(linkedFt.name) || this.detectFeedTypeFromText(linkedFt.id);
-          const ftClean = (linkedFt.name || '').replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '').trim().toLowerCase();
+          const ftClean = (linkedFt.name || '').replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '').trim().toLowerCase();
           const expClean = cleanTitle.toLowerCase();
-          // Délier si la famille détectée diffère
-          // OU si les noms propres nettoyés sont distincts (ex: deux achats d'aliments différents rattachés par mégarde au même feedTypeId)
-          const isNameClash = ftClean && expClean && ftClean !== expClean && !ftClean.includes(expClean) && !expClean.includes(ftClean);
-          if ((family && linkedFamily && family !== linkedFamily) || isNameClash) {
+          // Délier si les noms propres nettoyés sont distincts (ex: deux achats d'aliments différents rattachés par mégarde au même feedTypeId)
+          const isNameClash = ftClean && expClean && ftClean !== expClean;
+          if (isNameClash) {
             delete exp.feedTypeId;
             changed = true;
           }
@@ -7239,26 +7234,22 @@ const app = {
       }
     });
 
-    // 3. Grouper les dépenses par identité d'aliment distincte
+    // 3. Grouper les dépenses par identité d'aliment distincte (priorité absolue au titre propre nettoyé)
     const feedGroups = {};
     foodExpenses.forEach(exp => {
       const family = this.detectFeedTypeFromText(exp.title);
-
       const cleanTitle = (exp.title || '')
-        .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
-        .replace(/[\/\s]*بليه[\/\s]*/g, ' ')
-        .replace(/[\/\s]*\b(bouchon)\b[\/\s]*/gi, ' ')
-        .replace(/[\/\s]*بوشون[\/\s]*/g, ' ')
+        .replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '')
         .replace(/\(\d+.*?\)/g, '')
         .trim();
 
       let groupKey = '';
       if (exp.feedTypeId && (appState.feedTypes || []).some(f => f.id === exp.feedTypeId)) {
         groupKey = `id_${exp.feedTypeId}`;
-      } else if (family) {
-        groupKey = `family_${family}`;
       } else if (cleanTitle) {
         groupKey = `title_${cleanTitle.toLowerCase()}`;
+      } else if (family) {
+        groupKey = `family_${family}`;
       } else {
         groupKey = `exp_${exp.id}`;
       }
@@ -7280,21 +7271,18 @@ const app = {
       feedGroups[groupKey].expenses.push(exp);
     });
 
-    // 4. Synchroniser chaque groupe avec appState.feedTypes
+    // 4. Synchroniser chaque groupe avec appState.feedTypes (correspondance EXACTE sans fusion abusive)
     Object.values(feedGroups).forEach(group => {
       let ft = null;
       if (group.feedTypeId) {
         ft = (appState.feedTypes || []).find(f => f.id === group.feedTypeId);
       }
-      if (!ft && group.family) {
-        ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, group.family));
-      }
       if (!ft && group.cleanTitle) {
-        ft = (appState.feedTypes || []).find(f => {
-          const fn = (f.name || '').toLowerCase();
-          const ct = group.cleanTitle.toLowerCase();
-          return fn === ct || fn.includes(ct) || ct.includes(fn);
-        });
+        const ct = group.cleanTitle.toLowerCase().trim();
+        ft = (appState.feedTypes || []).find(f => (f.name || '').toLowerCase().trim() === ct);
+      }
+      if (!ft && group.family && (!group.cleanTitle || group.cleanTitle.toLowerCase() === 'aliment' || group.cleanTitle === 'علف')) {
+        ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, group.family));
       }
 
       const unitPrice = group.totalAddedKg > 0 ? parseFloat((group.totalCost / group.totalAddedKg).toFixed(3)) : 0;
@@ -7312,25 +7300,20 @@ const app = {
           if (!Array.isArray(dist.items)) return sum;
           const matchingItems = dist.items.filter(it => 
             (group.feedTypeId && it.feedTypeId === group.feedTypeId) ||
-            (group.cleanTitle && it.name && it.name.toLowerCase().includes(group.cleanTitle.toLowerCase())) ||
-            (group.family && this.detectFeedTypeFromText(it.name) === group.family)
+            (group.cleanTitle && it.name && it.name.toLowerCase().trim() === group.cleanTitle.toLowerCase().trim())
           );
           return sum + matchingItems.reduce((s, it) => s + (Number(it.kg) || 0), 0);
         }, 0);
         let initialStock = Math.max(0, parseFloat((group.totalAddedKg - existingDistKg).toFixed(2)));
 
-        if (group.family) {
-          ft = this.createDefaultFeedForFamily(group.family, unitPrice);
-        } else {
-          ft = {
-            id: group.feedTypeId || ('feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4)),
-            name: group.cleanTitle,
-            stockKg: initialStock,
-            pricePerKg: unitPrice,
-            texture: 'grain',
-            kgPerCan: 0.70
-          };
-        }
+        ft = {
+          id: group.feedTypeId || ('feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4)),
+          name: group.cleanTitle,
+          stockKg: initialStock,
+          pricePerKg: unitPrice,
+          texture: (group.family === 'mais' || group.family === 'son') ? 'moulu' : 'grain',
+          kgPerCan: this.getFeedDefaultDensity(group.family, 'grain')
+        };
         ft.stockKg = initialStock;
         ft.manuallyAdjusted = false;
         ft.updatedAt = Date.now();
@@ -7367,31 +7350,27 @@ const app = {
   autoRepairFeedStock() {
     let recovered = 0;
 
-    // 1. Reconcilier les types d'aliments depuis les dépenses si feedTypes est vide
-    if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
-      this.reconcileFeedTypesFromExpenses();
-    }
+    // 1. Toujours synchroniser et séparer les types d'aliments depuis les dépenses réelles
+    this.reconcileFeedTypesFromExpenses();
 
     // 2. Calcul en partie double pour chaque aliment : Achats - Distributions
     if (Array.isArray(appState.feedTypes) && appState.feedTypes.length > 0) {
       appState.feedTypes.forEach(ft => {
-        const family = this.detectFeedTypeFromText(ft.name) || this.detectFeedTypeFromText(ft.id);
         const cleanName = (ft.name || '')
-          .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
-          .replace(/[\/\s]*بليه[\/\s]*/g, ' ')
-          .replace(/[\/\s]*\b(bouchon)\b[\/\s]*/gi, ' ')
-          .replace(/[\/\s]*بوشون[\/\s]*/g, ' ')
+          .replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '')
+          .replace(/\(\d+.*?\)/g, '')
           .trim().toLowerCase();
 
-        // Total acheté pour cet aliment
+        // Total acheté pour cet aliment (correspondance stricte par feedTypeId ou par nom propre exact)
         const boughtKg = (appState.expenses || [])
           .filter(e => e && e.category === 'nourriture' && !e.feedStockDetached)
           .reduce((sum, exp) => {
-            const expFamily = this.detectFeedTypeFromText(exp.title);
-            const expTitle = (exp.title || '').toLowerCase();
+            const expClean = (exp.title || '')
+              .replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '')
+              .replace(/\(\d+.*?\)/g, '')
+              .trim().toLowerCase();
             const isMatch = (exp.feedTypeId && exp.feedTypeId === ft.id) ||
-              (family && expFamily === family) ||
-              (cleanName && expTitle.includes(cleanName));
+              (cleanName && expClean && expClean === cleanName);
             if (!isMatch) return sum;
             return sum + (Number(exp.feedStockAddedKg) || 0);
           }, 0);
@@ -7401,8 +7380,7 @@ const app = {
           if (!Array.isArray(dist.items)) return sum;
           const matchingItems = dist.items.filter(it => 
             (it.feedTypeId && it.feedTypeId === ft.id) ||
-            (family && this.detectFeedTypeFromText(it.name) === family) ||
-            (cleanName && it.name && it.name.toLowerCase().includes(cleanName))
+            (cleanName && it.name && it.name.replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '').trim().toLowerCase() === cleanName)
           );
           return sum + matchingItems.reduce((s, it) => s + (Number(it.kg) || 0), 0);
         }, 0);
@@ -11372,32 +11350,21 @@ const app = {
     const select = document.getElementById('expenseFeedTypeSelect');
     if (!titleInput || !select) return;
 
-    const val = titleInput.value.trim();
+    const val = titleInput.value.trim().toLowerCase();
     if (val.length >= 2) {
       const family = this.detectFeedTypeFromText(val);
-      let matchedIndex = -1;
-      for (let i = 0; i < select.options.length; i++) {
-        const opt = select.options[i];
-        if (opt.value !== '__new__') {
-          const ft = (appState.feedTypes || []).find(f => f.id === opt.value);
-          if (ft && family && this.isFeedInFamily(ft, family)) {
-            matchedIndex = i;
-            break;
-          }
-          if (opt.textContent.toLowerCase().includes(val.toLowerCase())) {
-            matchedIndex = i;
-            break;
-          }
-        }
-      }
-      if (matchedIndex >= 0) {
-        select.selectedIndex = matchedIndex;
+      // Ne basculer la sélection QUE si le titre correspond exactement au nom d'un aliment déjà créé
+      const exactMatch = (appState.feedTypes || []).find(f => (f.name || '').toLowerCase().trim() === val);
+      if (exactMatch) {
+        select.value = exactMatch.id;
       } else {
         select.value = '__new__';
       }
       if (family === 'foin' || family === 'paille' || family === 'luzerne' || family === 'ensilage') {
         this.setFeedPurchaseMode('botte');
       }
+    } else {
+      select.value = '__new__';
     }
     this.calcFeedPurchaseFields();
   },
@@ -11541,55 +11508,34 @@ const app = {
 
           const rawTitle = (title || '').trim();
           let feedCleanName = rawTitle
-            .replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '')
-            .replace(/[\/\s]*بليه[\/\s]*/g, ' ')
-            .replace(/[\/\s]*\b(bouchon)\b[\/\s]*/gi, ' ')
-            .replace(/[\/\s]*بوشون[\/\s]*/g, ' ')
+            .replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '')
             .replace(/\(\d+.*?\)/g, '')
             .trim();
           if (!feedCleanName) feedCleanName = rawTitle || (isAr ? 'علف جديد' : (isEn ? 'New Feed' : 'Nouvel aliment'));
 
           let targetFeed = null;
 
-          // 1. Priorité absolue à la famille détectée dans l'intitulé (ex: Bouchon ne va JAMAIS dans Blé !)
-          if (detectedFamily) {
-            targetFeed = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, detectedFamily));
-            if (!targetFeed) {
-              targetFeed = this.createDefaultFeedForFamily(detectedFamily, total / (addedKg || 1));
-              appState.feedTypes.push(targetFeed);
-            }
+          // 1. Si un aliment existant a été explicitement choisi dans le menu déroulant
+          if (selectedFeedId && selectedFeedId !== '__new__') {
+            targetFeed = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
           }
 
-          // 2. Si un aliment a été explicitement choisi dans le select, vérifier qu'il n'y a pas conflit flagrant avec le titre saisi
-          if (!targetFeed && selectedFeedId && selectedFeedId !== '__new__') {
-            const candidateFt = (appState.feedTypes || []).find(f => f.id === selectedFeedId);
-            if (candidateFt) {
-              const candClean = (candidateFt.name || '').replace(/^(achat|شراء|buy|purchase|feed|aliment)\s*[:\-]?\s*/i, '').trim().toLowerCase();
-              const inputClean = feedCleanName.toLowerCase();
-              const isNameClash = candClean && inputClean && candClean !== inputClean && !candClean.includes(inputClean) && !inputClean.includes(candClean);
-              if (!isNameClash) {
-                targetFeed = candidateFt;
-              }
-            }
-          }
-
-          // 3. Chercher par correspondance exacte de nom propre
+          // 2. Si création demandée (__new__), chercher uniquement par correspondance EXACTE de nom
           if (!targetFeed) {
             targetFeed = (appState.feedTypes || []).find(f => 
-              f.name.toLowerCase().trim() === feedCleanName.toLowerCase().trim() ||
-              (this.getFeedDisplayName(f) || '').toLowerCase().trim() === feedCleanName.toLowerCase().trim()
+              f.name.toLowerCase().trim() === feedCleanName.toLowerCase().trim()
             );
           }
 
-          // 4. Si toujours introuvable, créer un nouvel aliment dédié
+          // 3. Si introuvable, créer impérativement un nouvel aliment dédié avec son nom propre distinct
           if (!targetFeed) {
             targetFeed = {
               id: 'feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
               name: feedCleanName,
               stockKg: 0,
               pricePerKg: (addedKg > 0) ? parseFloat((total / addedKg).toFixed(3)) : 0,
-              texture: 'grain',
-              kgPerCan: 0.70,
+              texture: (detectedFamily === 'mais' || detectedFamily === 'son') ? 'moulu' : 'grain',
+              kgPerCan: this.getFeedDefaultDensity(detectedFamily, 'grain'),
               manuallyAdjusted: true,
               updatedAt: Date.now()
             };
@@ -11810,30 +11756,26 @@ const app = {
         const addedKg = parseFloat(String(val || '').replace(',', '.')) || 0;
         if (addedKg <= 0) return;
 
-        // Match or ask which feed
-        const family = this.detectFeedTypeFromText(exp.title);
-        let ft = null;
-        if (family) {
-          ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, family));
-          if (!ft) {
-            ft = this.createDefaultFeedForFamily(family, (addedKg > 0 ? (Number(exp.total) / addedKg) : 0));
-            appState.feedTypes.push(ft);
-          }
-        }
-
-        if (!ft) {
-          ft = appState.feedTypes.find(f => {
-            const fn = (f.name || '').toLowerCase();
-            return titleLower.includes(fn) || fn.includes(titleLower);
-          });
+        // Match or create distinct feed
+        const expClean = (exp.title || '')
+          .replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '')
+          .replace(/\(\d+.*?\)/g, '')
+          .trim();
+        let ft = exp.feedTypeId ? (appState.feedTypes || []).find(f => f.id === exp.feedTypeId) : null;
+        if (!ft && expClean) {
+          ft = (appState.feedTypes || []).find(f => (f.name || '').toLowerCase().trim() === expClean.toLowerCase());
         }
 
         if (!ft) {
           ft = {
-            id: 'feed-' + Date.now().toString(36),
-            name: exp.title.replace(/\(\d+.*?\)/g, '').trim() || (isAr ? 'علف جديد' : 'Nouvel aliment'),
+            id: 'feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
+            name: expClean || (isAr ? 'علف جديد' : (isEn ? 'New Feed' : 'Nouvel aliment')),
             stockKg: 0,
-            pricePerKg: (addedKg > 0) ? parseFloat((Number(exp.total) / addedKg).toFixed(3)) : 0
+            pricePerKg: (addedKg > 0) ? parseFloat((Number(exp.total) / addedKg).toFixed(3)) : 0,
+            texture: 'grain',
+            kgPerCan: 0.70,
+            manuallyAdjusted: true,
+            updatedAt: Date.now()
           };
           appState.feedTypes.push(ft);
         }
@@ -11884,29 +11826,25 @@ const app = {
         addedKg = addedKg * 25;
       }
 
-      const family = this.detectFeedTypeFromText(exp.title);
-      let ft = null;
-      if (family) {
-        ft = (appState.feedTypes || []).find(f => this.isFeedInFamily(f, family));
-        if (!ft) {
-          ft = this.createDefaultFeedForFamily(family, (addedKg > 0 ? (Number(exp.total) / addedKg) : 0));
-          appState.feedTypes.push(ft);
-        }
-      }
-
-      if (!ft) {
-        ft = appState.feedTypes.find(f => {
-          const fn = (f.name || '').toLowerCase();
-          return titleLower.includes(fn) || fn.includes(titleLower);
-        });
+      const expClean = (exp.title || '')
+        .replace(/^(achat|شراء|buy|purchase)\s*[:\-]?\s*/i, '')
+        .replace(/\(\d+.*?\)/g, '')
+        .trim();
+      let ft = exp.feedTypeId ? (appState.feedTypes || []).find(f => f.id === exp.feedTypeId) : null;
+      if (!ft && expClean) {
+        ft = (appState.feedTypes || []).find(f => (f.name || '').toLowerCase().trim() === expClean.toLowerCase());
       }
 
       if (!ft) {
         ft = {
-          id: 'feed-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
-          name: exp.title.replace(/\(\d+.*?\)/g, '').trim() || 'Aliment',
+          id: 'feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 4),
+          name: expClean || (isAr ? 'علف جديد' : (isEn ? 'New Feed' : 'Nouvel aliment')),
           stockKg: 0,
-          pricePerKg: (addedKg > 0) ? parseFloat((Number(exp.total) / addedKg).toFixed(3)) : 0
+          pricePerKg: (addedKg > 0) ? parseFloat((Number(exp.total) / addedKg).toFixed(3)) : 0,
+          texture: 'grain',
+          kgPerCan: 0.70,
+          manuallyAdjusted: true,
+          updatedAt: Date.now()
         };
         appState.feedTypes.push(ft);
       }
