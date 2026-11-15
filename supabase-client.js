@@ -1483,6 +1483,30 @@
           return ft;
         }).filter(ft => ft && !deletedIds.has(String(ft.id)));
 
+        // Déduplication canonique par nom propre normalisé (élimination des fantômes)
+        const canonicalFeedMap = new Map();
+        state.feedTypes.forEach(ft => {
+          const normKey = (ft.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+          if (!normKey) return;
+          if (!canonicalFeedMap.has(normKey)) {
+            canonicalFeedMap.set(normKey, { ...ft });
+          } else {
+            const existing = canonicalFeedMap.get(normKey);
+            const existingStock = Number(existing.stockKg) || 0;
+            const currentStock = Number(ft.stockKg) || 0;
+            if (currentStock > 0 && existingStock === 0) {
+              existing.id = ft.id;
+              existing.name = ft.name;
+            }
+            existing.stockKg = parseFloat((existingStock + currentStock).toFixed(2));
+            if ((!existing.pricePerKg || Number(existing.pricePerKg) === 0) && Number(ft.pricePerKg) > 0) {
+              existing.pricePerKg = Number(ft.pricePerKg);
+            }
+            existing.updatedAt = Math.max(Number(existing.updatedAt) || 0, Number(ft.updatedAt) || 0);
+          }
+        });
+        state.feedTypes = Array.from(canonicalFeedMap.values());
+
         const calculatedFeedStock = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
 
         if (state.feedTypes.length === 0) {

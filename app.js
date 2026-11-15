@@ -6729,9 +6729,77 @@ const app = {
       : new Set((window.appState && window.appState.deletedFeedIds) || []);
     list = list.filter(ft => ft && !activeTombstones.has(String(ft.id)));
 
+    // DÉDUPLICATION CANONIQUE PAR NOM PROPRE NORMALISÉ :
+    // Élimine les doublons fantômes (ex: multiples 'Aliment ponte' à 0 kg) et fusionne les stocks
+    const canonicalMap = new Map();
+    const idRedirects = new Map();
+
+    list.forEach(ft => {
+      const normKey = (ft.name || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+      if (!normKey) return;
+
+      if (!canonicalMap.has(normKey)) {
+        canonicalMap.set(normKey, { ...ft });
+      } else {
+        const existing = canonicalMap.get(normKey);
+        const existingStock = Number(existing.stockKg) || 0;
+        const currentStock = Number(ft.stockKg) || 0;
+
+        // Si le doublon possède du stock et pas l'existant, privilégier l'ID et les métadonnées du doublon actif
+        if (currentStock > 0 && existingStock === 0) {
+          idRedirects.set(existing.id, ft.id);
+          existing.id = ft.id;
+          existing.name = ft.name;
+        } else {
+          idRedirects.set(ft.id, existing.id);
+        }
+
+        // Fusionner les stocks physiques
+        existing.stockKg = parseFloat((existingStock + currentStock).toFixed(2));
+
+        // Conserver le prix valide
+        if ((!existing.pricePerKg || Number(existing.pricePerKg) === 0) && Number(ft.pricePerKg) > 0) {
+          existing.pricePerKg = Number(ft.pricePerKg);
+        }
+
+        // Texture
+        if (ft.texture && (!existing.texture || existing.texture === 'grain')) {
+          existing.texture = ft.texture;
+        }
+
+        existing.updatedAt = Math.max(Number(existing.updatedAt) || 0, Number(ft.updatedAt) || 0);
+      }
+    });
+
+    list = Array.from(canonicalMap.values());
+
+    const stateObj = (typeof appState !== 'undefined' ? appState : (typeof window !== 'undefined' ? window.appState : null)) || {};
+
+    // Réassigner les références orphelines dans les dépenses et distributions
+    if (idRedirects.size > 0) {
+      const expensesList = (stateObj.expenses || (typeof appState !== 'undefined' ? appState.expenses : [])) || [];
+      expensesList.forEach(e => {
+        if (e && e.feedTypeId && idRedirects.has(e.feedTypeId)) {
+          e.feedTypeId = idRedirects.get(e.feedTypeId);
+        }
+      });
+      const distribList = (stateObj.feedDistributions || (typeof appState !== 'undefined' ? appState.feedDistributions : [])) || [];
+      distribList.forEach(d => {
+        if (d && Array.isArray(d.items)) {
+          d.items.forEach(it => {
+            if (it && it.feedTypeId && idRedirects.has(it.feedTypeId)) {
+              it.feedTypeId = idRedirects.get(it.feedTypeId);
+            }
+          });
+        }
+      });
+    }
+
     // PROTECTION SOUVERAINE DU STOCK DE RÉSERVE :
     // Si l'éleveur a du stock global en réserve (feedStockKg > 0), il ne doit JAMAIS y avoir de désynchronisation avec feedTypes !
-    const stateObj = (typeof appState !== 'undefined' ? appState : (typeof window !== 'undefined' ? window.appState : null)) || {};
     const globalStock = Math.max(0, parseFloat((Number(stateObj.feedStockKg) || 0).toFixed(2)));
     const currentTotalStock = parseFloat(list.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
 
@@ -8838,7 +8906,8 @@ const app = {
 
     let lotsHtml = '';
     if (feedStockRemainingKg > 0 || totalPurchasedFeedCost > 0) {
-      const typesBreakdown = (appState.feedTypes || [])
+      const activeFeeds = (appState.feedTypes || []).filter(ft => (Number(ft.stockKg) || 0) > 0.05);
+      const typesBreakdown = activeFeeds
         .map(ft => {
           const shortName = this.getFeedShortName(ft);
           const stock = (Number(ft.stockKg) || 0).toFixed(1);
