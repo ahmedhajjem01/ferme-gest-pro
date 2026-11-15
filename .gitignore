@@ -26,6 +26,8 @@ ios/App/.symlinks/
 .vscode/
 .idea/
 *.log
+.env*
+*.local.json
 
 .vercel
 .env
