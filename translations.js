@@ -156,6 +156,8 @@ const TRANSLATIONS = {
     lbl_total_val_magasin: "Valeur totale estimée",
     btn_save_stock_magasin: "Enregistrer les Stocks Magasin",
     btn_buy_add_feed: "➕ Acheter / Ajouter un nouveau type d'aliment",
+    btn_buy_feed_shortcut: "🛍️ Acheter / Approvisionner du Stock",
+    btn_declare_new_feed: "➕ Déclarer un nouveau type au catalogue (sans achat)",
 
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 Bienvenue ! Votre exploitation commence à zéro.",
@@ -1227,6 +1229,8 @@ const TRANSLATIONS = {
     lbl_total_val_magasin: "القيمة التقديرية الإجمالية",
     btn_save_stock_magasin: "حفظ وتحديث مخزون المستودع",
     btn_buy_add_feed: "➕ شراء / إضافة نوع علف جديد",
+    btn_buy_feed_shortcut: "🛍️ شراء وتزويد العلف (تسجيل مصاريف)",
+    btn_declare_new_feed: "➕ تعريف نوع علف جديد في الدليل (بدون مصاريف)",
 
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 مرحباً بك! مشروعك يبدأ من الصفر.",
@@ -2298,6 +2302,8 @@ const TRANSLATIONS = {
     lbl_total_val_magasin: "Total estimated value",
     btn_save_stock_magasin: "Save Warehouse Stocks",
     btn_buy_add_feed: "➕ Purchase / Add new feed type",
+    btn_buy_feed_shortcut: "🛍️ Buy / Restock Feed",
+    btn_declare_new_feed: "➕ Declare new feed type in catalog (no purchase)",
 
     // Dashboard Welcome & Incubation Banners
     welcome_title: "🌱 Welcome! Your farm project starts at zero.",

@@ -433,18 +433,7 @@ const app = {
         } else {
           appState.feedDistributions = parsed.feedDistributions;
         }
-        if (!Array.isArray(parsed.feedTypes) || parsed.feedTypes.length === 0) {
-          appState.feedTypes = [];
-        } else {
-          appState.feedTypes = this.sanitizeFeedTypes(parsed.feedTypes);
-        }
-        if (Array.isArray(appState.feedTypes)) {
-          appState.feedTypes = appState.feedTypes.filter(ft => 
-            ft && ft.id !== 'feed-principal' &&
-            !(ft.name || '').toLowerCase().includes('principal') &&
-            !(ft.name || '').includes('علف رئيسي')
-          );
-        }
+        appState.feedTypes = this.sanitizeFeedTypes(Array.isArray(parsed.feedTypes) ? parsed.feedTypes : []);
         if (parsed.savedFavoriteFeedRoutine && Array.isArray(parsed.savedFavoriteFeedRoutine.items)) {
           parsed.savedFavoriteFeedRoutine.items.forEach(it => {
             if (it.name && (it.name.includes('بليه') || it.name === 'قمح / بليه')) {
@@ -6687,6 +6676,8 @@ const app = {
   sanitizeFeedTypes(feedTypes) {
     if (!Array.isArray(feedTypes)) return [];
     let list = feedTypes.map(ft => {
+      if (!ft) return null;
+      let id = String(ft.id || '');
       let name = ft.name || '';
       // Strip any "بليه" or "/ بليه"
       name = name.replace(/[\/\s]*بليه[\/\s]*/g, ' ').replace(/\s+/g, ' ').trim();
@@ -6696,11 +6687,23 @@ const app = {
                  .replace(/\(\s*\)/g, '')
                  .replace(/\s+/g, ' ')
                  .trim();
+
+      // Moderniser les anciens aliments "principal" sans JAMAIS détruire le stock de l'éleveur
+      if (id === 'feed-principal' || name.toLowerCase().includes('principal') || name.includes('علف رئيسي')) {
+        if (id === 'feed-principal') id = 'feed-complet-' + Math.random().toString(36).substr(2, 6);
+        name = name
+          .replace(/aliment\s+principal/i, 'Aliment complet')
+          .replace(/principal/gi, 'complet')
+          .replace(/علف\s+رئيسي/g, 'علف مركب')
+          .replace(/رئيسي/g, 'مركب')
+          .trim() || 'Aliment complet';
+      }
+
       if (name === 'قمح /' || name === 'Blé /') {
         name = 'Blé';
       }
       if (!name) {
-        name = ft.id ? ft.id.replace(/^feed-/, '') : 'Aliment';
+        name = id ? id.replace(/^feed-/, '') : 'Aliment';
       }
 
       const family = this.detectFeedTypeFromText(name) || this.detectFeedTypeFromText(ft.id) || 'general';
@@ -6709,7 +6712,7 @@ const app = {
 
       return {
         ...ft,
-        id: ft.id || 'feed-' + Math.random().toString(36).substr(2, 9),
+        id: id || 'feed-' + Math.random().toString(36).substr(2, 9),
         name: name,
         stockKg: Math.max(0, Number.isFinite(Number(ft.stockKg)) ? parseFloat(Number(ft.stockKg).toFixed(2)) : 0),
         pricePerKg: Math.max(0, Number.isFinite(Number(ft.pricePerKg)) ? parseFloat(Number(ft.pricePerKg).toFixed(3)) : 0),
@@ -6718,36 +6721,77 @@ const app = {
         manuallyAdjusted: ft.manuallyAdjusted !== undefined ? ft.manuallyAdjusted : true,
         updatedAt: ft.updatedAt || Date.now()
       };
-    });
+    }).filter(Boolean);
 
-    // Eradicate any synthetic feed-principal or tombstoned feeds
+    // Filtrer les éléments explicitement supprimés par leur ID strict
     const activeTombstones = (window.appAuth && typeof window.appAuth.getDeletedIds === 'function')
       ? window.appAuth.getDeletedIds()
       : new Set((window.appState && window.appState.deletedFeedIds) || []);
-    list = list.filter(ft => 
-      ft &&
-      ft.id !== 'feed-principal' &&
-      !activeTombstones.has(String(ft.id)) &&
-      !(ft.name || '').toLowerCase().includes('principal') &&
-      !(ft.name || '').includes('علف رئيسي')
-    );
+    list = list.filter(ft => ft && !activeTombstones.has(String(ft.id)));
 
-    // Auto-reconcile stock uniquement lors d'une migration initiale d'un ancien stock global non typé
-    const globalStock = Number(appState.feedStockKg) || 0;
-    const currentTotalStock = list.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
-    const isLegacyMigration = globalStock > 0 && currentTotalStock === 0 && list.length > 0 &&
-      list.every(f => !f.updatedAt && !f.manuallyAdjusted && !f.isClosed);
-    if (isLegacyMigration) {
-      const perFeed = Math.round((globalStock / list.length) * 10) / 10;
-      let runningTotal = 0;
-      list.forEach((f, idx) => {
-        if (idx === list.length - 1) {
-          f.stockKg = Math.max(0, Math.round((globalStock - runningTotal) * 10) / 10);
-        } else {
-          f.stockKg = perFeed;
-          runningTotal += perFeed;
+    // PROTECTION SOUVERAINE DU STOCK DE RÉSERVE :
+    // Si l'éleveur a du stock global en réserve (feedStockKg > 0), il ne doit JAMAIS y avoir de désynchronisation avec feedTypes !
+    const stateObj = (typeof appState !== 'undefined' ? appState : (typeof window !== 'undefined' ? window.appState : null)) || {};
+    const globalStock = Math.max(0, parseFloat((Number(stateObj.feedStockKg) || 0).toFixed(2)));
+    const currentTotalStock = parseFloat(list.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0).toFixed(2));
+
+    if (globalStock > 0) {
+      if (list.length === 0) {
+        // Cas Image 1 vs Image 2 : feedStockKg = 50.0 kg mais feedTypes était vide !
+        // Matérialiser immédiatement l'aliment en réserve pour que l'éleveur puisse le voir, l'ajuster et le distribuer
+        const defaultName = (stateObj.lang === 'ar') ? 'علف مركب' : ((stateObj.lang === 'en') ? 'Complete Feed' : 'Aliment complet');
+        let defaultCost = Number(stateObj.feedStockCostPerKg) > 0 ? Number(stateObj.feedStockCostPerKg) : 0;
+        if (defaultCost <= 0 && typeof this.getAverageFeedPricePerKg === 'function') {
+          defaultCost = this.getAverageFeedPricePerKg();
         }
-      });
+        if (defaultCost <= 0) {
+          defaultCost = 1.2;
+        }
+        const autoFt = {
+          id: 'feed-stock-' + Date.now().toString(36),
+          name: defaultName,
+          stockKg: globalStock,
+          pricePerKg: defaultCost,
+          texture: 'grain',
+          kgPerCan: 0.70,
+          manuallyAdjusted: true,
+          updatedAt: Date.now()
+        };
+        list.push(autoFt);
+        stateObj.feedStockCostPerKg = defaultCost;
+      } else if (currentTotalStock === 0) {
+        // Des aliments existent mais leur stock individuel est à 0 alors que le global est > 0
+        if (list.length === 1) {
+          list[0].stockKg = globalStock;
+          list[0].isClosed = false;
+          list[0].updatedAt = Date.now();
+        } else {
+          const perFeed = Math.round((globalStock / list.length) * 10) / 10;
+          let runningTotal = 0;
+          list.forEach((f, idx) => {
+            f.isClosed = false;
+            if (idx === list.length - 1) {
+              f.stockKg = Math.max(0, Math.round((globalStock - runningTotal) * 10) / 10);
+            } else {
+              f.stockKg = perFeed;
+              runningTotal += perFeed;
+            }
+            f.updatedAt = Date.now();
+          });
+        }
+      } else {
+        // La somme des aliments fait foi
+        stateObj.feedStockKg = currentTotalStock;
+      }
+    } else if (list.length > 0) {
+      stateObj.feedStockKg = currentTotalStock;
+    }
+
+    if (typeof appState !== 'undefined' && appState) {
+      appState.feedTypes = list;
+    }
+    if (typeof window !== 'undefined' && window.appState) {
+      window.appState.feedTypes = list;
     }
 
     return list;
@@ -7264,13 +7308,11 @@ const app = {
       const unitPrice = group.totalAddedKg > 0 ? parseFloat((group.totalCost / group.totalAddedKg).toFixed(3)) : 0;
 
       if (!ft) {
-        // Respecter les suppressions de l'utilisateur : ne JAMAIS ressusciter un aliment supprimé
+        // Respecter les suppressions de l'utilisateur : ne JAMAIS ressusciter un identifiant d'aliment supprimé
         const deletedIds = (window.appAuth && typeof window.appAuth.getDeletedIds === 'function')
           ? window.appAuth.getDeletedIds()
           : new Set(appState.deletedFeedIds || []);
-        const deletedFamilies = new Set(appState.deletedFeedFamilies || []);
         if (group.feedTypeId && deletedIds.has(String(group.feedTypeId))) return;
-        if (group.family && (deletedFamilies.has(group.family) || deletedIds.has('feed-' + group.family))) return;
 
         const existingDistKg = (appState.feedDistributions || []).reduce((sum, dist) => {
           if (!Array.isArray(dist.items)) return sum;
@@ -7383,9 +7425,28 @@ const app = {
         .reduce((sum, e) => sum + (Number(e.feedStockAddedKg) || 0), 0);
       const totalDistributedKg = (appState.feedDistributions || [])
         .reduce((sum, d) => sum + (Number(d.totalKg) || Number(d.kg) || 0), 0);
-      recovered = Math.max(0, parseFloat((totalBoughtKg - totalDistributedKg).toFixed(2)));
+      if (totalBoughtKg > 0 || totalDistributedKg > 0) {
+        recovered = Math.max(0, parseFloat((totalBoughtKg - totalDistributedKg).toFixed(2)));
+      } else {
+        recovered = Math.max(0, Number(appState.feedStockKg) || 0);
+      }
       appState.feedStockKg = recovered;
       appState.feedStockUpdatedAt = Date.now();
+      if (recovered > 0) {
+        const isAr = (appState.lang || this.currentLang) === 'ar';
+        const isEn = (appState.lang || this.currentLang) === 'en';
+        const defaultName = isAr ? 'علف مركب' : (isEn ? 'Complete Feed' : 'Aliment complet');
+        appState.feedTypes = [{
+          id: 'feed-stock-' + Date.now().toString(36),
+          name: defaultName,
+          stockKg: recovered,
+          pricePerKg: Number(appState.feedStockCostPerKg) > 0 ? Number(appState.feedStockCostPerKg) : (this.getAverageFeedPricePerKg() || 1.2),
+          texture: 'grain',
+          kgPerCan: 0.70,
+          manuallyAdjusted: true,
+          updatedAt: Date.now()
+        }];
+      }
     }
 
     this.saveState();
@@ -7829,6 +7890,9 @@ const app = {
     const hasFoodExpenses = (appState.expenses || []).some(e => e.category === 'nourriture' && !e.feedStockDetached);
     if (hasFoodExpenses) {
       this.reconcileFeedTypesFromExpenses();
+    }
+    if ((!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) && Number(appState.feedStockKg) > 0) {
+      appState.feedTypes = this.sanitizeFeedTypes([]);
     }
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [];
@@ -8296,6 +8360,9 @@ const app = {
     if (hasFoodExpenses) {
       this.reconcileFeedTypesFromExpenses();
     }
+    if ((!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) && Number(appState.feedStockKg) > 0) {
+      appState.feedTypes = this.sanitizeFeedTypes([]);
+    }
     if (!Array.isArray(appState.feedTypes) || appState.feedTypes.length === 0) {
       appState.feedTypes = [];
       const emptyStateMsg = isAr
@@ -8303,14 +8370,13 @@ const app = {
         : (isEn 
             ? '📭 No feed currently recorded in reserve stock.'
             : '📭 Aucun aliment actuellement enregistré dans le stock en réserve.');
-      const addFeedBtnText = isAr ? '➕ إضافة نوع علف جديد' : (isEn ? '➕ Add New Feed' : '➕ Ajouter un aliment');
       container.innerHTML = bannerHtml + `
         <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 0.85rem;">
           <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🌾</div>
-          <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 1.1rem; color: var(--text-main);">${emptyStateMsg}</div>
-          <button type="button" class="btn btn-sm btn-emerald" style="font-weight: 700; padding: 0.45rem 1rem;" onclick="app.openFeedPurchaseModal()">
-            ${addFeedBtnText}
-          </button>
+          <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-main);">${emptyStateMsg}</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">
+            ${isAr ? 'اختر أحد الخيارات أدناه للتصريح بمخزون جديد أو تسجيل شراء علف.' : (isEn ? 'Choose an option below to declare a stock or record a purchase.' : 'Choisissez l\'une des options ci-dessous pour déclarer votre réserve ou enregistrer un achat.')}
+          </div>
         </div>
       `;
       this.recalcStockAdjustValuation();
@@ -8407,10 +8473,12 @@ const app = {
     (appState.feedTypes || []).forEach(ft => {
       const kgEl = document.getElementById(`stockKg_${ft.id}`);
       const priceEl = document.getElementById(`priceKg_${ft.id}`);
-      const rawKg = String(kgEl?.value || '').replace(',', '.').trim();
-      const rawPrice = String(priceEl?.value || '').replace(',', '.').trim();
-      const kg = parseFloat(rawKg) || 0;
-      const price = parseFloat(rawPrice) || 0;
+      const rawKg = String(kgEl?.value !== undefined ? kgEl.value : (ft.stockKg !== undefined ? ft.stockKg : '')).replace(',', '.').trim();
+      const rawPrice = String(priceEl?.value !== undefined ? priceEl.value : (ft.pricePerKg !== undefined ? ft.pricePerKg : '')).replace(',', '.').trim();
+      const parsedKg = parseFloat(rawKg);
+      const parsedPrice = parseFloat(rawPrice);
+      const kg = (!isNaN(parsedKg) && parsedKg >= 0) ? parsedKg : (Number(ft.stockKg) || 0);
+      const price = (!isNaN(parsedPrice) && parsedPrice >= 0) ? parsedPrice : (Number(ft.pricePerKg) || 0);
       const subtotal = kg * price;
       totalKg += kg;
       totalVal += subtotal;
@@ -8418,6 +8486,11 @@ const app = {
       const subEl = document.getElementById(`subtotalVal_${ft.id}`);
       if (subEl) subEl.textContent = this.formatMoney(subtotal);
     });
+
+    if (totalKg === 0 && (appState.feedTypes || []).length === 0 && Number(appState.feedStockKg) > 0) {
+      totalKg = Number(appState.feedStockKg);
+      totalVal = totalKg * (Number(appState.feedStockCostPerKg) || (typeof this.getAverageFeedPricePerKg === 'function' ? this.getAverageFeedPricePerKg() : 1.2));
+    }
 
     const totalKgEl = document.getElementById('stockAdjustTotalKgDisplay');
     const totalValEl = document.getElementById('stockAdjustTotalValDisplay');
@@ -8436,8 +8509,8 @@ const app = {
     (appState.feedTypes || []).forEach(ft => {
       const kgInput = document.getElementById(`stockKg_${ft.id}`);
       const priceInput = document.getElementById(`priceKg_${ft.id}`);
-      const rawKg = String(kgInput?.value || '').replace(',', '.').trim();
-      const rawPrice = String(priceInput?.value || '').replace(',', '.').trim();
+      const rawKg = String(kgInput?.value !== undefined ? kgInput.value : (ft.stockKg !== undefined ? ft.stockKg : '')).replace(',', '.').trim();
+      const rawPrice = String(priceInput?.value !== undefined ? priceInput.value : (ft.pricePerKg !== undefined ? ft.pricePerKg : '')).replace(',', '.').trim();
       const parsedKg = parseFloat(rawKg);
       const parsedPrice = parseFloat(rawPrice);
 
@@ -8458,6 +8531,11 @@ const app = {
       totalKg += ft.stockKg;
       totalVal += ft.stockKg * ft.pricePerKg;
     });
+
+    if (totalKg === 0 && (appState.feedTypes || []).length === 0 && Number(appState.feedStockKg) > 0) {
+      totalKg = Number(appState.feedStockKg);
+      totalVal = totalKg * (Number(appState.feedStockCostPerKg) || (typeof this.getAverageFeedPricePerKg === 'function' ? this.getAverageFeedPricePerKg() : 1.2));
+    }
 
     appState.feedStockKg = parseFloat(totalKg.toFixed(2));
     appState.feedStockDate = this.getTodayStr();

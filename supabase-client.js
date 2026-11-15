@@ -1467,25 +1467,78 @@
         if (Array.isArray(cloudData.feedTypes)) state.feedTypes = cloudData.feedTypes;
       }
 
-      // Keep feedTypes clean: remove any artificial feed-principal, tombstoned feeds, and sync total stock
+      // Keep feedTypes clean, modernized, and in strict parity with total warehouse stock
       if (Array.isArray(state.feedTypes)) {
         const deletedIds = this.getDeletedIds();
-        state.feedTypes = state.feedTypes.filter(ft => 
-          ft && ft.id !== 'feed-principal' &&
-          !deletedIds.has(String(ft.id)) &&
-          !(ft.name || '').toLowerCase().includes('principal') &&
-          !(ft.name || '').includes('علف رئيسي')
-        );
+        state.feedTypes = state.feedTypes.map(ft => {
+          if (!ft) return null;
+          let id = String(ft.id || '');
+          let name = String(ft.name || '');
+          if (id === 'feed-principal' || name.toLowerCase().includes('principal') || name.includes('علف رئيسي')) {
+            if (id === 'feed-principal') id = 'feed-complet-' + Math.random().toString(36).substr(2, 6);
+            name = name.replace(/aliment\s+principal/i, 'Aliment complet').replace(/principal/gi, 'complet').replace(/علف\s+رئيسي/g, 'علف مركب').replace(/رئيسي/g, 'مركب').trim() || 'Aliment complet';
+            ft.id = id;
+            ft.name = name;
+          }
+          return ft;
+        }).filter(ft => ft && !deletedIds.has(String(ft.id)));
+
         const calculatedFeedStock = state.feedTypes.reduce((sum, ft) => sum + (Number(ft.stockKg) || 0), 0);
-        if (state.feedTypes.length > 0) {
-          // Si des aliments sont déclarés, le stock global est exactement égal à la somme des aliments (même si 0 kg)
-          state.feedStockKg = parseFloat(calculatedFeedStock.toFixed(2));
-        } else if (Number(cloudData.feedStockKg) >= 0 && cloudData.feedStockKg !== null) {
-          state.feedStockKg = Number(cloudData.feedStockKg);
-        } else if (Number(state.feedStockKg) > 0) {
-          // Conserver le stock local uniquement si feedTypes est complètement vide
+
+        if (state.feedTypes.length === 0) {
+          const globalStockToReconcile = Math.max(
+            0,
+            Number(cloudData.feedStockKg) > 0 ? Number(cloudData.feedStockKg) : (Number(state.feedStockKg) || 0)
+          );
+          if (globalStockToReconcile > 0) {
+            state.feedStockKg = globalStockToReconcile;
+            const defaultName = (state.lang === 'ar') ? 'علف مركب' : 'Aliment complet';
+            const defaultPrice = Number(cloudData.feedStockCostPerKg) > 0 ? Number(cloudData.feedStockCostPerKg) : (Number(state.feedStockCostPerKg) || 1.2);
+            state.feedTypes = [{
+              id: 'feed-stock-' + Date.now().toString(36),
+              name: defaultName,
+              stockKg: state.feedStockKg,
+              pricePerKg: defaultPrice,
+              texture: 'grain',
+              kgPerCan: 0.70,
+              manuallyAdjusted: true,
+              updatedAt: Date.now()
+            }];
+            state.feedStockCostPerKg = defaultPrice;
+          } else {
+            state.feedStockKg = 0;
+          }
         } else {
-          state.feedStockKg = 0;
+          // Des aliments existent dans state.feedTypes
+          const isPristineMigration = calculatedFeedStock === 0 && 
+            (Number(cloudData.feedStockKg) > 0 || Number(state.feedStockKg) > 0) &&
+            state.feedTypes.every(f => !f.updatedAt && !f.manuallyAdjusted && !f.isClosed);
+          
+          if (isPristineMigration) {
+            const globalStockToReconcile = Math.max(0, Number(cloudData.feedStockKg) > 0 ? Number(cloudData.feedStockKg) : Number(state.feedStockKg));
+            if (state.feedTypes.length === 1) {
+              state.feedTypes[0].stockKg = globalStockToReconcile;
+              state.feedTypes[0].isClosed = false;
+              state.feedTypes[0].updatedAt = Date.now();
+            } else {
+              const perFeed = Math.round((globalStockToReconcile / state.feedTypes.length) * 10) / 10;
+              let runningTotal = 0;
+              state.feedTypes.forEach((f, idx) => {
+                f.isClosed = false;
+                if (idx === state.feedTypes.length - 1) {
+                  f.stockKg = Math.max(0, Math.round((globalStockToReconcile - runningTotal) * 10) / 10);
+                } else {
+                  f.stockKg = perFeed;
+                  runningTotal += perFeed;
+                }
+                f.updatedAt = Date.now();
+              });
+            }
+            state.feedStockKg = globalStockToReconcile;
+          } else {
+            // Le stock global est exactement égal à la somme des aliments (même si 0 kg)
+            state.feedStockKg = parseFloat(calculatedFeedStock.toFixed(2));
+          }
         }
       }
 
