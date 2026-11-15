@@ -3301,20 +3301,13 @@ const app = {
     const input = document.getElementById('dailyEggCount');
     const dateInput = document.getElementById('dailyEggDate');
     const speciesSelect = document.getElementById('dailyEggSpecies');
-    const catSelect = document.getElementById('dailyEggCategory');
 
     // Reset dynamic custom fields
     const customRow = document.getElementById('dailyEggCustomFieldsRow');
-    const customSpeciesGroup = document.getElementById('dailyEggCustomSpeciesGroup');
     const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
-    const customCatGroup = document.getElementById('dailyEggCustomCategoryGroup');
-    const customCatInput = document.getElementById('dailyEggCustomCategory');
 
     if (customRow) customRow.style.display = 'none';
-    if (customSpeciesGroup) customSpeciesGroup.style.display = 'none';
-    if (customCatGroup) customCatGroup.style.display = 'none';
     if (customSpeciesInput) { customSpeciesInput.value = ''; customSpeciesInput.required = false; }
-    if (customCatInput) { customCatInput.value = ''; customCatInput.required = false; }
 
     if (speciesSelect) {
       if (appState.eggFilter && appState.eggFilter !== 'all') {
@@ -3322,9 +3315,6 @@ const app = {
       } else {
         speciesSelect.value = 'poule';
       }
-    }
-    if (catSelect) {
-      catSelect.value = 'consommation';
     }
     if (dateInput) {
       dateInput.value = this.getTodayStr();
@@ -3344,53 +3334,18 @@ const app = {
     const speciesSelect = document.getElementById('dailyEggSpecies');
     const isOther = (speciesSelect && speciesSelect.value === 'autre');
     const customRow = document.getElementById('dailyEggCustomFieldsRow');
-    const customSpeciesGroup = document.getElementById('dailyEggCustomSpeciesGroup');
     const customSpeciesInput = document.getElementById('dailyEggCustomSpecies');
-    const catSelect = document.getElementById('dailyEggCategory');
-    const isCatOther = (catSelect && catSelect.value === 'autre');
 
-    if (customSpeciesGroup && customSpeciesInput) {
+    if (customRow && customSpeciesInput) {
       if (isOther) {
-        customSpeciesGroup.style.display = 'block';
+        customRow.style.display = 'block';
         customSpeciesInput.required = true;
         setTimeout(() => customSpeciesInput.focus(), 100);
       } else {
-        customSpeciesGroup.style.display = 'none';
+        customRow.style.display = 'none';
         customSpeciesInput.required = false;
         customSpeciesInput.value = '';
       }
-    }
-
-    if (customRow) {
-      customRow.style.display = (isOther || isCatOther) ? 'flex' : 'none';
-    }
-
-    this.updateDailyEggPreview();
-  },
-
-  handleDailyEggCategoryChange() {
-    const catSelect = document.getElementById('dailyEggCategory');
-    const isCatOther = (catSelect && catSelect.value === 'autre');
-    const customRow = document.getElementById('dailyEggCustomFieldsRow');
-    const customCatGroup = document.getElementById('dailyEggCustomCategoryGroup');
-    const customCatInput = document.getElementById('dailyEggCustomCategory');
-    const speciesSelect = document.getElementById('dailyEggSpecies');
-    const isSpeciesOther = (speciesSelect && speciesSelect.value === 'autre');
-
-    if (customCatGroup && customCatInput) {
-      if (isCatOther) {
-        customCatGroup.style.display = 'block';
-        customCatInput.required = true;
-        setTimeout(() => customCatInput.focus(), 100);
-      } else {
-        customCatGroup.style.display = 'none';
-        customCatInput.required = false;
-        customCatInput.value = '';
-      }
-    }
-
-    if (customRow) {
-      customRow.style.display = (isSpeciesOther || isCatOther) ? 'flex' : 'none';
     }
 
     this.updateDailyEggPreview();
@@ -3607,17 +3562,8 @@ const app = {
       return;
     }
 
-    const categorySelect = document.getElementById('dailyEggCategory');
-    const rawCategory = (categorySelect && categorySelect.value) ? categorySelect.value : 'consommation';
-    const customCategoryInput = document.getElementById('dailyEggCustomCategory');
-    const customCategoryVal = customCategoryInput ? customCategoryInput.value.trim() : '';
-
-    if (rawCategory === 'autre' && !customCategoryVal) {
-      this._isSavingDailyEggs = false;
-      this.showToast(this.t('err_enter_custom_category') || 'Veuillez préciser le nom de la catégorie.', 'warning');
-      if (customCategoryInput) customCategoryInput.focus();
-      return;
-    }
+    const rawCategory = 'consommation';
+    const categoryLabel = 'Consommation';
 
     const dateInput = document.getElementById('dailyEggDate');
     const harvestDate = (dateInput && dateInput.value) ? dateInput.value : this.getTodayStr();
@@ -3641,12 +3587,6 @@ const app = {
       speciesKey = safeSuffix ? ('autre_' + safeSuffix) : 'autre';
     }
 
-    let categoryLabel = 'Consommation';
-    if (rawCategory === 'a_couver') {
-      categoryLabel = 'À couver';
-    } else if (rawCategory === 'autre') {
-      categoryLabel = customCategoryVal || 'Autre';
-    }
 
     if (Array.isArray(appState.deletedEggCategories)) {
       appState.deletedEggCategories = appState.deletedEggCategories.filter(c => c !== speciesKey);
