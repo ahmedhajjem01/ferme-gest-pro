@@ -206,6 +206,7 @@ const TRANSLATIONS = {
     section_animals_title: "Gestion du Cheptel & des Bandes",
     section_animals_desc: "Suivez chaque génération, race, âge en jours/semaines, taux de survie et alimentation.",
     btn_new_lot: "+ Nouveau Lot / Animal",
+    btn_deduct_4dt_all_lots: "-4 DT / tête (Tous les lots)",
 
     section_expenses_title: "Dépenses & Charges d'Exploitation",
     section_expenses_desc: "Nourriture, électricité, eau, médicaments vétérinaires et salaires du personnel.",
@@ -1279,6 +1280,7 @@ const TRANSLATIONS = {
     section_animals_title: "إدارة القطيع والدفعات",
     section_animals_desc: "تتبع كل جيل، السلالة، العمر بالأيام والأسابيع، نسبة البقاء على قيد الحياة والتغذية.",
     btn_new_lot: "+ دفعة / حيوانات جديدة",
+    btn_deduct_4dt_all_lots: "-4 د.ت / رأس (جميع الدفعات)",
 
     section_expenses_title: "المصاريف والتكاليف التشغيلية",
     section_expenses_desc: "الأعلاف، الكهرباء، الماء، الأدوية البيطرية واللقاحات، وأجور العمال.",
@@ -2352,6 +2354,7 @@ const TRANSLATIONS = {
     section_animals_title: "Flock & Livestock Management",
     section_animals_desc: "Track every generation, breed, age in days/weeks, survival rate and feeding.",
     btn_new_lot: "+ New Batch / Animal",
+    btn_deduct_4dt_all_lots: "-4 DT / head (All batches)",
 
     section_expenses_title: "Operating Expenses & Costs",
     section_expenses_desc: "Feed, electricity, water, veterinary medicine, vaccines and staff salaries.",

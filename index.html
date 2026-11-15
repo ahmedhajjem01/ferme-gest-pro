@@ -820,6 +820,9 @@
               <p class="section-desc" data-i18n="section_animals_desc">Suivez chaque génération, race, âge en jours/semaines, taux de survie et alimentation.</p>
             </div>
             <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; font-weight: 700; border-color: var(--accent-amber); color: var(--accent-amber); padding: 0.45rem 0.75rem;" onclick="app.decreaseAllLotsCostBy4DT()" title="Déduire 4 DT du coût par tête de tous les lots">
+                🏷️ <span data-i18n="btn_deduct_4dt_all_lots">-4 DT / tête (Tous les lots)</span>
+              </button>
               <button class="btn btn-primary" onclick="app.openModal('modalAddAnimal')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
                   <line x1="12" y1="5" x2="12" y2="19"></line>

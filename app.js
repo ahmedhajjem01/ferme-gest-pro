@@ -10697,6 +10697,69 @@ const app = {
     }
   },
 
+  async decreaseAllLotsCostBy4DT() {
+    if (!Array.isArray(appState.animals) || appState.animals.length === 0) {
+      const isAr = (appState.lang || this.currentLang) === 'ar';
+      this.showToast(isAr ? '⚠️ لا توجد أي دفعة مسجلة حالياً.' : '⚠️ Aucun lot d\'animaux enregistré pour le moment.', 'warning');
+      return;
+    }
+
+    const isAr = (appState.lang || this.currentLang) === 'ar';
+    const isEn = (appState.lang || this.currentLang) === 'en';
+    const currSym = this.getCurrencySymbol();
+
+    const titleText = isAr ? '🏷️ تخفيض 4 د.ت من سعر رأس كل دفعة' : (isEn ? '🏷️ Deduct 4 DT per head on all lots' : '🏷️ Déduire 4 DT du coût par tête de tous les lots');
+    const msgText = isAr
+      ? `هل تريد فعلاً خصم 4 ${currSym} من تكلفة الرأس لجميع الدفعات (${appState.animals.length} دفعة)، وتحديث التكاليف والمصاريف ومزامنتها في السحابة؟`
+      : (isEn
+          ? `Do you really want to deduct 4 ${currSym} from cost per head for all batches (${appState.animals.length} lots), recalculate costs and sync to Cloud?`
+          : `Voulez-vous déduire 4 ${currSym} du coût par tête de tous vos lots (${appState.animals.length} lot(s)), recalculer les dépenses associées et synchroniser sur Supabase ?`);
+    const confirmBtn = isAr ? 'نعم، خصم 4 د.ت' : (isEn ? 'Yes, deduct 4 DT' : 'Oui, déduire 4 DT');
+    const cancelBtn = isAr ? 'إلغاء' : (isEn ? 'Cancel' : 'Annuler');
+
+    this.confirmDialog({
+      title: titleText,
+      message: msgText,
+      confirmText: confirmBtn,
+      cancelText: cancelBtn,
+      onConfirm: async () => {
+        let modified = 0;
+        (appState.animals || []).forEach(lot => {
+          const oldCost = Number(lot.costPerHead) || 0;
+          const newCost = Math.max(0, parseFloat((oldCost - 4).toFixed(3)));
+          lot.costPerHead = newCost;
+          const qty = Number(lot.initialQuantity) || Number(lot.quantity) || 1;
+          lot.totalCost = parseFloat((qty * newCost).toFixed(3));
+
+          // Mettre à jour la dépense associée en trésorerie si elle existe
+          const exp = (appState.expenses || []).find(e =>
+            e.animalLotId === lot.id ||
+            (e.category === 'animaux' && e.title && lot.name && e.title.includes(lot.name))
+          );
+          if (exp) {
+            exp.total = lot.totalCost;
+            exp.unitPrice = newCost;
+          }
+          modified++;
+        });
+
+        this.saveState();
+        this.renderAll();
+
+        if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+          await window.appAuth.pushData(false);
+        }
+
+        const successMsg = isAr
+          ? `✅ تم خصم 4 ${currSym} بنجاح من ${modified} دفعة وحفظها بالسحابة !`
+          : (isEn
+              ? `✅ 4 ${currSym} successfully deducted from ${modified} batch(es) and synced!`
+              : `✅ Déduction de 4 DT appliquée avec succès sur ${modified} lot(s) et synchronisée sur Supabase !`);
+        this.showToast(successMsg, 'success');
+      }
+    });
+  },
+
   // Toggle & gestion du menu mobile (3 lignes dans la barre haute)
   toggleMobileMenu(e) {
     if (e && e.stopPropagation) e.stopPropagation();
