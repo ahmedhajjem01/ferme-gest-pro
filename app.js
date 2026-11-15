@@ -334,6 +334,8 @@ const app = {
         userProfile: appState.userProfile || null,
         farmCode: localStorage.getItem('fermegest_farm_code') || null,
         farmRole: localStorage.getItem('fermegest_farm_role') || 'owner',
+        lastResetAt: appState.lastResetAt || null,
+        _resetCleared: !!appState._resetCleared,
         _zeroInitialized: true
       });
       try {
@@ -518,6 +520,8 @@ const app = {
         appState.deletedFeedNames = Array.isArray(parsed.deletedFeedNames) ? parsed.deletedFeedNames : [];
         appState.deletedFeedIds = Array.isArray(parsed.deletedFeedIds) ? parsed.deletedFeedIds : [];
         appState.deletedEggCategories = Array.isArray(parsed.deletedEggCategories) ? parsed.deletedEggCategories : [];
+        appState.lastResetAt = Number(parsed.lastResetAt) || null;
+        appState._resetCleared = !!parsed._resetCleared;
         if (Array.isArray(appState.deletedEggCategories) && appState.eggStocks) {
           appState.deletedEggCategories.forEach(delCat => {
             if (delCat !== 'poule') delete appState.eggStocks[delCat];
@@ -670,6 +674,118 @@ const app = {
       }
     };
     reader.readAsText(file);
+  },
+
+  // Confirmation sécurisée de remise à zéro de la ferme (Mettre à 0)
+  confirmResetFarmData() {
+    const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
+    const title = this.t('reset_farm_confirm_title') || (isAr ? '⚠️ تأكيد تصفير المزرعة بالكامل' : (isEn ? '⚠️ Reset Farm to Zero' : '⚠️ Remise à zéro de la ferme'));
+    const msg = this.t('reset_farm_confirm_msg') || (isAr ? 'هل أنت متأكد تماماً من رغبتك في تصفير كافة بيانات المزرعة؟ سيتم مسح الحيوانات والمخزون والإنتاج والمبيعات والمصاريف. لن يتم حذف حسابك.' : (isEn ? 'Are you sure you want to reset all farm data to 0? This will clear livestock, egg stocks, harvests, sales, and expenses. Your login account will remain active.' : 'Êtes-vous absolument sûr de vouloir remettre toutes les données de la ferme à zéro ? Cette action effacera le cheptel, les stocks d\'œufs, les récoltes, les ventes et les dépenses. Votre compte utilisateur restera actif.'));
+    const confirmText = this.t('btn_reset_farm_confirm_action') || (isAr ? 'تأكيد التصفير (0)' : (isEn ? 'Confirm Reset to 0' : 'Confirmer la remise à 0'));
+    const cancelText = this.t('btn_cancel') || (isAr ? 'إلغاء' : (isEn ? 'Cancel' : 'Annuler'));
+
+    this.confirmDialog({
+      title: title,
+      icon: '🗑️',
+      message: msg,
+      isDanger: true,
+      confirmText: confirmText,
+      cancelText: cancelText,
+      onConfirm: () => {
+        this.resetFarmDataToZero();
+      }
+    });
+  },
+
+  // Exécution atomique de la remise à zéro de la ferme
+  resetFarmDataToZero() {
+    try {
+      // 1. Sauvegarde de sécurité pré-reset (garde-fou en cas d'erreur de manipulation)
+      try {
+        const curSerialized = localStorage.getItem('fermegest_state');
+        if (curSerialized) {
+          localStorage.setItem('fermegest_state_pre_reset', curSerialized);
+        }
+        localStorage.removeItem('fermegest_state_backup');
+        localStorage.removeItem('fermegest_offline_queue');
+        localStorage.removeItem('fermegest_cloud_snapshot');
+      } catch (e) {}
+
+      // 2. Horodatage critique de réinitialisation (anti-résurrection cloud)
+      const now = Date.now();
+      appState.lastResetAt = now;
+      appState.lastUpdated = now;
+      appState._resetCleared = true;
+
+      // 3. Remise à zéro intégrale des données métier de l'élevage
+      appState.eggStock = 0;
+      appState.eggStocks = { poule: 0, canard_barbarie: 0 };
+      appState.eggHarvests = [];
+      appState.eggConsumptions = [];
+      appState.deletedEggCategories = [];
+      appState.milkStock = 0;
+      appState.milkHarvests = [];
+      appState.feedStockKg = 0;
+      appState.feedStockCostPerKg = 0;
+      appState.feedStockDate = null;
+      appState.feedStockUpdatedAt = null;
+      appState.customDailyFeedKg = null;
+      appState.sicamCansCount = null;
+      appState.feedDistributions = [];
+      appState.feedTypes = [];
+      appState.deletedFeedIds = [];
+      appState.deletedFeedFamilies = [];
+      appState.animals = [];
+      appState.expenses = [];
+      appState.sales = [];
+      appState.incubatorBatches = [];
+      appState.calendarEvents = [];
+      appState.dismissedSaleAlerts = [];
+      appState.savedFavoriteFeedRoutine = null;
+
+      // 4. Persistance locale de l'état remis à 0
+      this.saveState();
+
+      // 5. Synchronisation Cloud Supabase immédiate avec transmission du flag _resetCleared
+      if (window.appAuth && typeof window.appAuth.pushData === 'function') {
+        window.appAuth.pushData(false, true);
+      }
+
+      // 6. Rendu complet de l'interface & notification de succès
+      this.renderAll();
+      this.closeModal('modalUserProfile');
+      this.showToast(this.t('reset_farm_success_toast') || '✅ Ferme remise à 0 avec succès !');
+    } catch (err) {
+      console.error('Erreur lors de la remise à zéro de la ferme:', err);
+      this.showToast('⚠️ Erreur lors de la réinitialisation : ' + (err.message || err));
+    }
+  },
+
+  // Purge complète du cache Service Worker et rafraîchissement immédiat
+  async clearAppCacheAndReload() {
+    this.showToast('🔄 Nettoyage du cache et actualisation...');
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) {
+          await r.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const k of keys) {
+          await caches.delete(k);
+        }
+      }
+    } catch (e) {
+      console.warn('Cache clear error:', e);
+    }
+    setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('_v', Date.now());
+      window.location.href = url.toString();
+    }, 300);
   },
 
   forceHardReload() {

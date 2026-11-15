@@ -877,6 +877,8 @@
           incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
           calendarEvents: Array.isArray(state.calendarEvents) ? state.calendarEvents : [],
           deletedIds: Array.from(this.getDeletedIds()),
+          lastResetAt: state.lastResetAt || null,
+          _resetCleared: !!state._resetCleared,
           lastUpdated: Number(state.lastUpdated) || Date.now()
         };
 
@@ -971,6 +973,8 @@
         sales: Array.isArray(state.sales) ? state.sales : [],
         incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
         deletedIds: Array.from(this.getDeletedIds()),
+        lastResetAt: state.lastResetAt || null,
+        _resetCleared: !!state._resetCleared,
         lastUpdated: Number(state.lastUpdated) || Date.now()
       };
 
@@ -1142,15 +1146,28 @@
       // ou si l'horodatage local est strictement plus récent qu'un cloud valide, le cloud n'est PAS plus frais
       const isCloudFresher = (cloudLastUpdated > localLastEdit) && !hasPendingLocalPush;
 
+      // Détection de l'ordre souverain de remise à zéro de la ferme ("Mettre à 0")
+      const isCloudReset = cloudData._resetCleared === true && Number(cloudData.lastResetAt) >= Number(state.lastResetAt || 0);
+      const isLocalOverruledByReset = isCloudReset && (Number(cloudData.lastResetAt) >= localLastEdit || isCloudFresher);
+
       // Protection anti-écrasement destructive :
       // Interdire le mode destructif (doMerge = false) si le terminal local possède déjà des données réelles
+      // SAUF si le Cloud transmet un ordre explicite de réinitialisation ("Mettre à 0") plus récent que les données locales
       const localDataCount = (state.animals || []).length + 
                              (state.expenses || []).length + 
                              (state.feedTypes || []).length + 
                              (state.sales || []).length + 
                              (state.eggHarvests || []).length + 
                              (state.feedDistributions || []).length;
-      const effectiveDoMerge = doMerge || (localDataCount > 0) || hasPendingLocalPush;
+      let effectiveDoMerge = doMerge || (localDataCount > 0) || hasPendingLocalPush;
+      if (isLocalOverruledByReset) {
+        effectiveDoMerge = false;
+        state.lastResetAt = Number(cloudData.lastResetAt);
+        state._resetCleared = true;
+        try {
+          localStorage.removeItem('fermegest_pending_push');
+        } catch(e) {}
+      }
 
       // Ingest deletedIds if provided by cloud
       if (Array.isArray(cloudData.deletedIds)) {
@@ -1663,6 +1680,8 @@
         window.appState.sales = state.sales;
         window.appState.incubatorBatches = state.incubatorBatches;
         window.appState.calendarEvents = state.calendarEvents;
+        window.appState.lastResetAt = state.lastResetAt || null;
+        window.appState._resetCleared = !!state._resetCleared;
       }
 
       // Persist to local device storage as well (offline fallback)
@@ -1693,7 +1712,9 @@
           expenses: state.expenses,
           sales: state.sales,
           incubatorBatches: state.incubatorBatches,
-          calendarEvents: state.calendarEvents
+          calendarEvents: state.calendarEvents,
+          lastResetAt: state.lastResetAt || null,
+          _resetCleared: !!state._resetCleared
         });
         localStorage.setItem('fermegest_state', serialized);
         // PROTECTION CRITIQUE : NE JAMAIS ÉCRASER fermegest_state_backup lors d'une synchro Cloud !
@@ -2217,6 +2238,8 @@
         sales: Array.isArray(state.sales) ? state.sales : [],
         incubatorBatches: Array.isArray(state.incubatorBatches) ? state.incubatorBatches : [],
         deletedIds: Array.from(this.getDeletedIds()),
+        lastResetAt: state.lastResetAt || null,
+        _resetCleared: !!state._resetCleared,
         lastUpdated: Number(state.lastUpdated) || Date.now()
       };
 

@@ -28,6 +28,8 @@ ios/App/.symlinks/
 *.log
 .env*
 *.local.json
+__pycache__/
+*.pyc
 
 .vercel
 .env

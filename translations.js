@@ -657,6 +657,14 @@ const TRANSLATIONS = {
     desc_recalculate_egg_stock: "Déduit rigoureusement toutes les ventes, consommations et couvées de vos pontes passées.",
     backup_btn_export: "Exporter (JSON)",
     backup_btn_import: "Importer (JSON)",
+    reset_farm_danger_zone_title: "Zone de Danger : Réinitialisation",
+    reset_farm_danger_zone_desc: "Remettre toutes les données de l'élevage à zéro (stocks, pontes, cheptel, finances). Votre compte reste connecté.",
+    btn_reset_farm_zero: "Mettre à 0 la ferme",
+    btn_clear_cache_reload: "Actualiser & Vider le cache (PC / Mobile)",
+    reset_farm_confirm_title: "⚠️ Remise à zéro de la ferme",
+    reset_farm_confirm_msg: "Êtes-vous absolument sûr de vouloir remettre toutes les données de la ferme à zéro ? Cette action effacera le cheptel, les stocks d'œufs, les récoltes, les ventes et les dépenses. Votre compte utilisateur restera actif.",
+    btn_reset_farm_confirm_action: "Confirmer la remise à 0",
+    reset_farm_success_toast: "✅ Ferme remise à 0 avec succès !",
 
     // Daily 16h Feed Notification
     notif_daily_feed_title: "🌾 Les animaux ont faim !",
@@ -1730,6 +1738,14 @@ const TRANSLATIONS = {
     desc_recalculate_egg_stock: "يخصم بدقة كامل المبيعات والاستهلاك والحاضنة من مجموع الإنتاج السابق.",
     backup_btn_export: "تصدير (JSON)",
     backup_btn_import: "استيراد (JSON)",
+    reset_farm_danger_zone_title: "منطقة الخطر: تصفير المزرعة",
+    reset_farm_danger_zone_desc: "إعادة تعيين كافة بيانات المزرعة إلى الصفر (المخزون، الإنتاج، الحيوانات، المعاملات). سيبقى حسابك مسجلاً.",
+    btn_reset_farm_zero: "تصفير المزرعة (0)",
+    btn_clear_cache_reload: "تحديث وتفريغ الذاكرة المؤقتة (كمبيوتر / هاتف)",
+    reset_farm_confirm_title: "⚠️ تأكيد تصفير المزرعة بالكامل",
+    reset_farm_confirm_msg: "هل أنت متأكد تماماً من رغبتك في تصفير كافة بيانات المزرعة؟ سيتم مسح الحيوانات والمخزون والإنتاج والمبيعات والمصاريف. لن يتم حذف حسابك.",
+    btn_reset_farm_confirm_action: "تأكيد التصفير (0)",
+    reset_farm_success_toast: "✅ تم تصفير بيانات المزرعة بنجاح!",
 
     // Daily 16h Feed Notification
     notif_daily_feed_title: "🌾 الحيوانات جائعة !",
@@ -2803,6 +2819,14 @@ const TRANSLATIONS = {
     desc_recalculate_egg_stock: "Rigorously deducts all sales, consumptions, and incubations from past harvests.",
     backup_btn_export: "Export (JSON)",
     backup_btn_import: "Import (JSON)",
+    reset_farm_danger_zone_title: "Danger Zone: Farm Reset",
+    reset_farm_danger_zone_desc: "Reset all farm data to zero (stocks, egg harvests, animals, finances). Your account remains connected.",
+    btn_reset_farm_zero: "Reset Farm to 0",
+    btn_clear_cache_reload: "Refresh & Clear Cache (PC / Mobile)",
+    reset_farm_confirm_title: "⚠️ Reset Farm to Zero",
+    reset_farm_confirm_msg: "Are you sure you want to reset all farm data to 0? This will clear livestock, egg stocks, harvests, sales, and expenses. Your login account will remain active.",
+    btn_reset_farm_confirm_action: "Confirm Reset to 0",
+    reset_farm_success_toast: "✅ Farm data successfully reset to 0!",
 
     // Daily 16h Feed Notification
     notif_daily_feed_title: "🌾 The animals are hungry!",
