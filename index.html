@@ -34,7 +34,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=97">
+  <link rel="stylesheet" href="styles.css?v=98">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -103,7 +103,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=165').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=166').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -592,6 +592,17 @@
               <button type="button" class="egg-period-btn" data-period="14d" onclick="app.setEggChartPeriod('14d')" data-i18n="egg_chart_period_14d">14j</button>
               <button type="button" class="egg-period-btn" data-period="30d" onclick="app.setEggChartPeriod('30d')" data-i18n="egg_chart_period_30d">30j</button>
               <button type="button" class="egg-period-btn" data-period="all" onclick="app.setEggChartPeriod('all')" data-i18n="egg_chart_period_all">Tout</button>
+            </div>
+          </div>
+
+          <!-- Filtres Multi-Espèces d'Œufs (Tous les œufs ou multi-sélection: Poule, Canard...) -->
+          <div class="egg-chart-species-filter-container">
+            <div class="egg-chart-species-filter-header">
+              <span class="egg-chart-filter-label" data-i18n="egg_chart_filter_label">🥚 Filtre par type d'œuf (choix multiple) :</span>
+              <span class="egg-chart-filter-hint" data-i18n="egg_chart_multi_hint">Cliquez pour superposer plusieurs courbes</span>
+            </div>
+            <div class="egg-chart-species-pills-bar" id="eggChartSpeciesFilterBar">
+              <!-- Rempli dynamiquement -->
             </div>
           </div>
 
@@ -3769,7 +3780,8 @@
 
   <!-- Modal 3.5: Sélection des Types d'Animaux Gérés (Choix Multiple) -->
   <div id="modalAnimalSelection" class="modal-overlay hidden" data-backdrop="static" style="z-index: 10005;">
-    <div class="modal-card animal-selection-modal-card">
+    <div class="modal-card animal-selection-modal-card" style="position: relative;">
+      <button type="button" class="modal-close" id="modalAnimalSelectionCloseBtn" onclick="app.closeModal('modalAnimalSelection')" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; display: none;" title="Fermer">&times;</button>
       <div class="animal-selection-header">
         <div class="animal-selection-icon-badge">🐾</div>
         <h2 class="animal-selection-title" data-i18n="animals_select_title">Quels types d'animaux voulez-vous gérer ? 🐾</h2>
@@ -3922,8 +3934,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
     }
   </script>
-  <script src="supabase-client.js?v=131"></script>
-  <script src="translations.js?v=131"></script>
-  <script src="app.js?v=131"></script>
+  <script src="supabase-client.js?v=132"></script>
+  <script src="translations.js?v=132"></script>
+  <script src="app.js?v=132"></script>
 </body>
 </html>

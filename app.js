@@ -1570,18 +1570,36 @@ const app = {
     }, 400);
   },
 
+  normalizeAnimalTypes(arr) {
+    if (!Array.isArray(arr)) return ['poultry'];
+    const res = [];
+    arr.forEach(t => {
+      let norm = String(t || '').trim().toLowerCase();
+      if (norm === 'bovine') norm = 'cattle';
+      if (norm === 'ovine') norm = 'sheep';
+      if (norm !== 'equine' && ['poultry', 'cattle', 'sheep'].includes(norm) && !res.includes(norm)) {
+        res.push(norm);
+      }
+    });
+    return res.length > 0 ? res : ['poultry'];
+  },
+
   openAnimalSelectionModal(isEditMode = false) {
     const modal = document.getElementById('modalAnimalSelection');
     if (!modal) return;
 
     this.isEditingAnimalTypes = !!isEditMode;
+    const closeBtn = document.getElementById('modalAnimalSelectionCloseBtn');
+    if (closeBtn) {
+      closeBtn.style.display = isEditMode ? 'block' : 'none';
+    }
 
     const currentTypes = (appState.userProfile && Array.isArray(appState.userProfile.managedAnimals) && appState.userProfile.managedAnimals.length > 0)
-      ? appState.userProfile.managedAnimals.filter(t => t !== 'equine')
+      ? this.normalizeAnimalTypes(appState.userProfile.managedAnimals)
       : (function() {
           try {
             const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
-            return Array.isArray(raw) && raw.length > 0 ? raw.filter(t => t !== 'equine') : ['poultry'];
+            return Array.isArray(raw) && raw.length > 0 ? app.normalizeAnimalTypes(raw) : ['poultry'];
           } catch(e) { return ['poultry']; }
         })();
 
@@ -1636,7 +1654,7 @@ const app = {
   },
 
   saveAnimalTypeSelection() {
-    const selected = this.tempSelectedAnimalTypes || ['poultry'];
+    const selected = this.normalizeAnimalTypes(this.tempSelectedAnimalTypes || ['poultry']);
     if (!Array.isArray(selected) || selected.length === 0) {
       const err = document.getElementById('animalSelectionError');
       if (err) err.classList.remove('hidden');
@@ -1645,6 +1663,7 @@ const app = {
 
     if (!appState.userProfile) appState.userProfile = {};
     appState.userProfile.managedAnimals = [...selected];
+    appState.userProfile.updatedAt = Date.now();
 
     try {
       localStorage.setItem('fermegest_managed_animal_types', JSON.stringify(selected));
@@ -1652,12 +1671,54 @@ const app = {
       localStorage.setItem('fermegest_user_profile', JSON.stringify(appState.userProfile));
     } catch(e) {}
 
+    // Synchronisation stricte : Si l'utilisateur décoche Bovins ou Ovins, nettoyer les animaux associés
+    const hasPoultry = selected.includes('poultry');
+    const hasCattle = selected.includes('cattle');
+    const hasSheep = selected.includes('sheep');
+
+    if (!hasCattle) {
+      appState.milkStock = 0;
+      appState.milkHarvests = [];
+      if (Array.isArray(appState.animals)) {
+        appState.animals = appState.animals.filter(a => {
+          const sp = String(a.species || '').toLowerCase();
+          const isBovine = sp.includes('vache') || sp.includes('bovin') || sp.includes('genisse') || sp.includes('veau') || sp.includes('taurillon') || sp.includes('cow') || sp.includes('cattle');
+          return !isBovine;
+        });
+      }
+    }
+
+    if (!hasSheep) {
+      if (Array.isArray(appState.animals)) {
+        appState.animals = appState.animals.filter(a => {
+          const sp = String(a.species || '').toLowerCase();
+          const isOvine = sp.includes('mouton') || sp.includes('ovin') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('belier') || sp.includes('chevre') || sp.includes('caprin') || sp.includes('sheep') || sp.includes('goat');
+          return !isOvine;
+        });
+      }
+    }
+
+    if (!hasCattle && !hasSheep) {
+      if (Array.isArray(appState.calendarEvents)) {
+        appState.calendarEvents = appState.calendarEvents.filter(ev => {
+          const t = (ev.type || '').toLowerCase();
+          return t !== 'tarissement' && t !== 'mise_bas' && t !== 'gestation';
+        });
+      }
+    }
+
     this.saveState();
     this.closeModal('modalAnimalSelection');
     this.updateUserHeaderUI();
 
-    if (window.appAuth && typeof window.appAuth.updateUserProfileMetadata === 'function') {
-      window.appAuth.updateUserProfileMetadata(appState.userProfile);
+    // Propagation immédiate vers le Cloud Supabase pour écraser définitivement l'ancienne sélection
+    if (window.appAuth) {
+      if (typeof window.appAuth.updateUserProfileMetadata === 'function') {
+        window.appAuth.updateUserProfileMetadata(appState.userProfile);
+      }
+      if (typeof window.appAuth.pushData === 'function') {
+        window.appAuth.pushData(false, true);
+      }
     }
 
     const isAr = appState.lang === 'ar';
@@ -1672,35 +1733,17 @@ const app = {
   },
 
   getUserManagedAnimalTypes() {
-    let types = [];
     if (appState.userProfile && Array.isArray(appState.userProfile.managedAnimals) && appState.userProfile.managedAnimals.length > 0) {
-      types = [...appState.userProfile.managedAnimals.filter(t => t !== 'equine')];
+      return this.normalizeAnimalTypes(appState.userProfile.managedAnimals);
     }
-    if (types.length === 0) {
-      try {
-        const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
-        if (Array.isArray(raw) && raw.length > 0) {
-          types = [...raw.filter(t => t !== 'equine')];
-        }
-      } catch(e) {}
-    }
+    try {
+      const raw = JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null');
+      if (Array.isArray(raw) && raw.length > 0) {
+        return this.normalizeAnimalTypes(raw);
+      }
+    } catch(e) {}
 
-    // Also auto-detect animal types from living lots in appState.animals
-    if (Array.isArray(appState.animals)) {
-      appState.animals.forEach(a => {
-        if (!a || (Number(a.currentQuantity) || 0) <= 0) return;
-        const sp = String(a.species || '').toLowerCase();
-        if (sp.includes('vache') || sp.includes('bovin') || sp.includes('taurillon') || sp.includes('veau') || sp.includes('cow') || sp.includes('cattle')) {
-          if (!types.includes('cattle')) types.push('cattle');
-        } else if (sp.includes('mouton') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('chevre') || sp.includes('caprin') || sp.includes('sheep')) {
-          if (!types.includes('sheep')) types.push('sheep');
-        } else {
-          if (!types.includes('poultry')) types.push('poultry');
-        }
-      });
-    }
-
-    return types.length > 0 ? types : ['poultry'];
+    return ['poultry'];
   },
 
   updateLivestockUIThemeAndVisibility() {
@@ -2239,18 +2282,24 @@ const app = {
     }
 
     const avatar = window.AppAvatars ? window.AppAvatars.getById(avatarId) : null;
+    const prevManaged = (appState.userProfile && appState.userProfile.managedAnimals) || (function() {
+      try { return JSON.parse(localStorage.getItem('fermegest_managed_animal_types') || 'null'); } catch(e) { return ['poultry']; }
+    })() || ['poultry'];
+
     const profile = {
       name: name,
       birthDate: birthDate,
       age: age,
       avatar: avatarId,
       gender: avatar ? avatar.gender : 'male',
+      managedAnimals: this.normalizeAnimalTypes(prevManaged),
       updatedAt: Date.now()
     };
 
     appState.userProfile = profile;
     try {
       localStorage.setItem('fermegest_user_profile', JSON.stringify(profile));
+      localStorage.setItem('fermegest_managed_animal_types', JSON.stringify(profile.managedAnimals));
     } catch (err) {}
 
     this.saveState();
@@ -3785,8 +3834,109 @@ const app = {
   },
 
   // ==========================================
-  // EGG PRODUCTION STATISTICS & LINE CHART
+  // EGG PRODUCTION STATISTICS & LINE CHART (MULTI-SPECIES & MULTI-CURVES)
   // ==========================================
+  getEggSpeciesMeta(key) {
+    if (!key) key = 'poule';
+    let normKey = String(key).toLowerCase().trim();
+    if (normKey === 'canard') normKey = 'canard_barbarie';
+
+    const metaMap = {
+      poule: { key: 'poule', label: this.t('opt_egg_species_poule') || '🥚 Poule (Poulet)', icon: '🥚', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.45)' },
+      canard_barbarie: { key: 'canard_barbarie', label: this.t('opt_egg_species_canard') || '🦆 Canard de Barbarie', icon: '🦆', color: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.45)' },
+      pintade: { key: 'pintade', label: this.t('opt_egg_species_pintade') || '🪶 Pintade', icon: '🪶', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.45)' },
+      caille: { key: 'caille', label: this.t('opt_egg_species_caille') || '🪺 Caille', icon: '🪺', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.45)' },
+      dinde: { key: 'dinde', label: this.t('opt_egg_species_dinde') || '🦃 Dinde', icon: '🦃', color: '#fb923c', glow: 'rgba(251, 146, 60, 0.45)' },
+      oie: { key: 'oie', label: this.t('opt_egg_species_oie') || '🪿 Oie', icon: '🪿', color: '#6366f1', glow: 'rgba(99, 102, 241, 0.45)' }
+    };
+
+    if (metaMap[normKey]) return metaMap[normKey];
+
+    const fallbackPalette = [
+      { color: '#10b981', glow: 'rgba(16, 185, 129, 0.45)' },
+      { color: '#ec4899', glow: 'rgba(236, 72, 153, 0.45)' },
+      { color: '#84cc16', glow: 'rgba(132, 204, 22, 0.45)' },
+      { color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.45)' },
+      { color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.45)' }
+    ];
+    let hash = 0;
+    for (let i = 0; i < normKey.length; i++) {
+      hash = (hash << 5) - hash + normKey.charCodeAt(i);
+      hash |= 0;
+    }
+    const pal = fallbackPalette[Math.abs(hash) % fallbackPalette.length];
+    return {
+      key: normKey,
+      label: this.getSpeciesDisplayName ? this.getSpeciesDisplayName(normKey) : normKey,
+      icon: '🪶',
+      color: pal.color,
+      glow: pal.glow
+    };
+  },
+
+  getChartAvailableEggSpecies() {
+    const list = [];
+    const seen = new Set();
+
+    // Toujours disponible : Poule
+    seen.add('poule');
+    list.push(this.getEggSpeciesMeta('poule'));
+
+    // Toujours disponible : Canard de Barbarie
+    seen.add('canard_barbarie');
+    list.push(this.getEggSpeciesMeta('canard_barbarie'));
+
+    // Espèces présentes dans le stock
+    if (appState.eggStocks && typeof appState.eggStocks === 'object') {
+      Object.keys(appState.eggStocks).forEach(k => {
+        let norm = k.toLowerCase().trim();
+        if (norm === 'canard') norm = 'canard_barbarie';
+        if (!seen.has(norm)) {
+          seen.add(norm);
+          list.push(this.getEggSpeciesMeta(norm));
+        }
+      });
+    }
+
+    // Espèces présentes dans les récoltes
+    if (Array.isArray(appState.eggHarvests)) {
+      appState.eggHarvests.forEach(h => {
+        if (!h) return;
+        let norm = (h.speciesKey || h.species || 'poule').toLowerCase().trim();
+        if (norm === 'canard') norm = 'canard_barbarie';
+        if (!seen.has(norm)) {
+          seen.add(norm);
+          list.push(this.getEggSpeciesMeta(norm));
+        }
+      });
+    }
+
+    return list;
+  },
+
+  setEggChartSpeciesFilter(speciesKey) {
+    if (!Array.isArray(appState.eggChartSpeciesFilter) || appState.eggChartSpeciesFilter.length === 0) {
+      appState.eggChartSpeciesFilter = ['all'];
+    }
+
+    if (speciesKey === 'all') {
+      appState.eggChartSpeciesFilter = ['all'];
+    } else {
+      let current = appState.eggChartSpeciesFilter.filter(k => k !== 'all');
+      const idx = current.indexOf(speciesKey);
+      if (idx > -1) {
+        current.splice(idx, 1);
+        if (current.length === 0) current = ['all'];
+      } else {
+        current.push(speciesKey);
+      }
+      appState.eggChartSpeciesFilter = current;
+    }
+
+    this.saveState();
+    this.renderEggProductionChart();
+  },
+
   setEggChartPeriod(period) {
     appState.eggChartPeriod = period || '7d';
     this.saveState();
@@ -3803,6 +3953,7 @@ const app = {
     const card = document.getElementById('eggProductionChartCard');
     const strip = document.getElementById('eggChartMetricsStrip');
     const chartBox = document.getElementById('eggChartContainer');
+    const filterBar = document.getElementById('eggChartSpeciesFilterBar');
     if (!card || !chartBox) return;
 
     const period = appState.eggChartPeriod || '7d';
@@ -3812,35 +3963,67 @@ const app = {
       btn.classList.toggle('active', btn.getAttribute('data-period') === period);
     });
 
+    // 1. Gestion des filtres d'espèces (Choix multiple & Tous)
+    if (!Array.isArray(appState.eggChartSpeciesFilter) || appState.eggChartSpeciesFilter.length === 0) {
+      appState.eggChartSpeciesFilter = ['all'];
+    }
+    const activeFilters = [...appState.eggChartSpeciesFilter];
+    const isAllSelected = activeFilters.includes('all');
+
+    // Rendu dynamique de la barre de filtres d'espèces
+    if (filterBar) {
+      const avail = this.getChartAvailableEggSpecies();
+      let pillsHtml = `
+        <button type="button" class="egg-chart-species-btn ${isAllSelected ? 'active' : ''}" style="${isAllSelected ? 'background: var(--accent-emerald); border-color: var(--accent-emerald);' : ''}" onclick="app.setEggChartSpeciesFilter('all')">
+          <span class="egg-chart-species-color-dot" style="background: #10b981;"></span>
+          <span>${this.t('egg_chart_filter_all') || '🌐 Tous les œufs'}</span>
+          ${isAllSelected ? '<span style="font-size: 0.75rem; margin-left: 2px;">✓</span>' : ''}
+        </button>
+      `;
+
+      avail.forEach(sp => {
+        const isSelected = !isAllSelected && activeFilters.includes(sp.key);
+        const styleAttr = isSelected
+          ? `background: ${sp.color}; border-color: ${sp.color}; color: #ffffff;`
+          : `border-color: ${sp.color}66;`;
+        pillsHtml += `
+          <button type="button" class="egg-chart-species-btn ${isSelected ? 'active' : ''}" style="${styleAttr}" onclick="app.setEggChartSpeciesFilter('${sp.key}')">
+            <span class="egg-chart-species-color-dot" style="background: ${sp.color};"></span>
+            <span>${sp.icon} ${sp.label}</span>
+            ${isSelected ? '<span style="font-size: 0.75rem; margin-left: 2px;">✓</span>' : ''}
+          </button>
+        `;
+      });
+
+      filterBar.innerHTML = pillsHtml;
+    }
+
     const allHarvests = Array.isArray(appState.eggHarvests) ? appState.eggHarvests : [];
-    const filter = appState.eggFilter || 'all';
-    const harvests = allHarvests.filter(h => {
-      if (!h) return false;
-      if (filter === 'all') return true;
-      const hSpecies = h.species || 'poule';
-      return hSpecies === filter;
-    });
 
-    // Agréger les récoltes par date (somme si plusieurs ramassages le même jour)
-    const dailyMap = {};
-    harvests.forEach(h => {
-      if (!h || !h.date) return;
-      const d = String(h.date).trim().split('T')[0];
-      if (d) {
-        dailyMap[d] = (dailyMap[d] || 0) + (Number(h.count) || 0);
-      }
-    });
-
-    const allHarvestDates = Object.keys(dailyMap).sort();
-    const hasAnyHarvest = allHarvestDates.length > 0;
+    // Helper de normalisation de l'espèce de récolte
+    const getHarvestSpeciesKey = (h) => {
+      let k = (h.speciesKey || h.species || 'poule').toLowerCase().trim();
+      if (k === 'canard') k = 'canard_barbarie';
+      return k;
+    };
 
     // Déterminer la liste chronologique continue des dates pour la période choisie
     const todayStr = this.getTodayStr();
     const todayParts = todayStr.split('-').map(Number);
     const todayDate = new Date(todayParts[0], todayParts[1] - 1, todayParts[2], 12, 0, 0);
 
-    let datesList = [];
+    // Collecter toutes les dates de récoltes
+    const allHarvestDatesSet = new Set();
+    allHarvests.forEach(h => {
+      if (h && h.date) {
+        const d = String(h.date).trim().split('T')[0];
+        if (d) allHarvestDatesSet.add(d);
+      }
+    });
+    const allHarvestDates = Array.from(allHarvestDatesSet).sort();
+    const hasAnyHarvest = allHarvestDates.length > 0;
 
+    let datesList = [];
     if (period === 'all') {
       if (allHarvestDates.length === 0) {
         for (let i = 6; i >= 0; i--) {
@@ -3884,89 +4067,86 @@ const app = {
       }
     }
 
-    // Points de données avec format d'axe X demandé (JJ/MM ex: 12/01)
-    const points = datesList.map((dt, idx) => {
-      const count = dailyMap[dt] || 0;
-      const parts = dt.split('-');
-      const label = (parts.length === 3) ? `${parts[2]}/${parts[1]}` : dt;
-      return {
-        date: dt,
-        label: label,
-        count: count,
-        index: idx
-      };
-    });
+    const daysCount = datesList.length || 1;
 
-    // Métriques clés de production
-    const totalHarvested = points.reduce((sum, p) => sum + p.count, 0);
-    const daysCount = points.length || 1;
-    const avgDaily = (totalHarvested / daysCount).toFixed(1);
-
-    let peakCount = 0;
-    let peakDateLabel = '-';
-    points.forEach(p => {
-      if (p.count > peakCount) {
-        peakCount = p.count;
-        peakDateLabel = p.label;
-      }
-    });
-
-    // Taux de ponte basé sur les poules pondeuses actives
-    const layingFemales = (appState.animals || [])
-      .filter(a => {
-        if (!a || (Number(a.currentQuantity) || 0) <= 0) return false;
-        const sp = String(a.species || '').toLowerCase();
-        const brd = String(a.breed || '').toLowerCase();
-        const stg = String(a.stage || '').toLowerCase();
-        return sp === 'pondeuse' || brd.includes('ponte') || stg.includes('ponte') || stg.includes('lay') || (sp === 'poulet' && (a.gender === 'femelle' || a.gender === 'female'));
-      })
-      .reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
-
-    const lang = appState.lang || 'fr';
-    const unitDaysShort = lang === 'ar' ? 'يوم' : (lang === 'en' ? 'd' : 'j');
-    let layRateStr = '-';
-    if (layingFemales > 0) {
-      const ratePct = Math.min(100, Math.round((Number(avgDaily) / layingFemales) * 100));
-      layRateStr = `${ratePct}% (${layingFemales} ${this.t('chip_pondeuse') || 'pondeuses'})`;
+    // Définir les séries à tracer (une seule courbe globale ou plusieurs courbes spécifiques)
+    const seriesList = [];
+    if (isAllSelected) {
+      seriesList.push({
+        key: 'all',
+        label: this.t('egg_chart_filter_all') || 'Tous les œufs',
+        icon: '🌐',
+        color: '#10b981',
+        glow: 'rgba(16, 185, 129, 0.45)',
+        points: []
+      });
     } else {
-      const activeDays = points.filter(p => p.count > 0).length;
-      layRateStr = `${activeDays}/${daysCount} ${unitDaysShort}`;
+      activeFilters.forEach(key => {
+        const meta = this.getEggSpeciesMeta(key);
+        seriesList.push({
+          key: key,
+          label: meta.label,
+          icon: meta.icon,
+          color: meta.color,
+          glow: meta.glow,
+          points: []
+        });
+      });
     }
 
-    // Affichage du bandeau de métriques
-    if (strip) {
-      const unitEggs = this.t('unit_eggs') || 'œufs';
-      strip.innerHTML = `
-        <div class="egg-chart-metric-card">
-          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_total">${this.t('egg_chart_total')}</span>
-          <span class="egg-chart-metric-val" style="color: var(--accent-emerald);">
-            ${totalHarvested.toLocaleString()} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs}</small>
-          </span>
-        </div>
-        <div class="egg-chart-metric-card">
-          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_avg">${this.t('egg_chart_avg')}</span>
-          <span class="egg-chart-metric-val" style="color: #38bdf8;">
-            ${avgDaily} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs}/${unitDaysShort}</small>
-          </span>
-        </div>
-        <div class="egg-chart-metric-card">
-          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_peak">${this.t('egg_chart_peak')}</span>
-          <span class="egg-chart-metric-val" style="color: #f59e0b;">
-            ${peakCount > 0 ? peakCount.toLocaleString() : 0} 
-            ${peakCount > 0 ? `<small style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">(${peakDateLabel})</small>` : ''}
-          </span>
-        </div>
-        <div class="egg-chart-metric-card">
-          <span class="egg-chart-metric-lbl" data-i18n="egg_chart_rate">${this.t('egg_chart_rate')}</span>
-          <span class="egg-chart-metric-val" style="color: #a855f7; font-size: 0.95rem;">
-            ${layRateStr}
-          </span>
-        </div>
-      `;
-    }
+    // Calculer les données journalières pour chaque série
+    seriesList.forEach(series => {
+      let seriesTotal = 0;
+      let seriesPeak = 0;
+      let seriesPeakDate = '-';
+
+      series.points = datesList.map((dt, idx) => {
+        let count = 0;
+        allHarvests.forEach(h => {
+          if (!h || !h.date) return;
+          const d = String(h.date).trim().split('T')[0];
+          if (d === dt) {
+            if (series.key === 'all') {
+              count += (Number(h.count) || 0);
+            } else {
+              const hSpecies = getHarvestSpeciesKey(h);
+              if (hSpecies === series.key) {
+                count += (Number(h.count) || 0);
+              }
+            }
+          }
+        });
+
+        seriesTotal += count;
+        const parts = dt.split('-');
+        const label = (parts.length === 3) ? `${parts[2]}/${parts[1]}` : dt;
+        if (count > seriesPeak) {
+          seriesPeak = count;
+          seriesPeakDate = label;
+        }
+
+        return {
+          date: dt,
+          label: label,
+          count: count,
+          index: idx,
+          speciesKey: series.key
+        };
+      });
+
+      series.total = seriesTotal;
+      series.avg = (seriesTotal / daysCount).toFixed(1);
+      series.peak = seriesPeak;
+      series.peakDate = seriesPeakDate;
+    });
+
+    // Mémoriser pour le tooltip interactif
+    this._eggChartSeries = seriesList;
+    this._eggChartDates = datesList;
 
     // Si aucune récolte dans la base
     if (!hasAnyHarvest) {
+      if (strip) strip.innerHTML = '';
       chartBox.innerHTML = `
         <div style="text-align: center; padding: 2.2rem 1rem;">
           <div style="font-size: 2.6rem; margin-bottom: 0.6rem;">🥚</div>
@@ -3980,34 +4160,136 @@ const app = {
       return;
     }
 
-    // Génération du SVG Line Chart (ViewBox 680 x 230)
+    // Affichage des métriques clés selon sélection (mono ou multi-courbes)
+    const lang = appState.lang || 'fr';
+    const unitDaysShort = lang === 'ar' ? 'يوم' : (lang === 'en' ? 'd' : 'j');
+    const unitEggs = this.t('unit_eggs') || 'œufs';
+
+    if (strip) {
+      if (seriesList.length === 1) {
+        const s = seriesList[0];
+        // Calcul du taux de ponte pour poules pondeuses si applicable
+        let layRateStr = '-';
+        if (s.key === 'all' || s.key === 'poule') {
+          const layingFemales = (appState.animals || [])
+            .filter(a => {
+              if (!a || (Number(a.currentQuantity) || 0) <= 0) return false;
+              const sp = String(a.species || '').toLowerCase();
+              const brd = String(a.breed || '').toLowerCase();
+              const stg = String(a.stage || '').toLowerCase();
+              return sp === 'pondeuse' || brd.includes('ponte') || stg.includes('ponte') || stg.includes('lay') || (sp === 'poulet' && (a.gender === 'femelle' || a.gender === 'female'));
+            })
+            .reduce((sum, a) => sum + (Number(a.currentQuantity) || 0), 0);
+
+          if (layingFemales > 0) {
+            const ratePct = Math.min(100, Math.round((Number(s.avg) / layingFemales) * 100));
+            layRateStr = `${ratePct}% (${layingFemales} ${this.t('chip_pondeuse') || 'pondeuses'})`;
+          } else {
+            const activeDays = s.points.filter(p => p.count > 0).length;
+            layRateStr = `${activeDays}/${daysCount} ${unitDaysShort}`;
+          }
+        } else {
+          const activeDays = s.points.filter(p => p.count > 0).length;
+          layRateStr = `${activeDays}/${daysCount} ${unitDaysShort}`;
+        }
+
+        strip.innerHTML = `
+          <div class="egg-chart-metric-card" style="border-top: 3px solid ${s.color};">
+            <span class="egg-chart-metric-lbl">${this.t('egg_chart_total')} (${s.icon} ${s.label})</span>
+            <span class="egg-chart-metric-val" style="color: ${s.color};">
+              ${s.total.toLocaleString()} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs}</small>
+            </span>
+          </div>
+          <div class="egg-chart-metric-card">
+            <span class="egg-chart-metric-lbl" data-i18n="egg_chart_avg">${this.t('egg_chart_avg')}</span>
+            <span class="egg-chart-metric-val" style="color: #38bdf8;">
+              ${s.avg} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs}/${unitDaysShort}</small>
+            </span>
+          </div>
+          <div class="egg-chart-metric-card">
+            <span class="egg-chart-metric-lbl" data-i18n="egg_chart_peak">${this.t('egg_chart_peak')}</span>
+            <span class="egg-chart-metric-val" style="color: #f59e0b;">
+              ${s.peak > 0 ? s.peak.toLocaleString() : 0} 
+              ${s.peak > 0 ? `<small style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">(${s.peakDate})</small>` : ''}
+            </span>
+          </div>
+          <div class="egg-chart-metric-card">
+            <span class="egg-chart-metric-lbl" data-i18n="egg_chart_rate">${this.t('egg_chart_rate')}</span>
+            <span class="egg-chart-metric-val" style="color: #a855f7; font-size: 0.95rem;">
+              ${layRateStr}
+            </span>
+          </div>
+        `;
+      } else {
+        // Multi-Courbes : Métrique Combinée + Mini-cartes détaillées par type d'œuf sélectionné
+        const combinedTotal = seriesList.reduce((sum, s) => sum + s.total, 0);
+        const combinedAvg = (combinedTotal / daysCount).toFixed(1);
+
+        let multiCardsHtml = `
+          <div class="egg-chart-metric-card" style="border-top: 3px solid #10b981;">
+            <span class="egg-chart-metric-lbl" style="color: var(--accent-emerald);">📊 Total Combiné (${seriesList.length} types)</span>
+            <span class="egg-chart-metric-val" style="color: var(--accent-emerald);">
+              ${combinedTotal.toLocaleString()} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs} (Moy: ${combinedAvg}/j)</small>
+            </span>
+          </div>
+        `;
+
+        seriesList.forEach(s => {
+          multiCardsHtml += `
+            <div class="egg-chart-metric-card" style="border-top: 3px solid ${s.color};">
+              <span class="egg-chart-metric-lbl" style="color: ${s.color};">${s.icon} ${s.label}</span>
+              <span class="egg-chart-metric-val" style="color: ${s.color};">
+                ${s.total.toLocaleString()} <small style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">${unitEggs}</small>
+              </span>
+              <small style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                Moy: <strong>${s.avg}</strong>/j &bull; Pic: <strong>${s.peak}</strong> <span style="color:var(--text-muted)">(${s.peakDate})</span>
+              </small>
+            </div>
+          `;
+        });
+
+        strip.innerHTML = multiCardsHtml;
+      }
+    }
+
+    // Génération du SVG Multi-Line Chart (ViewBox 680 x 240)
     const svgW = 680;
-    const svgH = 230;
+    const svgH = 240;
     const padL = 46;
     const padR = 25;
-    const padT = 28;
+    const padT = 32;
     const padB = 42;
     const chartW = svgW - padL - padR;
     const chartH = svgH - padT - padB;
+    const baselineY = padT + chartH;
 
-    // Échelle axe Y (nombre d'œufs)
-    const maxVal = Math.max(...points.map(p => p.count), 0);
+    // Calcul de l'échelle commune de l'axe Y (Nombre d'œufs max parmi toutes les séries affichées)
+    let globalMax = 0;
+    seriesList.forEach(s => {
+      s.points.forEach(p => {
+        if (p.count > globalMax) globalMax = p.count;
+      });
+    });
+
     let yMax = 10;
-    if (maxVal > 0) {
-      yMax = Math.max(10, Math.ceil((maxVal * 1.25) / 5) * 5);
+    if (globalMax > 0) {
+      yMax = Math.max(10, Math.ceil((globalMax * 1.25) / 5) * 5);
     }
 
-    const n = points.length;
-    points.forEach((p, i) => {
-      p.cx = n <= 1 ? padL + chartW / 2 : padL + (i / (n - 1)) * chartW;
-      p.cy = padT + chartH - (p.count / yMax) * chartH;
+    // Calcul des coordonnées SVG pour chaque point de chaque série
+    const n = datesList.length;
+    seriesList.forEach(s => {
+      s.points.forEach((p, i) => {
+        p.cx = n <= 1 ? padL + chartW / 2 : padL + (i / (n - 1)) * chartW;
+        p.cy = padT + chartH - (p.count / yMax) * chartH;
+      });
     });
 
     // Lignes de grille horizontales
     let gridLinesSvg = '';
     const gridSteps = 4;
-    for (let s = 0; s <= gridSteps; s++) {
-      const ratio = s / gridSteps;
+    for (let st = 0; st <= gridSteps; st++) {
+      const ratio = st / gridSteps;
       const yVal = Math.round(ratio * yMax);
       const yPos = padT + chartH - (ratio * chartH);
       gridLinesSvg += `
@@ -4016,83 +4298,124 @@ const app = {
       `;
     }
 
-    // Courbe lissée Bézier
-    let linePath = '';
-    if (points.length === 1) {
-      linePath = `M ${points[0].cx} ${points[0].cy} L ${points[0].cx + 1} ${points[0].cy}`;
-    } else {
-      linePath = `M ${points[0].cx.toFixed(1)} ${points[0].cy.toFixed(1)}`;
-      for (let i = 0; i < points.length - 1; i++) {
-        const p0 = i > 0 ? points[i - 1] : points[i];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = i < points.length - 2 ? points[i + 2] : p2;
-        const cp1x = p1.cx + (p2.cx - p0.cx) / 6;
-        const cp1y = p1.cy + (p2.cy - p0.cy) / 6;
-        const cp2x = p2.cx - (p3.cx - p1.cx) / 6;
-        const cp2y = p2.cy - (p3.cy - p1.cy) / 6;
-        linePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.cx.toFixed(1)} ${p2.cy.toFixed(1)}`;
-      }
-    }
-
-    // Remplissage sous la courbe (Area Gradient)
-    const baselineY = padT + chartH;
-    const areaPath = `${linePath} L ${points[points.length - 1].cx.toFixed(1)} ${baselineY} L ${points[0].cx.toFixed(1)} ${baselineY} Z`;
-
     // Graduations Axe X (JJ/MM, ex : 12/01)
     let xLabelsSvg = '';
     let step = 1;
     if (n > 20) step = 4;
     else if (n > 12) step = 2;
 
-    points.forEach((p, i) => {
+    datesList.forEach((dt, i) => {
       const isFirst = i === 0;
       const isLast = i === n - 1;
       const shouldShow = (i % step === 0) || isFirst || isLast;
       if (shouldShow) {
+        const parts = dt.split('-');
+        const lbl = (parts.length === 3) ? `${parts[2]}/${parts[1]}` : dt;
+        const cx = n <= 1 ? padL + chartW / 2 : padL + (i / (n - 1)) * chartW;
         xLabelsSvg += `
-          <text x="${p.cx.toFixed(1)}" y="${(baselineY + 20).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text-muted, #94a3b8)">${p.label}</text>
+          <text x="${cx.toFixed(1)}" y="${(baselineY + 20).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text-muted, #94a3b8)">${lbl}</text>
         `;
       }
     });
 
-    // Points interactifs & pastilles de valeur
+    // Tracé des courbes et des aires
+    let curvesSvg = '';
+    let defsSvg = '';
+
+    seriesList.forEach((s, sIdx) => {
+      const pts = s.points;
+      if (pts.length === 0) return;
+
+      // Courbe lissée Bézier
+      let linePath = '';
+      if (pts.length === 1) {
+        linePath = `M ${pts[0].cx} ${pts[0].cy} L ${pts[0].cx + 1} ${pts[0].cy}`;
+      } else {
+        linePath = `M ${pts[0].cx.toFixed(1)} ${pts[0].cy.toFixed(1)}`;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = i > 0 ? pts[i - 1] : pts[i];
+          const p1 = pts[i];
+          const p2 = pts[i + 1];
+          const p3 = i < pts.length - 2 ? pts[i + 2] : p2;
+          const cp1x = p1.cx + (p2.cx - p0.cx) / 6;
+          const cp1y = p1.cy + (p2.cy - p0.cy) / 6;
+          const cp2x = p2.cx - (p3.cx - p1.cx) / 6;
+          const cp2y = p2.cy - (p3.cy - p1.cy) / 6;
+          linePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.cx.toFixed(1)} ${p2.cy.toFixed(1)}`;
+        }
+      }
+
+      // Remplissage dégradé sous la courbe
+      const gradId = `eggGrad_${s.key}_${sIdx}`;
+      const glowId = `eggGlow_${s.key}_${sIdx}`;
+      const areaOpacity = seriesList.length === 1 ? 0.35 : 0.12;
+
+      defsSvg += `
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${s.color}" stop-opacity="${areaOpacity}"/>
+          <stop offset="85%" stop-color="${s.color}" stop-opacity="0.03"/>
+          <stop offset="100%" stop-color="${s.color}" stop-opacity="0.0"/>
+        </linearGradient>
+        <filter id="${glowId}" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="${s.color}" flood-opacity="0.45"/>
+        </filter>
+      `;
+
+      const areaPath = `${linePath} L ${pts[pts.length - 1].cx.toFixed(1)} ${baselineY} L ${pts[0].cx.toFixed(1)} ${baselineY} Z`;
+
+      curvesSvg += `
+        <path d="${areaPath}" fill="url(#${gradId})" />
+        <path d="${linePath}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#${glowId})" />
+      `;
+    });
+
+    // Tracé des points interactifs pour chaque série
     let dotsSvg = '';
-    points.forEach((p, i) => {
-      const isZero = p.count === 0;
-      const dotColor = isZero ? '#64748b' : '#10b981';
-      const r = isZero ? 3.5 : 5.5;
+    seriesList.forEach((s) => {
+      s.points.forEach((p, i) => {
+        const isZero = p.count === 0;
+        const dotColor = isZero ? '#64748b' : s.color;
+        const r = isZero ? 3 : 5;
 
-      dotsSvg += `
-        <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="16" fill="transparent" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" onmouseenter="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
-      `;
-
-      dotsSvg += `
-        <circle id="eggDot_${i}" class="egg-chart-dot" data-idx="${i}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${r}" fill="${dotColor}" stroke="#ffffff" stroke-width="2" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" onmouseenter="app.showEggPointTooltip(${i}, ${p.count}, '${p.label}', '${p.date}')" />
-      `;
-
-      if (p.count > 0 && (n <= 14 || p.count === peakCount)) {
         dotsSvg += `
-          <g class="egg-point-badge">
-            <rect x="${(p.cx - 14).toFixed(1)}" y="${(p.cy - 22).toFixed(1)}" width="28" height="15" rx="3.5" fill="rgba(16, 185, 129, 0.9)" />
-            <text x="${p.cx.toFixed(1)}" y="${(p.cy - 11).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#ffffff">${p.count}</text>
-          </g>
+          <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="14" fill="transparent" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i})" onmouseenter="app.showEggPointTooltip(${i})" />
+          <circle id="eggDot_${s.key}_${i}" class="egg-chart-dot egg-dot-series-${s.key}" data-series="${s.key}" data-idx="${i}" cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${r}" fill="${dotColor}" stroke="#ffffff" stroke-width="1.8" style="cursor: pointer;" onclick="app.showEggPointTooltip(${i})" onmouseenter="app.showEggPointTooltip(${i})" />
         `;
-      }
+
+        // Badge numérique pour les pics ou petites séries
+        if (p.count > 0 && ((seriesList.length === 1 && (n <= 14 || p.count === s.peak)) || (seriesList.length > 1 && p.count === s.peak && s.peak > 0))) {
+          dotsSvg += `
+            <g class="egg-point-badge">
+              <rect x="${(p.cx - 13).toFixed(1)}" y="${(p.cy - 20).toFixed(1)}" width="26" height="14" rx="3" fill="${s.color}" opacity="0.92" />
+              <text x="${p.cx.toFixed(1)}" y="${(p.cy - 10).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="800" fill="#ffffff">${p.count}</text>
+            </g>
+          `;
+        }
+      });
     });
+
+    // Barre de légende des courbes actives
+    let legendHtml = '';
+    if (seriesList.length > 0) {
+      legendHtml = `
+        <div class="egg-chart-legend">
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">${this.t('egg_chart_legend_title') || 'Courbes actives :'}</span>
+          ${seriesList.map(s => `
+            <span class="egg-chart-legend-item" onclick="app.setEggChartSpeciesFilter('${s.key}')" title="Cliquer pour isoler ou retirer">
+              <span class="egg-chart-legend-line" style="background: ${s.color};"></span>
+              <span>${s.icon} ${s.label}: <strong>${s.total}</strong> ${unitEggs}</span>
+            </span>
+          `).join('')}
+        </div>
+      `;
+    }
 
     chartBox.innerHTML = `
       <div style="position: relative; width: 100%;">
+        ${legendHtml}
         <svg class="egg-chart-svg" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">
           <defs>
-            <linearGradient id="eggAreaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#10b981" stop-opacity="0.38"/>
-              <stop offset="85%" stop-color="#10b981" stop-opacity="0.04"/>
-              <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
-            </linearGradient>
-            <filter id="eggLineGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#10b981" flood-opacity="0.35"/>
-            </filter>
+            ${defsSvg}
           </defs>
 
           <!-- Axes et Grille -->
@@ -4101,11 +4424,8 @@ const app = {
           ${gridLinesSvg}
           ${xLabelsSvg}
 
-          <!-- Remplissage dégradé -->
-          <path d="${areaPath}" fill="url(#eggAreaGrad)" />
-
-          <!-- Ligne de courbe -->
-          <path d="${linePath}" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#eggLineGlow)" />
+          <!-- Courbes et Aires -->
+          ${curvesSvg}
 
           <!-- Ligne repère verticale active -->
           <line id="eggChartActiveLine" x1="0" y1="${padT}" x2="0" y2="${baselineY}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3,3" stroke-opacity="0.5" style="display: none; transition: x1 0.2s ease, x2 0.2s ease;" />
@@ -4114,93 +4434,129 @@ const app = {
           ${dotsSvg}
         </svg>
 
-        <!-- Détails interactifs sous le graphique (sans toast) -->
+        <!-- Détails interactifs sous le graphique -->
         <div id="eggChartPointDetails" class="egg-chart-point-details"></div>
       </div>
     `;
 
-    // Mémorisation des points pour les interactions et sélection par défaut du dernier jour
-    this._eggChartPoints = points;
-    if (points && points.length > 0) {
-      const lastIdx = points.length - 1;
-      this.showEggPointTooltip(lastIdx, points[lastIdx].count, points[lastIdx].label, points[lastIdx].date);
+    // Sélection par défaut du dernier jour
+    if (datesList.length > 0) {
+      this.showEggPointTooltip(datesList.length - 1);
     }
   },
 
-  showEggPointTooltip(idx, count, dateLabel, fullDate) {
+  showEggPointTooltip(idx) {
+    if (!this._eggChartSeries || !this._eggChartDates || !this._eggChartDates[idx]) return;
+
+    const fullDate = this._eggChartDates[idx];
+    const parts = fullDate.split('-');
+    const dateLabel = (parts.length === 3) ? `${parts[2]}/${parts[1]}` : fullDate;
+
     const isAr = appState.lang === 'ar';
     const isEn = appState.lang === 'en';
     const unitEggs = this.t('unit_eggs') || (isAr ? 'بيضة' : (isEn ? 'eggs' : 'œufs'));
     const harasLabel = this.t('egg_chart_hara_unit') || (isAr ? 'حارة (×4)' : (isEn ? 'Haras (×4)' : 'Haras (×4)'));
     const platesLabel = this.t('egg_chart_tray_unit') || (isAr ? 'أطباق (×30)' : (isEn ? 'Trays (×30)' : 'Plateaux (×30)'));
-    const zeroLabel = this.t('egg_chart_zero_harvest') || (isAr ? 'لا يوجد بيض تم جمعه' : (isEn ? 'No eggs harvested' : 'Aucun œuf récolté'));
-
-    const haras = (count / 4).toFixed(1);
-    const plates = (count / 30).toFixed(1);
 
     // 1. Mise à jour de la surbrillance des points dans le SVG
-    const dots = document.querySelectorAll('.egg-chart-dot');
-    dots.forEach(d => d.classList.remove('active-dot'));
-    const activeDot = document.getElementById('eggDot_' + idx);
-    if (activeDot) {
-      activeDot.classList.add('active-dot');
-    }
+    document.querySelectorAll('.egg-chart-dot').forEach(d => d.classList.remove('active-dot'));
+    this._eggChartSeries.forEach(s => {
+      const dotEl = document.getElementById(`eggDot_${s.key}_${idx}`);
+      if (dotEl) dotEl.classList.add('active-dot');
+    });
 
     // 2. Positionner la ligne verticale de repère
     const activeLine = document.getElementById('eggChartActiveLine');
-    if (activeLine && this._eggChartPoints && this._eggChartPoints[idx]) {
-      const pt = this._eggChartPoints[idx];
-      activeLine.setAttribute('x1', pt.cx.toFixed(1));
-      activeLine.setAttribute('x2', pt.cx.toFixed(1));
+    if (activeLine && this._eggChartSeries.length > 0 && this._eggChartSeries[0].points[idx]) {
+      const cx = this._eggChartSeries[0].points[idx].cx;
+      activeLine.setAttribute('x1', cx.toFixed(1));
+      activeLine.setAttribute('x2', cx.toFixed(1));
       activeLine.style.display = 'block';
     }
 
     // 3. Formatage de la date conviviale
-    let dateDisplay = fullDate || dateLabel;
+    let dateDisplay = fullDate;
     try {
-      if (fullDate) {
-        const parts = fullDate.split('-');
-        if (parts.length === 3) {
-          const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          const locale = isAr ? 'ar-TN' : (isEn ? 'en-US' : 'fr-FR');
-          dateDisplay = dateObj.toLocaleDateString(locale, {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-          });
-        }
+      if (parts.length === 3) {
+        const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        const locale = isAr ? 'ar-TN' : (isEn ? 'en-US' : 'fr-FR');
+        dateDisplay = dateObj.toLocaleDateString(locale, {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
       }
     } catch (e) {
-      dateDisplay = fullDate || dateLabel;
+      dateDisplay = fullDate;
     }
 
     // 4. Affichage inline dans le conteneur du graphique
     const detailsEl = document.getElementById('eggChartPointDetails');
     if (!detailsEl) return;
 
-    if (count <= 0) {
-      detailsEl.innerHTML = `
-        <div class="egg-chart-point-details-left">
-          <span style="font-size: 1.15rem;">📅</span>
-          <span class="egg-chart-point-date-badge">${dateLabel}</span>
-          <span class="egg-chart-point-date-full">${dateDisplay}</span>
-        </div>
-        <div class="egg-chart-point-details-right">
-          <span class="egg-chart-pill pill-eggs-zero">🥚 0 ${unitEggs} (${zeroLabel})</span>
-        </div>
-      `;
+    if (this._eggChartSeries.length === 1) {
+      const s = this._eggChartSeries[0];
+      const count = s.points[idx] ? s.points[idx].count : 0;
+      const haras = (count / 4).toFixed(1);
+      const plates = (count / 30).toFixed(1);
+
+      if (count <= 0) {
+        detailsEl.innerHTML = `
+          <div class="egg-chart-point-details-left">
+            <span style="font-size: 1.15rem;">📅</span>
+            <span class="egg-chart-point-date-badge">${dateLabel}</span>
+            <span class="egg-chart-point-date-full">${dateDisplay}</span>
+          </div>
+          <div class="egg-chart-point-details-right">
+            <span class="egg-chart-pill pill-eggs-zero">🥚 0 ${unitEggs} (${this.t('egg_chart_zero_harvest') || 'Aucun œuf récolté'})</span>
+          </div>
+        `;
+      } else {
+        detailsEl.innerHTML = `
+          <div class="egg-chart-point-details-left">
+            <span style="font-size: 1.15rem;">📅</span>
+            <span class="egg-chart-point-date-badge">${dateLabel}</span>
+            <span class="egg-chart-point-date-full">${dateDisplay}</span>
+          </div>
+          <div class="egg-chart-point-details-right">
+            <span class="egg-chart-pill pill-eggs" style="border: 1px solid ${s.color};">
+              ${s.icon} <strong>${count}</strong> ${unitEggs} ${s.key !== 'all' ? `(${s.label})` : ''}
+            </span>
+            <span class="egg-chart-pill pill-haras">~<strong>${haras}</strong> ${harasLabel}</span>
+            <span class="egg-chart-pill pill-plates">~<strong>${plates}</strong> ${platesLabel}</span>
+          </div>
+        `;
+      }
     } else {
+      // Plusieurs séries actives : afficher le détail par espèce + le total
+      let totalDay = 0;
+      let pillsHtml = '';
+
+      this._eggChartSeries.forEach(s => {
+        const pt = s.points[idx];
+        const count = pt ? pt.count : 0;
+        totalDay += count;
+        pillsHtml += `
+          <span class="egg-chart-pill" style="border: 1.5px solid ${s.color}; color: ${s.color}; background: ${s.color}18; font-weight: 750;">
+            ${s.icon} ${s.label} : <strong>${count}</strong>
+          </span>
+        `;
+      });
+
+      const haras = (totalDay / 4).toFixed(1);
+
       detailsEl.innerHTML = `
         <div class="egg-chart-point-details-left">
           <span style="font-size: 1.15rem;">📅</span>
           <span class="egg-chart-point-date-badge">${dateLabel}</span>
           <span class="egg-chart-point-date-full">${dateDisplay}</span>
         </div>
-        <div class="egg-chart-point-details-right">
-          <span class="egg-chart-pill pill-eggs">🥚 <strong>${count}</strong> ${unitEggs}</span>
-          <span class="egg-chart-pill pill-haras">~<strong>${haras}</strong> ${harasLabel}</span>
-          <span class="egg-chart-pill pill-plates">~<strong>${plates}</strong> ${platesLabel}</span>
+        <div class="egg-chart-point-details-right" style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;">
+          ${pillsHtml}
+          <span class="egg-chart-pill pill-eggs" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1.5px solid #10b981; font-weight: 800;">
+            📊 Total : <strong>${totalDay}</strong> ${unitEggs} (~${haras} ${harasLabel})
+          </span>
         </div>
       `;
     }

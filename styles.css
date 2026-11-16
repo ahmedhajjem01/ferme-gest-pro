@@ -1127,6 +1127,104 @@ body.is-capacitor .egg-stock-btn,
 .egg-chart-panel:hover {
   border-color: rgba(16, 185, 129, 0.4);
 }
+
+/* Multi-Species Filter Bar for Egg Chart */
+.egg-chart-species-filter-container {
+  padding: 0.55rem 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.egg-chart-species-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.egg-chart-filter-label {
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: var(--text-main);
+}
+.egg-chart-filter-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.egg-chart-species-pills-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.egg-chart-species-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.egg-chart-species-btn:hover {
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+.egg-chart-species-btn.active {
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.egg-chart-species-color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+/* Multi-Curve Legend Bar inside Panel */
+.egg-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.65rem;
+  border: 1px solid var(--border-subtle);
+}
+.egg-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+  color: var(--text-main);
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+.egg-chart-legend-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.egg-chart-legend-line {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
 .egg-chart-metrics-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));

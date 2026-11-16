@@ -15,7 +15,9 @@ const suites = [
   'scripts/test_reserve_stock_feed.js',
   'scripts/test_feed_deduplication.js',
   'scripts/test_decrement_numbers.js',
-  'scripts/test_mobile_sovereignty.js'
+  'scripts/test_mobile_sovereignty.js',
+  'scripts/test_uncheck_animal_categories.js',
+  'scripts/test_egg_chart_multispecies.js'
 ];
 
 console.log('========================================================================');

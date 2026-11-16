@@ -22,6 +22,20 @@
     lastSyncedAt: null,
     _pushTimer: null,
 
+    normalizeAnimalTypes(arr) {
+      if (!Array.isArray(arr)) return ['poultry'];
+      const res = [];
+      arr.forEach(t => {
+        let norm = String(t || '').trim().toLowerCase();
+        if (norm === 'bovine') norm = 'cattle';
+        if (norm === 'ovine') norm = 'sheep';
+        if (norm !== 'equine' && ['poultry', 'cattle', 'sheep'].includes(norm) && !res.includes(norm)) {
+          res.push(norm);
+        }
+      });
+      return res.length > 0 ? res : ['poultry'];
+    },
+
     // Safe retrieval of current state
     getAppState() {
       if (window.appState) return window.appState;
@@ -356,6 +370,25 @@
       }
       if (!isChannelActive(this.collabChannel)) {
         this.subscribeCollaborativeRealtime();
+      }
+    },
+
+    async updateUserProfileMetadata(profile) {
+      if (!profile || typeof profile !== 'object') return;
+      try {
+        if (this.client && this.currentUser) {
+          await this.client.auth.updateUser({
+            data: {
+              farmer_name: profile.name,
+              avatar: profile.avatar,
+              birth_date: profile.birthDate,
+              age: profile.age,
+              managed_animals: profile.managedAnimals
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[Supabase] updateUserProfileMetadata notice:', err);
       }
     },
 
@@ -1221,13 +1254,27 @@
 
       // Restore userProfile if provided by cloud (canonical source of truth for this account)
       if (cloudData.userProfile && typeof cloudData.userProfile === 'object' && cloudData.userProfile.name) {
-        const localManaged = (state.userProfile && Array.isArray(state.userProfile.managedAnimals)) ? state.userProfile.managedAnimals : [];
-        const cloudManaged = Array.isArray(cloudData.userProfile.managedAnimals) ? cloudData.userProfile.managedAnimals : [];
-        const mergedManaged = Array.from(new Set([...cloudManaged, ...localManaged]));
+        const cloudManaged = Array.isArray(cloudData.userProfile.managedAnimals) 
+          ? this.normalizeAnimalTypes(cloudData.userProfile.managedAnimals) 
+          : [];
+        const localManaged = (state.userProfile && Array.isArray(state.userProfile.managedAnimals)) 
+          ? this.normalizeAnimalTypes(state.userProfile.managedAnimals) 
+          : [];
+        const cloudTime = Number(cloudData.userProfile.updatedAt) || 0;
+        const localTime = Number(state.userProfile?.updatedAt) || 0;
+
+        let chosenManaged = ['poultry'];
+        if (localTime > cloudTime && localManaged.length > 0) {
+          chosenManaged = localManaged;
+        } else if (cloudManaged.length > 0) {
+          chosenManaged = cloudManaged;
+        } else if (localManaged.length > 0) {
+          chosenManaged = localManaged;
+        }
 
         state.userProfile = {
           ...cloudData.userProfile,
-          managedAnimals: mergedManaged.length > 0 ? mergedManaged : ['poultry'],
+          managedAnimals: chosenManaged,
           avatar: cloudData.userProfile.avatar || 'avatar-m1'
         };
         try {
@@ -1664,23 +1711,10 @@
         }
       }
 
-      // Preserve all animal species (bovins, ovins, volailles)
+      // Preserve animal species
       state.animals = Array.isArray(state.animals) ? state.animals : [];
-      if (state.animals.length > 0 && state.userProfile) {
-        state.userProfile.managedAnimals = Array.isArray(state.userProfile.managedAnimals) ? state.userProfile.managedAnimals : ['poultry'];
-        state.animals.forEach(a => {
-          const sp = (a.species || '').toLowerCase();
-          const isBovine = sp.includes('vache') || sp.includes('bovin') || sp.includes('genisse') || sp.includes('veau') || sp.includes('taureau');
-          const isOvine = sp.includes('mouton') || sp.includes('ovin') || sp.includes('brebis') || sp.includes('agneau') || sp.includes('belier') || sp.includes('chevre') || sp.includes('caprin');
-          const isPoultry = sp.includes('poulet') || sp.includes('poule') || sp.includes('poussin') || sp.includes('dinde') || sp.includes('canard') || sp.includes('caille');
-          if (isBovine && !state.userProfile.managedAnimals.includes('bovine')) state.userProfile.managedAnimals.push('bovine');
-          if (isOvine && !state.userProfile.managedAnimals.includes('ovine')) state.userProfile.managedAnimals.push('ovine');
-          if (isPoultry && !state.userProfile.managedAnimals.includes('poultry')) state.userProfile.managedAnimals.push('poultry');
-        });
-        try {
-          localStorage.setItem('fermegest_managed_animal_types', JSON.stringify(state.userProfile.managedAnimals));
-          localStorage.setItem('fermegest_user_profile', JSON.stringify(state.userProfile));
-        } catch (e) {}
+      if (state.userProfile && state.userProfile.managedAnimals) {
+        state.userProfile.managedAnimals = this.normalizeAnimalTypes(state.userProfile.managedAnimals);
       }
 
       // Synchroniser impérativement le code de ferme avec la valeur canonique du Cloud
