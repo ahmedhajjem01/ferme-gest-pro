@@ -411,20 +411,14 @@
         // Close all onboarding and auth prompt modals
         if (window.app && typeof app.closeModal === 'function') {
           app.closeModal('modalOnboarding');
+          app.closeModal('modalAnimalSelection');
           app.closeModal('modalAuthPrompt');
           app.closeModal('modalGuestWarning');
           app.closeModal('modalAuth');
-
-          // Open animal selection if not completed yet
-          const animalsDone = localStorage.getItem('fermegest_animals_selection_completed') === 'true';
-          if (!animalsDone && typeof app.openAnimalSelectionModal === 'function') {
-            setTimeout(() => {
-              app.openAnimalSelectionModal();
-            }, 400);
-          }
         }
         try {
           localStorage.setItem('fermegest_onboarding_completed', 'true');
+          localStorage.setItem('fermegest_animals_selection_completed', 'true');
         } catch (e) {}
         this.updateUI();
         await this.syncNow(false);
@@ -638,8 +632,6 @@
         localStorage.removeItem('fermegest_farm_role');
         localStorage.removeItem('fermegest_farm_owner_email');
         localStorage.removeItem('fermegest_managed_animal_types');
-        localStorage.removeItem('fermegest_onboarding_completed');
-        localStorage.removeItem('fermegest_animals_selection_completed');
         localStorage.removeItem('fermegest_guest_acknowledged');
         localStorage.removeItem('fermegest_guest_mode');
       } catch (e) {}

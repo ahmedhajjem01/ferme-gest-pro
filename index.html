@@ -34,7 +34,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=100">
+  <link rel="stylesheet" href="styles.css?v=101">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -103,7 +103,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=168').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=169').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -3568,8 +3568,9 @@
   <!-- ============================================== -->
 
   <!-- Modal 1: Onboarding Nouvel Utilisateur (Nom, Âge, Choix d'Avatar 5H/5F) -->
-  <div id="modalOnboarding" class="modal-overlay hidden" data-backdrop="static">
-    <div class="modal-card onboarding-modal-card">
+  <div id="modalOnboarding" class="modal-overlay hidden">
+    <div class="modal-card onboarding-modal-card" style="position: relative;">
+      <button type="button" class="modal-close" onclick="app.closeModal('modalOnboarding')" style="position: absolute; top: 1rem; right: 1rem; z-index: 10;" title="Fermer">&times;</button>
       <div class="onboarding-header">
         <div class="onboarding-logo-badge">
           <img src="logo.png" alt="FermeGest PRO" class="onboarding-logo-img">
@@ -3881,8 +3882,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
     }
   </script>
-  <script src="supabase-client.js?v=134"></script>
-  <script src="translations.js?v=134"></script>
-  <script src="app.js?v=134"></script>
+  <script src="supabase-client.js?v=135"></script>
+  <script src="translations.js?v=135"></script>
+  <script src="app.js?v=135"></script>
 </body>
 </html>

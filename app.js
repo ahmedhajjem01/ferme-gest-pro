@@ -233,16 +233,22 @@ const app = {
       return false;
     })();
 
-    const onboardingDone = localStorage.getItem('fermegest_onboarding_completed') === 'true' || hasSupabaseSession;
-    const animalsDone = localStorage.getItem('fermegest_animals_selection_completed') === 'true';
-    if (!onboardingDone) {
-      this.openOnboardingModal();
-    } else if (!animalsDone && !hasSupabaseSession) {
-      this.updateUserHeaderUI();
-      setTimeout(() => this.openAnimalSelectionModal(), 400);
-    } else {
-      this.updateUserHeaderUI();
+    // Accès 100% direct à l'ouverture : Aucun popup ni onboarding bloquant
+    if (!appState.userProfile || typeof appState.userProfile !== 'object' || !appState.userProfile.name) {
+      appState.userProfile = {
+        name: 'Éleveur',
+        avatar: 'avatar-m1',
+        managedAnimals: ['poultry'],
+        createdAt: Date.now()
+      };
     }
+    try {
+      localStorage.setItem('fermegest_onboarding_completed', 'true');
+      localStorage.setItem('fermegest_animals_selection_completed', 'true');
+      localStorage.setItem('fermegest_user_profile', JSON.stringify(appState.userProfile));
+    } catch (e) {}
+
+    this.updateUserHeaderUI();
 
     // Schedule daily notifications (16h feed & 17h egg collection) in active language
     if (window.MobileBridge && window.MobileBridge.scheduleAllDailyReminders) {
@@ -1563,11 +1569,6 @@ const app = {
     if (window.appAuth && typeof window.appAuth.updateUI === 'function') {
       window.appAuth.updateUI();
     }
-
-    // Step 3: Open animal selection modal after guest confirmation
-    setTimeout(() => {
-      this.openAnimalSelectionModal();
-    }, 400);
   },
 
   normalizeAnimalTypes(arr) {
