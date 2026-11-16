@@ -1256,7 +1256,7 @@
         const localTime = Number(state.userProfile?.updatedAt) || 0;
 
         let chosenManaged = ['poultry'];
-        if (localTime > cloudTime && localManaged.length > 0) {
+        if (localTime >= cloudTime && localManaged.length > 0) {
           chosenManaged = localManaged;
         } else if (cloudManaged.length > 0) {
           chosenManaged = cloudManaged;

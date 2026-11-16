@@ -99,4 +99,10 @@ if (!hasSheep) {
 assert.strictEqual(mockAnimals.length, 1);
 assert.strictEqual(mockAnimals[0].species, 'Poule');
 
+// 8. Verify CSS and JS guarantee that hidden milk card is never overridden by mobile flex
+const stylesCss = fs.readFileSync(path.join(__dirname, '../styles.css'), 'utf8');
+assert(stylesCss.includes('#milkStockCard.hidden'), 'styles.css must have strict hide override for #milkStockCard.hidden');
+assert(stylesCss.includes('.harvest-cards-grid .milk-stock-card:not(.hidden)'), 'styles.css must use :not(.hidden) for mobile harvest cards');
+assert(appJs.includes('setElemVisible(milkStockCard, hasCattle)'), 'app.js must control milkStockCard visibility via setElemVisible');
+
 console.log('✅ All animal unchecking and persistence tests passed with flying colors!');

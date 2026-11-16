@@ -958,10 +958,10 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
     width: 100% !important;
     max-width: 100% !important;
   }
-  .harvest-cards-grid .egg-stock-card,
-  .harvest-cards-grid .milk-stock-card,
-  .egg-stock-card,
-  .milk-stock-card {
+  .harvest-cards-grid .egg-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+  .harvest-cards-grid .milk-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+  .egg-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+  .milk-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]) {
     display: flex !important;
     flex-direction: column !important;
     flex-wrap: nowrap !important;
@@ -1035,10 +1035,10 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
     padding-left: 0.85rem;
     padding-right: 0.85rem;
   }
-  .harvest-cards-grid .egg-stock-card,
-  .harvest-cards-grid .milk-stock-card,
-  .egg-stock-card,
-  .milk-stock-card {
+  .harvest-cards-grid .egg-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+  .harvest-cards-grid .milk-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+  .egg-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+  .milk-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]) {
     padding: 0.85rem 0.85rem !important;
     overflow: visible !important;
   }
@@ -1073,10 +1073,10 @@ body.is-capacitor .harvest-cards-grid,
   flex-direction: column !important;
   width: 100% !important;
 }
-body.is-capacitor .egg-stock-card,
-body.is-capacitor .milk-stock-card,
-.is-mobile-app .egg-stock-card,
-.is-mobile-app .milk-stock-card {
+body.is-capacitor .egg-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+body.is-capacitor .milk-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+.is-mobile-app .egg-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]),
+.is-mobile-app .milk-stock-card:not(.hidden):not([style*="display: none"]):not([style*="display:none"]) {
   display: flex !important;
   flex-direction: column !important;
   flex-wrap: nowrap !important;
@@ -1112,6 +1112,50 @@ body.is-capacitor .egg-stock-btn,
   padding: 0.48rem 0.35rem !important;
   min-height: 39px !important;
   white-space: normal !important;
+}
+
+/* Strict Hide Override Rule: Absolute priority to hidden/none state across all devices */
+#eggStockCard.hidden,
+#milkStockCard.hidden,
+#eggStockCard[style*="display: none"],
+#milkStockCard[style*="display: none"],
+#eggStockCard[style*="display:none"],
+#milkStockCard[style*="display:none"],
+.egg-stock-card.hidden,
+.milk-stock-card.hidden,
+.egg-stock-card[style*="display: none"],
+.milk-stock-card[style*="display: none"],
+.egg-stock-card[style*="display:none"],
+.milk-stock-card[style*="display:none"],
+.harvest-cards-grid #eggStockCard.hidden,
+.harvest-cards-grid #milkStockCard.hidden,
+.harvest-cards-grid .egg-stock-card.hidden,
+.harvest-cards-grid .milk-stock-card.hidden,
+.harvest-cards-grid #eggStockCard[style*="display: none"],
+.harvest-cards-grid #milkStockCard[style*="display: none"],
+.harvest-cards-grid #eggStockCard[style*="display:none"],
+.harvest-cards-grid #milkStockCard[style*="display:none"],
+.harvest-cards-grid .egg-stock-card[style*="display: none"],
+.harvest-cards-grid .milk-stock-card[style*="display: none"],
+.harvest-cards-grid .egg-stock-card[style*="display:none"],
+.harvest-cards-grid .milk-stock-card[style*="display:none"],
+#milkProductionChartCard.hidden,
+#milkProductionChartCard[style*="display: none"],
+#milkProductionChartCard[style*="display:none"],
+#eggProductionChartCard.hidden,
+#eggProductionChartCard[style*="display: none"],
+#eggProductionChartCard[style*="display:none"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Egg Production Statistics & Line Chart Panel */

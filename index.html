@@ -34,7 +34,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=102">
+  <link rel="stylesheet" href="styles.css?v=103">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -103,7 +103,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=170').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=171').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -540,7 +540,7 @@
           </div>
 
           <!-- Stock de Lait & Réserve / Tank à Lait Card (Bovins) -->
-          <div id="milkStockCard" class="milk-stock-card" style="display: none;">
+          <div id="milkStockCard" class="milk-stock-card hidden" style="display: none !important;">
             <div class="milk-stock-info-group">
               <div class="milk-stock-icon-bubble">🥛</div>
               <div style="flex: 1; min-width: 0;">
@@ -620,7 +620,7 @@
         </div>
 
         <!-- Statistiques & Courbe de Traite / Production de Lait (Line Chart) -->
-        <div id="milkProductionChartCard" class="panel-card milk-chart-panel" style="display: none;">
+        <div id="milkProductionChartCard" class="panel-card milk-chart-panel hidden" style="display: none !important;">
           <div class="panel-header" style="flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
               <span style="font-size: 1.3rem;">🥛</span>
@@ -3882,8 +3882,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
     }
   </script>
-  <script src="supabase-client.js?v=136"></script>
-  <script src="translations.js?v=136"></script>
-  <script src="app.js?v=136"></script>
+  <script src="supabase-client.js?v=137"></script>
+  <script src="translations.js?v=137"></script>
+  <script src="app.js?v=137"></script>
 </body>
 </html>

@@ -1767,50 +1767,49 @@ const app = {
     }
 
     // 2. Overview cards: Daily egg alert, Egg stock card, Egg production chart
+    const setElemVisible = (el, isVisible) => {
+      if (!el) return;
+      if (isVisible) {
+        if (el.classList && el.classList.remove) el.classList.remove('hidden');
+        if (el.style) {
+          if (typeof el.style.removeProperty === 'function') el.style.removeProperty('display');
+          el.style.display = '';
+        }
+      } else {
+        if (el.classList && el.classList.add) el.classList.add('hidden');
+        if (el.style) {
+          if (typeof el.style.setProperty === 'function') el.style.setProperty('display', 'none', 'important');
+          else el.style.display = 'none';
+        }
+      }
+    };
+
     const dailyEggBanner = document.getElementById('dailyEggAlertBanner');
-    if (dailyEggBanner && !hasPoultry) {
-      dailyEggBanner.style.display = 'none';
-    }
+    setElemVisible(dailyEggBanner, hasPoultry);
 
     const dailyMilkBanner = document.getElementById('dailyMilkAlertBanner');
-    if (dailyMilkBanner && !hasCattle) {
-      dailyMilkBanner.style.display = 'none';
-    }
+    setElemVisible(dailyMilkBanner, hasCattle);
 
     const eggStockCard = document.getElementById('eggStockCard') || document.querySelector('.egg-stock-card');
-    if (eggStockCard) {
-      eggStockCard.style.display = hasPoultry ? '' : 'none';
-    }
+    setElemVisible(eggStockCard, hasPoultry);
 
     const eggChartCard = document.getElementById('eggProductionChartCard');
-    if (eggChartCard) {
-      eggChartCard.style.display = hasPoultry ? '' : 'none';
-    }
+    setElemVisible(eggChartCard, hasPoultry);
 
     const milkStockCard = document.getElementById('milkStockCard');
-    if (milkStockCard) {
-      milkStockCard.style.display = hasCattle ? '' : 'none';
-    }
+    setElemVisible(milkStockCard, hasCattle);
 
     const milkChartCard = document.getElementById('milkProductionChartCard');
-    if (milkChartCard) {
-      milkChartCard.style.display = hasCattle ? '' : 'none';
-    }
+    setElemVisible(milkChartCard, hasCattle);
 
     const harvestCardsGrid = document.querySelector('.harvest-cards-grid');
-    if (harvestCardsGrid) {
-      harvestCardsGrid.style.display = (hasPoultry || hasCattle) ? '' : 'none';
-    }
+    setElemVisible(harvestCardsGrid, hasPoultry || hasCattle);
 
     const drawerEggBtn = document.getElementById('drawerEggHarvestBtn');
-    if (drawerEggBtn) {
-      drawerEggBtn.style.display = hasPoultry ? '' : 'none';
-    }
+    setElemVisible(drawerEggBtn, hasPoultry);
 
     const drawerMilkBtn = document.getElementById('drawerMilkHarvestBtn');
-    if (drawerMilkBtn) {
-      drawerMilkBtn.style.display = hasCattle ? '' : 'none';
-    }
+    setElemVisible(drawerMilkBtn, hasCattle);
 
 
     // 3. KPI Livestock Title & Subtitle
