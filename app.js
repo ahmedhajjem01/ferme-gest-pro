@@ -3842,12 +3842,12 @@ const app = {
     if (normKey === 'canard') normKey = 'canard_barbarie';
 
     const metaMap = {
-      poule: { key: 'poule', label: this.t('opt_egg_species_poule') || '🥚 Poule (Poulet)', icon: '🥚', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.45)' },
-      canard_barbarie: { key: 'canard_barbarie', label: this.t('opt_egg_species_canard') || '🦆 Canard de Barbarie', icon: '🦆', color: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.45)' },
-      pintade: { key: 'pintade', label: this.t('opt_egg_species_pintade') || '🪶 Pintade', icon: '🪶', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.45)' },
-      caille: { key: 'caille', label: this.t('opt_egg_species_caille') || '🪺 Caille', icon: '🪺', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.45)' },
-      dinde: { key: 'dinde', label: this.t('opt_egg_species_dinde') || '🦃 Dinde', icon: '🦃', color: '#fb923c', glow: 'rgba(251, 146, 60, 0.45)' },
-      oie: { key: 'oie', label: this.t('opt_egg_species_oie') || '🪿 Oie', icon: '🪿', color: '#6366f1', glow: 'rgba(99, 102, 241, 0.45)' }
+      poule: { key: 'poule', label: 'Poule (Poulet)', icon: '🥚', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.45)' },
+      canard_barbarie: { key: 'canard_barbarie', label: 'Canard de Barbarie', icon: '🦆', color: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.45)' },
+      pintade: { key: 'pintade', label: 'Pintade', icon: '🪶', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.45)' },
+      caille: { key: 'caille', label: 'Caille', icon: '🪺', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.45)' },
+      dinde: { key: 'dinde', label: 'Dinde', icon: '🦃', color: '#fb923c', glow: 'rgba(251, 146, 60, 0.45)' },
+      oie: { key: 'oie', label: 'Oie', icon: '🪿', color: '#6366f1', glow: 'rgba(99, 102, 241, 0.45)' }
     };
 
     if (metaMap[normKey]) return metaMap[normKey];
@@ -3865,9 +3865,11 @@ const app = {
       hash |= 0;
     }
     const pal = fallbackPalette[Math.abs(hash) % fallbackPalette.length];
+    let customLabel = this.getSpeciesDisplayName ? this.getSpeciesDisplayName(normKey) : normKey;
+    customLabel = customLabel.replace(/^[\p{Emoji}\u200d\s]+/u, '').trim();
     return {
       key: normKey,
-      label: this.getSpeciesDisplayName ? this.getSpeciesDisplayName(normKey) : normKey,
+      label: customLabel || normKey,
       icon: '🪶',
       color: pal.color,
       glow: pal.glow
