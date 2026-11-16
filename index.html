@@ -34,7 +34,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=99">
+  <link rel="stylesheet" href="styles.css?v=100">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -103,7 +103,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=167').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=168').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -3275,59 +3275,6 @@
           </div>
         </div>
 
-        <!-- Section Sécurité & Restauration de Sauvegarde (Coffre-fort Téléphone) -->
-        <div class="team-card" style="margin-top: 1rem; border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-md); padding: 0.9rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
-            <span style="font-size: 1.25rem;">🛡️</span>
-            <strong style="color: #3b82f6;" data-i18n="backup_vault_title">Coffre-fort & Restauration Locale (Téléphone)</strong>
-          </div>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4;" data-i18n="backup_vault_desc">
-            En cas de problème d'affichage ou pour récupérer vos données réelles enregistrées sur ce téléphone :
-          </p>
-          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-            <button type="button" class="btn btn-outline btn-full" onclick="app.restoreFromLocalBackup()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; padding: 0.65rem; border-color: #3b82f6; color: #3b82f6;">
-              <span>🔄</span>
-              <span data-i18n="backup_btn_restore_phone">Restaurer ma sauvegarde locale (Téléphone)</span>
-            </button>
-            <button type="button" class="btn btn-outline btn-full" onclick="app.autoRepairAllStocks(true)" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; padding: 0.65rem; border-color: #10b981; color: #10b981;">
-              <span>🧮</span>
-              <span data-i18n="backup_btn_recalc_all_stocks">Recalibrer les stocks (Œufs & Aliments)</span>
-            </button>
-            <div style="display: flex; gap: 0.5rem;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="app.exportBackupJSON()" style="flex: 1; justify-content: center; display: flex; align-items: center; gap: 0.35rem;">
-                <span>📥</span> <span data-i18n="backup_btn_export">Exporter (JSON)</span>
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('importBackupFileInput').click()" style="flex: 1; justify-content: center; display: flex; align-items: center; gap: 0.35rem;">
-                <span>📤</span> <span data-i18n="backup_btn_import">Importer (JSON)</span>
-              </button>
-            </div>
-            <input type="file" id="importBackupFileInput" accept=".json" style="display:none;" onchange="app.importBackupJSON(event)">
-          </div>
-        </div>
-
-        <!-- Section Zone de Danger : Remise à Zéro de la Ferme & Maintenance Cache -->
-        <div class="team-card danger-zone-card" style="margin-top: 1rem; border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.05); border-radius: var(--radius-md); padding: 0.9rem;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-size: 1.25rem;">⚠️</span>
-              <strong style="color: #ef4444;" data-i18n="reset_farm_danger_zone_title">Zone de Danger : Réinitialisation</strong>
-            </div>
-          </div>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4;" data-i18n="reset_farm_danger_zone_desc">
-            Remettre toutes les données de l'élevage à zéro (stocks, pontes, cheptel, finances). Votre compte reste connecté.
-          </p>
-          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-            <button type="button" id="btnResetFarmData" class="btn btn-outline btn-full" onclick="app.confirmResetFarmData()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; padding: 0.65rem; border-color: rgba(239, 68, 68, 0.8); color: #ef4444; background: rgba(239, 68, 68, 0.08);">
-              <span>🗑️</span>
-              <span data-i18n="btn_reset_farm_zero">Mettre à 0 la ferme</span>
-            </button>
-            <button type="button" id="btnClearCacheReload" class="btn btn-secondary btn-full" onclick="app.clearAppCacheAndReload()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.82rem; padding: 0.55rem;">
-              <span>🔄</span>
-              <span data-i18n="btn_clear_cache_reload">Actualiser & Vider le cache (PC / Mobile)</span>
-            </button>
-          </div>
-        </div>
-
         <!-- Action Buttons -->
         <div class="profile-action-btns">
           <div class="profile-sync-auto-status" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); margin-bottom: 0.75rem; color: #10b981; font-weight: 700; font-size: 0.88rem;">
@@ -3934,8 +3881,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
     }
   </script>
-  <script src="supabase-client.js?v=133"></script>
-  <script src="translations.js?v=133"></script>
-  <script src="app.js?v=133"></script>
+  <script src="supabase-client.js?v=134"></script>
+  <script src="translations.js?v=134"></script>
+  <script src="app.js?v=134"></script>
 </body>
 </html>

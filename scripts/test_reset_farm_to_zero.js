@@ -27,23 +27,13 @@ function it(description, fn) {
   }
 }
 
-// 1. Verify index.html structure
+// 1. Verify index.html structure: clean profile without technical clutter
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 
-it('Bouton "btnResetFarmData" présent dans modalUserProfile', () => {
-  assert(indexHtml.includes('id="btnResetFarmData"'), 'Le bouton btnResetFarmData doit exister');
-  assert(indexHtml.includes('onclick="app.confirmResetFarmData()"'), 'Le bouton doit appeler confirmResetFarmData');
-});
-
-it('Bouton "btnClearCacheReload" présent pour forcer la mise à jour sur PC', () => {
-  assert(indexHtml.includes('id="btnClearCacheReload"'), 'Le bouton btnClearCacheReload doit exister');
-  assert(indexHtml.includes('onclick="app.clearAppCacheAndReload()"'), 'Le bouton doit appeler clearAppCacheAndReload');
-});
-
-it('Zone de Danger avec stylisation haute visibilité et avertissement', () => {
-  assert(indexHtml.includes('danger-zone-card'), 'La classe danger-zone-card doit être présente');
-  assert(indexHtml.includes('reset_farm_danger_zone_title'), 'Le titre i18n de danger zone doit être présent');
-  assert(indexHtml.includes('reset_farm_danger_zone_desc'), 'La description i18n de danger zone doit être présente');
+it('Sections Coffre-fort et Danger Zone supprimées de modalUserProfile sur demande utilisateur', () => {
+  assert(!indexHtml.includes('id="btnResetFarmData"'), 'Le bouton btnResetFarmData doit être retiré');
+  assert(!indexHtml.includes('backup_vault_title'), 'La section Coffre-fort doit être retirée');
+  assert(!indexHtml.includes('danger-zone-card'), 'La classe danger-zone-card doit être retirée');
 });
 
 // 2. Verify translations.js
