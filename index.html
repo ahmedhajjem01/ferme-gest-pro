@@ -34,7 +34,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=88">
+  <link rel="stylesheet" href="styles.css?v=89">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -103,7 +103,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=157').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=158').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -522,7 +522,7 @@
             <div id="eggSpeciesBreakdownStrip">
             </div>
 
-            <!-- Action buttons: 2 buttons per line grid -->
+            <!-- Action buttons: 4 buttons on 1 line on PC/Web, responsive 2x2 on mobile -->
             <div class="egg-stock-actions-grid">
               <button type="button" class="btn btn-emerald egg-stock-btn" onclick="app.openDailyEggModal()" data-i18n="btn_record_harvest">
                 ➕ Récolte
@@ -557,7 +557,7 @@
               </div>
             </div>
 
-            <!-- Action buttons: 2x2 grid -->
+            <!-- Action buttons: 4 buttons on 1 line on PC/Web, responsive 2x2 on mobile -->
             <div class="egg-stock-actions-grid">
               <button type="button" class="btn btn-sky egg-stock-btn" onclick="app.openDailyMilkModal()" data-i18n="btn_record_milking">
                 ➕ Traite
