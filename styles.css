@@ -3507,6 +3507,17 @@ label {
   border: 1px solid rgba(239, 68, 68, 0.3);
   font-weight: 700;
   padding: 0.55rem;
+  transition: all 0.2s ease;
+}
+
+.team-leave-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  transform: translateY(-1px);
+}
+
+.team-leave-btn:active {
+  transform: translateY(0);
 }
 
 .team-join-submit-btn {

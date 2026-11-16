@@ -34,7 +34,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles.css?v=89">
+  <link rel="stylesheet" href="styles.css?v=90">
 
   <script>
     // 100% In-App Dialogs : Neutralisation absolue des popups natives Chrome (alert, confirm, prompt)
@@ -103,7 +103,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=158').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=160').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -3207,15 +3207,25 @@
           </div>
 
           <!-- Section B: Quand l'utilisateur a rejoint la ferme d'un associé -->
-          <div id="teamPartnerSection" class="hidden">
-            <div class="team-partner-info">
-              <span data-i18n="team_connected_to">Connecté à la ferme :</span> <strong id="teamJoinedCodeDisplay" class="team-joined-code">FERME-XXXX</strong>
+          <div id="teamPartnerSection" class="hidden" style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 0.85rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+              <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 700; color: #f59e0b; font-size: 0.9rem;">
+                <span style="font-size: 1.1rem;">🔗</span>
+                <span data-i18n="team_partner_active_title">Ferme Partagée Active</span>
+              </div>
+              <span class="team-badge team-badge-partner" data-i18n="team_role_partner">Associé</span>
             </div>
-            <div class="team-creator-info">
-              <span data-i18n="team_owner_is">Créateur :</span> <strong id="teamOwnerEmailDisplay">associé@gmail.com</strong>
+            <div class="team-partner-info" style="font-size: 0.88rem; margin-bottom: 0.4rem; display: flex; align-items: center; justify-content: space-between;">
+              <span data-i18n="team_connected_to" style="color: var(--text-secondary);">Code Ferme :</span>
+              <strong id="teamJoinedCodeDisplay" class="team-joined-code" style="color: var(--primary); font-family: monospace; font-size: 1.05rem; letter-spacing: 0.06em;">FERME-XXXX</strong>
             </div>
-            <button type="button" class="btn btn-sm btn-full team-leave-btn" onclick="appAuth.leaveSharedFarm()">
-              ❌ <span data-i18n="team_leave_btn">Quitter cette ferme partagée</span>
+            <div class="team-creator-info" style="font-size: 0.84rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between;">
+              <span data-i18n="team_owner_is" style="color: var(--text-muted);">Propriétaire :</span>
+              <strong id="teamOwnerEmailDisplay" style="color: var(--text-primary);">associé@gmail.com</strong>
+            </div>
+            <button type="button" id="btnDisconnectSharedFarm" class="btn btn-full team-leave-btn" onclick="appAuth.leaveSharedFarm()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1.5px solid rgba(239, 68, 68, 0.4); font-weight: 700; padding: 0.65rem; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease;">
+              <span>🚪</span>
+              <span data-i18n="team_disconnect_farm_btn">Se déconnecter de la ferme partagée</span>
             </button>
           </div>
 
@@ -3912,8 +3922,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
     }
   </script>
-  <script src="supabase-client.js?v=126"></script>
-  <script src="translations.js?v=124"></script>
-  <script src="app.js?v=126"></script>
+  <script src="supabase-client.js?v=128"></script>
+  <script src="translations.js?v=128"></script>
+  <script src="app.js?v=128"></script>
 </body>
 </html>

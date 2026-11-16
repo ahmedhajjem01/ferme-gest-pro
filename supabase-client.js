@@ -801,27 +801,37 @@
         }
 
         if (rows.length > 0) {
-          const ownerRow = rows.find(r => r.data && r.data.farmRole === 'owner' && r.user_id !== this.currentUser.id);
           const isPartner = this.getFarmRole() === 'partner';
+          const ownerRow = rows.find(r => r.data && (r.data.farmRole === 'owner' || !r.data.farmRole));
           const localState = this.getAppState();
           const localHasData = (localState.animals && localState.animals.length > 0) || (localState.expenses && localState.expenses.length > 0);
 
-          for (const row of rows) {
-            if (row && row.data && Object.keys(row.data).length > 0) {
-              const isDirectOwnerSelf = (row.user_id === this.currentUser.id);
-              const cloudHasData = (row.data.animals && row.data.animals.length > 0) || (row.data.expenses && row.data.expenses.length > 0);
-              // Si le terminal local est vierge (ex: nouvelle install APK sur mobile) et que le Cloud détient la ferme du compte,
-              // forcer l'adoption intégrale (doMerge = false) pour une parité immédiate à 100% avec le Web !
-              const shouldDirectHydrate = isDirectOwnerSelf && !localHasData && cloudHasData;
-
-              this.applyCloudData(row.data, !shouldDirectHydrate);
-            }
-          }
-
-          // Si le compte courant est un associé (ex: le frère), et que le propriétaire a des données plus fraîches ou complètes,
-          // fusionner intelligemment avec la vérité canonique du propriétaire sans jamais écraser les données locales
           if (isPartner && ownerRow && ownerRow.data) {
-            this.applyCloudData(ownerRow.data, !localHasData ? false : true);
+            // RÈGLE SOUVERAINE : Si l'utilisateur est un associé, la ferme du Propriétaire est la vérité absolue
+            console.log('[Sync] 👑 Adoption des données canoniques du Propriétaire pour l\'associé.');
+            this.applyCloudData(ownerRow.data, localHasData ? true : false);
+          } else {
+            // RÈGLE SOUVERAINE : Si l'utilisateur est le Propriétaire (ou compte individuel)
+            for (const row of rows) {
+              if (row && row.data && Object.keys(row.data).length > 0) {
+                const isPartnerRow = (row.data.farmRole === 'partner' && row.user_id !== this.currentUser.id);
+                // Si une ligne partenaire contient un cheptel vide alors que le propriétaire a des animaux,
+                // INTERDICTION FORMELLE d'écraser le cheptel du propriétaire avec du vide !
+                if (isPartnerRow && (!row.data.animals || row.data.animals.length === 0) && localHasData) {
+                  console.log('[Sync] 🛡️ Protection: Cheptel vide de l\'associé ignoré pour préserver le propriétaire.');
+                  const sanitizedRowData = { ...row.data };
+                  delete sanitizedRowData.animals;
+                  this.applyCloudData(sanitizedRowData, true);
+                  continue;
+                }
+
+                const isDirectOwnerSelf = (row.user_id === this.currentUser.id);
+                const cloudHasData = (row.data.animals && row.data.animals.length > 0) || (row.data.expenses && row.data.expenses.length > 0);
+                const shouldDirectHydrate = isDirectOwnerSelf && !localHasData && cloudHasData;
+
+                this.applyCloudData(row.data, !shouldDirectHydrate);
+              }
+            }
           }
 
           if (window.app && typeof app.renderAll === 'function') {
@@ -840,6 +850,14 @@
 
         const state = this.getAppState();
         const farmRole = this.getFarmRole();
+
+        // Guardrail souverain : Partenaire avec cheptel vide ne pousse jamais de cheptel vide destructif
+        if (farmRole === 'partner' && (!state.animals || state.animals.length === 0) && !state._resetCleared) {
+          console.warn('[Sync] 🛡️ Guardrail: Partenaire avec 0 animaux, push annulé pour protéger le propriétaire.');
+          this.lastSyncedAt = new Date();
+          this.updateSyncBadge('connected');
+          return;
+        }
         const ownerEmail = farmRole === 'owner'
           ? (this.currentUser ? this.currentUser.email : '')
           : this.getFarmOwnerEmail();
@@ -931,16 +949,24 @@
         this._needPushAgain = true;
         return;
       }
-      this.isSyncing = true;
-      this.updateSyncBadge('syncing');
 
       const farmCode = this.getFarmCode();
       const farmRole = this.getFarmRole();
+      const state = this.getAppState();
+
+      // Guardrail souverain : Partenaire avec cheptel vide ne pousse jamais de cheptel vide destructif
+      if (farmRole === 'partner' && (!state.animals || state.animals.length === 0) && !state._resetCleared) {
+        console.warn('[PushData] 🛡️ Guardrail: Partenaire avec 0 animaux, push annulé pour protéger le propriétaire.');
+        this.updateSyncBadge('connected');
+        return;
+      }
+
+      this.isSyncing = true;
+      this.updateSyncBadge('syncing');
+
       const ownerEmail = farmRole === 'owner'
         ? (this.currentUser ? this.currentUser.email : '')
         : this.getFarmOwnerEmail();
-
-      const state = this.getAppState();
       const payload = {
         version: '2.5.0-pro',
         _senderSessionId: this.sessionId,
@@ -1105,7 +1131,21 @@
 
             console.log('[UserSync] Realtime broadcast received from another device session:', data.senderSessionId);
             if (data.farmData) {
-              this.applyCloudData(data.farmData, true);
+              const localState = this.getAppState();
+              const localHasAnimals = localState.animals && localState.animals.length > 0;
+              const incomingHasAnimals = data.farmData.animals && data.farmData.animals.length > 0;
+              const isExplicitReset = data.farmData._resetCleared === true;
+
+              // Guardrail anti-écrasement destructif du cheptel
+              if (localHasAnimals && !incomingHasAnimals && !isExplicitReset) {
+                console.warn('[CollabRoom] 🛡️ Guardrail: Message Realtime avec cheptel vide ignoré pour protéger les animaux locaux.');
+                const safeFarmData = { ...data.farmData };
+                delete safeFarmData.animals;
+                this.applyCloudData(safeFarmData, true);
+              } else {
+                this.applyCloudData(data.farmData, true);
+              }
+
               this.lastSyncedAt = new Date();
               this.updateUI();
             }
@@ -1139,7 +1179,7 @@
       const state = this.getAppState();
 
       const hasPendingLocalPush = (typeof localStorage !== 'undefined') && localStorage.getItem('fermegest_pending_push') === 'true';
-      const localLastEdit = Number((typeof localStorage !== 'undefined' ? localStorage.getItem('fermegest_last_local_edit') : 0)) || Number(state.lastUpdated) || 0;
+      const localLastEdit = Number(state.lastUpdated) || (hasPendingLocalPush && typeof localStorage !== 'undefined' ? Number(localStorage.getItem('fermegest_last_local_edit')) || 0 : 0);
       const cloudLastUpdated = Number(cloudData.lastUpdated) || 0;
 
       // Protection souveraine : si le terminal local a des modifications en attente de push,
@@ -1511,8 +1551,9 @@
         });
         Object.keys(stockBySp).forEach(sp => {
           stockBySp[sp] = Math.max(0, stockBySp[sp] || 0);
+          const hasOfflineDeductions = (offlineEggSalesBySpecies[sp] || 0) > 0;
           if (!state.eggStocks) state.eggStocks = {};
-          if (stockBySp[sp] > 0 && ((Number(state.eggStocks[sp]) || 0) === 0 || (Number(state.eggStocks[sp]) || 0) < stockBySp[sp])) {
+          if (!hasOfflineDeductions && !state._resetCleared && stockBySp[sp] > 0 && ((Number(state.eggStocks[sp]) || 0) === 0 || (Number(state.eggStocks[sp]) || 0) < stockBySp[sp])) {
             state.eggStocks[sp] = stockBySp[sp];
           }
         });
@@ -2056,92 +2097,196 @@
       }
     },
 
-    async joinFarmWithCode() {
+    async joinFarmWithCode(rawCode = null) {
       const input = document.getElementById('teamJoinCodeInput');
-      if (!input) return;
-      let code = input.value.trim().toUpperCase().replace(/\s+/g, '');
+      let code = (rawCode || (input ? input.value : '')).trim().toUpperCase().replace(/\s+/g, '');
       if (!code) {
-        if (window.app && app.showToast) app.showToast('Veuillez entrer un code valide.');
-        return;
+        if (window.app && app.showToast) app.showToast('Veuillez entrer un code de ferme valide.');
+        return false;
       }
       if (!code.startsWith('FERME-')) {
         code = 'FERME-' + code;
       }
 
-      // Enregistrer le rôle d'associé et le code
-      localStorage.setItem('fermegest_farm_code', code);
-      localStorage.setItem('fermegest_farm_role', 'partner');
-
-      // Se brancher sur le canal Realtime de cette ferme partagée
-      this.subscribeCollaborativeRealtime();
-
-      // Demander l'état actuel de la ferme dans la pièce
-      if (this.collabChannel) {
-        try {
-          this.collabChannel.send({
-            type: 'broadcast',
-            event: 'request_state',
-            payload: {
-              requesterEmail: this.currentUser ? this.currentUser.email : 'Associé',
-              code: code
-            }
-          });
-        } catch (e) {}
+      if (!this.client) {
+        if (window.app && app.showToast) app.showToast('Erreur: Connexion réseau ou service indisponible.');
+        return false;
       }
 
-      // 1. Enregistrer immédiatement le farmCode dans la base pour activer les droits RLS
-      const state = this.getAppState();
-      await this.client.from('user_farms').upsert({
-        user_id: this.currentUser.id,
-        data: {
-          ...state,
-          farmCode: code,
-          farmRole: 'partner'
-        },
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      this.updateSyncBadge('syncing');
 
-      // 2. Forcer le chargement de la ferme du propriétaire
-      await this.forcePullFromCloud(false);
+      try {
+        // 1. RECHERCHE CLOUD DE LA FERME AVANT TOUTE MODIFICATION LOCALE OU DISTANTE
+        const { data: farmRows, error: searchErr } = await this.client
+          .from('user_farms')
+          .select('user_id, data, updated_at')
+          .contains('data', { farmCode: code });
 
-      this.updateProfileModalUI();
-      input.value = '';
+        if (searchErr || !Array.isArray(farmRows) || farmRows.length === 0) {
+          console.warn('[JoinFarm] Code de ferme introuvable :', code, searchErr);
+          this.updateSyncBadge('connected');
+          if (window.app && app.showToast) {
+            app.showToast('❌ Code de ferme introuvable. Demandez le code exact au propriétaire.', 'danger');
+          }
+          return false;
+        }
 
-      if (window.app && app.showToast) {
-        app.showToast((window.app && app.t) ? app.t('team_toast_joined_success') : '🎉 Connecté à la ferme partagée !');
+        // 2. EXTRACTION DU PROPRIÉTAIRE CANONIQUE DE LA FERME
+        const ownerRow = farmRows.find(r => r.data && (r.data.farmRole === 'owner' || !r.data.farmRole)) || farmRows[0];
+        if (!ownerRow || !ownerRow.data || typeof ownerRow.data !== 'object') {
+          this.updateSyncBadge('connected');
+          if (window.app && app.showToast) {
+            app.showToast('❌ Données de la ferme propriétaire indisponibles ou vides.', 'danger');
+          }
+          return false;
+        }
+
+        const ownerData = ownerRow.data;
+        const ownerEmail = ownerData.ownerEmail || ownerData.email || 'Propriétaire';
+
+        // 3. ADOPTION SOUVERAINE : L'INVITÉ REÇOIT 100% DES DONNÉES DU PROPRIÉTAIRE (doMerge = false)
+        this.applyCloudData(ownerData, false);
+
+        // 4. VERROUILLAGE DES MÉTADONNÉES LOCALES
+        localStorage.setItem('fermegest_farm_code', code);
+        localStorage.setItem('fermegest_farm_role', 'partner');
+        localStorage.setItem('fermegest_farm_owner_email', ownerEmail);
+        localStorage.removeItem('fermegest_pending_push'); // Éliminer tout push en attente de l'ancien état vide
+
+        // 5. GESTION STRICTE DU MODE INVITÉ vs MODE CONNECTÉ
+        if (!this.currentUser) {
+          // MODE INVITÉ : ZÉRO écriture dans Supabase !
+          console.log('[JoinFarm] Adhésion en Mode Invité réussie (0 écriture DB).');
+        } else {
+          // MODE CONNECTÉ : Enregistrer l'associé dans user_farms avec les données ADOPTÉES du propriétaire
+          const adoptedState = this.getAppState();
+          await this.client.from('user_farms').upsert({
+            user_id: this.currentUser.id,
+            data: {
+              ...adoptedState,
+              farmCode: code,
+              farmRole: 'partner',
+              ownerEmail: ownerEmail
+            },
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+          console.log('[JoinFarm] Adhésion en Mode Connecté enregistrée dans user_farms.');
+        }
+
+        // 6. ABONNEMENT AU CANAL REALTIME COLLABORATIF
+        this.subscribeCollaborativeRealtime();
+
+        // 7. DEMANDER UN RAFRAÎCHISSEMENT TEMPS RÉEL (SANS ÉMETTRE D'ÉTAT VIDE)
+        if (this.collabChannel) {
+          try {
+            this.collabChannel.send({
+              type: 'broadcast',
+              event: 'request_state',
+              payload: {
+                senderSessionId: this.sessionId,
+                requesterEmail: this.currentUser ? this.currentUser.email : 'Associé',
+                code: code
+              }
+            });
+          } catch (e) {}
+        }
+
+        // 8. RAFRAÎCHISSEMENT COMPLET DE L'UI
+        if (input) input.value = '';
+        this.updateProfileModalUI();
+        this.updateUI();
+        if (window.app && typeof app.renderAll === 'function') {
+          app.renderAll();
+        }
+
+        if (window.app && app.showToast) {
+          const lang = (window.appState && appState.lang) || 'fr';
+          const msg = lang === 'ar'
+            ? `🎉 متصل بنجاح بمزرعة ${ownerEmail} !`
+            : `🎉 Connecté avec succès à la ferme de ${ownerEmail} !`;
+          app.showToast(msg);
+        }
+
+        return true;
+      } catch (err) {
+        console.error('[JoinFarm] Erreur critique lors de l\'adhésion:', err);
+        this.updateSyncBadge('error');
+        if (window.app && app.showToast) {
+          app.showToast('Erreur inattendue lors de la connexion à la ferme.', 'danger');
+        }
+        return false;
       }
     },
 
     async leaveSharedFarm() {
       const doLeave = async () => {
-        // Repasser en propriétaire avec un nouveau code indépendant
-        localStorage.setItem('fermegest_farm_role', 'owner');
-        const newCode = this.generateFarmCode();
-        localStorage.setItem('fermegest_farm_code', newCode);
-        localStorage.removeItem('fermegest_farm_owner_email');
+        try {
+          // 1. Repasser en propriétaire avec un nouveau code indépendant
+          localStorage.setItem('fermegest_farm_role', 'owner');
+          const newCode = this.generateFarmCode();
+          localStorage.setItem('fermegest_farm_code', newCode);
+          localStorage.removeItem('fermegest_farm_owner_email');
+          localStorage.removeItem('fermegest_pending_push');
 
-        this.subscribeCollaborativeRealtime();
-        await this.pushData(false);
-        this.updateProfileModalUI();
+          // 2. Nettoyer l'ancien canal Realtime partagé
+          if (this.collabChannel) {
+            try { this.client.removeChannel(this.collabChannel); } catch (e) {}
+            this.collabChannel = null;
+          }
 
-        if (window.app && app.showToast) {
-          app.showToast((window.app && app.t) ? app.t('team_toast_left_farm') : 'Vous avez quitté la ferme partagée.');
+          // 3. Se réabonner au canal Realtime propre
+          this.subscribeCollaborativeRealtime();
+
+          // 4. Si connecté, mettre à jour sa ligne dans user_farms avec le nouveau code et rôle owner
+          if (this.currentUser && this.client) {
+            const state = this.getAppState();
+            await this.client.from('user_farms').upsert({
+              user_id: this.currentUser.id,
+              data: {
+                ...state,
+                farmCode: newCode,
+                farmRole: 'owner',
+                ownerEmail: this.currentUser.email || ''
+              },
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+          }
+
+          // 5. Mettre à jour l'interface du profil
+          this.updateProfileModalUI();
+          this.updateUI();
+
+          // 6. Notification de confirmation
+          if (window.app && app.showToast) {
+            const lang = (window.appState && appState.lang) || 'fr';
+            const msg = lang === 'ar'
+              ? '✅ تم قطع الاتصال بالمزرعة المشتركة والعودة إلى مزرعتك الفردية.'
+              : '✅ Vous vous êtes déconnecté de la ferme partagée. Vous êtes de nouveau sur votre élevage individuel.';
+            app.showToast(msg);
+          }
+        } catch (err) {
+          console.error('[LeaveSharedFarm] Erreur:', err);
+          if (window.app && app.showToast) {
+            app.showToast('Erreur lors de la déconnexion de la ferme.', 'danger');
+          }
         }
       };
 
       if (window.app && typeof app.confirmDialog === 'function') {
         const isAr = (window.appState && appState.lang === 'ar');
         app.confirmDialog({
-          title: isAr ? 'مغادرة المزرعة المشتركة' : 'Quitter la ferme partagée',
+          title: isAr ? 'قطع الاتصال بالمزرعة المشتركة' : 'Se déconnecter de la ferme partagée',
           message: isAr 
-            ? 'هل تريد مغادرة هذه المزرعة المشتركة والعودة إلى وضع المزرعة الفردية ؟'
-            : 'Voulez-vous vraiment quitter cette ferme partagée ? Vous repasserez en mode ferme individuelle.',
-          confirmText: isAr ? 'مغادرة' : 'Quitter',
+            ? 'هل تريد بالتأكيد قطع الاتصال بهذه المزرعة المشتركة والعودة إلى وضع المزرعة الفردية ؟'
+            : 'Voulez-vous vraiment vous déconnecter de cette ferme partagée ? Vous repasserez en mode ferme individuelle indépendante.',
+          confirmText: isAr ? 'قطع الاتصال' : 'Se déconnecter',
           isDanger: true,
           onConfirm: doLeave
         });
       } else {
-        doLeave();
+        if (confirm('Voulez-vous vraiment vous déconnecter de cette ferme partagée ?')) {
+          doLeave();
+        }
       }
     },
 
@@ -2172,7 +2317,21 @@
             if (data.senderSessionId && data.senderSessionId === this.sessionId) return;
 
             if (data.farmData) {
-              this.applyCloudData(data.farmData, true);
+              const localState = this.getAppState();
+              const localHasAnimals = localState.animals && localState.animals.length > 0;
+              const incomingHasAnimals = data.farmData.animals && data.farmData.animals.length > 0;
+              const isExplicitReset = data.farmData._resetCleared === true;
+
+              // Guardrail anti-écrasement destructif du cheptel
+              if (localHasAnimals && !incomingHasAnimals && !isExplicitReset) {
+                console.warn('[CollabRoom] 🛡️ Guardrail: Message Realtime avec cheptel vide ignoré pour protéger les animaux locaux.');
+                const safeFarmData = { ...data.farmData };
+                delete safeFarmData.animals;
+                this.applyCloudData(safeFarmData, true);
+              } else {
+                this.applyCloudData(data.farmData, true);
+              }
+
               this.lastSyncedAt = new Date();
               this.updateUI();
             }
@@ -2207,7 +2366,15 @@
 
     broadcastCurrentState() {
       const farmCode = this.getFarmCode();
+      const farmRole = this.getFarmRole();
       const state = this.getAppState();
+
+      // Guardrail souverain : Partenaire avec cheptel vide ne diffuse JAMAIS d'état vide vers les autres appareils
+      if (farmRole === 'partner' && (!state.animals || state.animals.length === 0) && !state._resetCleared) {
+        console.warn('[Broadcast] 🛡️ Guardrail: Partenaire avec 0 animaux, diffusion annulée.');
+        return;
+      }
+
       const payload = {
         version: '2.5.0-pro',
         farmCode: farmCode,
@@ -2283,12 +2450,11 @@
           .order('updated_at', { ascending: true });
 
         if (!error && Array.isArray(data) && data.length > 0) {
-          for (const row of data) {
-            if (row && row.data && Object.keys(row.data).length > 0) {
-              this.applyCloudData(row.data, true);
-              if (row.data.ownerEmail) {
-                localStorage.setItem('fermegest_farm_owner_email', row.data.ownerEmail);
-              }
+          const ownerRow = data.find(r => r.data && (r.data.farmRole === 'owner' || !r.data.farmRole)) || data[0];
+          if (ownerRow && ownerRow.data) {
+            this.applyCloudData(ownerRow.data, false);
+            if (ownerRow.data.ownerEmail) {
+              localStorage.setItem('fermegest_farm_owner_email', ownerRow.data.ownerEmail);
             }
           }
           this.lastSyncedAt = new Date();
@@ -2306,6 +2472,7 @@
       const ownerEmailDisplay = document.getElementById('teamOwnerEmailDisplay');
       const ownerSection = document.getElementById('teamOwnerSection');
       const partnerSection = document.getElementById('teamPartnerSection');
+      const joinContainer = document.getElementById('teamJoinContainer');
 
       const code = this.getFarmCode();
       const role = this.getFarmRole();
@@ -2322,6 +2489,7 @@
         }
         if (ownerSection) ownerSection.classList.add('hidden');
         if (partnerSection) partnerSection.classList.remove('hidden');
+        if (joinContainer) joinContainer.classList.add('hidden');
       } else {
         if (roleBadge) {
           roleBadge.textContent = (window.app && app.t) ? app.t('team_role_owner') : 'Propriétaire';
@@ -2329,6 +2497,7 @@
         }
         if (ownerSection) ownerSection.classList.remove('hidden');
         if (partnerSection) partnerSection.classList.add('hidden');
+        if (joinContainer) joinContainer.classList.remove('hidden');
       }
     },
 
