@@ -17,6 +17,13 @@ const MobileBridge = {
     this.isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
     console.log(`[MobileBridge] Initialized. Native platform: ${this.isNative ? window.Capacitor.getPlatform() : 'Web/PWA'}`);
 
+    if (this.isNative) {
+      try {
+        document.documentElement.classList.add('is-mobile-app');
+        if (document.body) document.body.classList.add('is-mobile-app');
+      } catch (e) {}
+    }
+
     if (this.isNative && window.Capacitor.Plugins) {
       this.plugins = window.Capacitor.Plugins;
       await this.initStatusBar();
