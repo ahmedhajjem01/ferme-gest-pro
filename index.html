@@ -114,7 +114,7 @@
       });
 
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js?v=161').then(function(reg) {
+        navigator.serviceWorker.register('./sw.js?v=162').then(function(reg) {
           reg.update();
           console.log('ServiceWorker registered & updated.');
         }).catch(function(err) {
@@ -3268,6 +3268,10 @@
               <span>⬇️</span>
               <span data-i18n="mobile_btn_download_apk">Télécharger l'APK Direct</span>
             </a>
+            <a href="https://raw.githubusercontent.com/ahmedhajjem01/ferme-gest-pro/main/FermeGestPro.apk" target="_blank" rel="noopener" class="btn btn-outline btn-full" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600; padding: 0.45rem; font-size: 0.8rem; opacity: 0.9;">
+              <span>🌐</span>
+              <span data-i18n="mobile_btn_download_mirror">Lien Miroir de Secours (GitHub Direct)</span>
+            </a>
             <button type="button" class="btn btn-secondary btn-full" onclick="app.shareApkLink()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem;">
               <span>📲</span>
               <span data-i18n="mobile_btn_share_apk">Partager le lien APK (WhatsApp / Famille)</span>
@@ -3933,8 +3937,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
     }
   </script>
-  <script src="supabase-client.js?v=128"></script>
-  <script src="translations.js?v=128"></script>
-  <script src="app.js?v=128"></script>
+  <script src="supabase-client.js?v=129"></script>
+  <script src="translations.js?v=129"></script>
+  <script src="app.js?v=129"></script>
 </body>
 </html>

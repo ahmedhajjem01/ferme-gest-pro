@@ -2070,15 +2070,31 @@
 
     shareFarmInvite() {
       const code = this.getFarmCode();
-      const inviteMsg = `🌾 Salut ! Rejoins la gestion de notre élevage sur FermeGest Pro avec le code : ${code}\n\n📲 Ouvre l'application directement ici : https://fermegestpro.vercel.app`;
+      const joinUrl = `https://fermegestpro.vercel.app/?join=${encodeURIComponent(code)}`;
+      const apkUrl = 'https://fermegestpro.vercel.app/FermeGestPro.apk';
+      const webUrl = 'https://fermegestpro.vercel.app';
+      const lang = (window.appState && window.appState.lang) || 'fr';
+
+      let title = '🌾 Invitation FermeGest Pro';
+      let inviteMsg = '';
+
+      if (lang === 'ar') {
+        title = '🌾 دعوة للانضمام إلى مزرعة مشتركة - FermeGest Pro';
+        inviteMsg = `🌾 مرحباً! أدعوك لمشاركتي إدارة المزرعة على تطبيق FermeGest Pro.\n\n🔑 رمز المزرعة الخاص بنا: ${code}\n\n📲 اضغط هنا للانضمام بضغطة واحدة:\n${joinUrl}\n\n📥 لتحميل تطبيق الأندرويد (APK):\n${apkUrl}\n\n🌐 أو افتح التطبيق في المتصفح:\n${webUrl}`;
+      } else if (lang === 'en') {
+        title = '🌾 FermeGest Pro - Shared Farm Invitation';
+        inviteMsg = `🌾 Hello! Join our farm management on FermeGest Pro.\n\n🔑 Farm Code: ${code}\n\n📲 One-click Join Link:\n${joinUrl}\n\n📥 Download Android App (APK):\n${apkUrl}\n\n🌐 Or open on the web:\n${webUrl}`;
+      } else {
+        inviteMsg = `🌾 Salut ! Rejoins la gestion de notre élevage sur FermeGest Pro.\n\n🔑 Code de notre ferme : ${code}\n\n📲 Rejoindre en un clic :\n${joinUrl}\n\n📥 Télécharger l'application Android (APK) :\n${apkUrl}\n\n🌐 Ou ouvrir sur le web :\n${webUrl}`;
+      }
 
       if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Share')) {
         try {
           window.Capacitor.Plugins.Share.share({
-            title: 'Invitation FermeGest Pro',
+            title: title,
             text: inviteMsg,
-            url: 'https://fermegestpro.vercel.app',
-            dialogTitle: 'Partager le code de la ferme'
+            url: joinUrl,
+            dialogTitle: title
           });
           return;
         } catch (e) {}
@@ -2086,14 +2102,59 @@
 
       if (navigator.share) {
         navigator.share({
-          title: 'Invitation FermeGest Pro',
+          title: title,
           text: inviteMsg,
-          url: 'https://fermegestpro.vercel.app'
+          url: joinUrl
         }).catch(() => {
           window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(inviteMsg)}`, '_blank');
         });
       } else {
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(inviteMsg)}`, '_blank');
+      }
+    },
+
+    async handleDeepLinkJoin(code) {
+      if (!code) return;
+      code = code.trim().toUpperCase().replace(/\s+/g, '');
+      if (!code.startsWith('FERME-')) code = 'FERME-' + code;
+
+      const currentCode = this.getFarmCode();
+      if (currentCode === code && this.getFarmRole() === 'partner') {
+        if (window.app && app.showToast) {
+          app.showToast(`🌾 Vous êtes déjà connecté à la ferme ${code} !`, 'info');
+        }
+        return;
+      }
+
+      this.openProfileModal();
+      const input = document.getElementById('teamJoinCodeInput');
+      if (input) input.value = code;
+
+      const isAr = (window.appState && window.appState.lang) === 'ar';
+      const isEn = (window.appState && window.appState.lang) === 'en';
+
+      const promptTitle = isAr ? '🌾 الانضمام إلى مزرعة مشتركة' : (isEn ? '🌾 Join Shared Farm' : '🌾 Rejoindre la Ferme Partagée');
+      const promptMsg = isAr 
+        ? `تمت دعوتك للانضمام إلى المزرعة برمز: <strong>${code}</strong>.<br><br>هل تريد استقبال ومزامنة بيانات هذه المزرعة؟`
+        : (isEn 
+            ? `You have been invited to join the farm with code: <strong>${code}</strong>.<br><br>Do you want to adopt and synchronize with this farm's data?`
+            : `Vous avez été invité à rejoindre la ferme avec le code : <strong>${code}</strong>.<br><br>Voulez-vous synchroniser et adopter les données de cette ferme ?`);
+
+      let confirm = false;
+      if (window.app && typeof app.confirmDialog === 'function') {
+        confirm = await app.confirmDialog({
+          title: promptTitle,
+          message: promptMsg,
+          confirmText: isAr ? 'انضمام للمزرعة' : (isEn ? 'Join Farm' : 'Rejoindre la ferme'),
+          cancelText: isAr ? 'إلغاء' : (isEn ? 'Cancel' : 'Annuler'),
+          type: 'primary'
+        });
+      } else {
+        confirm = window.confirm(promptMsg.replace(/<[^>]+>/g, ''));
+      }
+
+      if (confirm) {
+        await this.joinFarmWithCode(code);
       }
     },
 

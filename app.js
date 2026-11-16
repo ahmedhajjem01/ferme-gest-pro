@@ -262,11 +262,18 @@ const app = {
       });
     }
 
-    // Deep link or action parameter from notification click
+    // Deep link or action parameter from notification click or shared invite
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const pendingModal = window._pendingModal || localStorage.getItem('fermegest_pending_action');
-      if (urlParams.get('action') === 'feed_distribution' || pendingModal === 'modalFeedDistribution' || pendingModal === 'open_feed_modal') {
+      const joinCode = urlParams.get('join') || urlParams.get('code');
+      if (joinCode) {
+        setTimeout(() => {
+          if (window.appAuth && typeof window.appAuth.handleDeepLinkJoin === 'function') {
+            window.appAuth.handleDeepLinkJoin(joinCode);
+          }
+        }, 800);
+      } else if (urlParams.get('action') === 'feed_distribution' || pendingModal === 'modalFeedDistribution' || pendingModal === 'open_feed_modal') {
         window._pendingModal = null;
         try { localStorage.removeItem('fermegest_pending_action'); } catch (e) {}
         setTimeout(() => this.openModal('modalFeedDistribution'), 600);
@@ -16682,12 +16689,28 @@ const app = {
 
   shareApkLink() {
     const isAr = appState.lang === 'ar';
+    const isEn = appState.lang === 'en';
     const apkUrl = 'https://fermegestpro.vercel.app/FermeGestPro.apk';
+    const mirrorUrl = 'https://raw.githubusercontent.com/ahmedhajjem01/ferme-gest-pro/main/FermeGestPro.apk';
     const webUrl = 'https://fermegestpro.vercel.app';
-    const title = 'FermeGest PRO - Application Mobile Android';
+    const title = isAr ? 'تطبيق FermeGest PRO للأندرويد' : (isEn ? 'FermeGest PRO - Android Mobile App' : 'FermeGest PRO - Application Mobile Android');
     const text = isAr 
-      ? `حمّل تطبيق FermeGest PRO لهواتف الأندرويد مباشرة من هذا الرابط:\n${apkUrl}\n\nأو افتح التطبيق مباشرة في المتصفح:\n${webUrl}`
-      : `Téléchargez l'application officielle FermeGest PRO pour Android directement ici :\n${apkUrl}\n\nOu ouvrez-la sur votre navigateur :\n${webUrl}`;
+      ? `📲 حمّل تطبيق FermeGest PRO لهواتف الأندرويد مباشرة من الرابط الرسمي:\n${apkUrl}\n\n(رابط تحميل بديل مباشر: ${mirrorUrl})\n\n🌐 أو افتح التطبيق في المتصفح:\n${webUrl}`
+      : (isEn 
+          ? `📲 Download official FermeGest PRO for Android APK:\n${apkUrl}\n\n(Direct mirror: ${mirrorUrl})\n\n🌐 Or open on the web:\n${webUrl}`
+          : `📲 Téléchargez l'application officielle FermeGest PRO pour Android directement ici :\n${apkUrl}\n\n(Lien miroir direct : ${mirrorUrl})\n\n🌐 Ou ouvrez sur votre navigateur :\n${webUrl}`);
+
+    if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Share')) {
+      try {
+        window.Capacitor.Plugins.Share.share({
+          title,
+          text,
+          url: apkUrl,
+          dialogTitle: title
+        });
+        return;
+      } catch (e) {}
+    }
 
     if (navigator.share) {
       navigator.share({
