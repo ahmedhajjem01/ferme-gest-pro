@@ -1,5 +1,5 @@
 // Service Worker for FermeGest PRO (100% Offline-First Agrarian Management)
-const CACHE_NAME = 'fermegest-v163';
+const CACHE_NAME = 'fermegest-v164';
 const ASSETS = [
   './',
   './index.html',
