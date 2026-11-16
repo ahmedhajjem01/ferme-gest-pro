@@ -951,16 +951,49 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
 
 /* Mobile Smartphones (Screens <= 767px): Strict 2x2 Grid (1  2 / 3  4) */
 @media (max-width: 767px) {
+  .harvest-cards-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.15rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .harvest-cards-grid .egg-stock-card,
+  .harvest-cards-grid .milk-stock-card,
   .egg-stock-card,
   .milk-stock-card {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0.95rem 1rem;
-    gap: 0.85rem;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow: visible;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    align-items: stretch !important;
+    padding: 0.95rem 1rem !important;
+    gap: 0.85rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+  .egg-stock-info-group,
+  .milk-stock-info-group {
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .egg-species-filter-bar {
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  #eggSpeciesBreakdownStrip {
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.35rem !important;
   }
   .egg-stock-icon-bubble {
     width: 48px;
@@ -971,20 +1004,28 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
     display: grid !important;
     visibility: visible !important;
     opacity: 1 !important;
+    pointer-events: auto !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 0.45rem !important;
     margin-top: 0.25rem !important;
     width: 100% !important;
     max-width: 100% !important;
+    flex-basis: auto !important;
+    flex-shrink: 0 !important;
+    align-self: stretch !important;
+    order: 10 !important;
+    box-sizing: border-box !important;
   }
   .egg-stock-btn {
     display: inline-flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+    pointer-events: auto !important;
     font-size: 0.79rem;
     padding: 0.48rem 0.35rem;
     min-height: 39px;
     white-space: normal;
+    box-sizing: border-box !important;
   }
 }
 
@@ -994,45 +1035,79 @@ button, a, .nav-item, .mobile-nav-btn, .fab-button, .select-chip, .btn {
     padding-left: 0.85rem;
     padding-right: 0.85rem;
   }
+  .harvest-cards-grid .egg-stock-card,
+  .harvest-cards-grid .milk-stock-card,
   .egg-stock-card,
   .milk-stock-card {
-    padding: 0.85rem 0.85rem;
-    overflow: visible;
+    padding: 0.85rem 0.85rem !important;
+    overflow: visible !important;
   }
   .egg-stock-actions-grid {
     display: grid !important;
     visibility: visible !important;
     opacity: 1 !important;
+    pointer-events: auto !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 0.4rem !important;
     width: 100% !important;
     max-width: 100% !important;
+    flex-basis: auto !important;
+    flex-shrink: 0 !important;
+    align-self: stretch !important;
+    order: 10 !important;
   }
   .egg-stock-btn {
     display: inline-flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+    pointer-events: auto !important;
     font-size: 0.76rem;
     padding: 0.45rem 0.25rem;
   }
 }
 
 /* Native Android / iOS Mobile App (Capacitor): ALWAYS 2x2 Grid (1  2 / 3  4) */
+body.is-capacitor .harvest-cards-grid,
+.is-mobile-app .harvest-cards-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+body.is-capacitor .egg-stock-card,
+body.is-capacitor .milk-stock-card,
+.is-mobile-app .egg-stock-card,
+.is-mobile-app .milk-stock-card {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
 body.is-capacitor .egg-stock-actions-grid,
 .is-mobile-app .egg-stock-actions-grid {
   display: grid !important;
   visibility: visible !important;
   opacity: 1 !important;
+  pointer-events: auto !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 0.45rem !important;
   width: 100% !important;
   max-width: 100% !important;
+  flex-basis: auto !important;
+  flex-shrink: 0 !important;
+  align-self: stretch !important;
+  order: 10 !important;
 }
 body.is-capacitor .egg-stock-btn,
 .is-mobile-app .egg-stock-btn {
   display: inline-flex !important;
   visibility: visible !important;
   opacity: 1 !important;
+  pointer-events: auto !important;
   font-size: 0.79rem !important;
   padding: 0.48rem 0.35rem !important;
   min-height: 39px !important;
